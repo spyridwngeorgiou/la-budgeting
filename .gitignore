@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+
+# Excel temp/lock files
+~$*.xlsx
+
+# Node / Next.js (budget-app has its own .gitignore too)
+node_modules/
+.next/
+out/
+build/
+
+# Env & secrets
+.env
+.env.local
+.env.*.local
+!budget-app/.env.local.example
+
+# Local seed data
+budget-app/scripts/seed.json
+
+# Editor
+.DS_Store
+*.tsbuildinfo

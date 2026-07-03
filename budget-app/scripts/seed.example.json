@@ -1,0 +1,30 @@
+{
+  "projects": [
+    { "name": "Λαζαράκη 5", "description": "Ανακαίνιση", "status": "active" },
+    { "name": "Αγίου Κωνσταντίνου", "description": "", "status": "active" }
+  ],
+  "accounts": [
+    { "name": "Optima Bank", "type": "bank", "balance": 0, "is_incoming": false },
+    { "name": "Τράπεζα Πειραιώς", "type": "bank", "balance": 0, "is_incoming": false },
+    { "name": "Μετρητά", "type": "cash", "balance": 0, "is_incoming": false },
+    { "name": "Χρυσός", "type": "gold", "balance": 0, "is_incoming": false },
+    { "name": "Δάνειο TEPIX", "type": "loan", "balance": 0, "is_incoming": true },
+    { "name": "Αναμενόμενα", "type": "other", "balance": 0, "is_incoming": true }
+  ],
+  "categories": [
+    { "name": "Υλικά", "kind": "expense" },
+    { "name": "Εργατικά", "kind": "expense" }
+  ],
+  "transactions": [
+    {
+      "project": "Λαζαράκη 5",
+      "category": "Υλικά",
+      "type": "expense",
+      "amount": 1500,
+      "status": "paid",
+      "date": "2026-01-15",
+      "source": "Optima Bank",
+      "notes": "Παράδειγμα"
+    }
+  ]
+}
