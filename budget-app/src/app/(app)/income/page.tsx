@@ -25,7 +25,12 @@ export default async function IncomePage() {
   const incomingAccounts = (accRes.data ?? []) as Account[];
   const num = (n: number | string) => Number(n) || 0;
 
-  const expectedFunds = incomingAccounts.reduce((s, a) => s + num(a.balance), 0);
+  const generalIncoming = incomingAccounts
+    .filter((a) => !a.project_id)
+    .reduce((s, a) => s + num(a.balance), 0);
+  const earmarkedIncoming = incomingAccounts
+    .filter((a) => a.project_id)
+    .reduce((s, a) => s + num(a.balance), 0);
 
   const monthly = items
     .filter((i) => i.recurrence === "monthly")
@@ -52,12 +57,23 @@ export default async function IncomePage() {
 
       {/* Αναμενόμενα κεφάλαια από λογαριασμούς (δάνειο, αναμενόμενα κ.λπ.) */}
       <div>
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-muted">
             Αναμενόμενα κεφάλαια (από λογαριασμούς)
           </h2>
-          <span className="text-sm font-semibold text-positive">
-            Σύνολο: {formatEuro(expectedFunds)}
+          <span className="text-sm text-muted">
+            Γενικά:{" "}
+            <strong className="text-positive">
+              {formatEuro(generalIncoming)}
+            </strong>
+            {earmarkedIncoming > 0 && (
+              <>
+                {"  ·  "}Δεσμευμένα (έργων):{" "}
+                <strong className="text-accent">
+                  {formatEuro(earmarkedIncoming)}
+                </strong>
+              </>
+            )}
           </span>
         </div>
         <Card>

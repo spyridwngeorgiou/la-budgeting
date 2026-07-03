@@ -1,8 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getHouseholdId } from "@/lib/household";
+import { revalidateAll } from "@/lib/revalidate";
 
 export async function createAccount(formData: FormData) {
   const householdId = await getHouseholdId();
@@ -17,8 +17,7 @@ export async function createAccount(formData: FormData) {
     is_incoming: formData.get("is_incoming") === "on",
     project_id: projectId === "" ? null : projectId,
   });
-  revalidatePath("/accounts");
-  revalidatePath("/dashboard");
+  revalidateAll();
 }
 
 export async function updateAccount(formData: FormData) {
@@ -36,8 +35,7 @@ export async function updateAccount(formData: FormData) {
       project_id: projectId === "" ? null : projectId,
     })
     .eq("id", id);
-  revalidatePath("/accounts");
-  revalidatePath("/dashboard");
+  revalidateAll();
 }
 
 export async function deleteAccount(formData: FormData) {
@@ -45,6 +43,5 @@ export async function deleteAccount(formData: FormData) {
   if (!id) return;
   const supabase = await createClient();
   await supabase.from("accounts").delete().eq("id", id);
-  revalidatePath("/accounts");
-  revalidatePath("/dashboard");
+  revalidateAll();
 }

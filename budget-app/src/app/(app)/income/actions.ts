@@ -1,8 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getHouseholdId } from "@/lib/household";
+import { revalidateAll } from "@/lib/revalidate";
 
 function parse(formData: FormData) {
   const emptyToNull = (v: FormDataEntryValue | null) => {
@@ -28,8 +28,7 @@ export async function createIncome(formData: FormData) {
   await supabase
     .from("expected_income")
     .insert({ household_id: householdId, ...parse(formData) });
-  revalidatePath("/income");
-  revalidatePath("/dashboard");
+  revalidateAll();
 }
 
 export async function updateIncome(formData: FormData) {
@@ -37,8 +36,7 @@ export async function updateIncome(formData: FormData) {
   if (!id) return;
   const supabase = await createClient();
   await supabase.from("expected_income").update(parse(formData)).eq("id", id);
-  revalidatePath("/income");
-  revalidatePath("/dashboard");
+  revalidateAll();
 }
 
 export async function deleteIncome(formData: FormData) {
@@ -46,6 +44,5 @@ export async function deleteIncome(formData: FormData) {
   if (!id) return;
   const supabase = await createClient();
   await supabase.from("expected_income").delete().eq("id", id);
-  revalidatePath("/income");
-  revalidatePath("/dashboard");
+  revalidateAll();
 }
