@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import { BarChartCard, PieChartCard, ChartLegend } from "@/components/Charts";
 import { formatEuro } from "@/lib/utils";
 import type { Account, Transaction, Project, Category } from "@/lib/types";
+import { TransactionFormModal } from "../transactions/TransactionFormModal";
 
 export const dynamic = "force-dynamic";
 
@@ -85,10 +86,15 @@ export default async function DashboardPage() {
   const totalPaid = expenses
     .filter((t) => t.status === "paid")
     .reduce((s, t) => s + num(t.amount), 0);
-  const totalCommitted = expenses
-    .filter((t) => t.status === "paid" || t.status === "upcoming")
+  const totalUpcoming = expenses
+    .filter((t) => t.status === "upcoming")
     .reduce((s, t) => s + num(t.amount), 0);
-  const freeCash = totalAvailable - totalCommitted;
+
+  // Liquidity: account balances already reflect paid expenses, so only the
+  // UPCOMING (unpaid) obligations reduce available cash.
+  const liquidityNow = totalAvailable - totalUpcoming;
+  const liquidityWithIncoming =
+    totalAvailable + totalIncoming + earmarkedFunding - totalUpcoming;
 
   // Per-project expenses (committed)
   const projectName = (id: string | null) =>
@@ -118,12 +124,55 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-primary">Επισκόπηση</h1>
-        <p className="text-sm text-muted">
-          Συνολική εικόνα όλων των έργων και λογαριασμών
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-primary">Επισκόπηση</h1>
+          <p className="text-sm text-muted">
+            Συνολική εικόνα όλων των έργων και λογαριασμών
+          </p>
+        </div>
+        <TransactionFormModal
+          projects={projects}
+          accounts={accounts}
+          categories={categories}
+        />
       </div>
+
+      {/* Κατάσταση ρευστότητας — έντονη, ξεκάθαρη */}
+      {liquidityNow >= 0 ? (
+        <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+          <p className="text-sm font-semibold text-green-800">
+            ✅ Επαρκής ρευστότητα
+          </p>
+          <p className="mt-1 text-sm text-green-700">
+            Τα διαθέσιμα κεφάλαια καλύπτουν τις επερχόμενες υποχρεώσεις —
+            πλεόνασμα <strong>{formatEuro(liquidityNow)}</strong>.
+          </p>
+        </div>
+      ) : liquidityWithIncoming >= 0 ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-800">
+            ⚠️ Έλλειμμα ρευστότητας τώρα: {formatEuro(Math.abs(liquidityNow))}
+          </p>
+          <p className="mt-1 text-sm text-amber-700">
+            Τα διαθέσιμα κεφάλαια δεν καλύπτουν τις επερχόμενες υποχρεώσεις.
+            Καλύπτεται <strong>μόνο εφόσον εισπραχθούν</strong> τα αναμενόμενα
+            έσοδα και η δεσμευμένη χρηματοδότηση (τότε πλεόνασμα{" "}
+            {formatEuro(liquidityWithIncoming)}).
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-red-300 bg-red-50 p-4">
+          <p className="text-sm font-semibold text-red-800">
+            🛑 Σοβαρό πρόβλημα ρευστότητας: έλλειμμα{" "}
+            {formatEuro(Math.abs(liquidityWithIncoming))}
+          </p>
+          <p className="mt-1 text-sm text-red-700">
+            Ακόμη και με όλα τα αναμενόμενα έσοδα και τη χρηματοδότηση, δεν
+            καλύπτονται οι επερχόμενες υποχρεώσεις. Απαιτείται ενέργεια.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
@@ -134,6 +183,19 @@ export default async function DashboardPage() {
           href="/accounts"
         />
         <StatCard
+          label="Επερχόμενες υποχρεώσεις"
+          value={totalUpcoming}
+          tone="negative"
+          hint="Έξοδα σε κατάσταση «Επερχόμενο» (απλήρωτα)"
+          href="/transactions?type=expense&status=upcoming"
+        />
+        <StatCard
+          label="Ρευστότητα τώρα"
+          value={liquidityNow}
+          tone={liquidityNow >= 0 ? "positive" : "negative"}
+          hint="Διαθέσιμα κεφάλαια − Επερχόμενες υποχρεώσεις"
+        />
+        <StatCard
           label="Αναμενόμενα έσοδα"
           value={totalIncoming}
           hint="Γενικά αναμενόμενα κεφάλαια (χωρίς δεσμευμένα)"
@@ -142,26 +204,14 @@ export default async function DashboardPage() {
         <StatCard
           label="Πληρωμένα έξοδα"
           value={totalPaid}
-          hint="Κινήσεις σε κατάσταση «Πληρωμένο»"
+          hint="Ιστορικό — κινήσεις «Πληρωμένο»"
           href="/transactions?type=expense&status=paid"
         />
         <StatCard
-          label="Δεσμευμένα (πληρ. + επερχ.)"
-          value={totalCommitted}
-          hint="Πληρωμένα + Επερχόμενα έξοδα"
-          href="/transactions?type=expense"
-        />
-        <StatCard
-          label="Μετρητά"
-          value={freeCash}
-          tone={freeCash >= 0 ? "positive" : "negative"}
-          hint="Διαθέσιμα κεφάλαια − Δεσμευμένα έξοδα"
-        />
-        <StatCard
-          label="Σύνολο κεφαλαίων + έσοδα"
-          value={totalAvailable + totalIncoming}
-          hint="Διαθέσιμα + Αναμενόμενα (χωρίς δεσμευμένα έργων)"
-          href="/accounts"
+          label="Ρευστότητα με έσοδα + χρηματοδότηση"
+          value={liquidityWithIncoming}
+          tone={liquidityWithIncoming >= 0 ? "positive" : "negative"}
+          hint="Διαθέσιμα + Αναμενόμενα + Δάνειο − Επερχόμενες"
         />
         {earmarkedFunding > 0 && (
           <StatCard
