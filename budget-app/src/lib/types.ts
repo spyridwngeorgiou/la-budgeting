@@ -22,6 +22,7 @@ export interface Account {
   type: AccountType;
   balance: number;
   is_incoming: boolean;
+  project_id: string | null;
   created_at: string;
   updated_at: string;
 }

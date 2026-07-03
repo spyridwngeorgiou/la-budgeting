@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, Badge } from "@/components/ui";
 import { DeleteButton } from "@/components/DeleteButton";
 import { formatEuro } from "@/lib/utils";
-import { ACCOUNT_TYPE_LABEL, type Account } from "@/lib/types";
+import { ACCOUNT_TYPE_LABEL, type Account, type Project } from "@/lib/types";
 import { AccountFormModal } from "./AccountFormModal";
 import { deleteAccount } from "./actions";
 
@@ -10,15 +10,22 @@ export const dynamic = "force-dynamic";
 
 export default async function AccountsPage() {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("accounts")
-    .select("*")
-    .order("created_at");
-  const accounts = (data ?? []) as Account[];
+  const [accRes, projRes] = await Promise.all([
+    supabase.from("accounts").select("*").order("created_at"),
+    supabase.from("projects").select("*").order("name"),
+  ]);
+  const accounts = (accRes.data ?? []) as Account[];
+  const projects = (projRes.data ?? []) as Project[];
   const num = (n: number | string) => Number(n) || 0;
+  const projName = (id: string | null) =>
+    projects.find((p) => p.id === id)?.name ?? null;
 
-  const available = accounts.filter((a) => !a.is_incoming);
-  const incoming = accounts.filter((a) => a.is_incoming);
+  // General (not earmarked to a project)
+  const available = accounts.filter((a) => !a.is_incoming && !a.project_id);
+  const incoming = accounts.filter((a) => a.is_incoming && !a.project_id);
+  // Earmarked to a specific project (e.g. a loan)
+  const earmarked = accounts.filter((a) => a.project_id);
+
   const totalAvailable = available.reduce((s, a) => s + num(a.balance), 0);
   const totalIncoming = incoming.reduce((s, a) => s + num(a.balance), 0);
 
@@ -29,12 +36,23 @@ export default async function AccountsPage() {
     >
       <div>
         <p className="font-medium text-foreground">{a.name}</p>
-        <Badge tone="planned">{ACCOUNT_TYPE_LABEL[a.type]}</Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone="planned">{ACCOUNT_TYPE_LABEL[a.type]}</Badge>
+          {a.project_id && projName(a.project_id) ? (
+            <Badge tone="active">Έργο: {projName(a.project_id)}</Badge>
+          ) : null}
+        </div>
       </div>
       <div className="flex items-center gap-3">
-        <span className="text-lg font-semibold">{formatEuro(num(a.balance))}</span>
-        <AccountFormModal account={a} />
-        <DeleteButton action={deleteAccount} id={a.id} confirmText="Διαγραφή λογαριασμού;" />
+        <span className="text-lg font-semibold">
+          {formatEuro(num(a.balance))}
+        </span>
+        <AccountFormModal account={a} projects={projects} />
+        <DeleteButton
+          action={deleteAccount}
+          id={a.id}
+          confirmText="Διαγραφή λογαριασμού;"
+        />
       </div>
     </div>
   );
@@ -48,7 +66,7 @@ export default async function AccountsPage() {
             Διαθέσιμα κεφάλαια και αναμενόμενα έσοδα
           </p>
         </div>
-        <AccountFormModal />
+        <AccountFormModal projects={projects} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -63,7 +81,7 @@ export default async function AccountsPage() {
         <Card>
           <CardContent className="pt-5">
             <p className="text-xs font-medium text-muted">
-              Σύνολο αναμενόμενων εσόδων
+              Σύνολο αναμενόμενων εσόδων (γενικά)
             </p>
             <p className="mt-1 text-2xl font-bold text-positive">
               {formatEuro(totalIncoming)}
@@ -90,9 +108,18 @@ export default async function AccountsPage() {
       {incoming.length > 0 && (
         <div>
           <h2 className="mb-2 text-sm font-semibold text-muted">
-            Αναμενόμενα έσοδα
+            Αναμενόμενα έσοδα (γενικά)
           </h2>
           <Card>{incoming.map(Row)}</Card>
+        </div>
+      )}
+
+      {earmarked.length > 0 && (
+        <div>
+          <h2 className="mb-2 text-sm font-semibold text-muted">
+            Δεσμευμένη χρηματοδότηση έργων (εκτός γενικών συνόλων)
+          </h2>
+          <Card>{earmarked.map(Row)}</Card>
         </div>
       )}
     </div>

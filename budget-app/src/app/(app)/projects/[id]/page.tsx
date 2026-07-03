@@ -11,6 +11,7 @@ import {
   type Project,
   type Transaction,
   type Category,
+  type Account,
 } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -23,10 +24,11 @@ export default async function ProjectDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [projectRes, txRes, catRes] = await Promise.all([
+  const [projectRes, txRes, catRes, accRes] = await Promise.all([
     supabase.from("projects").select("*").eq("id", id).maybeSingle(),
     supabase.from("transactions").select("*").eq("project_id", id).order("tx_date", { ascending: false }),
     supabase.from("categories").select("*"),
+    supabase.from("accounts").select("*").eq("project_id", id),
   ]);
 
   const project = projectRes.data as Project | null;
@@ -34,7 +36,10 @@ export default async function ProjectDetailPage({
 
   const transactions = (txRes.data ?? []) as Transaction[];
   const categories = (catRes.data ?? []) as Category[];
+  const earmarkedAccounts = (accRes.data ?? []) as Account[];
   const num = (n: number | string) => Number(n) || 0;
+
+  const funding = earmarkedAccounts.reduce((s, a) => s + num(a.balance), 0);
 
   const expenses = transactions.filter((t) => t.type === "expense");
   const income = transactions.filter((t) => t.type === "income");
@@ -78,7 +83,7 @@ export default async function ProjectDetailPage({
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-5">
             <p className="text-xs font-medium text-muted">Πληρωμένα</p>
@@ -98,6 +103,16 @@ export default async function ProjectDetailPage({
             <p className="text-xs font-medium text-muted">Έσοδα έργου</p>
             <p className="mt-1 text-2xl font-bold text-positive">
               {formatEuro(incomeTotal)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5">
+            <p className="text-xs font-medium text-muted">
+              Χρηματοδότηση (δεσμευμένη)
+            </p>
+            <p className="mt-1 text-2xl font-bold text-accent">
+              {formatEuro(funding)}
             </p>
           </CardContent>
         </Card>

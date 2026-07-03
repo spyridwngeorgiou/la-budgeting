@@ -8,12 +8,14 @@ export async function createAccount(formData: FormData) {
   const householdId = await getHouseholdId();
   if (!householdId) return;
   const supabase = await createClient();
+  const projectId = String(formData.get("project_id") ?? "").trim();
   await supabase.from("accounts").insert({
     household_id: householdId,
     name: String(formData.get("name") ?? "").trim() || "Νέος λογαριασμός",
     type: String(formData.get("type") ?? "bank"),
     balance: Number(formData.get("balance") ?? 0) || 0,
     is_incoming: formData.get("is_incoming") === "on",
+    project_id: projectId === "" ? null : projectId,
   });
   revalidatePath("/accounts");
   revalidatePath("/dashboard");
@@ -23,6 +25,7 @@ export async function updateAccount(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   const supabase = await createClient();
+  const projectId = String(formData.get("project_id") ?? "").trim();
   await supabase
     .from("accounts")
     .update({
@@ -30,6 +33,7 @@ export async function updateAccount(formData: FormData) {
       type: String(formData.get("type") ?? "bank"),
       balance: Number(formData.get("balance") ?? 0) || 0,
       is_incoming: formData.get("is_incoming") === "on",
+      project_id: projectId === "" ? null : projectId,
     })
     .eq("id", id);
   revalidatePath("/accounts");

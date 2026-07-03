@@ -50,11 +50,15 @@ export default async function DashboardPage() {
 
   const num = (n: number | string) => Number(n) || 0;
 
+  // Earmarked accounts (e.g. project-specific loans) are excluded from general totals.
   const totalAvailable = accounts
-    .filter((a) => !a.is_incoming)
+    .filter((a) => !a.is_incoming && !a.project_id)
     .reduce((s, a) => s + num(a.balance), 0);
   const totalIncoming = accounts
-    .filter((a) => a.is_incoming)
+    .filter((a) => a.is_incoming && !a.project_id)
+    .reduce((s, a) => s + num(a.balance), 0);
+  const earmarkedFunding = accounts
+    .filter((a) => a.project_id)
     .reduce((s, a) => s + num(a.balance), 0);
 
   const expenses = transactions.filter((t) => t.type === "expense");
@@ -116,6 +120,12 @@ export default async function DashboardPage() {
           tone={freeCash >= 0 ? "positive" : "negative"}
         />
         <StatCard label="Σύνολο κεφαλαίων + έσοδα" value={totalAvailable + totalIncoming} />
+        {earmarkedFunding > 0 && (
+          <StatCard
+            label="Χρηματοδότηση έργων (δεσμευμένη, εκτός συνόλου)"
+            value={earmarkedFunding}
+          />
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

@@ -4,10 +4,16 @@ import { useState } from "react";
 import { Plus, Pencil } from "lucide-react";
 import { Button, Input, Label, Select } from "@/components/ui";
 import { ModalShell } from "@/components/Modal";
-import { ACCOUNT_TYPE_LABEL, type Account } from "@/lib/types";
+import { ACCOUNT_TYPE_LABEL, type Account, type Project } from "@/lib/types";
 import { createAccount, updateAccount } from "./actions";
 
-export function AccountFormModal({ account }: { account?: Account }) {
+export function AccountFormModal({
+  account,
+  projects,
+}: {
+  account?: Account;
+  projects: Project[];
+}) {
   const [open, setOpen] = useState(false);
   const editing = Boolean(account);
 
@@ -68,6 +74,21 @@ export function AccountFormModal({ account }: { account?: Account }) {
             />
             Αναμενόμενο έσοδο (δεν είναι ακόμη διαθέσιμο)
           </label>
+          <div>
+            <Label>Δέσμευση σε έργο (προαιρετικό)</Label>
+            <Select name="project_id" defaultValue={account?.project_id ?? ""}>
+              <option value="">— Γενικό (όλα τα έργα) —</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </Select>
+            <p className="mt-1 text-xs text-muted">
+              Αν δεσμευτεί σε έργο (π.χ. δάνειο), δεν μετράει στα γενικά σύνολα —
+              φαίνεται μόνο στο έργο.
+            </p>
+          </div>
           <Button type="submit" className="w-full">
             {editing ? "Ενημέρωση" : "Αποθήκευση"}
           </Button>
