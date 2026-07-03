@@ -52,3 +52,22 @@ export async function signOut() {
   await supabase.auth.signOut();
   redirect("/login");
 }
+
+export async function updatePassword(_prev: unknown, formData: FormData) {
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+
+  if (password.length < 6) {
+    return { error: "Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες." };
+  }
+  if (password !== confirm) {
+    return { error: "Οι κωδικοί δεν ταιριάζουν." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    return { error: "Αποτυχία αλλαγής κωδικού: " + error.message };
+  }
+  return { error: null, message: "Ο κωδικός άλλαξε επιτυχώς." };
+}

@@ -9,6 +9,7 @@ import {
   Wallet,
   ArrowLeftRight,
   TrendingUp,
+  Settings,
   Menu,
   X,
   LogOut,
@@ -22,6 +23,7 @@ const NAV = [
   { href: "/accounts", label: "Λογαριασμοί", icon: Wallet },
   { href: "/transactions", label: "Κινήσεις", icon: ArrowLeftRight },
   { href: "/income", label: "Αναμενόμενα έσοδα", icon: TrendingUp },
+  { href: "/settings", label: "Ρυθμίσεις", icon: Settings },
 ];
 
 export function Sidebar({ email }: { email: string }) {
