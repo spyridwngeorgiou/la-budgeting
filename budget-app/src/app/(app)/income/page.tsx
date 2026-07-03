@@ -2,7 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, Badge } from "@/components/ui";
 import { DeleteButton } from "@/components/DeleteButton";
 import { formatEuro, formatDate } from "@/lib/utils";
-import type { ExpectedIncome, Project } from "@/lib/types";
+import {
+  ACCOUNT_TYPE_LABEL,
+  type ExpectedIncome,
+  type Project,
+  type Account,
+} from "@/lib/types";
 import { IncomeFormModal } from "./IncomeFormModal";
 import { deleteIncome } from "./actions";
 
@@ -10,13 +15,17 @@ export const dynamic = "force-dynamic";
 
 export default async function IncomePage() {
   const supabase = await createClient();
-  const [incRes, projRes] = await Promise.all([
+  const [incRes, projRes, accRes] = await Promise.all([
     supabase.from("expected_income").select("*").order("start_date"),
     supabase.from("projects").select("*").order("name"),
+    supabase.from("accounts").select("*").eq("is_incoming", true).order("name"),
   ]);
   const items = (incRes.data ?? []) as ExpectedIncome[];
   const projects = (projRes.data ?? []) as Project[];
+  const incomingAccounts = (accRes.data ?? []) as Account[];
   const num = (n: number | string) => Number(n) || 0;
+
+  const expectedFunds = incomingAccounts.reduce((s, a) => s + num(a.balance), 0);
 
   const monthly = items
     .filter((i) => i.recurrence === "monthly")
@@ -35,11 +44,59 @@ export default async function IncomePage() {
         <div>
           <h1 className="text-2xl font-bold text-primary">Αναμενόμενα έσοδα</h1>
           <p className="text-sm text-muted">
-            Ενοίκια, διαχείριση και άλλες προβλεπόμενες εισροές
+            Αναμενόμενα κεφάλαια & προβλεπόμενες εισροές (ενοίκια, διαχείριση)
           </p>
         </div>
         <IncomeFormModal projects={projects} />
       </div>
+
+      {/* Αναμενόμενα κεφάλαια από λογαριασμούς (δάνειο, αναμενόμενα κ.λπ.) */}
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-muted">
+            Αναμενόμενα κεφάλαια (από λογαριασμούς)
+          </h2>
+          <span className="text-sm font-semibold text-positive">
+            Σύνολο: {formatEuro(expectedFunds)}
+          </span>
+        </div>
+        <Card>
+          {incomingAccounts.length === 0 ? (
+            <p className="p-6 text-center text-sm text-muted">
+              Δεν υπάρχουν αναμενόμενα κεφάλαια. Πρόσθεσέ τα στους «Λογαριασμούς»
+              με επιλογή «Αναμενόμενο έσοδο».
+            </p>
+          ) : (
+            incomingAccounts.map((a) => (
+              <div
+                key={a.id}
+                className="flex items-center justify-between border-b border-border px-5 py-3 last:border-0"
+              >
+                <div>
+                  <p className="font-medium text-foreground">{a.name}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="planned">{ACCOUNT_TYPE_LABEL[a.type]}</Badge>
+                    {a.project_id ? (
+                      <Badge tone="active">
+                        Έργο: {projName(a.project_id)}
+                      </Badge>
+                    ) : (
+                      <Badge tone="completed">Γενικό</Badge>
+                    )}
+                  </div>
+                </div>
+                <span className="text-lg font-semibold text-positive">
+                  {formatEuro(num(a.balance))}
+                </span>
+              </div>
+            ))
+          )}
+        </Card>
+      </div>
+
+      <h2 className="pt-2 text-sm font-semibold text-muted">
+        Προβλεπόμενα επαναλαμβανόμενα έσοδα (ενοίκια / διαχείριση)
+      </h2>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
