@@ -41,8 +41,6 @@ export default async function TransactionsPage({
   const num = (n: number | string) => Number(n) || 0;
   const projName = (id: string | null) =>
     projects.find((p) => p.id === id)?.name ?? "—";
-  const catName = (id: string | null) =>
-    categories.find((c) => c.id === id)?.name ?? "—";
 
   const total = transactions.reduce(
     (s, t) => s + (t.type === "expense" ? num(t.amount) : -num(t.amount)),
@@ -107,7 +105,7 @@ export default async function TransactionsPage({
               <tr className="border-b border-border bg-slate-50 text-left text-xs text-muted">
                 <th className="px-4 py-2 font-medium">Ημ/νία</th>
                 <th className="px-4 py-2 font-medium">Έργο</th>
-                <th className="px-4 py-2 font-medium">Κατηγορία</th>
+                <th className="px-4 py-2 font-medium">Περιγραφή</th>
                 <th className="px-4 py-2 font-medium">Κατάσταση</th>
                 <th className="px-4 py-2 text-right font-medium">Ποσό</th>
                 <th className="px-4 py-2"></th>
@@ -116,7 +114,7 @@ export default async function TransactionsPage({
             <tbody>
               {transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted">
+                  <td colSpan={7} className="px-4 py-8 text-center text-muted">
                     Δεν υπάρχουν κινήσεις.
                   </td>
                 </tr>
@@ -127,7 +125,12 @@ export default async function TransactionsPage({
                       {formatDate(t.tx_date)}
                     </td>
                     <td className="px-4 py-2">{projName(t.project_id)}</td>
-                    <td className="px-4 py-2">{catName(t.category_id)}</td>
+                    <td className="px-4 py-2">
+                      <span>{t.notes || "—"}</span>
+                      {t.source ? (
+                        <span className="block text-xs text-muted">{t.source}</span>
+                      ) : null}
+                    </td>
                     <td className="px-4 py-2">
                       <Badge tone={t.status}>{TX_STATUS_LABEL[t.status]}</Badge>
                     </td>
