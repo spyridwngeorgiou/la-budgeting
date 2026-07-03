@@ -111,7 +111,7 @@ export default async function DashboardPage() {
         <StatCard label="Πληρωμένα έξοδα" value={totalPaid} />
         <StatCard label="Δεσμευμένα (πληρ. + επερχ.)" value={totalCommitted} />
         <StatCard
-          label="Ελεύθερο μετρητό"
+          label="Ελεύθερα μετρητά"
           value={freeCash}
           tone={freeCash >= 0 ? "positive" : "negative"}
         />
