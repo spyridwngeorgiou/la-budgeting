@@ -66,7 +66,7 @@ export function AccountFormModal({ account }: { account?: Account }) {
               defaultChecked={account?.is_incoming ?? false}
               className="h-4 w-4"
             />
-            Αναμενόμενο / εισερχόμενο (δεν είναι ακόμη διαθέσιμο)
+            Αναμενόμενο έσοδο (δεν είναι ακόμη διαθέσιμο)
           </label>
           <Button type="submit" className="w-full">
             {editing ? "Ενημέρωση" : "Αποθήκευση"}

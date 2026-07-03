@@ -107,7 +107,7 @@ export default async function DashboardPage() {
           value={totalAvailable}
           tone="primary"
         />
-        <StatCard label="Αναμενόμενα εισερχόμενα" value={totalIncoming} />
+        <StatCard label="Αναμενόμενα έσοδα" value={totalIncoming} />
         <StatCard label="Πληρωμένα έξοδα" value={totalPaid} />
         <StatCard label="Δεσμευμένα (πληρ. + επερχ.)" value={totalCommitted} />
         <StatCard
@@ -115,7 +115,7 @@ export default async function DashboardPage() {
           value={freeCash}
           tone={freeCash >= 0 ? "positive" : "negative"}
         />
-        <StatCard label="Σύνολο κεφαλαίων + εισερχ." value={totalAvailable + totalIncoming} />
+        <StatCard label="Σύνολο κεφαλαίων + έσοδα" value={totalAvailable + totalIncoming} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

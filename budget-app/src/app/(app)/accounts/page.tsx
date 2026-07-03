@@ -45,7 +45,7 @@ export default async function AccountsPage() {
         <div>
           <h1 className="text-2xl font-bold text-primary">Λογαριασμοί</h1>
           <p className="text-sm text-muted">
-            Διαθέσιμα κεφάλαια και αναμενόμενα εισερχόμενα
+            Διαθέσιμα κεφάλαια και αναμενόμενα έσοδα
           </p>
         </div>
         <AccountFormModal />
@@ -63,7 +63,7 @@ export default async function AccountsPage() {
         <Card>
           <CardContent className="pt-5">
             <p className="text-xs font-medium text-muted">
-              Σύνολο αναμενόμενων εισερχομένων
+              Σύνολο αναμενόμενων εσόδων
             </p>
             <p className="mt-1 text-2xl font-bold text-positive">
               {formatEuro(totalIncoming)}
@@ -90,7 +90,7 @@ export default async function AccountsPage() {
       {incoming.length > 0 && (
         <div>
           <h2 className="mb-2 text-sm font-semibold text-muted">
-            Αναμενόμενα εισερχόμενα
+            Αναμενόμενα έσοδα
           </h2>
           <Card>{incoming.map(Row)}</Card>
         </div>
