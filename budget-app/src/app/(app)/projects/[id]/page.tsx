@@ -88,6 +88,9 @@ export default async function ProjectDetailPage({
           <CardContent className="pt-5">
             <p className="text-xs font-medium text-muted">Πληρωμένα</p>
             <p className="mt-1 text-2xl font-bold">{formatEuro(paid)}</p>
+            <p className="mt-1 text-[11px] text-muted">
+              Κινήσεις «Πληρωμένο» του έργου
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -96,6 +99,9 @@ export default async function ProjectDetailPage({
             <p className="mt-1 text-2xl font-bold text-primary">
               {formatEuro(committed)}
             </p>
+            <p className="mt-1 text-[11px] text-muted">
+              Πληρωμένα + Επερχόμενα
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -103,6 +109,9 @@ export default async function ProjectDetailPage({
             <p className="text-xs font-medium text-muted">Έσοδα έργου</p>
             <p className="mt-1 text-2xl font-bold text-positive">
               {formatEuro(incomeTotal)}
+            </p>
+            <p className="mt-1 text-[11px] text-muted">
+              Έσοδα καταχωρημένα στο έργο
             </p>
           </CardContent>
         </Card>
@@ -113,6 +122,9 @@ export default async function ProjectDetailPage({
             </p>
             <p className="mt-1 text-2xl font-bold text-accent">
               {formatEuro(funding)}
+            </p>
+            <p className="mt-1 text-[11px] text-muted">
+              Δεσμευμένοι λογαριασμοί του έργου
             </p>
           </CardContent>
         </Card>

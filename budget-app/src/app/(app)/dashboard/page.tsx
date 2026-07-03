@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import { BarChartCard, PieChartCard, ChartLegend } from "@/components/Charts";
@@ -10,10 +12,14 @@ function StatCard({
   label,
   value,
   tone = "default",
+  hint,
+  href,
 }: {
   label: string;
   value: number;
   tone?: "default" | "positive" | "negative" | "primary";
+  hint?: string;
+  href?: string;
 }) {
   const toneClass = {
     default: "text-foreground",
@@ -21,16 +27,30 @@ function StatCard({
     negative: "text-negative",
     primary: "text-primary",
   }[tone];
-  return (
-    <Card>
-      <CardContent className="pt-5">
-        <p className="text-xs font-medium text-muted">{label}</p>
-        <p className={`mt-1 text-2xl font-bold ${toneClass}`}>
-          {formatEuro(value)}
-        </p>
-      </CardContent>
-    </Card>
+
+  const inner = (
+    <CardContent className="pt-5">
+      <p className="flex items-center justify-between text-xs font-medium text-muted">
+        {label}
+        {href ? <ArrowUpRight size={14} className="text-muted/70" /> : null}
+      </p>
+      <p className={`mt-1 text-2xl font-bold ${toneClass}`}>
+        {formatEuro(value)}
+      </p>
+      {hint ? <p className="mt-1 text-[11px] text-muted">{hint}</p> : null}
+    </CardContent>
   );
+
+  if (href) {
+    return (
+      <Card className="transition hover:border-primary/40 hover:shadow-md">
+        <Link href={href} className="block">
+          {inner}
+        </Link>
+      </Card>
+    );
+  }
+  return <Card>{inner}</Card>;
 }
 
 export default async function DashboardPage() {
@@ -110,20 +130,45 @@ export default async function DashboardPage() {
           label="Διαθέσιμα κεφάλαια"
           value={totalAvailable}
           tone="primary"
+          hint="Άθροισμα διαθέσιμων λογαριασμών"
+          href="/accounts"
         />
-        <StatCard label="Αναμενόμενα έσοδα" value={totalIncoming} />
-        <StatCard label="Πληρωμένα έξοδα" value={totalPaid} />
-        <StatCard label="Δεσμευμένα (πληρ. + επερχ.)" value={totalCommitted} />
+        <StatCard
+          label="Αναμενόμενα έσοδα"
+          value={totalIncoming}
+          hint="Γενικά αναμενόμενα κεφάλαια (χωρίς δεσμευμένα)"
+          href="/income"
+        />
+        <StatCard
+          label="Πληρωμένα έξοδα"
+          value={totalPaid}
+          hint="Κινήσεις σε κατάσταση «Πληρωμένο»"
+          href="/transactions?type=expense&status=paid"
+        />
+        <StatCard
+          label="Δεσμευμένα (πληρ. + επερχ.)"
+          value={totalCommitted}
+          hint="Πληρωμένα + Επερχόμενα έξοδα"
+          href="/transactions?type=expense"
+        />
         <StatCard
           label="Μετρητά"
           value={freeCash}
           tone={freeCash >= 0 ? "positive" : "negative"}
+          hint="Διαθέσιμα κεφάλαια − Δεσμευμένα έξοδα"
         />
-        <StatCard label="Σύνολο κεφαλαίων + έσοδα" value={totalAvailable + totalIncoming} />
+        <StatCard
+          label="Σύνολο κεφαλαίων + έσοδα"
+          value={totalAvailable + totalIncoming}
+          hint="Διαθέσιμα + Αναμενόμενα (χωρίς δεσμευμένα έργων)"
+          href="/accounts"
+        />
         {earmarkedFunding > 0 && (
           <StatCard
             label="Χρηματοδότηση έργων (δεσμευμένη, εκτός συνόλου)"
             value={earmarkedFunding}
+            hint="Δεσμευμένοι λογαριασμοί ανά έργο"
+            href="/accounts"
           />
         )}
       </div>
