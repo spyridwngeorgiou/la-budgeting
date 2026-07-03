@@ -62,8 +62,8 @@ export default async function TransactionsPage({
       </div>
 
       {/* Filters (native GET form, works without JS) */}
-      <form className="flex flex-wrap items-end gap-3">
-        <div className="w-48">
+      <form className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap">
+        <div className="col-span-2 sm:w-48">
           <label className="mb-1 block text-xs font-medium text-muted">Έργο</label>
           <Select name="project" defaultValue={sp.project ?? ""}>
             <option value="">Όλα τα έργα</option>
@@ -74,7 +74,7 @@ export default async function TransactionsPage({
             ))}
           </Select>
         </div>
-        <div className="w-40">
+        <div className="sm:w-40">
           <label className="mb-1 block text-xs font-medium text-muted">Κατάσταση</label>
           <Select name="status" defaultValue={sp.status ?? ""}>
             <option value="">Όλες</option>
@@ -85,7 +85,7 @@ export default async function TransactionsPage({
             ))}
           </Select>
         </div>
-        <div className="w-36">
+        <div className="sm:w-36">
           <label className="mb-1 block text-xs font-medium text-muted">Τύπος</label>
           <Select name="type" defaultValue={sp.type ?? ""}>
             <option value="">Όλοι</option>
@@ -93,12 +93,67 @@ export default async function TransactionsPage({
             <option value="income">Έσοδο</option>
           </Select>
         </div>
-        <Button variant="secondary" type="submit">
+        <Button variant="secondary" type="submit" className="col-span-2 sm:col-span-1">
           Φιλτράρισμα
         </Button>
       </form>
 
-      <Card className="overflow-hidden">
+      {/* Κινητό: κάρτες */}
+      <div className="space-y-3 md:hidden">
+        {transactions.length === 0 ? (
+          <Card className="p-6 text-center text-sm text-muted">
+            Δεν υπάρχουν κινήσεις.
+          </Card>
+        ) : (
+          transactions.map((t) => (
+            <Card key={t.id} className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">
+                    {t.notes || projName(t.project_id)}
+                  </p>
+                  <p className="text-xs text-muted">
+                    {projName(t.project_id)} · {formatDate(t.tx_date)}
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 font-semibold ${
+                    t.type === "income" ? "text-positive" : ""
+                  }`}
+                >
+                  {t.type === "income" ? "+" : "−"}
+                  {formatEuro(num(t.amount))}
+                </span>
+              </div>
+              <div className="mt-3 flex items-center justify-between">
+                <Badge tone={t.status}>{TX_STATUS_LABEL[t.status]}</Badge>
+                <div className="flex items-center gap-1">
+                  <TransactionFormModal
+                    transaction={t}
+                    projects={projects}
+                    accounts={accounts}
+                    categories={categories}
+                  />
+                  <DeleteButton
+                    action={deleteTransaction}
+                    id={t.id}
+                    confirmText="Διαγραφή κίνησης;"
+                  />
+                </div>
+              </div>
+            </Card>
+          ))
+        )}
+        {transactions.length > 0 && (
+          <Card className="flex items-center justify-between p-4">
+            <span className="text-sm font-medium">Καθαρό σύνολο</span>
+            <span className="font-bold text-primary">{formatEuro(total)}</span>
+          </Card>
+        )}
+      </div>
+
+      {/* Tablet / Desktop: πίνακας */}
+      <Card className="hidden overflow-hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

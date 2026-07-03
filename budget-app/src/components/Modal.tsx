@@ -18,12 +18,12 @@ export function ModalShell({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
         className={cn(
-          "w-full max-w-lg rounded-xl border border-border bg-card shadow-xl",
+          "flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-2xl border border-border bg-card shadow-xl sm:max-h-[88vh] sm:rounded-xl",
         )}
         onClick={(e) => e.stopPropagation()}
       >
@@ -31,13 +31,13 @@ export function ModalShell({
           <h3 className="font-semibold text-foreground">{title}</h3>
           <button
             onClick={onClose}
-            className="text-muted hover:text-foreground"
+            className="-mr-1 rounded-lg p-1 text-muted hover:bg-slate-100 hover:text-foreground"
             aria-label="Κλείσιμο"
           >
-            <X size={20} />
+            <X size={22} />
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        <div className="overflow-y-auto p-5">{children}</div>
       </div>
     </div>
   );

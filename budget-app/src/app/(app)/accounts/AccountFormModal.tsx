@@ -21,7 +21,7 @@ export function AccountFormModal({
     <>
       {editing ? (
         <Button variant="secondary" type="button" onClick={() => setOpen(true)}>
-          <Pencil size={14} /> Επεξεργασία
+          <Pencil size={14} />
         </Button>
       ) : (
         <Button type="button" onClick={() => setOpen(true)}>
