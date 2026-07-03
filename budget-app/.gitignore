@@ -34,6 +34,9 @@ yarn-error.log*
 .env*
 !.env.local.example
 
+# supabase CLI temp
+supabase/.temp/
+
 # local seed data for import script
 /scripts/seed.json
 
