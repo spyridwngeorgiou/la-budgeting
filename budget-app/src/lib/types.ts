@@ -4,6 +4,8 @@ export type CategoryKind = "expense" | "income";
 export type TxType = "expense" | "income";
 export type TxStatus = "paid" | "upcoming" | "planned";
 export type Recurrence = "monthly" | "oneoff";
+export type ContactKind = "vendor" | "client" | "authority" | "professional" | "other";
+export type VatStatus = "none" | "payable" | "paid" | "credit";
 
 export interface Project {
   id: string;
@@ -42,11 +44,26 @@ export interface Transaction {
   project_id: string | null;
   account_id: string | null;
   category_id: string | null;
+  contact_id: string | null;
   type: TxType;
   amount: number;
+  net_amount: number | null;
+  vat_amount: number;
+  withholding_amount: number;
+  vat_status: VatStatus;
   status: TxStatus;
   tx_date: string;
   source: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Contact {
+  id: string;
+  household_id: string;
+  name: string;
+  kind: ContactKind;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -100,4 +117,19 @@ export const TX_STATUS_LABEL: Record<TxStatus, string> = {
 export const TX_TYPE_LABEL: Record<TxType, string> = {
   expense: "Έξοδο",
   income: "Έσοδο",
+};
+
+export const CONTACT_KIND_LABEL: Record<ContactKind, string> = {
+  vendor: "Προμηθευτής",
+  client: "Πελάτης",
+  authority: "Αρχή / Δημόσιο",
+  professional: "Επαγγελματίας",
+  other: "Άλλο",
+};
+
+export const VAT_STATUS_LABEL: Record<VatStatus, string> = {
+  none: "Χωρίς ΦΠΑ",
+  payable: "Οφειλόμενο",
+  paid: "Πληρωμένο",
+  credit: "Πιστωτικό",
 };

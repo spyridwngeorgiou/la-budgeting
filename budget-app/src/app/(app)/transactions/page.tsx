@@ -8,6 +8,7 @@ import {
   type Project,
   type Account,
   type Category,
+  type Contact,
 } from "@/lib/types";
 import { TransactionFormModal } from "./TransactionFormModal";
 import { deleteTransaction } from "./actions";
@@ -27,20 +28,24 @@ export default async function TransactionsPage({
   const sp = await searchParams;
   const supabase = await createClient();
 
-  const [txRes, projRes, accRes, catRes] = await Promise.all([
+  const [txRes, projRes, accRes, catRes, conRes] = await Promise.all([
     supabase.from("transactions").select("*").order("tx_date", { ascending: false }),
     supabase.from("projects").select("*").order("name"),
     supabase.from("accounts").select("*").order("name"),
     supabase.from("categories").select("*").order("name"),
+    supabase.from("contacts").select("*").order("name"),
   ]);
 
   let transactions = (txRes.data ?? []) as Transaction[];
   const projects = (projRes.data ?? []) as Project[];
   const accounts = (accRes.data ?? []) as Account[];
   const categories = (catRes.data ?? []) as Category[];
+  const contacts = (conRes.data ?? []) as Contact[];
 
   const projNameFor = (id: string | null) =>
     projects.find((p) => p.id === id)?.name ?? "";
+  const contactNameFor = (id: string | null) =>
+    contacts.find((c) => c.id === id)?.name ?? "";
 
   if (sp.project) transactions = transactions.filter((t) => t.project_id === sp.project);
   if (sp.status) transactions = transactions.filter((t) => t.status === sp.status);
@@ -48,7 +53,7 @@ export default async function TransactionsPage({
   if (sp.q) {
     const q = sp.q.toLowerCase();
     transactions = transactions.filter((t) =>
-      [t.notes, t.source, projNameFor(t.project_id)]
+      [t.notes, t.source, projNameFor(t.project_id), contactNameFor(t.contact_id)]
         .filter(Boolean)
         .some((s) => String(s).toLowerCase().includes(q)),
     );
@@ -74,6 +79,7 @@ export default async function TransactionsPage({
           projects={projects}
           accounts={accounts}
           categories={categories}
+          contacts={contacts}
         />
       </div>
 
@@ -157,6 +163,7 @@ export default async function TransactionsPage({
                     projects={projects}
                     accounts={accounts}
                     categories={categories}
+                    contacts={contacts}
                   />
                   <DeleteButton
                     action={deleteTransaction}
@@ -185,6 +192,7 @@ export default async function TransactionsPage({
                 <th className="px-4 py-2 font-medium">Ημ/νία</th>
                 <th className="px-4 py-2 font-medium">Έργο</th>
                 <th className="px-4 py-2 font-medium">Περιγραφή</th>
+                <th className="px-4 py-2 font-medium">Επαφή</th>
                 <th className="px-4 py-2 font-medium">Κατάσταση</th>
                 <th className="px-4 py-2 text-right font-medium">Ποσό</th>
                 <th className="px-4 py-2"></th>
@@ -210,6 +218,9 @@ export default async function TransactionsPage({
                         <span className="block text-xs text-muted">{t.source}</span>
                       ) : null}
                     </td>
+                    <td className="px-4 py-2 text-xs">
+                      {contactNameFor(t.contact_id) || "—"}
+                    </td>
                     <td className="px-4 py-2">
                       <Badge tone={t.status}>{TX_STATUS_LABEL[t.status]}</Badge>
                     </td>
@@ -228,6 +239,7 @@ export default async function TransactionsPage({
                           projects={projects}
                           accounts={accounts}
                           categories={categories}
+                          contacts={contacts}
                         />
                         <DeleteButton
                           action={deleteTransaction}
@@ -243,7 +255,7 @@ export default async function TransactionsPage({
             {transactions.length > 0 && (
               <tfoot>
                 <tr className="border-t border-border bg-slate-50">
-                  <td colSpan={4} className="px-4 py-2 font-medium">
+                  <td colSpan={5} className="px-4 py-2 font-medium">
                     Καθαρό σύνολο (έξοδα − έσοδα)
                   </td>
                   <td className="px-4 py-2 text-right font-bold text-primary">

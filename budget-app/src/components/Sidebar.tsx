@@ -8,6 +8,7 @@ import {
   Wallet,
   ArrowLeftRight,
   TrendingUp,
+  Users,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -17,6 +18,7 @@ import { signOut } from "@/app/(auth)/actions";
 const NAV = [
   { href: "/dashboard", label: "Επισκόπηση", icon: LayoutDashboard },
   { href: "/projects", label: "Έργα", icon: FolderKanban },
+  { href: "/contacts", label: "Επαφές", icon: Users },
   { href: "/accounts", label: "Λογαριασμοί", icon: Wallet },
   { href: "/transactions", label: "Κινήσεις", icon: ArrowLeftRight },
   { href: "/income", label: "Έσοδα", icon: TrendingUp },
@@ -24,7 +26,7 @@ const NAV = [
 ];
 
 // Bottom tab bar shows the 5 core sections on mobile.
-const TABS = NAV.slice(0, 5);
+const TABS = [NAV[0], NAV[1], NAV[2], NAV[4], NAV[3]];
 
 export function Sidebar({ email }: { email: string }) {
   const pathname = usePathname();
