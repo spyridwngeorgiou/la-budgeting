@@ -11,9 +11,13 @@ function parse(formData: FormData) {
   };
   const numOf = (v: FormDataEntryValue | null) => Number(v ?? 0) || 0;
 
+  const hasInvoice = formData.get("has_invoice") === "on";
   const net = numOf(formData.get("net_amount"));
-  const vat = numOf(formData.get("vat_amount"));
-  const withholding = numOf(formData.get("withholding_amount"));
+  // Without an invoice (typically cash) there is no VAT or withholding.
+  const vat = hasInvoice ? numOf(formData.get("vat_amount")) : 0;
+  const withholding = hasInvoice
+    ? numOf(formData.get("withholding_amount"))
+    : 0;
   // Final cash amount = net + VAT - withholding
   const amount = Math.round((net + vat - withholding) * 100) / 100;
 
@@ -22,9 +26,12 @@ function parse(formData: FormData) {
     amount,
     net_amount: net,
     vat_amount: vat,
-    vat_rate: numOf(formData.get("vat_rate")),
+    vat_rate: hasInvoice ? numOf(formData.get("vat_rate")) : 0,
     withholding_amount: withholding,
-    vat_status: String(formData.get("vat_status") ?? "none"),
+    vat_status: hasInvoice
+      ? String(formData.get("vat_status") ?? "none")
+      : "none",
+    has_invoice: hasInvoice,
     status: String(formData.get("status") ?? "upcoming"),
     tx_date:
       String(formData.get("tx_date") ?? "") ||
@@ -61,5 +68,14 @@ export async function deleteTransaction(formData: FormData) {
   if (!id) return;
   const supabase = await createClient();
   await supabase.from("transactions").delete().eq("id", id);
+  revalidateAll();
+}
+
+/** One-tap: mark an upcoming transaction as paid. */
+export async function markPaid(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from("transactions").update({ status: "paid" }).eq("id", id);
   revalidateAll();
 }

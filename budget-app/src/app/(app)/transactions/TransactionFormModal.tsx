@@ -37,6 +37,9 @@ export function TransactionFormModal({
   const [net, setNet] = useState<number>(
     transaction ? Number(transaction.net_amount ?? transaction.amount) || 0 : 0,
   );
+  const [hasInvoice, setHasInvoice] = useState<boolean>(
+    transaction ? Boolean(transaction.has_invoice) : false,
+  );
   const [vatRate, setVatRate] = useState<number>(
     transaction ? Number(transaction.vat_rate) || 0 : 0,
   );
@@ -46,7 +49,9 @@ export function TransactionFormModal({
   const [withholding, setWithholding] = useState<number>(
     transaction ? Number(transaction.withholding_amount) || 0 : 0,
   );
-  const total = Math.round((net + vat - withholding) * 100) / 100;
+  const total = Math.round(
+    (net + (hasInvoice ? vat : 0) - (hasInvoice ? withholding : 0)) * 100,
+  ) / 100;
 
   const round2 = (x: number) => Math.round(x * 100) / 100;
 
@@ -58,6 +63,12 @@ export function TransactionFormModal({
   const applyRate = (rate: number) => {
     setVatRate(rate);
     setVat(rate > 0 ? round2((net * rate) / 100) : 0);
+  };
+
+  const onAccountChange = (accountId: string) => {
+    const acc = accounts.find((a) => a.id === accountId);
+    // Cash payments usually have no invoice / VAT — auto-simplify the form.
+    if (!editing && acc?.type === "cash") setHasInvoice(false);
   };
 
   return (
@@ -114,7 +125,9 @@ export function TransactionFormModal({
           <div className="rounded-lg border border-border bg-slate-50 p-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Καθαρή αξία (€)</Label>
+                <Label>
+                  {hasInvoice ? "Καθαρή αξία (€)" : "Ποσό (€)"}
+                </Label>
                 <Input
                   name="net_amount"
                   type="number"
@@ -124,58 +137,83 @@ export function TransactionFormModal({
                   onChange={(e) => applyNet(Number(e.target.value) || 0)}
                 />
               </div>
-              <div>
-                <Label>Ποσοστό ΦΠΑ</Label>
-                <Select
-                  name="vat_rate"
-                  value={String(vatRate)}
-                  onChange={(e) => applyRate(Number(e.target.value) || 0)}
-                >
-                  <option value="0">Χωρίς ΦΠΑ (0%)</option>
-                  <option value="6">6%</option>
-                  <option value="13">13%</option>
-                  <option value="24">24%</option>
-                </Select>
+              <div className="flex items-end pb-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="has_invoice"
+                    checked={hasInvoice}
+                    onChange={(e) => setHasInvoice(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  Με παραστατικό (ΦΠΑ)
+                </label>
               </div>
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-3">
-              <div>
-                <Label>ΦΠΑ (€) — υπολογίζεται, επεξεργάσιμο</Label>
-                <Input
-                  name="vat_amount"
-                  type="number"
-                  step="0.01"
-                  value={vat || ""}
-                  onChange={(e) => setVat(Number(e.target.value) || 0)}
-                />
-              </div>
-              <div>
-                <Label>Παρακράτηση (€)</Label>
-                <Input
-                  name="withholding_amount"
-                  type="number"
-                  step="0.01"
-                  value={withholding || ""}
-                  onChange={(e) =>
-                    setWithholding(Number(e.target.value) || 0)
-                  }
-                />
-              </div>
-            </div>
+
+            {hasInvoice && (
+              <>
+                <div className="mt-2 grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Ποσοστό ΦΠΑ</Label>
+                    <Select
+                      name="vat_rate"
+                      value={String(vatRate)}
+                      onChange={(e) => applyRate(Number(e.target.value) || 0)}
+                    >
+                      <option value="0">Χωρίς ΦΠΑ (0%)</option>
+                      <option value="6">6%</option>
+                      <option value="13">13%</option>
+                      <option value="24">24%</option>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>ΦΠΑ (€) — επεξεργάσιμο</Label>
+                    <Input
+                      name="vat_amount"
+                      type="number"
+                      step="0.01"
+                      value={vat || ""}
+                      onChange={(e) => setVat(Number(e.target.value) || 0)}
+                    />
+                  </div>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Παρακράτηση (€)</Label>
+                    <Input
+                      name="withholding_amount"
+                      type="number"
+                      step="0.01"
+                      value={withholding || ""}
+                      onChange={(e) =>
+                        setWithholding(Number(e.target.value) || 0)
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label>Κατάσταση ΦΠΑ</Label>
+                    <Select
+                      name="vat_status"
+                      defaultValue={transaction?.vat_status ?? "payable"}
+                    >
+                      {Object.entries(VAT_STATUS_LABEL).map(([v, l]) => (
+                        <option key={v} value={v}>
+                          {l}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                </div>
+              </>
+            )}
+
             <div className="mt-2 flex items-center justify-between">
-              <div className="w-40">
-                <Label>Κατάσταση ΦΠΑ</Label>
-                <Select
-                  name="vat_status"
-                  defaultValue={transaction?.vat_status ?? "none"}
-                >
-                  {Object.entries(VAT_STATUS_LABEL).map(([v, l]) => (
-                    <option key={v} value={v}>
-                      {l}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+              <p className="text-[11px] text-muted">
+                {hasInvoice
+                  ? "Τελικό = Καθαρή + ΦΠΑ − Παρακράτηση"
+                  : "Χωρίς παραστατικό (π.χ. μετρητά) — χωρίς ΦΠΑ"}
+              </p>
               <div className="text-right">
                 <p className="text-xs text-muted">Τελικό ποσό</p>
                 <p className="text-lg font-bold text-primary">
@@ -222,6 +260,7 @@ export function TransactionFormModal({
               <Select
                 name="account_id"
                 defaultValue={transaction?.account_id ?? ""}
+                onChange={(e) => onAccountChange(e.target.value)}
               >
                 <option value="">— Κανένας —</option>
                 {accounts.map((a) => (

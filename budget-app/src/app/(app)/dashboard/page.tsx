@@ -12,6 +12,7 @@ import type {
   Contact,
 } from "@/lib/types";
 import { TransactionFormModal } from "../transactions/TransactionFormModal";
+import { PayButton } from "@/components/PayButton";
 
 export const dynamic = "force-dynamic";
 
@@ -115,6 +116,21 @@ export default async function DashboardPage() {
   const vatPayable = transactions
     .filter((t) => t.vat_status === "payable")
     .reduce((s, t) => s + num(t.vat_amount), 0);
+
+  // ── Books vs real picture ─────────────────────────────────────────
+  const committedExpenses = expenses.filter((t) => t.status !== "planned");
+  const invoicedTotal = committedExpenses
+    .filter((t) => t.has_invoice)
+    .reduce((s, t) => s + num(t.amount), 0);
+  const cashInformalTotal = committedExpenses
+    .filter((t) => !t.has_invoice)
+    .reduce((s, t) => s + num(t.amount), 0);
+
+  // ── Next payments (top upcoming by amount) ──────────────────────────
+  const nextPayments = expenses
+    .filter((t) => t.status === "upcoming")
+    .sort((a, b) => num(b.amount) - num(a.amount))
+    .slice(0, 5);
 
   // ── Per-contact payables / receivables (top 6) ─────────────────────────
   const contactName = (id: string | null) =>
@@ -265,6 +281,81 @@ export default async function DashboardPage() {
           hint="Διαθέσιμα + Αναμενόμενα + Χρηματοδότηση − Υποχρεώσεις"
         />
       </div>
+
+      {/* ── Επόμενες πληρωμές — one-tap ενέργεια ── */}
+      {nextPayments.length > 0 && (
+        <Card className="border-l-4 border-l-primary">
+          <CardHeader className="flex items-center justify-between">
+            <CardTitle>Επόμενες πληρωμές</CardTitle>
+            <Link
+              href="/transactions?type=expense&status=upcoming"
+              className="text-xs text-primary hover:underline"
+            >
+              Όλες →
+            </Link>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-border">
+              {nextPayments.map((t) => (
+                <li
+                  key={t.id}
+                  className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{t.notes || "—"}</p>
+                    <p className="text-xs text-muted">
+                      {contactName(t.contact_id)} · {projectName(t.project_id)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-semibold">
+                      {formatEuro(num(t.amount))}
+                    </span>
+                    <PayButton id={t.id} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Λογιστική vs πραγματική εικόνα ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Λογιστική εικόνα (δεσμευμένα έξοδα)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Link
+              href="/transactions?type=expense&invoice=1"
+              className="rounded-lg border border-border p-3 transition hover:border-primary/40 hover:shadow-sm"
+            >
+              <p className="flex items-center justify-between text-xs text-muted">
+                Με παραστατικό (τιμολόγια, ΦΠΑ) <ArrowUpRight size={12} />
+              </p>
+              <p className="text-xl font-bold text-primary">
+                {formatEuro(invoicedTotal)}
+              </p>
+            </Link>
+            <Link
+              href="/transactions?type=expense&invoice=0"
+              className="rounded-lg border border-border p-3 transition hover:border-primary/40 hover:shadow-sm"
+            >
+              <p className="flex items-center justify-between text-xs text-muted">
+                Χωρίς παραστατικό (συνήθως μετρητά) <ArrowUpRight size={12} />
+              </p>
+              <p className="text-xl font-bold">
+                {formatEuro(cashInformalTotal)}
+              </p>
+            </Link>
+          </div>
+          <p className="mt-2 text-[11px] text-muted">
+            Στις κινήσεις, σήμανε «Με παραστατικό» όσες έχουν τιμολόγιο ώστε
+            αυτή η εικόνα να αντιστοιχεί στα βιβλία.
+          </p>
+        </CardContent>
+      </Card>
 
       {/* ── 2+3. Πληρωτέα / Εισπρακτέα ανά επαφή ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

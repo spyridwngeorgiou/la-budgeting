@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card, Badge, Select, Button, Input } from "@/components/ui";
 import { DeleteButton } from "@/components/DeleteButton";
+import { PayButton } from "@/components/PayButton";
 import { formatEuro, formatDate } from "@/lib/utils";
 import {
   TX_STATUS_LABEL,
@@ -24,6 +25,7 @@ export default async function TransactionsPage({
     type?: string;
     q?: string;
     vat?: string;
+    invoice?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -52,6 +54,8 @@ export default async function TransactionsPage({
   if (sp.status) transactions = transactions.filter((t) => t.status === sp.status);
   if (sp.type) transactions = transactions.filter((t) => t.type === sp.type);
   if (sp.vat) transactions = transactions.filter((t) => t.vat_status === sp.vat);
+  if (sp.invoice === "1") transactions = transactions.filter((t) => t.has_invoice);
+  if (sp.invoice === "0") transactions = transactions.filter((t) => !t.has_invoice);
   if (sp.q) {
     const q = sp.q.toLowerCase();
     transactions = transactions.filter((t) =>
@@ -158,7 +162,10 @@ export default async function TransactionsPage({
                 </span>
               </div>
               <div className="mt-3 flex items-center justify-between">
-                <Badge tone={t.status}>{TX_STATUS_LABEL[t.status]}</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge tone={t.status}>{TX_STATUS_LABEL[t.status]}</Badge>
+                  {t.status === "upcoming" && <PayButton id={t.id} />}
+                </div>
                 <div className="flex items-center gap-1">
                   <TransactionFormModal
                     transaction={t}
@@ -224,7 +231,10 @@ export default async function TransactionsPage({
                       {contactNameFor(t.contact_id) || "—"}
                     </td>
                     <td className="px-4 py-2">
-                      <Badge tone={t.status}>{TX_STATUS_LABEL[t.status]}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge tone={t.status}>{TX_STATUS_LABEL[t.status]}</Badge>
+                        {t.status === "upcoming" && <PayButton id={t.id} label="" />}
+                      </div>
                     </td>
                     <td
                       className={`px-4 py-2 text-right font-semibold ${

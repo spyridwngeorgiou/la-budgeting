@@ -52,6 +52,7 @@ export interface Transaction {
   vat_rate: number;
   withholding_amount: number;
   vat_status: VatStatus;
+  has_invoice: boolean;
   status: TxStatus;
   tx_date: string;
   source: string | null;
