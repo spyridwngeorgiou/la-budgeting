@@ -334,6 +334,7 @@ def build_workbook():
     SRC_CASH = t("\u039c\u03b5\u03c4\u03c1\u03b7\u03c4\u03ac", "Cash")
     SRC_TBD  = t("\u03a0\u03c1\u03bf\u03c2 \u03ba\u03b1\u03b8\u03bf\u03c1\u03b9\u03c3\u03bc\u03cc", "TBD")
     SRC_GOLD = t("\u03a7\u03c1\u03c5\u03c3\u03cc\u03c2", "Gold")
+    SRC_OPT  = "Optima Bank"
     A_PEND   = t("\u0395\u03ba\u03ba\u03c1\u03b5\u03bc\u03b5\u03af", "Pending")
     A_RECV   = t("\u0395\u03bb\u03ae\u03c6\u03b8\u03b7", "Received")
     A_CANC   = t("\u0391\u03ba\u03c5\u03c1\u03ce\u03b8\u03b7\u03ba\u03b5", "Cancelled")
@@ -595,6 +596,7 @@ def build_workbook():
 
     LAZ = "Lazaraki 5"
     AGK = "Agiou Konstantinou"
+    HIL = "Ilioupoli"
     all_data = [
         (13, LAZ, IT_RENT,  S_PAID,  SRC_PIR,  5000,   ""),
         (14, LAZ, IT_RENT,  S_PAID,  SRC_CASH, 1000,   ""),
@@ -616,11 +618,27 @@ def build_workbook():
         (30, AGK, IT_NEKT,  S_UPCOM, SRC_CASH, 50000,  ""),
         (31, AGK, IT_NOT2,  S_UPCOM, SRC_CASH, 5000,   ""),
         (32, AGK, IT_CONS,  S_UPCOM, SRC_TBD,  80000,  ""),
+        # ── Additions from 06.07 update ──
+        (33, LAZ, IT_COMM, S_PAID, SRC_CASH, 210.24, ""),
+        (34, AGK, t("\u03a0\u03c1\u03bf\u03ba\u03b1\u03c4\u03b1\u03b2\u03bf\u03bb\u03ae \u039d\u03b5\u03ba\u03c4\u03b1\u03c1\u03af\u03b1", "Nektaria Advance"), S_PAID, SRC_CASH, 5000, ""),
+        (35, AGK, t("\u0395\u03c0\u03b1\u03bd\u03b1\u03c6\u03bf\u03c1\u03ac \u03c1\u03cd\u03b8\u03bc\u03b9\u03c3\u03b7\u03c2 \u03b5\u03c6\u03bf\u03c1\u03af\u03b1", "Tax settlement reinstatement"), S_PAID, SRC_CASH, 1428.56, ""),
+        (36, LAZ, t("\u039a\u03bf\u03b9\u03bd\u03cc\u03c7\u03c1\u03b7\u03c3\u03c4\u03b1 \u03b1\u03c3\u03b1\u03bd\u03c3\u03ad\u03c1", "Elevator common expenses"), S_PAID, SRC_CASH, 78.6, ""),
+        (37, HIL, t("\u0391\u03c1\u03c7\u03b9\u03c4\u03b5\u03ba\u03c4\u03bf\u03bd\u03b9\u03ba\u03ac TAF", "Architectural TAF"), S_PAID, SRC_OPT, None, ""),
+        (38, HIL, t("Rteco \u03c3\u03c4\u03b1\u03c4\u03b9\u03ba\u03ac & \u03bc\u03b7\u03c7\u03b1\u03bd\u03bf\u03bb\u03bf\u03b3\u03b9\u03ba\u03ac \u03ac\u03b4\u03b5\u03b9\u03b1\u03c2", "Rteco structural & mechanical permit"), S_PAID, SRC_CASH, 6000, ""),
+        (39, HIL, t("\u03a0\u03c1\u03bf\u03ba\u03b1\u03c4\u03b1\u03b2\u03bf\u03bb\u03ae \u03b1\u03b3\u03bf\u03c1\u03ac\u03c2 \u0392\u03ac\u03c3\u03c9", "Vaso purchase advance"), S_PAID, SRC_OPT, 50000, ""),
+        (40, HIL, t("\u03a3\u03c5\u03bc\u03b2\u03bf\u03bb\u03b1\u03b9\u03bf\u03b3\u03c1\u03ac\u03c6\u03bf\u03c2 \u03c3\u03c5\u03bc\u03b2\u03cc\u03bb\u03b1\u03b9\u03bf \u03b1\u03b3\u03bf\u03c1\u03ac\u03c2", "Notary purchase contract"), S_PAID, SRC_OPT, 1253.16, ""),
+        (41, HIL, t("\u0394\u03b9\u03ba\u03b7\u03b3\u03cc\u03c1\u03bf\u03c2", "Lawyer"), S_PAID, SRC_OPT, 2500, ""),
+        (42, HIL, t("\u039a\u03c4\u03b7\u03bc\u03b1\u03c4\u03bf\u03bb\u03cc\u03b3\u03b9\u03bf", "Land Registry"), S_PAID, SRC_OPT, 749.5, ""),
+        (43, HIL, t("\u03a6\u039c\u0391 \u0391\u03b3\u03bf\u03c1\u03ac\u03c2", "Purchase Transfer Tax (FMA)"), S_PAID, SRC_OPT, 3708, ""),
+        (44, HIL, t("\u03a4\u03b1\u03ba\u03c4\u03bf\u03c0\u03bf\u03b9\u03ae\u03c3\u03b5\u03b9\u03c2", "Legalizations"), S_PAID, SRC_CASH, 7500, ""),
+        (45, HIL, t("\u0391\u03c0\u03bf\u03b4\u03bf\u03c7\u03ae \u03cd\u03c8\u03bf\u03c5\u03c2 \u03c3\u03c5\u03bc\u03b2\u03bf\u03bb\u03b1\u03b9\u03bf\u03b3\u03c1\u03ac\u03c6\u03bf\u03c2", "Height acceptance notary"), S_PAID, SRC_CASH, 450, ""),
+        (46, HIL, t("\u03a4\u03bf\u03c0\u03bf\u03b3\u03c1\u03b1\u03c6\u03b9\u03ba\u03cc", "Topographic survey"), S_PAID, SRC_CASH, 300, ""),
+        (47, HIL, t("\u039f\u03bb\u03bf\u03ba\u03bb\u03ae\u03c1\u03c9\u03c3\u03b7 \u03b1\u03b3\u03bf\u03c1\u03ac\u03c2 \u0392\u03ac\u03c3\u03c9", "Vaso purchase completion"), S_UPCOM, SRC_OPT, 70000, ""),
     ]
     for row, project, item, status, source, amt, notes in all_data:
         exp_data_row(ws, row, project, item, status, source, amt, notes)
 
-    exp_empty_rows(ws, 33, 62)
+    exp_empty_rows(ws, 48, 62)
 
     tbl_exp = Table(displayName="Table_Exp", ref="A12:F62")
     tbl_exp.tableStyleInfo = TableStyleInfo(
@@ -661,7 +679,7 @@ def build_workbook():
         hc.fill = F(LIGHT_BLUE); hc.font = Fnt(size=10, bold=True, color=DARK_GREY)
         hc.alignment = Aln(h="center"); hc.border = Brd()
 
-    reg_base = ["Lazaraki 5", "Agiou Konstantinou"]
+    reg_base = ["Lazaraki 5", "Agiou Konstantinou", "Ilioupoli"]
     for i in range(12):
         r = 3 + i
         ws.row_dimensions[r].height = 18
