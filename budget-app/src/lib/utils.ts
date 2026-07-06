@@ -5,13 +5,14 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/** Format a number as euro currency in Greek locale. */
+/** Format a number as euro currency in Greek locale (2 decimals, no rounding). */
 export function formatEuro(value: number | null | undefined): string {
   const n = typeof value === "number" && Number.isFinite(value) ? value : 0;
   return new Intl.NumberFormat("el-GR", {
     style: "currency",
     currency: "EUR",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(n);
 }
 

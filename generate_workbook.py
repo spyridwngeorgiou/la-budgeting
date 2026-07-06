@@ -32,7 +32,7 @@ BLACK        = "FF000000"
 DARK_GREY    = "FF374151"   # slate      — secondary text
 ORANGE_LIGHT = "FFFDF0D8"   # warm cream — Lazaraki section tint
 PURPLE_LIGHT = "FFF0EEFF"   # soft lavender — Agiou K section tint
-EUR = '\u20ac#,##0'
+EUR = '\u20ac#,##0.00'
 PCT = '0%'
 
 # ─── LANGUAGE ────────────────────────────────────────────────────────────────
