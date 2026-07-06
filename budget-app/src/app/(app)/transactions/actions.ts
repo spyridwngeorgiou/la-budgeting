@@ -22,6 +22,7 @@ function parse(formData: FormData) {
     amount,
     net_amount: net,
     vat_amount: vat,
+    vat_rate: numOf(formData.get("vat_rate")),
     withholding_amount: withholding,
     vat_status: String(formData.get("vat_status") ?? "none"),
     status: String(formData.get("status") ?? "upcoming"),

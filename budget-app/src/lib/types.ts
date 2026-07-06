@@ -49,6 +49,7 @@ export interface Transaction {
   amount: number;
   net_amount: number | null;
   vat_amount: number;
+  vat_rate: number;
   withholding_amount: number;
   vat_status: VatStatus;
   status: TxStatus;

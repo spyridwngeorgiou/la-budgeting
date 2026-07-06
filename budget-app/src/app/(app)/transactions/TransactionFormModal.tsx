@@ -37,6 +37,9 @@ export function TransactionFormModal({
   const [net, setNet] = useState<number>(
     transaction ? Number(transaction.net_amount ?? transaction.amount) || 0 : 0,
   );
+  const [vatRate, setVatRate] = useState<number>(
+    transaction ? Number(transaction.vat_rate) || 0 : 0,
+  );
   const [vat, setVat] = useState<number>(
     transaction ? Number(transaction.vat_amount) || 0 : 0,
   );
@@ -44,6 +47,18 @@ export function TransactionFormModal({
     transaction ? Number(transaction.withholding_amount) || 0 : 0,
   );
   const total = Math.round((net + vat - withholding) * 100) / 100;
+
+  const round2 = (x: number) => Math.round(x * 100) / 100;
+
+  const applyNet = (value: number) => {
+    setNet(value);
+    if (vatRate > 0) setVat(round2((value * vatRate) / 100));
+  };
+
+  const applyRate = (rate: number) => {
+    setVatRate(rate);
+    setVat(rate > 0 ? round2((net * rate) / 100) : 0);
+  };
 
   return (
     <>
@@ -97,7 +112,7 @@ export function TransactionFormModal({
 
           {/* Ανάλυση ποσού */}
           <div className="rounded-lg border border-border bg-slate-50 p-3">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Καθαρή αξία (€)</Label>
                 <Input
@@ -106,11 +121,26 @@ export function TransactionFormModal({
                   step="0.01"
                   required
                   value={net || ""}
-                  onChange={(e) => setNet(Number(e.target.value) || 0)}
+                  onChange={(e) => applyNet(Number(e.target.value) || 0)}
                 />
               </div>
               <div>
-                <Label>ΦΠΑ (€)</Label>
+                <Label>Ποσοστό ΦΠΑ</Label>
+                <Select
+                  name="vat_rate"
+                  value={String(vatRate)}
+                  onChange={(e) => applyRate(Number(e.target.value) || 0)}
+                >
+                  <option value="0">Χωρίς ΦΠΑ (0%)</option>
+                  <option value="6">6%</option>
+                  <option value="13">13%</option>
+                  <option value="24">24%</option>
+                </Select>
+              </div>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <div>
+                <Label>ΦΠΑ (€) — υπολογίζεται, επεξεργάσιμο</Label>
                 <Input
                   name="vat_amount"
                   type="number"

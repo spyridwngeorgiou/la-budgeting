@@ -23,6 +23,7 @@ export default async function TransactionsPage({
     status?: string;
     type?: string;
     q?: string;
+    vat?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -50,6 +51,7 @@ export default async function TransactionsPage({
   if (sp.project) transactions = transactions.filter((t) => t.project_id === sp.project);
   if (sp.status) transactions = transactions.filter((t) => t.status === sp.status);
   if (sp.type) transactions = transactions.filter((t) => t.type === sp.type);
+  if (sp.vat) transactions = transactions.filter((t) => t.vat_status === sp.vat);
   if (sp.q) {
     const q = sp.q.toLowerCase();
     transactions = transactions.filter((t) =>

@@ -119,40 +119,47 @@ export default async function DashboardPage() {
   // ── Per-contact payables / receivables (top 6) ─────────────────────────
   const contactName = (id: string | null) =>
     contacts.find((c) => c.id === id)?.name ?? "Χωρίς επαφή";
-  const payByContact = new Map<string, number>();
+  const payByContact = new Map<string, { id: string | null; value: number }>();
   for (const t of expenses) {
     if (t.status !== "upcoming") continue;
     const k = contactName(t.contact_id);
-    payByContact.set(k, (payByContact.get(k) ?? 0) + num(t.amount));
+    const cur = payByContact.get(k) ?? { id: t.contact_id, value: 0 };
+    cur.value += num(t.amount);
+    payByContact.set(k, cur);
   }
   const topPayables = [...payByContact.entries()]
-    .map(([name, value]) => ({ name, value }))
+    .map(([name, v]) => ({ name, id: v.id, value: v.value }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 6);
 
-  const recvByContact = new Map<string, number>();
+  const recvByContact = new Map<string, { id: string | null; value: number }>();
   for (const t of income) {
     if (t.status !== "upcoming") continue;
     const k = contactName(t.contact_id);
-    recvByContact.set(k, (recvByContact.get(k) ?? 0) + num(t.amount));
+    const cur = recvByContact.get(k) ?? { id: t.contact_id, value: 0 };
+    cur.value += num(t.amount);
+    recvByContact.set(k, cur);
   }
   const topReceivables = [...recvByContact.entries()]
-    .map(([name, value]) => ({ name, value }))
+    .map(([name, v]) => ({ name, id: v.id, value: v.value }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 6);
 
   // ── Per-project / per-category charts ──────────────────────────────────
   const projectName = (id: string | null) =>
     projects.find((p) => p.id === id)?.name ?? "Χωρίς έργο";
-  const byProjectMap = new Map<string, number>();
+  const byProjectMap = new Map<string, { id: string | null; value: number }>();
   for (const t of expenses) {
     if (t.status === "planned") continue;
     const key = projectName(t.project_id);
-    byProjectMap.set(key, (byProjectMap.get(key) ?? 0) + num(t.amount));
+    const cur = byProjectMap.get(key) ?? { id: t.project_id, value: 0 };
+    cur.value += num(t.amount);
+    byProjectMap.set(key, cur);
   }
-  const byProject = [...byProjectMap.entries()]
-    .map(([name, value]) => ({ name, value }))
+  const byProjectFull = [...byProjectMap.entries()]
+    .map(([name, v]) => ({ name, id: v.id, value: v.value }))
     .sort((a, b) => b.value - a.value);
+  const byProject = byProjectFull.map(({ name, value }) => ({ name, value }));
 
   const categoryName = (id: string | null) =>
     categories.find((c) => c.id === id)?.name ?? "Χωρίς κατηγορία";
@@ -261,9 +268,12 @@ export default async function DashboardPage() {
 
       {/* ── 2+3. Πληρωτέα / Εισπρακτέα ανά επαφή ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>🔴 Τι χρωστάμε — ανά επαφή</CardTitle>
+        <Card className="border-l-4 border-l-negative">
+          <CardHeader className="flex items-center justify-between">
+            <CardTitle>Τι χρωστάμε — ανά επαφή</CardTitle>
+            <span className="text-sm font-bold text-negative">
+              {formatEuro(topPayables.reduce((s, p) => s + p.value, 0))}
+            </span>
           </CardHeader>
           <CardContent>
             {topPayables.length === 0 ? (
@@ -273,14 +283,31 @@ export default async function DashboardPage() {
             ) : (
               <ul className="divide-y divide-border">
                 {topPayables.map((p) => (
-                  <li
-                    key={p.name}
-                    className="flex items-center justify-between py-2 text-sm"
-                  >
-                    <span>{p.name}</span>
-                    <span className="font-semibold text-negative">
-                      {formatEuro(p.value)}
-                    </span>
+                  <li key={p.name}>
+                    {p.id ? (
+                      <Link
+                        href={`/contacts/${p.id}`}
+                        className="flex items-center justify-between py-2 text-sm transition hover:bg-slate-50"
+                      >
+                        <span className="flex items-center gap-1 text-foreground hover:text-primary">
+                          {p.name}
+                          <ArrowUpRight size={12} className="text-muted/60" />
+                        </span>
+                        <span className="font-semibold text-negative">
+                          {formatEuro(p.value)}
+                        </span>
+                      </Link>
+                    ) : (
+                      <Link
+                        href="/transactions?type=expense&status=upcoming"
+                        className="flex items-center justify-between py-2 text-sm transition hover:bg-slate-50"
+                      >
+                        <span className="text-muted">{p.name}</span>
+                        <span className="font-semibold text-negative">
+                          {formatEuro(p.value)}
+                        </span>
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -294,9 +321,12 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>🟢 Τι περιμένουμε — ανά επαφή</CardTitle>
+        <Card className="border-l-4 border-l-positive">
+          <CardHeader className="flex items-center justify-between">
+            <CardTitle>Τι περιμένουμε — ανά επαφή</CardTitle>
+            <span className="text-sm font-bold text-positive">
+              {formatEuro(topReceivables.reduce((s, p) => s + p.value, 0))}
+            </span>
           </CardHeader>
           <CardContent>
             {topReceivables.length === 0 ? (
@@ -307,14 +337,19 @@ export default async function DashboardPage() {
             ) : (
               <ul className="divide-y divide-border">
                 {topReceivables.map((p) => (
-                  <li
-                    key={p.name}
-                    className="flex items-center justify-between py-2 text-sm"
-                  >
-                    <span>{p.name}</span>
-                    <span className="font-semibold text-positive">
-                      {formatEuro(p.value)}
-                    </span>
+                  <li key={p.name}>
+                    <Link
+                      href={p.id ? `/contacts/${p.id}` : "/transactions?type=income&status=upcoming"}
+                      className="flex items-center justify-between py-2 text-sm transition hover:bg-slate-50"
+                    >
+                      <span className="flex items-center gap-1 text-foreground hover:text-primary">
+                        {p.name}
+                        <ArrowUpRight size={12} className="text-muted/60" />
+                      </span>
+                      <span className="font-semibold text-positive">
+                        {formatEuro(p.value)}
+                      </span>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -324,33 +359,48 @@ export default async function DashboardPage() {
       </div>
 
       {/* ── 4. Θέση ΦΠΑ ── */}
-      <Card>
+      <Card className="border-l-4 border-l-accent">
         <CardHeader>
-          <CardTitle>🧾 Θέση ΦΠΑ</CardTitle>
+          <CardTitle>Θέση ΦΠΑ</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div>
-              <p className="text-xs text-muted">Πληρωμένο ΦΠΑ</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Link
+              href="/transactions?vat=paid"
+              className="rounded-lg border border-border p-3 transition hover:border-primary/40 hover:shadow-sm"
+            >
+              <p className="flex items-center justify-between text-xs text-muted">
+                Πληρωμένο ΦΠΑ <ArrowUpRight size={12} />
+              </p>
               <p className="text-xl font-bold">{formatEuro(vatPaid)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted">Πιστωτικό ΦΠΑ (προς επιστροφή/συμψηφισμό)</p>
+            </Link>
+            <Link
+              href="/transactions?vat=credit"
+              className="rounded-lg border border-border p-3 transition hover:border-primary/40 hover:shadow-sm"
+            >
+              <p className="flex items-center justify-between text-xs text-muted">
+                Πιστωτικό ΦΠΑ <ArrowUpRight size={12} />
+              </p>
               <p className="text-xl font-bold text-positive">
                 {formatEuro(vatCredit)}
               </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted">Οφειλόμενο ΦΠΑ</p>
+            </Link>
+            <Link
+              href="/transactions?vat=payable"
+              className="rounded-lg border border-border p-3 transition hover:border-primary/40 hover:shadow-sm"
+            >
+              <p className="flex items-center justify-between text-xs text-muted">
+                Οφειλόμενο ΦΠΑ <ArrowUpRight size={12} />
+              </p>
               <p className="text-xl font-bold text-negative">
                 {formatEuro(vatPayable)}
               </p>
-            </div>
+            </Link>
           </div>
           {vatPaid + vatCredit + vatPayable === 0 && (
             <p className="mt-3 text-xs text-muted">
-              Συμπλήρωσε το πεδίο «ΦΠΑ» και την «Κατάσταση ΦΠΑ» στις κινήσεις
-              για να ενημερώνεται αυτή η ενότητα.
+              Συμπλήρωσε το ποσοστό ΦΠΑ και την «Κατάσταση ΦΠΑ» στις
+              κινήσεις για να ενημερώνεται αυτή η ενότητα.
             </p>
           )}
         </CardContent>
@@ -360,10 +410,25 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>📊 Έξοδα ανά έργο</CardTitle>
+            <CardTitle>Έξοδα ανά έργο</CardTitle>
           </CardHeader>
           <CardContent>
             <BarChartCard data={byProject} />
+            <ul className="mt-2 divide-y divide-border">
+              {byProjectFull.map((p) => (
+                <li key={p.name}>
+                  <Link
+                    href={p.id ? `/projects/${p.id}` : "/transactions"}
+                    className="flex items-center justify-between py-1.5 text-sm transition hover:bg-slate-50"
+                  >
+                    <span className="flex items-center gap-1 hover:text-primary">
+                      {p.name} <ArrowUpRight size={12} className="text-muted/60" />
+                    </span>
+                    <span className="font-medium">{formatEuro(p.value)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
 
