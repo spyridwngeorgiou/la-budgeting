@@ -1,10 +1,12 @@
 export type ProjectStatus = "active" | "completed" | "on_hold";
+export type ProjectRiskLevel = "low" | "medium" | "high";
 export type AccountType = "bank" | "cash" | "gold" | "loan" | "other";
 export type CategoryKind = "expense" | "income";
 export type TxType = "expense" | "income";
 export type TxStatus = "paid" | "upcoming" | "planned";
 export type Recurrence = "monthly" | "oneoff";
 export type ContactKind = "vendor" | "client" | "authority" | "professional" | "other";
+export type ContactType = "supplier" | "client" | "both";
 export type VatStatus = "none" | "payable" | "paid" | "credit";
 
 export interface Project {
@@ -13,6 +15,11 @@ export interface Project {
   name: string;
   description: string | null;
   status: ProjectStatus;
+  budget_target: number | null;
+  risk_level: ProjectRiskLevel;
+  owner_contact_id: string | null;
+  start_date: string | null;
+  end_date: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -66,6 +73,14 @@ export interface Contact {
   household_id: string;
   name: string;
   kind: ContactKind;
+  contact_type: ContactType;
+  vat_number: string | null;
+  payment_terms_days: number | null;
+  iban: string | null;
+  default_vat_rate: number | null;
+  default_withholding_rate: number | null;
+  email: string | null;
+  phone: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -110,6 +125,12 @@ export const ACCOUNT_TYPE_LABEL: Record<AccountType, string> = {
   other: "Άλλο",
 };
 
+export const PROJECT_RISK_LABEL: Record<ProjectRiskLevel, string> = {
+  low: "Χαμηλό",
+  medium: "Μεσαίο",
+  high: "Υψηλό",
+};
+
 export const TX_STATUS_LABEL: Record<TxStatus, string> = {
   paid: "Πληρωμένο",
   upcoming: "Επερχόμενο",
@@ -127,6 +148,12 @@ export const CONTACT_KIND_LABEL: Record<ContactKind, string> = {
   authority: "Αρχή / Δημόσιο",
   professional: "Επαγγελματίας",
   other: "Άλλο",
+};
+
+export const CONTACT_TYPE_LABEL: Record<ContactType, string> = {
+  supplier: "Προμηθευτής",
+  client: "Πελάτης",
+  both: "Και τα δύο",
 };
 
 export const VAT_STATUS_LABEL: Record<VatStatus, string> = {

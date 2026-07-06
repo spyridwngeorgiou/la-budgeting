@@ -21,13 +21,13 @@ function StatCard({
   value,
   tone = "default",
   hint,
-  href,
+  detail,
 }: {
   label: string;
   value: number;
   tone?: "default" | "positive" | "negative" | "primary";
   hint?: string;
-  href?: string;
+  detail?: string;
 }) {
   const toneClass = {
     default: "text-foreground",
@@ -36,29 +36,18 @@ function StatCard({
     primary: "text-primary",
   }[tone];
 
-  const inner = (
-    <CardContent className="pt-5">
-      <p className="flex items-center justify-between text-xs font-medium text-muted">
-        {label}
-        {href ? <ArrowUpRight size={14} className="text-muted/70" /> : null}
-      </p>
+  return (
+    <Card>
+      <CardContent className="pt-5">
+      <p className="text-xs font-medium text-muted">{label}</p>
       <p className={`mt-1 text-2xl font-bold ${toneClass}`}>
         {formatEuro(value)}
       </p>
       {hint ? <p className="mt-1 text-[11px] text-muted">{hint}</p> : null}
-    </CardContent>
+      {detail ? <p className="mt-2 text-xs font-medium text-foreground/80">{detail}</p> : null}
+      </CardContent>
+    </Card>
   );
-
-  if (href) {
-    return (
-      <Card className="transition hover:border-primary/40 hover:shadow-md">
-        <Link href={href} className="block">
-          {inner}
-        </Link>
-      </Card>
-    );
-  }
-  return <Card>{inner}</Card>;
 }
 
 export default async function DashboardPage() {
@@ -101,6 +90,12 @@ export default async function DashboardPage() {
   const totalReceivable = income
     .filter((t) => t.status === "upcoming")
     .reduce((s, t) => s + num(t.amount), 0);
+  const upcomingExpenseCount = expenses.filter(
+    (t) => t.status === "upcoming",
+  ).length;
+  const upcomingIncomeCount = income.filter((t) => t.status === "upcoming").length;
+  const coveragePct = totalUpcoming > 0 ? (totalAvailable / totalUpcoming) * 100 : 100;
+  const liquidityGap = Math.max(0, totalUpcoming - totalAvailable);
 
   const liquidityNow = totalAvailable - totalUpcoming;
   const liquidityWithIncoming =
@@ -246,39 +241,49 @@ export default async function DashboardPage() {
           value={totalAvailable}
           tone="primary"
           hint="Άθροισμα διαθέσιμων λογαριασμών"
-          href="/accounts"
+          detail={`${accounts.filter((a) => !a.is_incoming && !a.project_id).length} ενεργοί λογαριασμοί`}
         />
         <StatCard
           label="Επερχόμενες υποχρεώσεις"
           value={totalUpcoming}
           tone="negative"
           hint="Απλήρωτα έξοδα"
-          href="/transactions?type=expense&status=upcoming"
+          detail={`${upcomingExpenseCount} κινήσεις σε εκκρεμότητα`}
         />
         <StatCard
           label="Ρευστότητα τώρα"
           value={liquidityNow}
           tone={liquidityNow >= 0 ? "positive" : "negative"}
           hint="Διαθέσιμα − Επερχόμενες υποχρεώσεις"
+          detail={
+            liquidityNow >= 0
+              ? `Κάλυψη υποχρεώσεων ${Math.round(coveragePct)}%`
+              : `Έλλειμμα κάλυψης ${formatEuro(liquidityGap)}`
+          }
         />
         <StatCard
           label="Εισπρακτέα"
           value={totalReceivable}
           tone="positive"
           hint="Έσοδα που περιμένουμε"
-          href="/transactions?type=income&status=upcoming"
+          detail={`${upcomingIncomeCount} κινήσεις σε αναμονή`}
         />
         <StatCard
           label="Αναμενόμενα κεφάλαια"
           value={totalIncoming + earmarkedFunding}
           hint="Γενικά + δεσμευμένη χρηματοδότηση"
-          href="/income"
+          detail={`Γενικά ${formatEuro(totalIncoming)} + Δεσμευμένα ${formatEuro(earmarkedFunding)}`}
         />
         <StatCard
           label="Ρευστότητα με όλα τα αναμενόμενα"
           value={liquidityWithIncoming}
           tone={liquidityWithIncoming >= 0 ? "positive" : "negative"}
           hint="Διαθέσιμα + Αναμενόμενα + Χρηματοδότηση − Υποχρεώσεις"
+          detail={
+            liquidityWithIncoming >= 0
+              ? `Buffer ${formatEuro(liquidityWithIncoming)}`
+              : `Υπόλοιπο ελλείμματος ${formatEuro(Math.abs(liquidityWithIncoming))}`
+          }
         />
       </div>
 

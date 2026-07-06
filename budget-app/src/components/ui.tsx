@@ -20,7 +20,7 @@ export function CardHeader({ className, ...props }: ComponentProps<"div">) {
 export function CardTitle({ className, ...props }: ComponentProps<"h3">) {
   return (
     <h3
-      className={cn("text-sm font-semibold text-muted", className)}
+      className={cn("text-sm font-semibold text-foreground", className)}
       {...props}
     />
   );
@@ -89,7 +89,7 @@ export function Button({
 }: ButtonProps) {
   const variants: Record<string, string> = {
     primary: "bg-primary text-primary-fg hover:bg-primary/90",
-    secondary: "bg-white border border-border text-foreground hover:bg-slate-50",
+    secondary: "bg-white border border-border text-foreground hover:bg-slate-100",
     danger: "bg-negative text-white hover:bg-negative/90",
     ghost: "text-muted hover:bg-slate-100",
   };
@@ -106,14 +106,14 @@ export function Button({
 }
 
 const BADGE_STYLES: Record<string, string> = {
-  paid: "bg-green-100 text-green-700",
-  upcoming: "bg-amber-100 text-amber-700",
-  planned: "bg-slate-100 text-slate-600",
-  income: "bg-green-100 text-green-700",
-  expense: "bg-rose-100 text-rose-700",
-  active: "bg-blue-100 text-blue-700",
-  completed: "bg-green-100 text-green-700",
-  on_hold: "bg-slate-100 text-slate-600",
+  paid: "bg-positive/15 text-positive",
+  upcoming: "bg-warning/15 text-warning",
+  planned: "bg-slate-100 text-slate-700",
+  income: "bg-positive/15 text-positive",
+  expense: "bg-negative/12 text-negative",
+  active: "bg-primary/15 text-primary",
+  completed: "bg-positive/15 text-positive",
+  on_hold: "bg-slate-100 text-slate-700",
 };
 
 export function Badge({

@@ -6,6 +6,7 @@ import { Card, CardContent, Badge } from "@/components/ui";
 import { formatEuro, formatDate } from "@/lib/utils";
 import {
   CONTACT_KIND_LABEL,
+  CONTACT_TYPE_LABEL,
   TX_STATUS_LABEL,
   VAT_STATUS_LABEL,
   type Contact,
@@ -64,9 +65,23 @@ export default async function ContactDetailPage({
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-primary">{contact.name}</h1>
           <Badge tone="planned">{CONTACT_KIND_LABEL[contact.kind]}</Badge>
+          <Badge tone="active">
+            {CONTACT_TYPE_LABEL[contact.contact_type] ?? CONTACT_TYPE_LABEL.supplier}
+          </Badge>
         </div>
         {contact.notes && (
           <p className="mt-1 text-sm text-muted">{contact.notes}</p>
+        )}
+        {(contact.vat_number || contact.payment_terms_days || contact.iban || contact.email || contact.phone || contact.default_vat_rate || contact.default_withholding_rate) && (
+          <div className="mt-2 grid grid-cols-1 gap-2 text-xs text-muted sm:grid-cols-2 lg:grid-cols-3">
+            {contact.vat_number ? <p>ΑΦΜ: <span className="font-medium text-foreground">{contact.vat_number}</span></p> : null}
+            {contact.payment_terms_days ? <p>Όροι πληρωμής: <span className="font-medium text-foreground">{contact.payment_terms_days} ημέρες</span></p> : null}
+            {contact.iban ? <p>IBAN: <span className="font-medium text-foreground">{contact.iban}</span></p> : null}
+            {contact.default_vat_rate ? <p>Default ΦΠΑ: <span className="font-medium text-foreground">{contact.default_vat_rate}%</span></p> : null}
+            {contact.default_withholding_rate ? <p>Default παρακράτηση: <span className="font-medium text-foreground">{contact.default_withholding_rate}%</span></p> : null}
+            {contact.email ? <p>Email: <span className="font-medium text-foreground">{contact.email}</span></p> : null}
+            {contact.phone ? <p>Τηλέφωνο: <span className="font-medium text-foreground">{contact.phone}</span></p> : null}
+          </div>
         )}
       </div>
 

@@ -5,6 +5,7 @@ import { DeleteButton } from "@/components/DeleteButton";
 import { formatEuro } from "@/lib/utils";
 import {
   CONTACT_KIND_LABEL,
+  CONTACT_TYPE_LABEL,
   type Contact,
   type Transaction,
 } from "@/lib/types";
@@ -96,10 +97,22 @@ export default async function ContactsPage() {
                   </Link>
                   <div className="mt-0.5 flex items-center gap-2">
                     <Badge tone="planned">{CONTACT_KIND_LABEL[c.kind]}</Badge>
+                    <Badge tone="active">
+                      {CONTACT_TYPE_LABEL[c.contact_type] ?? CONTACT_TYPE_LABEL.supplier}
+                    </Badge>
                     <span className="text-xs text-muted">
                       {count} κινήσεις
                     </span>
                   </div>
+                  {(c.vat_number || c.payment_terms_days || c.email || c.phone) && (
+                    <p className="mt-1 text-xs text-muted">
+                      {c.vat_number ? `ΑΦΜ: ${c.vat_number}` : ""}
+                      {c.vat_number && c.payment_terms_days ? " · " : ""}
+                      {c.payment_terms_days ? `Όροι: ${c.payment_terms_days} ημέρες` : ""}
+                      {(c.vat_number || c.payment_terms_days) && (c.email || c.phone) ? " · " : ""}
+                      {c.email ? c.email : c.phone ?? ""}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">

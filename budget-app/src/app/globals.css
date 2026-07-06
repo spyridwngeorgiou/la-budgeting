@@ -8,9 +8,10 @@
   --primary: #1e3a8a;
   --primary-fg: #ffffff;
   --muted: #64748b;
-  --accent: #eab308;
-  --positive: #16a34a;
-  --negative: #dc2626;
+  --accent: #0f766e;
+  --positive: #15803d;
+  --warning: #b45309;
+  --negative: #b91c1c;
 }
 
 @theme inline {
@@ -23,6 +24,7 @@
   --color-muted: var(--muted);
   --color-accent: var(--accent);
   --color-positive: var(--positive);
+  --color-warning: var(--warning);
   --color-negative: var(--negative);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
