@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { Card, Badge, Select, Button } from "@/components/ui";
+import { Card, Badge, Select, Button, Input } from "@/components/ui";
 import { DeleteButton } from "@/components/DeleteButton";
 import { formatEuro, formatDate } from "@/lib/utils";
 import {
@@ -17,7 +17,12 @@ export const dynamic = "force-dynamic";
 export default async function TransactionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ project?: string; status?: string; type?: string }>;
+  searchParams: Promise<{
+    project?: string;
+    status?: string;
+    type?: string;
+    q?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const supabase = await createClient();
@@ -34,9 +39,20 @@ export default async function TransactionsPage({
   const accounts = (accRes.data ?? []) as Account[];
   const categories = (catRes.data ?? []) as Category[];
 
+  const projNameFor = (id: string | null) =>
+    projects.find((p) => p.id === id)?.name ?? "";
+
   if (sp.project) transactions = transactions.filter((t) => t.project_id === sp.project);
   if (sp.status) transactions = transactions.filter((t) => t.status === sp.status);
   if (sp.type) transactions = transactions.filter((t) => t.type === sp.type);
+  if (sp.q) {
+    const q = sp.q.toLowerCase();
+    transactions = transactions.filter((t) =>
+      [t.notes, t.source, projNameFor(t.project_id)]
+        .filter(Boolean)
+        .some((s) => String(s).toLowerCase().includes(q)),
+    );
+  }
 
   const num = (n: number | string) => Number(n) || 0;
   const projName = (id: string | null) =>
@@ -63,6 +79,14 @@ export default async function TransactionsPage({
 
       {/* Filters (native GET form, works without JS) */}
       <form className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap">
+        <div className="col-span-2 sm:w-56">
+          <label className="mb-1 block text-xs font-medium text-muted">Αναζήτηση</label>
+          <Input
+            name="q"
+            defaultValue={sp.q ?? ""}
+            placeholder="περιγραφή, πηγή, έργο…"
+          />
+        </div>
         <div className="col-span-2 sm:w-48">
           <label className="mb-1 block text-xs font-medium text-muted">Έργο</label>
           <Select name="project" defaultValue={sp.project ?? ""}>
