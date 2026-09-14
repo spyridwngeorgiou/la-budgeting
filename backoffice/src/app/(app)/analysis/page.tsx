@@ -205,14 +205,26 @@ export default async function AnalysisPage({
     return `/transactions?${p.toString()}`;
   }
 
+  const askPrompt = `Ανάλυσε τον πίνακα κινήσεων ομαδοποιημένο κατά ${dim.label.toLowerCase()}${
+    direction !== "all" ? `, μόνο ${direction === "income" ? "έσοδα" : "έξοδα"}` : ""
+  }${scope !== "all" ? `, πεδίο ${scope === "business" ? "επιχειρηματικό" : "προσωπικό"}` : ""}. Ποιες γραμμές ξεχωρίζουν και γιατί;`;
+
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Ανάλυση Κινήσεων</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Επιλέξτε πώς θέλετε να ομαδοποιήσετε τα δεδομένα. Κάθε ποσό στον πίνακα είναι κλικάρισμα
-          — σας πάει κατευθείαν στις κινήσεις που το απαρτίζουν.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold">Ανάλυση Κινήσεων</h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            Επιλέξτε πώς θέλετε να ομαδοποιήσετε τα δεδομένα. Κάθε ποσό στον πίνακα είναι κλικάρισμα
+            — σας πάει κατευθείαν στις κινήσεις που το απαρτίζουν.
+          </p>
+        </div>
+        <Link
+          href={`/assistant?q=${encodeURIComponent(askPrompt)}`}
+          className="shrink-0 whitespace-nowrap rounded px-3 py-1.5 text-sm text-sage-ink underline decoration-dotted"
+        >
+          Ρώτα το Kansha AI γι&apos; αυτόν τον πίνακα →
+        </Link>
       </div>
 
       <div className="flex flex-wrap gap-4 rounded-md border border-line bg-surface p-3 text-sm">

@@ -117,6 +117,24 @@ export default async function TransactionsPage({
   const activeCategoryName = categoryId ? categoryOptions.find((c) => c.id === categoryId)?.label : null;
   const hasDrillFilter = projectId || accountId || contactId || categoryId || scope || from || to || ids;
 
+  // Plain-language summary of the active filters, fed to the assistant as
+  // its opening question -- "ask about this table" should mean the table
+  // the user is actually looking at, not a generic "tell me about
+  // transactions" that ignores every filter they picked.
+  const filterDescriptions = [
+    activeProjectName && `έργο ${activeProjectName}`,
+    activeAccountName && `λογαριασμό ${activeAccountName}`,
+    activeContactName && `επαφή ${activeContactName}`,
+    activeCategoryName && `κατηγορία ${activeCategoryName}`,
+    scope && (scope === "business" ? "επιχειρηματικό πεδίο" : "προσωπικό πεδίο"),
+    status && `κατάσταση ${el.transaction[status]}`,
+    (from || to) && `περίοδο ${from ? formatDate(from) : "…"} έως ${to ? formatDate(to) : "…"}`,
+  ].filter(Boolean);
+  const askPrompt =
+    filterDescriptions.length > 0
+      ? `Ανάλυσε τις κινήσεις με φίλτρα: ${filterDescriptions.join(", ")}. Τι ξεχωρίζει;`
+      : "Ανάλυσε τις πρόσφατες κινήσεις. Τι ξεχωρίζει;";
+
   // Every direct child below carries an explicit `key`, even the ones that
   // aren't in a `.map()`. This JSX is built in a Server Component and passed
   // as a prop into the Client Component TransactionsTable ({filters}) --
@@ -156,7 +174,7 @@ export default async function TransactionsPage({
           )}
         </div>
       )}
-      <div key="status-chips" className="flex gap-2 text-sm">
+      <div key="status-chips" className="flex flex-wrap items-center gap-2 text-sm">
         {["", "paid", "pending", "scheduled"].map((s) => (
           <a
             key={s || "all"}
@@ -166,6 +184,13 @@ export default async function TransactionsPage({
             {s ? el.transaction[s as "paid" | "pending" | "scheduled"] : "Όλα"}
           </a>
         ))}
+        <Link
+          key="ask-ai"
+          href={`/assistant?q=${encodeURIComponent(askPrompt)}`}
+          className="ml-auto rounded px-3 py-1 text-sage-ink underline decoration-dotted"
+        >
+          Ρώτα το Kansha AI γι&apos; αυτόν τον πίνακα →
+        </Link>
       </div>
     </div>
   );

@@ -89,6 +89,22 @@ export async function markPaid(id: string) {
   revalidatePath("/transactions");
 }
 
+// Deterministic "learn from history" suggestion for the manual entry form --
+// no model call needed, since the answer is just "what did we do last time
+// for this contact". Same idea as lib/ai/resolve.ts's contact-history prior,
+// reused here for the human-typed path instead of the AI-extracted one.
+export async function suggestForContact(contactId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("transactions")
+    .select("project_id, category_id, vat_rate, has_invoice")
+    .eq("contact_id", contactId)
+    .order("tx_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data ?? null;
+}
+
 export async function deleteTransaction(id: string) {
   const supabase = await createClient();
   const { error } = await supabase.from("transactions").delete().eq("id", id);

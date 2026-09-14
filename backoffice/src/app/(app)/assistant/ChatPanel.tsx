@@ -18,15 +18,27 @@ const SUGGESTIONS = [
   "Ποιος μας χρωστάει;",
 ];
 
-export function ChatPanel() {
+export function ChatPanel({ initialPrompt }: { initialPrompt?: string } = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const firedInitialPrompt = useRef(false);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Fires once when arriving from an "Ρώτα γι' αυτόν τον πίνακα" link
+  // elsewhere in the app (?q=...) -- guarded by a ref, not state, so a
+  // re-render (e.g. from the scroll effect above) can never re-send it.
+  useEffect(() => {
+    if (initialPrompt && !firedInitialPrompt.current) {
+      firedInitialPrompt.current = true;
+      send(initialPrompt);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPrompt]);
 
   async function send(text: string) {
     if (!text.trim() || loading) return;

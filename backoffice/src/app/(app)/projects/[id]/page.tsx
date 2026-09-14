@@ -6,6 +6,8 @@ import { el } from "@/lib/i18n/el";
 import { Badge, Card } from "@/components/ui";
 import { BudgetFormModal } from "../BudgetFormModal";
 import { saveProjectBudget } from "../budget-actions";
+import { aiEnabled } from "@/lib/ai/client";
+import { ProjectHealthCheck } from "./ProjectHealthCheck";
 
 export default async function ProjectDetailPage({
   params,
@@ -46,6 +48,8 @@ export default async function ProjectDetailPage({
           initial={budget ? { contingency_pct: budget.contingency_pct ?? 0, lines: budgetLines } : undefined}
         />
       </div>
+
+      {aiEnabled() && <ProjectHealthCheck projectId={id} />}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>

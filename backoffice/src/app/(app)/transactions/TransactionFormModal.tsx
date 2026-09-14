@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Button, Input, Select, Label, Field } from "@/components/ui";
+import { Button, Input, Select, Label, Field, Badge } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { el } from "@/lib/i18n/el";
 import { deriveFromNet, cashOnly } from "@/lib/finance/money";
 import { formatMoney } from "@/lib/format";
 import { VAT_RATES } from "@/lib/domain/enums";
+import { suggestForContact } from "./actions";
 
 interface Option {
   id: string;
@@ -61,6 +62,31 @@ export function TransactionFormModal({
   const [netAmount, setNetAmount] = useState(initial?.net_amount?.toString() ?? "");
   const [vatRate, setVatRate] = useState(initial?.vat_rate?.toString() ?? "0.24");
   const [withholding, setWithholding] = useState(initial?.withholding_amount?.toString() ?? "0");
+  const [projectId, setProjectId] = useState(initial?.project_id ?? "");
+  const [categoryId, setCategoryId] = useState(initial?.category_id ?? "");
+  const [suggested, setSuggested] = useState(false);
+
+  // "Learn from history": picking a contact on a brand-new transaction (never
+  // on an edit -- initial is only set when editing, and an existing row's
+  // own values must never be silently overwritten) prefills project/category
+  // from that contact's most recent transaction, the same way a human would
+  // reach for "what did we do last time". Only fills fields still empty, so
+  // it never clobbers something the user already picked.
+  async function handleContactChange(contactId: string) {
+    if (initial || !contactId) return;
+    const last = await suggestForContact(contactId);
+    if (!last) return;
+    let applied = false;
+    if (!projectId && last.project_id) {
+      setProjectId(last.project_id);
+      applied = true;
+    }
+    if (!categoryId && last.category_id) {
+      setCategoryId(last.category_id);
+      applied = true;
+    }
+    if (applied) setSuggested(true);
+  }
 
   const preview = useMemo(() => {
     const net = Number(netAmount) || 0;
@@ -118,7 +144,11 @@ export function TransactionFormModal({
 
           <Field>
             <Label>{el.transaction.contact}</Label>
-            <Select name="contact_id" defaultValue={initial?.contact_id ?? ""}>
+            <Select
+              name="contact_id"
+              defaultValue={initial?.contact_id ?? ""}
+              onChange={(e) => handleContactChange(e.target.value)}
+            >
               <option value="">—</option>
               {contacts.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -130,8 +160,18 @@ export function TransactionFormModal({
 
           <div className="grid grid-cols-2 gap-3">
             <Field>
-              <Label>{el.transaction.project}</Label>
-              <Select name="project_id" defaultValue={initial?.project_id ?? ""}>
+              <Label className="flex items-center gap-2">
+                {el.transaction.project}
+                {suggested && <Badge tone="green">AI πρόταση</Badge>}
+              </Label>
+              <Select
+                name="project_id"
+                value={projectId}
+                onChange={(e) => {
+                  setProjectId(e.target.value);
+                  setSuggested(false);
+                }}
+              >
                 <option value="">—</option>
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -141,8 +181,18 @@ export function TransactionFormModal({
               </Select>
             </Field>
             <Field>
-              <Label>{el.transaction.category}</Label>
-              <Select name="category_id" defaultValue={initial?.category_id ?? ""}>
+              <Label className="flex items-center gap-2">
+                {el.transaction.category}
+                {suggested && <Badge tone="green">AI πρόταση</Badge>}
+              </Label>
+              <Select
+                name="category_id"
+                value={categoryId}
+                onChange={(e) => {
+                  setCategoryId(e.target.value);
+                  setSuggested(false);
+                }}
+              >
                 <option value="">—</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>

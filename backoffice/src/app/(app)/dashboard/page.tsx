@@ -2,6 +2,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
+import { aiEnabled } from "@/lib/ai/client";
+import { DashboardSummary } from "./DashboardSummary";
 
 // Κέντρο Ελέγχου: liquidity per account, project portfolio, VAT position,
 // what's due soon -- the same shape as the workbook's Control Center sheet.
@@ -54,6 +56,8 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-xl font-semibold">{el.nav.dashboard}</h1>
+
+      {aiEnabled() && <DashboardSummary />}
 
       <section>
         <h2 className="mb-2 text-sm font-medium text-ink-muted">Ρευστότητα</h2>
