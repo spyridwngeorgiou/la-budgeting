@@ -4,6 +4,7 @@ import { el } from "@/lib/i18n/el";
 import { Card } from "@/components/ui";
 import { updateOwnAfm } from "./actions";
 import { Button, Input, Label, Field } from "@/components/ui";
+import { ChangePasswordForm } from "./ChangePasswordForm";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -34,6 +35,11 @@ export default async function SettingsPage() {
             <Button type="submit">{el.common.save}</Button>
           </div>
         </form>
+      </Card>
+
+      <Card className="max-w-md">
+        <h2 className="mb-3 text-sm font-medium text-ink-muted">Αλλαγή Κωδικού</h2>
+        <ChangePasswordForm />
       </Card>
     </div>
   );
