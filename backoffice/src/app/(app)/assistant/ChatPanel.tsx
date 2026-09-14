@@ -8,6 +8,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   transactionIds?: string[];
+  changeIds?: string[];
   error?: boolean;
 }
 
@@ -58,7 +59,7 @@ export function ChatPanel({ initialPrompt }: { initialPrompt?: string } = {}) {
       } else {
         setMessages((m) => [
           ...m,
-          { role: "assistant", content: data.text, transactionIds: data.transaction_ids },
+          { role: "assistant", content: data.text, transactionIds: data.transaction_ids, changeIds: data.change_ids },
         ]);
       }
     } catch {
@@ -110,6 +111,15 @@ export function ChatPanel({ initialPrompt }: { initialPrompt?: string } = {}) {
                       className="text-xs font-medium underline"
                     >
                       Δείτε τις {m.transactionIds.length} κινήσεις →
+                    </Link>
+                  </div>
+                )}
+                {m.changeIds && m.changeIds.length > 0 && (
+                  <div className="mt-2 border-t border-line-strong/30 pt-2">
+                    <Link href="/changes" className="text-xs font-medium underline">
+                      {m.changeIds.length === 1
+                        ? "Δείτε την πρόταση αλλαγής →"
+                        : `Δείτε τις ${m.changeIds.length} προτάσεις αλλαγών →`}
                     </Link>
                   </div>
                 )}

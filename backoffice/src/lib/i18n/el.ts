@@ -15,8 +15,9 @@ export const el = {
     aade: "Εισαγωγή AADE",
     quality: "Έλεγχοι Ποιότητας",
     settings: "Ρυθμίσεις",
-    documents: "Kansha Entry",
+    documents: "Kansha Operator",
     assistant: "Kansha AI",
+    changes: "Εκκρεμείς Αλλαγές",
   },
   common: {
     save: "Αποθήκευση",

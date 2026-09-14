@@ -488,6 +488,69 @@ export type Database = {
           },
         ]
       }
+      agent_changes: {
+        Row: {
+          after: Json
+          before: Json | null
+          created_at: string
+          id: string
+          operation: Database["public"]["Enums"]["agent_change_op"]
+          org_id: string
+          reason: string | null
+          requested_by: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          row_id: string | null
+          status: Database["public"]["Enums"]["agent_change_status"]
+          table_name: string
+        }
+        Insert: {
+          after: Json
+          before?: Json | null
+          created_at?: string
+          id?: string
+          operation: Database["public"]["Enums"]["agent_change_op"]
+          org_id: string
+          reason?: string | null
+          requested_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          row_id?: string | null
+          status?: Database["public"]["Enums"]["agent_change_status"]
+          table_name: string
+        }
+        Update: {
+          after?: Json
+          before?: Json | null
+          created_at?: string
+          id?: string
+          operation?: Database["public"]["Enums"]["agent_change_op"]
+          org_id?: string
+          reason?: string | null
+          requested_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          row_id?: string | null
+          status?: Database["public"]["Enums"]["agent_change_status"]
+          table_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_changes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_changes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+        ]
+      }
       ai_corrections: {
         Row: {
           ai_value: Json | null
@@ -3017,6 +3080,8 @@ export type Database = {
         | "dup_in_batch"
       aade_kind: "expenses" | "income"
       account_kind: "bank" | "cash" | "gold" | "crypto" | "other"
+      agent_change_op: "insert" | "update" | "delete"
+      agent_change_status: "pending" | "approved" | "rejected"
       asset_state: "held" | "pending_inheritance"
       budget_line_code:
         | "acquisition"
@@ -3188,6 +3253,8 @@ export const Constants = {
       ],
       aade_kind: ["expenses", "income"],
       account_kind: ["bank", "cash", "gold", "crypto", "other"],
+      agent_change_op: ["insert", "update", "delete"],
+      agent_change_status: ["pending", "approved", "rejected"],
       asset_state: ["held", "pending_inheritance"],
       budget_line_code: [
         "acquisition",

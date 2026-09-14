@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { anthropic, AI_MODEL, aiEnabled, logAiUsage } from "@/lib/ai/client";
 import { buildAssistantTools } from "@/lib/ai/tools";
+import { buildWriteTools } from "@/lib/ai/writeTools";
 import { ASSISTANT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 import type Anthropic from "@anthropic-ai/sdk";
 
@@ -44,7 +45,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Λείπουν μηνύματα." }, { status: 400 });
   }
 
-  const { tools, collectedIds } = buildAssistantTools(supabase);
+  const { tools: readTools, collectedIds } = buildAssistantTools(supabase);
+  const { tools: writeTools, collectedChangeIds } = buildWriteTools(supabase, orgId, session.user.id);
+  const tools = [...readTools, ...writeTools];
   const messages: Anthropic.Beta.BetaMessageParam[] = body.messages.map((m) => ({
     role: m.role,
     content: m.content,
@@ -91,6 +94,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       text: text || "Δεν μπόρεσα να διατυπώσω απάντηση.",
       transaction_ids: [...collectedIds],
+      change_ids: [...collectedChangeIds],
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Άγνωστο σφάλμα.";
