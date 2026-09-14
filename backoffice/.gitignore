@@ -1,0 +1,12 @@
+node_modules/
+.next/
+out/
+.env.local
+.env*.local
+*.tsbuildinfo
+next-env.d.ts
+.supabase/
+.open-next/
+.wrangler/
+.dev.vars
+cloudflare-env.d.ts
