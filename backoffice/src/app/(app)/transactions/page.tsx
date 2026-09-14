@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { el } from "@/lib/i18n/el";
 import { formatDate, formatMoney } from "@/lib/format";
+import { AiSpark } from "@/components/ui";
 import { TransactionsTable } from "./TransactionsTable";
 import { TX_STATUS, TX_DIRECTION, type TxStatus, type TxDirection } from "@/lib/domain/enums";
 
@@ -187,8 +188,9 @@ export default async function TransactionsPage({
         <Link
           key="ask-ai"
           href={`/assistant?q=${encodeURIComponent(askPrompt)}`}
-          className="ml-auto rounded px-3 py-1 text-sage-ink underline decoration-dotted"
+          className="ml-auto flex items-center gap-1.5 rounded-full border border-ai-border bg-ai-bg px-3 py-1 text-ai-ink hover:bg-ai-border/40"
         >
+          <AiSpark />
           Ρώτα το Kansha AI γι&apos; αυτόν τον πίνακα →
         </Link>
       </div>

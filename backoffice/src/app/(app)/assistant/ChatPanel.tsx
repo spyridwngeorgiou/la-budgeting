@@ -99,7 +99,7 @@ export function ChatPanel({ initialPrompt }: { initialPrompt?: string } = {}) {
                     ? "bg-ink text-white"
                     : m.error
                       ? "bg-red-bg text-red-ink"
-                      : "bg-bg text-ink"
+                      : "border border-ai-border bg-ai-bg text-ink"
                 }`}
               >
                 {m.content}
@@ -135,7 +135,7 @@ export function ChatPanel({ initialPrompt }: { initialPrompt?: string } = {}) {
           disabled={loading}
           className="flex-1"
         />
-        <Button type="submit" disabled={loading || !input.trim()}>
+        <Button type="submit" variant="ai" disabled={loading || !input.trim()}>
           Αποστολή
         </Button>
       </form>

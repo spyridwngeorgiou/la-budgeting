@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { UploadForm } from "./UploadForm";
 import { NlEntryForm } from "./NlEntryForm";
+import { AiSpark } from "@/components/ui";
 
 export function EntryTabs() {
   const [tab, setTab] = useState<"photo" | "text">("photo");
@@ -18,10 +19,13 @@ export function EntryTabs() {
             key={key}
             type="button"
             onClick={() => setTab(key)}
-            className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-              tab === key ? "bg-ink text-white" : "border border-line-strong text-ink hover:bg-bg"
+            className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              tab === key
+                ? "border border-ai-border bg-ai-bg text-ai-ink"
+                : "border border-line-strong text-ink hover:bg-bg"
             }`}
           >
+            {tab === key && <AiSpark />}
             {label}
           </button>
         ))}

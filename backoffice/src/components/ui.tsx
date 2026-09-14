@@ -4,14 +4,30 @@ export function Button({
   variant = "primary",
   className = "",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "danger" }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "danger" | "ai" }) {
   const base = "rounded-md px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50";
   const variants = {
     primary: "bg-ink text-white hover:bg-ink/85",
     secondary: "border border-line-strong text-ink hover:bg-bg",
     danger: "bg-red-ink text-white hover:bg-red-ink/85",
+    // Every AI-triggered action (generate a summary, run a health check, ask
+    // the assistant) uses this same violet treatment, so it reads as "this
+    // button calls the AI" on sight, consistently across the whole app.
+    ai: "border border-ai-border bg-ai-bg text-ai-ink hover:bg-ai-border/40",
   };
   return <button className={`${base} ${variants[variant]} ${className}`} {...props} />;
+}
+
+// Small consistent glyph prefixed onto every AI-triggered label/heading --
+// the one visual cue tying chat, Kansha Entry, suggestions and insight
+// panels together as "the same feature family" instead of four unrelated
+// bits of UI that all happen to call Claude.
+export function AiSpark({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" fill="currentColor" className={`inline-block h-3.5 w-3.5 ${className}`} aria-hidden="true">
+      <path d="M8 0c.3 2.7 1.1 4.5 2.4 5.6C11.5 6.9 13.3 7.7 16 8c-2.7.3-4.5 1.1-5.6 2.4C9.1 11.5 8.3 13.3 8 16c-.3-2.7-1.1-4.5-2.4-5.6C4.5 9.1 2.7 8.3 0 8c2.7-.3 4.5-1.1 5.6-2.4C6.9 4.5 7.7 2.7 8 0z" />
+    </svg>
+  );
 }
 
 export function Input({ className = "", ...props }: InputHTMLAttributes<HTMLInputElement>) {
@@ -91,13 +107,14 @@ export function Badge({
   tone = "neutral",
 }: {
   children: React.ReactNode;
-  tone?: "neutral" | "green" | "amber" | "red";
+  tone?: "neutral" | "green" | "amber" | "red" | "ai";
 }) {
   const tones = {
     neutral: "bg-bg text-ink-muted",
     green: "bg-sage text-sage-ink",
     amber: "bg-amber-bg text-amber-ink",
     red: "bg-red-bg text-red-ink",
+    ai: "bg-ai-bg text-ai-ink",
   };
   return (
     <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${tones[tone]}`}>

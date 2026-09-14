@@ -122,7 +122,7 @@ export function ReviewForm({
             <Label className="flex items-center gap-2">
               Επαφή
               {extraction.issuer_name && (
-                <span className="text-xs text-ink-faint" title={`AI: ${extraction.issuer_name}`}>
+                <span className="text-xs text-ai-ink" title={`AI: ${extraction.issuer_name}`}>
                   (AI: {extraction.issuer_name})
                 </span>
               )}
@@ -147,7 +147,7 @@ export function ReviewForm({
             <Field>
               <Label className="flex items-center gap-2">
                 Έργο
-                {extraction.project_mention && <span className="text-xs text-ink-faint">(AI: {extraction.project_mention})</span>}
+                {extraction.project_mention && <span className="text-xs text-ai-ink">(AI: {extraction.project_mention})</span>}
               </Label>
               <Select
                 name="project_id"
@@ -215,7 +215,7 @@ export function ReviewForm({
 
           <div className="rounded bg-bg p-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-ink-muted" title={extraction.gross.evidence ?? undefined}>
+              <span className="text-ai-ink" title={extraction.gross.evidence ?? undefined}>
                 Σύνολο (AI: {formatMoney(extraction.gross.value)})
               </span>
               <span className="font-mono font-medium">{formatMoney(preview.gross)}</span>

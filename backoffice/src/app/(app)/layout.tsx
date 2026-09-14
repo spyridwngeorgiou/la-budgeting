@@ -4,12 +4,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { el } from "@/lib/i18n/el";
+import { AiSpark } from "@/components/ui";
 
-const NAV_ITEMS: { href: string; label: string }[] = [
+const NAV_ITEMS: { href: string; label: string; ai?: boolean }[] = [
   { href: "/dashboard", label: el.nav.dashboard },
-  { href: "/assistant", label: el.nav.assistant },
+  { href: "/assistant", label: el.nav.assistant, ai: true },
   { href: "/transactions", label: el.nav.transactions },
-  { href: "/documents/new", label: el.nav.documents },
+  { href: "/documents/new", label: el.nav.documents, ai: true },
   { href: "/projects", label: el.nav.projects },
   { href: "/contacts", label: el.nav.contacts },
   { href: "/accounts", label: el.nav.accounts },
@@ -46,12 +47,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <li key={item.href} className="shrink-0">
                 <Link
                   href={item.href}
-                  className={`block rounded-md px-3 py-2 whitespace-nowrap transition-colors ${
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-2 whitespace-nowrap transition-colors ${
                     active
-                      ? "bg-sage font-medium text-sage-ink"
-                      : "text-ink-muted hover:bg-bg hover:text-ink"
+                      ? item.ai
+                        ? "bg-ai-bg font-medium text-ai-ink"
+                        : "bg-sage font-medium text-sage-ink"
+                      : item.ai
+                        ? "text-ai-ink hover:bg-ai-bg"
+                        : "text-ink-muted hover:bg-bg hover:text-ink"
                   }`}
                 >
+                  {item.ai && <AiSpark />}
                   {item.label}
                 </Link>
               </li>

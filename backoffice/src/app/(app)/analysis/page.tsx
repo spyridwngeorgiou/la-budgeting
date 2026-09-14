@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/format";
 import type { TxDirection, TxScope } from "@/lib/domain/enums";
+import { AiSpark } from "@/components/ui";
 
 type GroupBy = "project" | "category" | "contact" | "account";
 
@@ -221,8 +222,9 @@ export default async function AnalysisPage({
         </div>
         <Link
           href={`/assistant?q=${encodeURIComponent(askPrompt)}`}
-          className="shrink-0 whitespace-nowrap rounded px-3 py-1.5 text-sm text-sage-ink underline decoration-dotted"
+          className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-ai-border bg-ai-bg px-3 py-1.5 text-sm text-ai-ink hover:bg-ai-border/40"
         >
+          <AiSpark />
           Ρώτα το Kansha AI γι&apos; αυτόν τον πίνακα →
         </Link>
       </div>

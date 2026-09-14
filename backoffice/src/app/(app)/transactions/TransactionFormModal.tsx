@@ -162,7 +162,7 @@ export function TransactionFormModal({
             <Field>
               <Label className="flex items-center gap-2">
                 {el.transaction.project}
-                {suggested && <Badge tone="green">AI πρόταση</Badge>}
+                {suggested && <Badge tone="ai">AI πρόταση</Badge>}
               </Label>
               <Select
                 name="project_id"
@@ -183,7 +183,7 @@ export function TransactionFormModal({
             <Field>
               <Label className="flex items-center gap-2">
                 {el.transaction.category}
-                {suggested && <Badge tone="green">AI πρόταση</Badge>}
+                {suggested && <Badge tone="ai">AI πρόταση</Badge>}
               </Label>
               <Select
                 name="category_id"

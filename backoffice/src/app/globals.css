@@ -24,6 +24,15 @@
   --color-amber-ink: #92600a;
   --color-red-bg: #fbe7e5;
   --color-red-ink: #a5341f;
+  /* A single, consistent accent for every AI-powered element (chat, Kansha
+     Entry, AI-generated summaries/suggestions) -- violet reads as "AI" in
+     most apps today and, unlike sage (already "positive/financial") or
+     amber (already "needs review"), it doesn't collide with an existing
+     meaning elsewhere in this app. Used sparingly, the same way sage is. */
+  --color-ai-bg: #f2effb;
+  --color-ai-border: #c9bdf0;
+  --color-ai-ink: #5b3fa6;
+  --color-ai-strong: #7c5cd6;
 }
 
 :root {

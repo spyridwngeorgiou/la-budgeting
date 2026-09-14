@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui";
+import { Button, AiSpark } from "@/components/ui";
 
 export function ProjectHealthCheck({ projectId }: { projectId: string }) {
   const [text, setText] = useState<string | null>(null);
@@ -29,8 +29,11 @@ export function ProjectHealthCheck({ projectId }: { projectId: string }) {
 
   if (text) {
     return (
-      <div className="rounded-md border border-sage bg-sage/20 p-3 text-sm text-ink">
-        <div className="mb-1 text-xs font-medium text-sage-ink">AI Έλεγχος Υγείας Έργου</div>
+      <div className="rounded-md border border-ai-border bg-ai-bg p-3 text-sm text-ink">
+        <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-ai-ink">
+          <AiSpark />
+          AI Έλεγχος Υγείας Έργου
+        </div>
         {text}
       </div>
     );
@@ -38,8 +41,9 @@ export function ProjectHealthCheck({ projectId }: { projectId: string }) {
 
   return (
     <div className="flex items-center gap-2">
-      <Button variant="secondary" onClick={generate} disabled={loading}>
-        {loading ? "Ανάλυση…" : "✨ AI Έλεγχος Υγείας Έργου"}
+      <Button variant="ai" onClick={generate} disabled={loading}>
+        <AiSpark className="mr-1.5" />
+        {loading ? "Ανάλυση…" : "AI Έλεγχος Υγείας Έργου"}
       </Button>
       {error && <span className="text-sm text-red-ink">{error}</span>}
     </div>

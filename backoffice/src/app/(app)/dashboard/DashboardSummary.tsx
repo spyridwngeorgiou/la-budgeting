@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui";
+import { Button, AiSpark } from "@/components/ui";
 
 // Opt-in (button, not auto-run on every page load) so AI spend only happens
 // when someone actually wants the summary -- consistent with how the rest
@@ -28,8 +28,11 @@ export function DashboardSummary() {
 
   if (text) {
     return (
-      <div className="rounded-md border border-sage bg-sage/20 p-3 text-sm text-ink">
-        <div className="mb-1 text-xs font-medium text-sage-ink">Περίληψη AI</div>
+      <div className="rounded-md border border-ai-border bg-ai-bg p-3 text-sm text-ink">
+        <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-ai-ink">
+          <AiSpark />
+          Περίληψη AI
+        </div>
         {text}
       </div>
     );
@@ -37,8 +40,9 @@ export function DashboardSummary() {
 
   return (
     <div className="flex items-center gap-2">
-      <Button variant="secondary" onClick={generate} disabled={loading}>
-        {loading ? "Δημιουργία…" : "✨ AI περίληψη μήνα"}
+      <Button variant="ai" onClick={generate} disabled={loading}>
+        <AiSpark className="mr-1.5" />
+        {loading ? "Δημιουργία…" : "AI περίληψη μήνα"}
       </Button>
       {error && <span className="text-sm text-red-ink">{error}</span>}
     </div>

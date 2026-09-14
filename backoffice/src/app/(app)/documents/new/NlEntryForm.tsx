@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { submitNlEntry } from "../actions";
 import { SubmitButton } from "@/components/SubmitButton";
-import { Button } from "@/components/ui";
+import { Button, AiSpark } from "@/components/ui";
 
 // Minimal ambient typing for the Web Speech API -- not in lib.dom.d.ts, and
 // only Chromium/Safari implement it (feature-detected below, never assumed).
@@ -100,7 +100,8 @@ export function NlEntryForm() {
         )}
       </div>
       {error && <p className="text-sm text-red-ink">{error}</p>}
-      <SubmitButton pendingLabel="Ανάλυση περιγραφής…" disabled={!text.trim()}>
+      <SubmitButton variant="ai" pendingLabel="Ανάλυση περιγραφής…" disabled={!text.trim()}>
+        <AiSpark className="mr-1.5" />
         Ανάλυση με AI
       </SubmitButton>
     </form>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { uploadDocument } from "../actions";
 import { SubmitButton } from "@/components/SubmitButton";
+import { AiSpark } from "@/components/ui";
 
 export function UploadForm() {
   const [preview, setPreview] = useState<string | null>(null);
@@ -48,7 +49,8 @@ export function UploadForm() {
         <img src={preview} alt="Προεπισκόπηση" className="max-h-80 rounded border border-line object-contain" />
       )}
       {error && <p className="text-sm text-red-ink">{error}</p>}
-      <SubmitButton pendingLabel="Ανάλυση παραστατικού… (μπορεί να πάρει ως 30 δευτερόλεπτα)">
+      <SubmitButton variant="ai" pendingLabel="Ανάλυση παραστατικού… (μπορεί να πάρει ως 30 δευτερόλεπτα)">
+        <AiSpark className="mr-1.5" />
         Ανάλυση με AI
       </SubmitButton>
     </form>
