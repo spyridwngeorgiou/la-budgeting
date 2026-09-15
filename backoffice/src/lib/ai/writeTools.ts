@@ -54,6 +54,23 @@ export const ALLOWLIST = {
       "escalation_pct", "frequency", "first_due_date", "installment_count", "end_date", "status", "notes",
     ],
   },
+  project_notes: {
+    label: "Σημείωση Έργου",
+    labelField: "body",
+    searchFields: ["body"],
+    // project_id is required (not null, no default) -- must be settable on
+    // insert. find_record on "projects" first gives the model a real id.
+    editableFields: ["project_id", "kind", "severity", "body", "exposure_amount", "due_date", "resolved_at"],
+  },
+  loans: {
+    label: "Δάνειο",
+    labelField: "label",
+    searchFields: ["label"],
+    editableFields: [
+      "project_id", "label", "principal", "interest_rate", "term_years",
+      "grace_years", "first_amortisation_month", "state", "notes",
+    ],
+  },
 } satisfies Record<string, TableSpec>;
 
 export type WritableTable = keyof typeof ALLOWLIST;
