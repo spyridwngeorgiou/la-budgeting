@@ -6,13 +6,17 @@ import { usePathname } from "next/navigation";
 import { el } from "@/lib/i18n/el";
 import { AiSpark } from "@/components/ui";
 
+// Ordered deliberately, not alphabetically: the AI features lead (the
+// "wow factor" the whole point of a demo is to show), then the screens used
+// daily, then the more technical/back-office screens, Settings last.
 const NAV_ITEMS: { href: string; label: string; ai?: boolean }[] = [
   { href: "/dashboard", label: el.nav.dashboard },
   { href: "/assistant", label: el.nav.assistant, ai: true },
-  { href: "/transactions", label: el.nav.transactions },
   { href: "/documents/new", label: el.nav.documents, ai: true },
   { href: "/changes", label: el.nav.changes, ai: true },
   { href: "/revenue-plans", label: el.nav.revenuePlans, ai: true },
+  { href: "/transactions", label: el.nav.transactions },
+  { href: "/analysis", label: el.nav.analysis },
   { href: "/projects", label: el.nav.projects },
   { href: "/contacts", label: el.nav.contacts },
   { href: "/accounts", label: el.nav.accounts },
@@ -20,7 +24,6 @@ const NAV_ITEMS: { href: string; label: string; ai?: boolean }[] = [
   { href: "/withholding", label: el.nav.withholding },
   { href: "/installments", label: el.nav.installments },
   { href: "/cashflow", label: el.nav.cashflow },
-  { href: "/analysis", label: el.nav.analysis },
   { href: "/aade", label: el.nav.aade },
   { href: "/quality", label: el.nav.quality },
   { href: "/settings", label: el.nav.settings },
