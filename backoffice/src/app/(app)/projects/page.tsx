@@ -6,10 +6,18 @@ import { createProject } from "./actions";
 
 export default async function ProjectsPage() {
   const supabase = await createClient();
-  const { data: rollup } = await supabase
-    .from("v_project_rollup")
-    .select("*")
-    .order("code");
+
+  // "No budget" and "budget of zero" are different facts, and v_project_rollup
+  // coalesces both to 0. The existence signal comes from the QC view that
+  // already defines it, so there is one definition of "has a budget".
+  const [{ data: rollup }, { data: withoutBudget }] = await Promise.all([
+    supabase.from("v_project_rollup").select("*").order("code"),
+    supabase.from("v_qc_projects_without_budget").select("project_id"),
+  ]);
+
+  const noBudgetIds = (withoutBudget ?? [])
+    .map((r) => r.project_id)
+    .filter((id): id is string => id !== null);
 
   return (
     <div className="flex flex-col gap-4">
@@ -18,7 +26,7 @@ export default async function ProjectsPage() {
         <ProjectFormModal action={createProject} />
       </div>
 
-      <ProjectsGrid rollup={rollup ?? []} />
+      <ProjectsGrid rollup={rollup ?? []} noBudgetIds={noBudgetIds} />
     </div>
   );
 }

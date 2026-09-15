@@ -17,7 +17,7 @@ export default async function ProjectDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: rollup }, { data: transactions }, { data: budget }] = await Promise.all([
+  const [{ data: rollup }, { data: transactions }, { data: budget }, { data: noBudgetRow }] = await Promise.all([
     supabase.from("v_project_rollup").select("*").eq("project_id", id).maybeSingle(),
     supabase
       .from("transactions")
@@ -31,7 +31,12 @@ export default async function ProjectDetailPage({
       .eq("project_id", id)
       .eq("is_current", true)
       .maybeSingle(),
+    supabase.from("v_qc_projects_without_budget").select("project_id").eq("project_id", id).maybeSingle(),
   ]);
+
+  // Absent budget is not a zero budget: showing "0,00 €" and a large negative
+  // Υπόλοιπο is worse than showing nothing at all.
+  const hasBudget = !noBudgetRow;
 
   if (!rollup) notFound();
 
@@ -54,7 +59,16 @@ export default async function ProjectDetailPage({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>
           <div className="text-xs text-ink-muted">{el.project.budget}</div>
-          <div className="font-mono text-lg">{formatMoney(rollup.total_budget)}</div>
+          {hasBudget ? (
+            <div className="font-mono text-lg">{formatMoney(rollup.total_budget)}</div>
+          ) : (
+            <>
+              <div className="font-mono text-lg text-ink-faint">—</div>
+              <div className="mt-1">
+                <Badge tone="amber">Χωρίς προϋπολογισμό</Badge>
+              </div>
+            </>
+          )}
         </Card>
         <Link href={`/transactions?project_id=${id}&direction=expense&status=paid`} className="block">
           <Card className="h-full transition-colors hover:border-line-strong hover:bg-bg">
@@ -64,7 +78,9 @@ export default async function ProjectDetailPage({
         </Link>
         <Card>
           <div className="text-xs text-ink-muted">{el.project.remaining}</div>
-          <div className="font-mono text-lg">{formatMoney(rollup.remaining_budget)}</div>
+          <div className="font-mono text-lg">
+            {hasBudget ? formatMoney(rollup.remaining_budget) : <span className="text-ink-faint">—</span>}
+          </div>
         </Card>
         <Link href={`/transactions?project_id=${id}&direction=income&status=paid`} className="block">
           <Card className="h-full transition-colors hover:border-line-strong hover:bg-bg">

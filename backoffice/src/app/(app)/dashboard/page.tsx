@@ -27,7 +27,7 @@ export default async function DashboardPage() {
   // the latest period that isn't in the future.
   const todayIso = new Date().toISOString().slice(0, 10);
 
-  const [{ data: accounts }, { data: projects }, { data: vat }] = await Promise.all([
+  const [{ data: accounts }, { data: projects }, { data: vat }, { data: withoutBudget }] = await Promise.all([
     supabase.from("v_account_balances").select("*").order("owner_scope"),
     supabase.from("v_project_rollup").select("*").order("code"),
     supabase
@@ -35,7 +35,10 @@ export default async function DashboardPage() {
       .select("*")
       .lte("period_start", todayIso)
       .order("period_start", { ascending: false }),
+    supabase.from("v_qc_projects_without_budget").select("project_id"),
   ]);
+
+  const noBudget = new Set((withoutBudget ?? []).map((r) => r.project_id));
 
   const liquidTotal = (accounts ?? []).reduce(
     (sum, a) => sum + Number(a.current_balance ?? 0),
@@ -98,7 +101,13 @@ export default async function DashboardPage() {
                       {p.display_name}
                     </Link>
                   </td>
-                  <td className="py-1.5 pr-4 font-mono">{formatMoney(p.total_budget)}</td>
+                  <td className="py-1.5 pr-4 font-mono">
+                    {noBudget.has(p.project_id) ? (
+                      <span className="text-ink-faint">—</span>
+                    ) : (
+                      formatMoney(p.total_budget)
+                    )}
+                  </td>
                   <td className="py-1.5 pr-4 font-mono">
                     <Link
                       href={`/transactions?project_id=${p.project_id}&direction=expense&status=paid`}

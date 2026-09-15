@@ -29,9 +29,16 @@ function normalize(s: string) {
   return s.toLocaleLowerCase("el");
 }
 
-export function ProjectsGrid({ rollup }: { rollup: ProjectRow[] }) {
+export function ProjectsGrid({
+  rollup,
+  noBudgetIds = [],
+}: {
+  rollup: ProjectRow[];
+  noBudgetIds?: string[];
+}) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const noBudget = new Set(noBudgetIds);
 
   const visible = useMemo(() => {
     const q = normalize(search.trim());
@@ -87,7 +94,7 @@ export function ProjectsGrid({ rollup }: { rollup: ProjectRow[] }) {
               href={`/projects/${p.project_id}`}
               className="rounded border border-line p-4 hover:border-line-strong"
             >
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="font-medium">{p.display_name}</span>
                 {p.status && (
                   <Badge tone={STATUS_TONE[p.status as ProjectStatus]}>
@@ -96,11 +103,19 @@ export function ProjectsGrid({ rollup }: { rollup: ProjectRow[] }) {
                 )}
               </div>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <Stat label={el.project.budget} value={formatMoney(p.total_budget)} />
+                <Stat
+                  label={el.project.budget}
+                  value={p.project_id && noBudget.has(p.project_id) ? "—" : formatMoney(p.total_budget)}
+                />
                 <Stat label={el.project.spent} value={formatMoney(p.spent)} />
                 <Stat label={el.project.pending} value={formatMoney(p.pending)} />
                 <Stat label="+ ΦΠΑ" value={formatMoney(p.vat_on_expenses)} />
               </div>
+              {p.project_id && noBudget.has(p.project_id) && (
+                <div className="mt-2">
+                  <Badge tone="amber">Χωρίς προϋπολογισμό</Badge>
+                </div>
+              )}
             </Link>
           ))}
         </div>
