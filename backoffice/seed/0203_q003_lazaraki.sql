@@ -9,10 +9,11 @@
 -- 8/8/1 suites to this project's 10/10/1, which reproduce those totals exactly:
 --   operating year 1  1.216.770  exact
 --   operating year 3  1.469.935  exact
---   operating year 2  1.355.610 vs the workbook's 1.355.490, +120
--- The €120 is the leap day: operating year 2 falls in calendar 2028 and the
+--   operating year 2  1.356.550 vs the workbook's 1.355.490, +1.060
+-- The €1.060 is the leap day: operating year 2 falls in calendar 2028 and the
 -- workbook charged February 28 days. A hotel does sell rooms on 29 February,
--- so the app is right and the workbook is 120 euros light.
+-- so the app is right and the workbook is 1.060 euros light -- verified
+-- month by month: every month besides February matches the workbook exactly.
 
 begin;
 

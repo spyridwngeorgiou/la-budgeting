@@ -7,6 +7,8 @@ import { Badge, Card, Button, AiSpark } from "@/components/ui";
 import { OnePagerSection, OnePagerRow, StatusNotes, type ProjectNote } from "@/components/onepager";
 import { computeLeaseSchedule } from "@/lib/finance/lease";
 import { computeLoanSchedule } from "@/lib/finance/loan";
+import { computeRevenuePlan } from "@/lib/finance/revenuePlan";
+import { computeProjectCashflow } from "@/lib/finance/projectCashflow";
 import { aiEnabled } from "@/lib/ai/client";
 import { ProjectHealthCheck } from "./ProjectHealthCheck";
 import { BudgetFormModal } from "../BudgetFormModal";
@@ -52,7 +54,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       .maybeSingle(),
     supabase
       .from("project_scenarios")
-      .select("name, flat_annual_revenue, notes, opex_lines(kind, label, annual_amount, note)")
+      .select(
+        "id, name, flat_annual_revenue, revenue_plan_id, revenue_growth_pct, opex_growth_pct, growth_starts_after_operating_year, discount_rate_pct, dscr_covenant_min, notes, opex_lines(kind, label, annual_amount, from_operating_year, to_operating_year, note)",
+      )
       .eq("project_id", id)
       .eq("is_base", true)
       .maybeSingle(),
@@ -107,24 +111,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   const firstYearRent = leaseSchedule?.rows[0];
   const opexLines = scenario?.opex_lines ?? [];
-  const opexTotal = opexLines.reduce((s, l) => s + Number(l.annual_amount ?? 0), 0);
-  const revenue = Number(scenario?.flat_annual_revenue ?? 0);
-  const annualRent = firstYearRent?.annualAmount ?? 0;
-  const operatingResult = revenue - opexTotal - annualRent;
-  const hasOperation = Boolean(scenario && revenue > 0);
-
-  const settlementMonthly = (settlementPlans ?? []).reduce(
-    (s, p) => s + Number(p.amount_per_installment ?? 0),
-    0,
-  );
-  const monthlyRent = firstYearRent?.monthlyAmount ?? 0;
 
   // ΔΑΝΕΙΟ: drawdowns are stored per tranche (loan_drawdowns.loan_id), but
   // the engine takes one programme-level schedule and splits it pro-rata by
   // tranche principal itself. Summing them back to programme level and
   // letting it re-split is simpler than bypassing that logic, and is exact
   // here because both tranches carry equal principal (so an even split
-  // reproduces exactly what was stored).
+  // reproduces exactly what was stored). Computed before the cash flow below
+  // so it can feed straight into it.
   const loanRows = loans ?? [];
   const programmeDrawdowns = new Map<string, number>();
   for (const l of loanRows) {
@@ -152,6 +146,96 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           },
         )
       : null;
+
+  // Projects with a room-type revenue grid (Q003) source ΛΕΙΤΟΥΡΓΙΑ and
+  // ΤΑΜΕΙΑΚΗ ΡΟΗ from the same computeProjectCashflow run, so every figure on
+  // the page is internally consistent. Projects with a single flat annual
+  // figure (Q004) keep the simpler direct computation -- there is no
+  // multi-year grid or loan to assemble a cash flow from.
+  let revenue = Number(scenario?.flat_annual_revenue ?? 0);
+  let opexTotal = opexLines
+    .filter((l) => l.from_operating_year === 1 && (l.to_operating_year == null || l.to_operating_year >= 1))
+    .reduce((s, l) => s + Number(l.annual_amount ?? 0), 0);
+  let annualRent = firstYearRent?.annualAmount ?? 0;
+  let cashflow: ReturnType<typeof computeProjectCashflow> | null = null;
+
+  if (scenario?.revenue_plan_id) {
+    const { data: plan } = await supabase
+      .from("revenue_plans")
+      .select("start_year, revenue_plan_room_types(id, name, unit_count, revenue_plan_assumptions(year_number, month_number, occupancy_pct, adr))")
+      .eq("id", scenario.revenue_plan_id)
+      .maybeSingle();
+
+    if (plan) {
+      const roomTypes = (plan.revenue_plan_room_types ?? []).map((rt) => ({
+        id: rt.id,
+        name: rt.name,
+        unitCount: rt.unit_count,
+      }));
+      const assumptions = (plan.revenue_plan_room_types ?? []).flatMap((rt) =>
+        (rt.revenue_plan_assumptions ?? []).map((a) => ({
+          roomTypeId: rt.id,
+          yearNumber: a.year_number,
+          monthNumber: a.month_number,
+          occupancyPct: a.occupancy_pct,
+          adr: a.adr,
+        })),
+      );
+      const revenuePlanResult = computeRevenuePlan(plan.start_year, roomTypes, assumptions);
+
+      // "First full modelled year" for the headline ΛΕΙΤΟΥΡΓΙΑ figure --
+      // year 1 is usually a partial opening-year stub, same convention the
+      // workbook itself uses ("Έσοδα πρώτου πλήρους έτους").
+      const headlineYearIdx = Math.min(1, revenuePlanResult.yearTotals.length - 1);
+      const headlineYear = revenuePlanResult.yearTotals[headlineYearIdx];
+      const headlineYearNumber = headlineYearIdx + 1;
+      revenue = headlineYear?.annualRevenue ?? 0;
+      opexTotal = opexLines
+        .filter(
+          (l) =>
+            l.from_operating_year <= headlineYearNumber &&
+            (l.to_operating_year == null || l.to_operating_year >= headlineYearNumber),
+        )
+        .reduce((s, l) => s + Number(l.annual_amount ?? 0), 0);
+      const headlineLeaseRow = leaseSchedule?.rows.find((r) => r.leaseYear === headlineYearNumber);
+      annualRent = headlineLeaseRow?.annualAmount ?? annualRent;
+
+      if (indexedTerms && project?.opening_date) {
+        const openingMonth = `${String(project.opening_date).slice(0, 7)}-01`;
+        const opexAnnualByOperatingYear = opexLines
+          .filter((l) => l.from_operating_year === l.to_operating_year)
+          .sort((a, b) => a.from_operating_year - b.from_operating_year)
+          .map((l) => Number(l.annual_amount ?? 0));
+
+        cashflow = computeProjectCashflow({
+          openingMonth,
+          baseYear: plan.start_year,
+          revenueMonthlyByOperatingYear: revenuePlanResult.yearTotals.map((y) => y.monthlyRevenue),
+          opexAnnualByOperatingYear:
+            opexAnnualByOperatingYear.length > 0 ? opexAnnualByOperatingYear : [opexTotal],
+          revenueGrowthPct: Number(scenario.revenue_growth_pct ?? 0),
+          opexGrowthPct: Number(scenario.opex_growth_pct ?? 0),
+          growthStartsAfterOperatingYear: Number(scenario.growth_starts_after_operating_year ?? 3),
+          leaseSchedule,
+          leaseStartMonth: lease?.lease_start_month ?? null,
+          leaseFirstPaymentMonth: lease?.lease_start_month ?? null,
+          loanSchedule,
+          horizonYears: Number(lease?.term_years ?? 23),
+          discountRatePct: Number(scenario.discount_rate_pct ?? 0.09),
+          dscrCovenantMin: Number(scenario.dscr_covenant_min ?? 1.2),
+        });
+      }
+    }
+  }
+
+  const operatingResult = revenue - opexTotal - annualRent;
+  const hasOperation = Boolean(scenario && revenue > 0);
+
+  const settlementMonthly = (settlementPlans ?? []).reduce(
+    (s, p) => s + Number(p.amount_per_installment ?? 0),
+    0,
+  );
+  const monthlyRent = firstYearRent?.monthlyAmount ?? 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -306,6 +390,49 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               label="Περιθώριο επί τζίρου"
               amount={`${((operatingResult / revenue) * 100).toFixed(1)}%`}
             />
+          </OnePagerSection>
+        )}
+
+        {/* ΤΑΜΕΙΑΚΗ ΡΟΗ — headline resilience KPIs; the full year-by-year
+            table and chart are a future tab, not this one-pager. */}
+        {cashflow && (
+          <OnePagerSection
+            title="ΤΑΜΕΙΑΚΗ ΡΟΗ"
+            subtitle={`${cashflow.years.length}-ετής προβολή · κάλυψη δόσης τράπεζας ≥ ${scenario?.dscr_covenant_min ?? 1.2}×`}
+          >
+            {cashflow.kpis.firstAmortisationYearDscr && (
+              <OnePagerRow
+                label="Κάλυψη δόσης — πρώτο έτος χρεολυσίου"
+                amount={`${cashflow.kpis.firstAmortisationYearDscr.value.toFixed(2)}×`}
+                note={`${cashflow.kpis.firstAmortisationYearDscr.calendarYear}`}
+              />
+            )}
+            {cashflow.kpis.minDscr && (
+              <OnePagerRow
+                label="Χαμηλότερη κάλυψη δόσης"
+                amount={`${cashflow.kpis.minDscr.value.toFixed(2)}×`}
+                note={`${cashflow.kpis.minDscr.calendarYear}`}
+                negative={cashflow.kpis.minDscr.value < (scenario?.dscr_covenant_min ?? 1.2)}
+              />
+            )}
+            <OnePagerRow
+              label="Σωρευτική ταμειακή ροή"
+              amount={cashflow.kpis.cumulativeTotal}
+              note={`Έως ${cashflow.years[cashflow.years.length - 1]?.calendarYear ?? ""}.`}
+            />
+            <OnePagerRow
+              label="Καθαρή Παρούσα Αξία"
+              amount={cashflow.kpis.npv}
+              emphasis
+              note={`Προεξοφλημένη ροή μετά την εξυπηρέτηση δανείου, χωρίς την αρχική επένδυση — @${((Number(scenario?.discount_rate_pct ?? 0.09)) * 100).toFixed(0)}%.`}
+            />
+            {cashflow.kpis.covenantBreaches.length > 0 && (
+              <OnePagerRow
+                label="Έτη κάτω από την απαίτηση τράπεζας"
+                amount={cashflow.kpis.covenantBreaches.map((b) => b.calendarYear).join(", ")}
+                negative
+              />
+            )}
           </OnePagerSection>
         )}
 
