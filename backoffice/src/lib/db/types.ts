@@ -274,6 +274,13 @@ export type Database = {
             foreignKeyName: "aade_staging_rows_committed_transaction_id_fkey"
             columns: ["committed_transaction_id"]
             isOneToOne: false
+            referencedRelation: "v_qc_capex_to_lessor"
+            referencedColumns: ["transaction_id"]
+          },
+          {
+            foreignKeyName: "aade_staging_rows_committed_transaction_id_fkey"
+            columns: ["committed_transaction_id"]
+            isOneToOne: false
             referencedRelation: "v_qc_future_dated"
             referencedColumns: ["transaction_id"]
           },
@@ -289,6 +296,13 @@ export type Database = {
             columns: ["committed_transaction_id"]
             isOneToOne: false
             referencedRelation: "v_qc_non_positive_amounts"
+            referencedColumns: ["transaction_id"]
+          },
+          {
+            foreignKeyName: "aade_staging_rows_committed_transaction_id_fkey"
+            columns: ["committed_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_spend_without_treatment"
             referencedColumns: ["transaction_id"]
           },
           {
@@ -330,6 +344,13 @@ export type Database = {
             foreignKeyName: "aade_staging_rows_matched_transaction_id_fkey"
             columns: ["matched_transaction_id"]
             isOneToOne: false
+            referencedRelation: "v_qc_capex_to_lessor"
+            referencedColumns: ["transaction_id"]
+          },
+          {
+            foreignKeyName: "aade_staging_rows_matched_transaction_id_fkey"
+            columns: ["matched_transaction_id"]
+            isOneToOne: false
             referencedRelation: "v_qc_future_dated"
             referencedColumns: ["transaction_id"]
           },
@@ -345,6 +366,13 @@ export type Database = {
             columns: ["matched_transaction_id"]
             isOneToOne: false
             referencedRelation: "v_qc_non_positive_amounts"
+            referencedColumns: ["transaction_id"]
+          },
+          {
+            foreignKeyName: "aade_staging_rows_matched_transaction_id_fkey"
+            columns: ["matched_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_spend_without_treatment"
             referencedColumns: ["transaction_id"]
           },
           {
@@ -797,6 +825,13 @@ export type Database = {
             foreignKeyName: "attachments_transaction_id_fkey"
             columns: ["transaction_id"]
             isOneToOne: false
+            referencedRelation: "v_qc_capex_to_lessor"
+            referencedColumns: ["transaction_id"]
+          },
+          {
+            foreignKeyName: "attachments_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
             referencedRelation: "v_qc_future_dated"
             referencedColumns: ["transaction_id"]
           },
@@ -812,6 +847,13 @@ export type Database = {
             columns: ["transaction_id"]
             isOneToOne: false
             referencedRelation: "v_qc_non_positive_amounts"
+            referencedColumns: ["transaction_id"]
+          },
+          {
+            foreignKeyName: "attachments_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_spend_without_treatment"
             referencedColumns: ["transaction_id"]
           },
           {
@@ -882,6 +924,7 @@ export type Database = {
       categories: {
         Row: {
           code: string | null
+          cost_treatment: Database["public"]["Enums"]["cost_treatment"] | null
           created_at: string
           id: string
           is_active: boolean
@@ -897,6 +940,7 @@ export type Database = {
         }
         Insert: {
           code?: string | null
+          cost_treatment?: Database["public"]["Enums"]["cost_treatment"] | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -912,6 +956,7 @@ export type Database = {
         }
         Update: {
           code?: string | null
+          cost_treatment?: Database["public"]["Enums"]["cost_treatment"] | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -1265,6 +1310,7 @@ export type Database = {
           installment_count: number | null
           label: string
           notes: string | null
+          obligation_kind: Database["public"]["Enums"]["obligation_kind"]
           org_id: string
           project_id: string | null
           scope: Database["public"]["Enums"]["tx_scope"]
@@ -1291,6 +1337,7 @@ export type Database = {
           installment_count?: number | null
           label: string
           notes?: string | null
+          obligation_kind?: Database["public"]["Enums"]["obligation_kind"]
           org_id: string
           project_id?: string | null
           scope?: Database["public"]["Enums"]["tx_scope"]
@@ -1317,6 +1364,7 @@ export type Database = {
           installment_count?: number | null
           label?: string
           notes?: string | null
+          obligation_kind?: Database["public"]["Enums"]["obligation_kind"]
           org_id?: string
           project_id?: string | null
           scope?: Database["public"]["Enums"]["tx_scope"]
@@ -2222,6 +2270,13 @@ export type Database = {
             foreignKeyName: "transaction_drafts_approved_transaction_id_fkey"
             columns: ["approved_transaction_id"]
             isOneToOne: false
+            referencedRelation: "v_qc_capex_to_lessor"
+            referencedColumns: ["transaction_id"]
+          },
+          {
+            foreignKeyName: "transaction_drafts_approved_transaction_id_fkey"
+            columns: ["approved_transaction_id"]
+            isOneToOne: false
             referencedRelation: "v_qc_future_dated"
             referencedColumns: ["transaction_id"]
           },
@@ -2237,6 +2292,13 @@ export type Database = {
             columns: ["approved_transaction_id"]
             isOneToOne: false
             referencedRelation: "v_qc_non_positive_amounts"
+            referencedColumns: ["transaction_id"]
+          },
+          {
+            foreignKeyName: "transaction_drafts_approved_transaction_id_fkey"
+            columns: ["approved_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_spend_without_treatment"
             referencedColumns: ["transaction_id"]
           },
           {
@@ -2793,11 +2855,15 @@ export type Database = {
       v_project_rollup: {
         Row: {
           business_model: Database["public"]["Enums"]["business_model"] | null
+          capex_committed: number | null
+          capex_paid: number | null
           code: string | null
           display_name: string | null
           income_expected: number | null
           income_received: number | null
+          occupancy_cost: number | null
           org_id: string | null
+          other_opex: number | null
           pending: number | null
           project_id: string | null
           remaining_budget: number | null
@@ -2805,6 +2871,7 @@ export type Database = {
           spent: number | null
           status: Database["public"]["Enums"]["project_status"] | null
           total_budget: number | null
+          unclassified_spend: number | null
           vat_on_expenses: number | null
         }
         Relationships: [
@@ -2875,6 +2942,54 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_net_worth"
             referencedColumns: ["org_id"]
+          },
+        ]
+      }
+      v_qc_capex_to_lessor: {
+        Row: {
+          contact_name: string | null
+          gross_amount: number | null
+          org_id: string | null
+          project_id: string | null
+          project_name: string | null
+          transaction_id: string | null
+          tx_date: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "transactions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "transactions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
           },
         ]
       }
@@ -3113,6 +3228,54 @@ export type Database = {
           },
         ]
       }
+      v_qc_spend_without_treatment: {
+        Row: {
+          description: string | null
+          gross_amount: number | null
+          org_id: string | null
+          project_id: string | null
+          project_name: string | null
+          transaction_id: string | null
+          tx_date: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "transactions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "transactions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
       v_qc_vat_mismatch: {
         Row: {
           contact_name: string | null
@@ -3270,9 +3433,26 @@ export type Database = {
         | "hotel_lease"
         | "general"
       certainty: "certain" | "probable"
+      cost_treatment:
+        | "capex"
+        | "opex"
+        | "rent"
+        | "rent_substitute"
+        | "financing"
+        | "tax"
+        | "vat"
+        | "pass_through"
+        | "income"
       filing_status: "pending" | "filed" | "paid" | "cancelled"
       liability_kind: "private" | "bank"
       liability_state: "in_application" | "approved" | "disbursed" | "repaid"
+      obligation_kind:
+        | "rent"
+        | "third_party_tax_settlement"
+        | "supplier"
+        | "own_tax"
+        | "loan"
+        | "other"
       org_role: "owner" | "admin" | "editor" | "viewer"
       owner_scope: "corporate" | "personal"
       plan_frequency: "monthly" | "quarterly" | "semiannual" | "annual"
@@ -3445,9 +3625,28 @@ export const Constants = {
         "general",
       ],
       certainty: ["certain", "probable"],
+      cost_treatment: [
+        "capex",
+        "opex",
+        "rent",
+        "rent_substitute",
+        "financing",
+        "tax",
+        "vat",
+        "pass_through",
+        "income",
+      ],
       filing_status: ["pending", "filed", "paid", "cancelled"],
       liability_kind: ["private", "bank"],
       liability_state: ["in_application", "approved", "disbursed", "repaid"],
+      obligation_kind: [
+        "rent",
+        "third_party_tax_settlement",
+        "supplier",
+        "own_tax",
+        "loan",
+        "other",
+      ],
       org_role: ["owner", "admin", "editor", "viewer"],
       owner_scope: ["corporate", "personal"],
       plan_frequency: ["monthly", "quarterly", "semiannual", "annual"],
