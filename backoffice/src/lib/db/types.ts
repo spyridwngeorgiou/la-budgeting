@@ -1983,6 +1983,182 @@ export type Database = {
           },
         ]
       }
+      revenue_plan_assumptions: {
+        Row: {
+          adr: number
+          id: string
+          month_number: number
+          occupancy_pct: number
+          org_id: string
+          room_type_id: string
+          year_number: number
+        }
+        Insert: {
+          adr: number
+          id?: string
+          month_number: number
+          occupancy_pct: number
+          org_id: string
+          room_type_id: string
+          year_number: number
+        }
+        Update: {
+          adr?: number
+          id?: string
+          month_number?: number
+          occupancy_pct?: number
+          org_id?: string
+          room_type_id?: string
+          year_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revenue_plan_assumptions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_plan_assumptions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "revenue_plan_assumptions_room_type_id_fkey"
+            columns: ["room_type_id"]
+            isOneToOne: false
+            referencedRelation: "revenue_plan_room_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      revenue_plan_room_types: {
+        Row: {
+          id: string
+          name: string
+          org_id: string
+          revenue_plan_id: string
+          sort_order: number
+          unit_count: number
+        }
+        Insert: {
+          id?: string
+          name: string
+          org_id: string
+          revenue_plan_id: string
+          sort_order?: number
+          unit_count: number
+        }
+        Update: {
+          id?: string
+          name?: string
+          org_id?: string
+          revenue_plan_id?: string
+          sort_order?: number
+          unit_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revenue_plan_room_types_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_plan_room_types_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "revenue_plan_room_types_revenue_plan_id_fkey"
+            columns: ["revenue_plan_id"]
+            isOneToOne: false
+            referencedRelation: "revenue_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      revenue_plans: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          notes: string | null
+          org_id: string
+          project_id: string | null
+          start_year: number
+          updated_at: string
+          years: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          org_id: string
+          project_id?: string | null
+          start_year: number
+          updated_at?: string
+          years?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          org_id?: string
+          project_id?: string | null
+          start_year?: number
+          updated_at?: string
+          years?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revenue_plans_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_plans_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "revenue_plans_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_plans_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "revenue_plans_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
       transaction_drafts: {
         Row: {
           approved_transaction_id: string | null

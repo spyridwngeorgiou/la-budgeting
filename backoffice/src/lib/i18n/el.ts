@@ -18,6 +18,7 @@ export const el = {
     documents: "Kansha Operator",
     assistant: "Kansha AI",
     changes: "Εκκρεμείς Αλλαγές",
+    revenuePlans: "Εκτιμήσεις Εσόδων",
   },
   common: {
     save: "Αποθήκευση",

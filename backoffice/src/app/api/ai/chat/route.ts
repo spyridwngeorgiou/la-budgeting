@@ -4,6 +4,7 @@ import { getCurrentOrgId } from "@/lib/supabase/org";
 import { anthropic, AI_MODEL, aiEnabled, logAiUsage } from "@/lib/ai/client";
 import { buildAssistantTools } from "@/lib/ai/tools";
 import { buildWriteTools } from "@/lib/ai/writeTools";
+import { buildRevenuePlanTools } from "@/lib/ai/revenuePlanTools";
 import { ASSISTANT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 import type Anthropic from "@anthropic-ai/sdk";
 
@@ -47,7 +48,8 @@ export async function POST(request: Request) {
 
   const { tools: readTools, collectedIds } = buildAssistantTools(supabase);
   const { tools: writeTools, collectedChangeIds } = buildWriteTools(supabase, orgId, session.user.id);
-  const tools = [...readTools, ...writeTools];
+  const { tools: revenuePlanTools, collectedRevenuePlanIds } = buildRevenuePlanTools(supabase, orgId, session.user.id);
+  const tools = [...readTools, ...writeTools, ...revenuePlanTools];
   const messages: Anthropic.Beta.BetaMessageParam[] = body.messages.map((m) => ({
     role: m.role,
     content: m.content,
@@ -95,6 +97,7 @@ export async function POST(request: Request) {
       text: text || "Δεν μπόρεσα να διατυπώσω απάντηση.",
       transaction_ids: [...collectedIds],
       change_ids: [...collectedChangeIds],
+      revenue_plan_ids: [...collectedRevenuePlanIds],
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Άγνωστο σφάλμα.";

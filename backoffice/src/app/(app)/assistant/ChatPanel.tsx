@@ -9,6 +9,7 @@ interface Message {
   content: string;
   transactionIds?: string[];
   changeIds?: string[];
+  revenuePlanIds?: string[];
   error?: boolean;
 }
 
@@ -59,7 +60,13 @@ export function ChatPanel({ initialPrompt }: { initialPrompt?: string } = {}) {
       } else {
         setMessages((m) => [
           ...m,
-          { role: "assistant", content: data.text, transactionIds: data.transaction_ids, changeIds: data.change_ids },
+          {
+            role: "assistant",
+            content: data.text,
+            transactionIds: data.transaction_ids,
+            changeIds: data.change_ids,
+            revenuePlanIds: data.revenue_plan_ids,
+          },
         ]);
       }
     } catch {
@@ -121,6 +128,15 @@ export function ChatPanel({ initialPrompt }: { initialPrompt?: string } = {}) {
                         ? "Δείτε την πρόταση αλλαγής →"
                         : `Δείτε τις ${m.changeIds.length} προτάσεις αλλαγών →`}
                     </Link>
+                  </div>
+                )}
+                {m.revenuePlanIds && m.revenuePlanIds.length > 0 && (
+                  <div className="mt-2 flex flex-col gap-1 border-t border-line-strong/30 pt-2">
+                    {m.revenuePlanIds.map((id) => (
+                      <Link key={id} href={`/revenue-plans/${id}`} className="text-xs font-medium underline">
+                        Δείτε την ανάλυση εσόδων →
+                      </Link>
+                    ))}
                   </div>
                 )}
               </div>
