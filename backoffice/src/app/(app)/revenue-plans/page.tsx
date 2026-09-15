@@ -4,6 +4,8 @@ import { formatMoney } from "@/lib/format";
 import { Card, Button, AiSpark } from "@/components/ui";
 import { computeRevenuePlan } from "@/lib/finance/revenuePlan";
 import { createRevenuePlan } from "./actions";
+import { AiCreateForm } from "./AiCreateForm";
+import { aiEnabled } from "@/lib/ai/client";
 
 export default async function RevenuePlansPage() {
   const supabase = await createClient();
@@ -20,15 +22,21 @@ export default async function RevenuePlansPage() {
       </div>
       <p className="text-sm text-ink-muted">
         Αναλύσεις εσόδων τύπου ξενοδοχείου/φιλοξενίας (τύποι δωματίων × πληρότητα × ADR ανά μήνα).
-        Πες στο{" "}
-        <Link href="/assistant" className="underline">
-          Kansha AI
-        </Link>{" "}
-        τα βασικά στοιχεία και φτιάχνει την ανάλυση αυτόματα, ή ξεκίνα μία εδώ.
       </p>
 
+      {aiEnabled() ? (
+        <AiCreateForm />
+      ) : (
+        <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+          Ο βοηθός AI δεν είναι ενεργοποιημένος -- μπορείτε ακόμα να φτιάξετε μια ανάλυση χειροκίνητα
+          παρακάτω.
+        </p>
+      )}
+
       <details className="rounded-md border border-line bg-surface p-3">
-        <summary className="cursor-pointer text-sm font-medium">+ Νέα ανάλυση (χειροκίνητα)</summary>
+        <summary className="cursor-pointer text-sm font-medium text-ink-muted">
+          ή ξεκίνα μια κενή ανάλυση χειροκίνητα
+        </summary>
         <form action={createRevenuePlan} className="mt-3 flex flex-wrap items-end gap-3">
           <div className="flex flex-col">
             <label className="mb-1 text-xs font-medium text-ink-muted">Όνομα</label>
@@ -56,7 +64,9 @@ export default async function RevenuePlansPage() {
               className="w-20 rounded-md border border-line-strong px-3 py-2 text-sm"
             />
           </div>
-          <Button type="submit">Δημιουργία</Button>
+          <Button type="submit" variant="secondary">
+            Δημιουργία
+          </Button>
         </form>
       </details>
 

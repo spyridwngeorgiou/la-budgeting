@@ -50,3 +50,36 @@ export const NlExtractionSchema = z.object({
 });
 
 export type NlExtraction = z.infer<typeof NlExtractionSchema>;
+
+// Revenue-estimation plans (Εκτιμήσεις Εσόδων) -- a generalised version of
+// the Glyfada_Hotel_Estimation.xlsx pattern: room type x year x month, with
+// occupancy%/ADR as the only real inputs. The model fills the full monthly
+// grid from a short description ("8 Junior Suites at €100, 60% occupancy"),
+// but never computes nights/revenue -- lib/finance/revenuePlan.ts does that
+// deterministically from exactly these fields.
+const MonthAssumption = z.object({
+  year_number: z.number().int().min(1),
+  month_number: z.number().int().min(1).max(12),
+  occupancy_pct: z.number().min(0).max(1),
+  adr: z.number().min(0),
+});
+
+export const RevenuePlanExtractionSchema = z.object({
+  name: z.string().min(1),
+  start_year: z.number().int().min(2000).max(2100),
+  room_types: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        unit_count: z.number().int().positive(),
+        assumptions: z.array(MonthAssumption),
+      }),
+    )
+    .min(1),
+  assumptions_note: z
+    .string()
+    .nullable()
+    .describe("Τι υποθέσατε όπου ο χρήστης δεν έδωσε ακριβή στοιχεία, στα Ελληνικά -- π.χ. 'Θεώρησα σταθερή πληρότητα όλο τον χρόνο'"),
+});
+
+export type RevenuePlanExtraction = z.infer<typeof RevenuePlanExtractionSchema>;

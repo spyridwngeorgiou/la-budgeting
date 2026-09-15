@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/format";
-import { Card, Button } from "@/components/ui";
+import { Card, Button, AiSpark } from "@/components/ui";
 import { computeRevenuePlan, type RoomType, type Assumption } from "@/lib/finance/revenuePlan";
 import { addRoomType, deleteRoomType, deleteRevenuePlan } from "../actions";
 import { YearTable } from "./YearTable";
@@ -46,7 +46,10 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
     <div className="flex flex-col gap-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold">{plan.name}</h1>
+          <h1 className="flex items-center gap-2 text-xl font-semibold">
+            <AiSpark className="text-ai-ink" />
+            {plan.name}
+          </h1>
           <p className="text-sm text-ink-muted">
             {plan.start_year}–{plan.start_year + plan.years - 1}
             {project && ` · ${project.display_name}`}
@@ -66,13 +69,20 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
       </Card>
 
       {result.summary.length > 0 && (
-        <div className="overflow-x-auto rounded border border-line">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto rounded-md border border-line">
+          <table className="w-full table-fixed border-collapse text-left text-sm">
+            <colgroup>
+              <col />
+              {years.map((y) => (
+                <col key={y} className="w-28" />
+              ))}
+              <col className="w-32" />
+            </colgroup>
             <thead className="bg-bg text-ink-muted">
               <tr>
-                <th className="p-2">Τύπος Δωματίου</th>
+                <th className="p-2 font-medium">Τύπος Δωματίου</th>
                 {years.map((y) => (
-                  <th key={y} className="p-2 text-right">
+                  <th key={y} className="p-2 text-right font-medium">
                     Έτος {y}
                   </th>
                 ))}
