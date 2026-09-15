@@ -34,24 +34,22 @@ export default async function DashboardPage() {
       .from("v_vat_position")
       .select("*")
       .lte("period_start", todayIso)
-      .order("period_start", { ascending: false })
-      .limit(1),
+      .order("period_start", { ascending: false }),
   ]);
 
   const liquidTotal = (accounts ?? []).reduce(
     (sum, a) => sum + Number(a.current_balance ?? 0),
     0,
   );
+  // "Πληρωτέο"/"Πιστωτικό" only make sense as of the latest period (the
+  // running balance already carries every prior period forward -- that IS
+  // the current owed/credit total, summing it across periods would double
+  // count). ΦΠΑ Εκροών/Εισροών are different: those are real per-period
+  // flows, so a lifetime total there is an honest sum, not a distortion.
   const currentVat = vat?.[0];
-  const periodFrom = currentVat?.period_start ?? null;
-  const periodTo = periodFrom
-    ? new Date(new Date(periodFrom).getFullYear(), new Date(periodFrom).getMonth() + 1, 0)
-        .toISOString()
-        .slice(0, 10)
-    : null;
-  const periodLabel = periodFrom
-    ? new Date(periodFrom).toLocaleDateString("el-GR", { month: "long", year: "numeric" })
-    : null;
+  const vatIncomeTotal = (vat ?? []).reduce((s, v) => s + Number(v.vat_income ?? 0), 0);
+  const vatExpenseTotal = (vat ?? []).reduce((s, v) => s + Number(v.vat_expense ?? 0), 0);
+  const earliestPeriod = vat && vat.length > 0 ? vat[vat.length - 1].period_start : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -134,26 +132,31 @@ export default async function DashboardPage() {
 
       <section>
         <h2 className="mb-2 text-sm font-medium text-ink-muted">
-          Θέση ΦΠΑ{periodLabel ? ` — ${periodLabel}` : ""}
+          Θέση ΦΠΑ <span className="font-normal text-ink-faint">— σύνολο όλων των περιόδων</span>
         </h2>
         {currentVat ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Stat
-              label="ΦΠΑ Εκροών"
-              value={formatMoney(currentVat.vat_income)}
-              href={`/transactions?direction=income&from=${periodFrom}&to=${periodTo}`}
+              label="ΦΠΑ Εκροών (σύνολο)"
+              value={formatMoney(vatIncomeTotal)}
+              href={`/transactions?direction=income&from=${earliestPeriod}`}
             />
             <Stat
-              label="ΦΠΑ Εισροών"
-              value={formatMoney(currentVat.vat_expense)}
-              href={`/transactions?direction=expense&from=${periodFrom}&to=${periodTo}`}
+              label="ΦΠΑ Εισροών (σύνολο)"
+              value={formatMoney(vatExpenseTotal)}
+              href={`/transactions?direction=expense&from=${earliestPeriod}`}
             />
-            <Stat label="Πιστωτικό" value={formatMoney(Math.abs(currentVat.credit_balance ?? 0))} />
-            <Stat label="Πληρωτέο" value={formatMoney(currentVat.payable_after_credit)} />
+            <Stat label="Τρέχον Πιστωτικό" value={formatMoney(Math.abs(currentVat.credit_balance ?? 0))} />
+            <Stat label="Συνολικά Οφειλόμενο Τώρα" value={formatMoney(currentVat.payable_after_credit)} />
           </div>
         ) : (
           <p className="text-sm text-ink-muted">Δεν υπάρχουν ακόμα κινήσεις.</p>
         )}
+        <p className="mt-2 text-xs text-ink-faint">
+          Οι δύο πρώτες τιμές είναι το άθροισμα όλων των μηνών· το πιστωτικό/οφειλόμενο είναι η
+          τρέχουσα θέση (ήδη συνυπολογίζει τη μεταφορά πιστωτικού από κάθε προηγούμενο μήνα). Για
+          ανάλυση ανά μήνα δείτε τη σελίδα ΦΠΑ.
+        </p>
       </section>
     </div>
   );

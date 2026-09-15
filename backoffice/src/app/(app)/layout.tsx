@@ -24,10 +24,14 @@ const NAV_ITEMS: { href: string; label: string; ai?: boolean }[] = [
   { href: "/withholding", label: el.nav.withholding },
   { href: "/installments", label: el.nav.installments },
   { href: "/cashflow", label: el.nav.cashflow },
-  { href: "/aade", label: el.nav.aade },
-  { href: "/quality", label: el.nav.quality },
   { href: "/settings", label: el.nav.settings },
 ];
+
+// Not deleted, just not in the nav yet -- both still work at their URLs
+// (/aade, /quality) for anyone who needs them, this just keeps a first
+// look at the app from leading with the more "in-progress" screens.
+// { href: "/aade", label: el.nav.aade },
+// { href: "/quality", label: el.nav.quality },
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
