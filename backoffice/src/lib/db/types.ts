@@ -1454,6 +1454,140 @@ export type Database = {
           },
         ]
       }
+      lease_indexed_terms: {
+        Row: {
+          base_monthly_amount: number
+          escalation_first_year: number
+          escalation_pct: number
+          kind: Database["public"]["Enums"]["lease_kind"]
+          lease_id: string
+          stamp_duty_pct: number
+          stamp_duty_surcharge_pct: number
+          stepups_escalate: boolean
+          stepups_stampable: boolean
+        }
+        Insert: {
+          base_monthly_amount: number
+          escalation_first_year?: number
+          escalation_pct?: number
+          kind?: Database["public"]["Enums"]["lease_kind"]
+          lease_id: string
+          stamp_duty_pct?: number
+          stamp_duty_surcharge_pct?: number
+          stepups_escalate?: boolean
+          stepups_stampable?: boolean
+        }
+        Update: {
+          base_monthly_amount?: number
+          escalation_first_year?: number
+          escalation_pct?: number
+          kind?: Database["public"]["Enums"]["lease_kind"]
+          lease_id?: string
+          stamp_duty_pct?: number
+          stamp_duty_surcharge_pct?: number
+          stepups_escalate?: boolean
+          stepups_stampable?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lease_indexed_terms_lease_id_fkey"
+            columns: ["lease_id"]
+            isOneToOne: true
+            referencedRelation: "project_leases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lease_indexed_terms_lease_id_kind_fkey"
+            columns: ["lease_id", "kind"]
+            isOneToOne: false
+            referencedRelation: "project_leases"
+            referencedColumns: ["id", "kind"]
+          },
+        ]
+      }
+      lease_serviced_settlements: {
+        Row: {
+          installment_plan_id: string
+          lease_id: string
+        }
+        Insert: {
+          installment_plan_id: string
+          lease_id: string
+        }
+        Update: {
+          installment_plan_id?: string
+          lease_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lease_serviced_settlements_installment_plan_id_fkey"
+            columns: ["installment_plan_id"]
+            isOneToOne: false
+            referencedRelation: "installment_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lease_serviced_settlements_installment_plan_id_fkey"
+            columns: ["installment_plan_id"]
+            isOneToOne: false
+            referencedRelation: "v_plan_progress"
+            referencedColumns: ["plan_id"]
+          },
+          {
+            foreignKeyName: "lease_serviced_settlements_lease_id_fkey"
+            columns: ["lease_id"]
+            isOneToOne: false
+            referencedRelation: "project_leases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lease_step_ups: {
+        Row: {
+          from_lease_year: number
+          id: string
+          lease_id: string
+          monthly_amount: number
+          org_id: string
+        }
+        Insert: {
+          from_lease_year: number
+          id?: string
+          lease_id: string
+          monthly_amount: number
+          org_id: string
+        }
+        Update: {
+          from_lease_year?: number
+          id?: string
+          lease_id?: string
+          monthly_amount?: number
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lease_step_ups_lease_id_fkey"
+            columns: ["lease_id"]
+            isOneToOne: false
+            referencedRelation: "lease_indexed_terms"
+            referencedColumns: ["lease_id"]
+          },
+          {
+            foreignKeyName: "lease_step_ups_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lease_step_ups_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+        ]
+      }
       liabilities: {
         Row: {
           contact_id: string | null
@@ -1674,6 +1808,101 @@ export type Database = {
           },
         ]
       }
+      opex_lines: {
+        Row: {
+          annual_amount: number | null
+          category_id: string | null
+          employer_contribution_pct: number | null
+          from_operating_year: number
+          grows_with_opex_growth: boolean
+          headcount: number | null
+          id: string
+          kind: Database["public"]["Enums"]["opex_line_kind"]
+          label: string
+          monthly_wage: number | null
+          months_active: number | null
+          note: string | null
+          org_id: string
+          pct_of_revenue: number | null
+          premium_pct: number | null
+          salaries_per_year: number | null
+          scenario_id: string
+          sort_order: number
+          to_operating_year: number | null
+        }
+        Insert: {
+          annual_amount?: number | null
+          category_id?: string | null
+          employer_contribution_pct?: number | null
+          from_operating_year?: number
+          grows_with_opex_growth?: boolean
+          headcount?: number | null
+          id?: string
+          kind: Database["public"]["Enums"]["opex_line_kind"]
+          label: string
+          monthly_wage?: number | null
+          months_active?: number | null
+          note?: string | null
+          org_id: string
+          pct_of_revenue?: number | null
+          premium_pct?: number | null
+          salaries_per_year?: number | null
+          scenario_id: string
+          sort_order?: number
+          to_operating_year?: number | null
+        }
+        Update: {
+          annual_amount?: number | null
+          category_id?: string | null
+          employer_contribution_pct?: number | null
+          from_operating_year?: number
+          grows_with_opex_growth?: boolean
+          headcount?: number | null
+          id?: string
+          kind?: Database["public"]["Enums"]["opex_line_kind"]
+          label?: string
+          monthly_wage?: number | null
+          months_active?: number | null
+          note?: string | null
+          org_id?: string
+          pct_of_revenue?: number | null
+          premium_pct?: number | null
+          salaries_per_year?: number | null
+          scenario_id?: string
+          sort_order?: number
+          to_operating_year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opex_lines_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opex_lines_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opex_lines_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "opex_lines_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "project_scenarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_members: {
         Row: {
           created_at: string
@@ -1833,6 +2062,105 @@ export type Database = {
           },
         ]
       }
+      project_leases: {
+        Row: {
+          created_at: string
+          first_payment_month: string | null
+          id: string
+          kind: Database["public"]["Enums"]["lease_kind"]
+          lease_start_month: string
+          lessor_contact_id: string | null
+          notes: string | null
+          org_id: string
+          project_id: string
+          term_years: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          first_payment_month?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["lease_kind"]
+          lease_start_month: string
+          lessor_contact_id?: string | null
+          notes?: string | null
+          org_id: string
+          project_id: string
+          term_years: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          first_payment_month?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["lease_kind"]
+          lease_start_month?: string
+          lessor_contact_id?: string | null
+          notes?: string | null
+          org_id?: string
+          project_id?: string
+          term_years?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_leases_lessor_contact_id_fkey"
+            columns: ["lessor_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_leases_lessor_contact_id_fkey"
+            columns: ["lessor_contact_id"]
+            isOneToOne: false
+            referencedRelation: "v_contact_rollup"
+            referencedColumns: ["contact_id"]
+          },
+          {
+            foreignKeyName: "project_leases_lessor_contact_id_fkey"
+            columns: ["lessor_contact_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_contacts_missing_afm"
+            referencedColumns: ["contact_id"]
+          },
+          {
+            foreignKeyName: "project_leases_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_leases_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "project_leases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_leases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_leases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
       project_model_inputs: {
         Row: {
           key: string
@@ -1887,6 +2215,196 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_qc_projects_without_budget"
             referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      project_notes: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          exposure_amount: number | null
+          id: string
+          kind: Database["public"]["Enums"]["project_note_kind"]
+          org_id: string
+          project_id: string
+          resolved_at: string | null
+          severity: Database["public"]["Enums"]["project_note_severity"]
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          exposure_amount?: number | null
+          id?: string
+          kind?: Database["public"]["Enums"]["project_note_kind"]
+          org_id: string
+          project_id: string
+          resolved_at?: string | null
+          severity?: Database["public"]["Enums"]["project_note_severity"]
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          exposure_amount?: number | null
+          id?: string
+          kind?: Database["public"]["Enums"]["project_note_kind"]
+          org_id?: string
+          project_id?: string
+          resolved_at?: string | null
+          severity?: Database["public"]["Enums"]["project_note_severity"]
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_notes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_notes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "project_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      project_scenarios: {
+        Row: {
+          adr_multiplier: number
+          code: string
+          created_at: string
+          discount_rate_pct: number
+          dscr_covenant_min: number
+          flat_annual_revenue: number | null
+          growth_starts_after_operating_year: number
+          id: string
+          is_base: boolean
+          name: string
+          notes: string | null
+          opex_growth_pct: number
+          org_id: string
+          project_id: string
+          revenue_growth_pct: number
+          revenue_plan_id: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          adr_multiplier?: number
+          code: string
+          created_at?: string
+          discount_rate_pct?: number
+          dscr_covenant_min?: number
+          flat_annual_revenue?: number | null
+          growth_starts_after_operating_year?: number
+          id?: string
+          is_base?: boolean
+          name: string
+          notes?: string | null
+          opex_growth_pct?: number
+          org_id: string
+          project_id: string
+          revenue_growth_pct?: number
+          revenue_plan_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          adr_multiplier?: number
+          code?: string
+          created_at?: string
+          discount_rate_pct?: number
+          dscr_covenant_min?: number
+          flat_annual_revenue?: number | null
+          growth_starts_after_operating_year?: number
+          id?: string
+          is_base?: boolean
+          name?: string
+          notes?: string | null
+          opex_growth_pct?: number
+          org_id?: string
+          project_id?: string
+          revenue_growth_pct?: number
+          revenue_plan_id?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_scenarios_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_scenarios_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "project_scenarios_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_scenarios_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_scenarios_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_scenarios_revenue_plan_id_fkey"
+            columns: ["revenue_plan_id"]
+            isOneToOne: false
+            referencedRelation: "revenue_plans"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2820,6 +3338,62 @@ export type Database = {
         }
         Relationships: []
       }
+      v_open_project_notes: {
+        Row: {
+          body: string | null
+          code: string | null
+          created_at: string | null
+          created_by: string | null
+          display_name: string | null
+          due_date: string | null
+          exposure_amount: number | null
+          id: string | null
+          kind: Database["public"]["Enums"]["project_note_kind"] | null
+          org_id: string | null
+          project_id: string | null
+          resolved_at: string | null
+          severity: Database["public"]["Enums"]["project_note_severity"] | null
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_notes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_notes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "project_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
       v_plan_progress: {
         Row: {
           installments_total: number | null
@@ -3444,6 +4018,7 @@ export type Database = {
         | "pass_through"
         | "income"
       filing_status: "pending" | "filed" | "paid" | "cancelled"
+      lease_kind: "indexed_rent" | "settlement_service" | "fixed_rent" | "none"
       liability_kind: "private" | "bank"
       liability_state: "in_application" | "approved" | "disbursed" | "repaid"
       obligation_kind:
@@ -3453,10 +4028,13 @@ export type Database = {
         | "own_tax"
         | "loan"
         | "other"
+      opex_line_kind: "payroll" | "pct_of_revenue" | "fixed_annual"
       org_role: "owner" | "admin" | "editor" | "viewer"
       owner_scope: "corporate" | "personal"
       plan_frequency: "monthly" | "quarterly" | "semiannual" | "annual"
       plan_status: "active" | "completed" | "cancelled"
+      project_note_kind: "status" | "risk" | "action" | "milestone"
+      project_note_severity: "info" | "watch" | "urgent"
       project_status: "offer" | "active" | "on_hold" | "completed" | "cancelled"
       project_type:
         | "construction"
@@ -3637,6 +4215,7 @@ export const Constants = {
         "income",
       ],
       filing_status: ["pending", "filed", "paid", "cancelled"],
+      lease_kind: ["indexed_rent", "settlement_service", "fixed_rent", "none"],
       liability_kind: ["private", "bank"],
       liability_state: ["in_application", "approved", "disbursed", "repaid"],
       obligation_kind: [
@@ -3647,10 +4226,13 @@ export const Constants = {
         "loan",
         "other",
       ],
+      opex_line_kind: ["payroll", "pct_of_revenue", "fixed_annual"],
       org_role: ["owner", "admin", "editor", "viewer"],
       owner_scope: ["corporate", "personal"],
       plan_frequency: ["monthly", "quarterly", "semiannual", "annual"],
       plan_status: ["active", "completed", "cancelled"],
+      project_note_kind: ["status", "risk", "action", "milestone"],
+      project_note_severity: ["info", "watch", "urgent"],
       project_status: ["offer", "active", "on_hold", "completed", "cancelled"],
       project_type: [
         "construction",
