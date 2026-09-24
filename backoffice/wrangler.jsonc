@@ -13,5 +13,16 @@
   },
   "observability": {
     "enabled": true
+  },
+  "env": {
+    "staging": {
+      "name": "kansha-back-office-staging",
+      "vars": {
+        "AI_ENABLED": "true"
+      },
+      "observability": {
+        "enabled": true
+      }
+    }
   }
 }
