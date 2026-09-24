@@ -10,3 +10,6 @@ next-env.d.ts
 .wrangler/
 .dev.vars
 cloudflare-env.d.ts
+
+# Real financial data generated from the workbook -- never commit
+seed/local/
