@@ -111,3 +111,27 @@ export async function deleteTransaction(id: string) {
   if (error) throw new Error(error.message);
   revalidatePath("/transactions");
 }
+
+// Signed URLs expire fast (5 min, same window used on the draft review
+// screen) and the bucket is private -- fetched on demand when someone
+// actually clicks "δείτε το πρωτότυπο", not pre-signed for every row on
+// page load.
+export async function getSourceDocumentUrl(transactionId: string) {
+  const supabase = await createClient();
+  const { data: tx } = await supabase
+    .from("transactions")
+    .select("source_document_id")
+    .eq("id", transactionId)
+    .maybeSingle();
+  if (!tx?.source_document_id) return null;
+
+  const { data: document } = await supabase
+    .from("documents")
+    .select("storage_path")
+    .eq("id", tx.source_document_id)
+    .maybeSingle();
+  if (!document?.storage_path) return null;
+
+  const { data } = await supabase.storage.from("documents").createSignedUrl(document.storage_path, 300);
+  return data?.signedUrl ?? null;
+}

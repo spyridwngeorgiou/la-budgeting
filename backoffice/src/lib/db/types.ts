@@ -426,6 +426,68 @@ export type Database = {
           },
         ]
       }
+      account_balance_assertions: {
+        Row: {
+          account_id: string
+          as_of_date: string
+          asserted_balance: number
+          computed_balance: number
+          created_at: string
+          created_by: string | null
+          id: string
+          org_id: string
+        }
+        Insert: {
+          account_id: string
+          as_of_date: string
+          asserted_balance: number
+          computed_balance: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          org_id: string
+        }
+        Update: {
+          account_id?: string
+          as_of_date?: string
+          asserted_balance?: number
+          computed_balance?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_balance_assertions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_balance_assertions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "v_account_balances"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "account_balance_assertions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_balance_assertions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+        ]
+      }
       accounts: {
         Row: {
           created_at: string
@@ -584,6 +646,7 @@ export type Database = {
           ai_value: Json | null
           created_at: string
           document_id: string | null
+          draft_id: string | null
           field: string
           human_value: Json | null
           id: string
@@ -594,6 +657,7 @@ export type Database = {
           ai_value?: Json | null
           created_at?: string
           document_id?: string | null
+          draft_id?: string | null
           field: string
           human_value?: Json | null
           id?: string
@@ -604,6 +668,7 @@ export type Database = {
           ai_value?: Json | null
           created_at?: string
           document_id?: string | null
+          draft_id?: string | null
           field?: string
           human_value?: Json | null
           id?: string
@@ -616,6 +681,13 @@ export type Database = {
             columns: ["document_id"]
             isOneToOne: false
             referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_corrections_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "transaction_drafts"
             referencedColumns: ["id"]
           },
           {
@@ -642,6 +714,7 @@ export type Database = {
           feature: string
           id: string
           input_tokens: number | null
+          latency_ms: number | null
           model: string
           org_id: string
           output_tokens: number | null
@@ -655,6 +728,7 @@ export type Database = {
           feature: string
           id?: string
           input_tokens?: number | null
+          latency_ms?: number | null
           model: string
           org_id: string
           output_tokens?: number | null
@@ -668,6 +742,7 @@ export type Database = {
           feature?: string
           id?: string
           input_tokens?: number | null
+          latency_ms?: number | null
           model?: string
           org_id?: string
           output_tokens?: number | null
@@ -2062,6 +2137,78 @@ export type Database = {
           },
         ]
       }
+      project_capital_sources: {
+        Row: {
+          amount: number
+          contributed_on: string
+          contributor: string | null
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["capital_source_kind"]
+          notes: string | null
+          org_id: string
+          project_id: string
+        }
+        Insert: {
+          amount: number
+          contributed_on: string
+          contributor?: string | null
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["capital_source_kind"]
+          notes?: string | null
+          org_id: string
+          project_id: string
+        }
+        Update: {
+          amount?: number
+          contributed_on?: string
+          contributor?: string | null
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["capital_source_kind"]
+          notes?: string | null
+          org_id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_capital_sources_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_capital_sources_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "project_capital_sources_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_capital_sources_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_capital_sources_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
       project_leases: {
         Row: {
           created_at: string
@@ -2472,6 +2619,8 @@ export type Database = {
           code: string
           collateral_value: number | null
           construction_end_date: string | null
+          contract_signed_date: string | null
+          contract_value: number | null
           created_at: string
           display_name: string
           id: string
@@ -2494,6 +2643,8 @@ export type Database = {
           code: string
           collateral_value?: number | null
           construction_end_date?: string | null
+          contract_signed_date?: string | null
+          contract_value?: number | null
           created_at?: string
           display_name: string
           id?: string
@@ -2516,6 +2667,8 @@ export type Database = {
           code?: string
           collateral_value?: number | null
           construction_end_date?: string | null
+          contract_signed_date?: string | null
+          contract_value?: number | null
           created_at?: string
           display_name?: string
           id?: string
@@ -4006,6 +4159,7 @@ export type Database = {
         | "client_project"
         | "hotel_lease"
         | "general"
+      capital_source_kind: "equity" | "debt" | "co_investor"
       certainty: "certain" | "probable"
       cost_treatment:
         | "capex"
@@ -4202,6 +4356,7 @@ export const Constants = {
         "hotel_lease",
         "general",
       ],
+      capital_source_kind: ["equity", "debt", "co_investor"],
       certainty: ["certain", "probable"],
       cost_treatment: [
         "capex",

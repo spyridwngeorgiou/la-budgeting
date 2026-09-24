@@ -8,7 +8,8 @@ import { formatEuro, formatDate } from "@/lib/utils";
 import {
   PROJECT_STATUS_LABEL,
   PROJECT_RISK_LABEL,
-  TX_STATUS_LABEL,
+  TX_ACTIVE_STATUS_LABEL,
+  normalizeTxStatus,
   type Project,
   type Transaction,
   type Category,
@@ -49,17 +50,12 @@ export default async function ProjectDetailPage({
 
   const expenses = transactions.filter((t) => t.type === "expense");
   const income = transactions.filter((t) => t.type === "income");
+  const totalExpenses = expenses.reduce((s, t) => s + num(t.amount), 0);
   const paid = expenses
     .filter((t) => t.status === "paid")
     .reduce((s, t) => s + num(t.amount), 0);
   const upcoming = expenses
     .filter((t) => t.status === "upcoming")
-    .reduce((s, t) => s + num(t.amount), 0);
-  const planned = expenses
-    .filter((t) => t.status === "planned")
-    .reduce((s, t) => s + num(t.amount), 0);
-  const committed = expenses
-    .filter((t) => t.status !== "planned")
     .reduce((s, t) => s + num(t.amount), 0);
   const incomeTotal = income.reduce((s, t) => s + num(t.amount), 0);
   const invoiced = expenses
@@ -68,16 +64,16 @@ export default async function ProjectDetailPage({
   const nonInvoiced = expenses
     .filter((t) => !t.has_invoice)
     .reduce((s, t) => s + num(t.amount), 0);
-  const netPosition = funding + incomeTotal - committed;
-  const executionPct = committed > 0 ? Math.min(100, (paid / committed) * 100) : 0;
+  const netPosition = funding + incomeTotal - totalExpenses;
   const budgetTarget = num(project.budget_target ?? 0);
-  const budgetVariance = budgetTarget > 0 ? budgetTarget - committed : 0;
+  const budgetVariance = budgetTarget > 0 ? budgetTarget - totalExpenses : 0;
+  const budgetProgressPct =
+    budgetTarget > 0 ? Math.min(100, (totalExpenses / budgetTarget) * 100) : 0;
 
   const categoryName = (cid: string | null) =>
     categories.find((c) => c.id === cid)?.name ?? "Χωρίς κατηγορία";
   const byCatMap = new Map<string, number>();
   for (const t of expenses) {
-    if (t.status === "planned") continue;
     const k = categoryName(t.category_id);
     byCatMap.set(k, (byCatMap.get(k) ?? 0) + num(t.amount));
   }
@@ -132,12 +128,12 @@ export default async function ProjectDetailPage({
         </Card>
         <Card>
           <CardContent className="pt-5">
-            <p className="text-xs font-medium text-muted">Δεσμευμένα</p>
+            <p className="text-xs font-medium text-muted">Γενικό σύνολο</p>
             <p className="mt-1 text-2xl font-bold text-primary">
-              {formatEuro(committed)}
+              {formatEuro(totalExpenses)}
             </p>
             <p className="mt-1 text-[11px] text-muted">
-              Πληρωμένα + Επερχόμενα
+              Όλα τα έξοδα του έργου
             </p>
           </CardContent>
         </Card>
@@ -178,33 +174,7 @@ export default async function ProjectDetailPage({
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Πρόοδος εκτέλεσης εξόδων</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-primary">{Math.round(executionPct)}%</p>
-            <p className="mt-1 text-xs text-muted">Πληρωμένα / Δεσμευμένα</p>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${executionPct}%` }}
-              />
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <div className="rounded-lg bg-slate-50 p-2">
-                <p className="text-muted">Πληρωμένα</p>
-                <p className="font-semibold">{formatEuro(paid)}</p>
-              </div>
-              <div className="rounded-lg bg-slate-50 p-2">
-                <p className="text-muted">Planned</p>
-                <p className="font-semibold">{formatEuro(planned)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Ποιότητα καταγραφής εξόδων</CardTitle>
@@ -235,12 +205,12 @@ export default async function ProjectDetailPage({
               {formatEuro(netPosition)}
             </p>
             <p className="mt-1 text-xs text-muted">
-              Χρηματοδότηση + Έσοδα έργου − Δεσμευμένα έξοδα
+              Χρηματοδότηση + Έσοδα έργου − Γενικό σύνολο εξόδων
             </p>
             <div className="mt-3 space-y-1 text-xs text-muted">
               <p>Funding: {formatEuro(funding)}</p>
               <p>Έσοδα: {formatEuro(incomeTotal)}</p>
-              <p>Δεσμευμένα: {formatEuro(committed)}</p>
+              <p>Γενικό σύνολο: {formatEuro(totalExpenses)}</p>
             </div>
           </CardContent>
         </Card>
@@ -254,12 +224,12 @@ export default async function ProjectDetailPage({
           <CardContent>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
-                <p className="text-xs text-muted">Budget στόχος</p>
+                <p className="text-xs text-muted">Προϋπολογισμός</p>
                 <p className="text-lg font-semibold">{formatEuro(budgetTarget)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted">Δεσμευμένα</p>
-                <p className="text-lg font-semibold text-primary">{formatEuro(committed)}</p>
+                <p className="text-xs text-muted">Γενικό σύνολο</p>
+                <p className="text-lg font-semibold text-primary">{formatEuro(totalExpenses)}</p>
               </div>
               <div>
                 <p className="text-xs text-muted">Απόκλιση</p>
@@ -304,7 +274,7 @@ export default async function ProjectDetailPage({
                         {categoryName(t.category_id)}
                       </p>
                       <p className="text-xs text-muted">
-                        {formatDate(t.tx_date)} · {TX_STATUS_LABEL[t.status]}
+                        {formatDate(t.tx_date)} · {TX_ACTIVE_STATUS_LABEL[normalizeTxStatus(t.status)]}
                       </p>
                     </div>
                     <span
@@ -324,6 +294,32 @@ export default async function ProjectDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Γενικό σύνολο προς Προϋπολογισμό</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-2xl font-bold text-primary">{Math.round(budgetProgressPct)}%</p>
+          <p className="mt-1 text-xs text-muted">Πρόοδος εξόδων έργου σε σχέση με τον προϋπολογισμό</p>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-primary"
+              style={{ width: `${budgetProgressPct}%` }}
+            />
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+            <div className="rounded-lg bg-slate-50 p-2">
+              <p className="text-muted">Γενικό σύνολο</p>
+              <p className="font-semibold">{formatEuro(totalExpenses)}</p>
+            </div>
+            <div className="rounded-lg bg-slate-50 p-2">
+              <p className="text-muted">Προϋπολογισμός</p>
+              <p className="font-semibold">{formatEuro(budgetTarget)}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

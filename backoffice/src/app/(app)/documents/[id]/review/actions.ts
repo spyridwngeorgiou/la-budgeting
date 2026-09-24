@@ -12,7 +12,16 @@ import { deriveFromNet, cashOnly, isIdentityConsistent } from "@/lib/finance/mon
 // own. No auto-commit exists anywhere in this codebase, not even behind a
 // setting: a human always looks at this exact form before anything is
 // written to `transactions`.
-export async function approveDraft(draftId: string, formData: FormData) {
+// queue carries the remaining draft ids from a multi-transaction text/voice
+// entry (submitNlEntry split them into separate drafts) -- approving or
+// discarding one advances to the next instead of dropping the rest.
+function nextInQueueOrElse(queue: string[], fallback: string) {
+  if (queue.length === 0) return fallback;
+  const [next, ...rest] = queue;
+  return `/documents/${next}/review${rest.length > 0 ? `?queue=${rest.join(",")}` : ""}`;
+}
+
+export async function approveDraft(draftId: string, queue: string[], formData: FormData) {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
 
@@ -81,10 +90,14 @@ export async function approveDraft(draftId: string, formData: FormData) {
       corrections.map((c) => ({
         org_id: orgId,
         document_id: draft.document_id,
+        // document_id is null for every ai_nl (text/voice) draft -- draft_id
+        // works for both capture paths, so edit-rate can finally be split
+        // by method, not just attributed to photos.
+        draft_id: draftId,
         field: c.field,
         ai_value: c.ai_value,
         human_value: c.human_value,
-        model: "claude-opus-5",
+        model: draft.source === "ai_nl" ? "claude-haiku-4-5" : "claude-opus-5",
       })),
     );
   }
@@ -95,12 +108,12 @@ export async function approveDraft(draftId: string, formData: FormData) {
     .eq("id", draftId);
 
   revalidatePath("/transactions");
-  redirect("/transactions");
+  redirect(nextInQueueOrElse(queue, "/transactions"));
 }
 
-export async function discardDraft(draftId: string) {
+export async function discardDraft(draftId: string, queue: string[] = []) {
   const supabase = await createClient();
   await supabase.from("transaction_drafts").update({ status: "discarded" }).eq("id", draftId);
   revalidatePath("/documents");
-  redirect("/dashboard");
+  redirect(nextInQueueOrElse(queue, "/dashboard"));
 }

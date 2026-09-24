@@ -22,10 +22,15 @@ export default async function AadePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">{el.nav.aade}</h1>
+      <div>
+        <h1 className="text-xl font-semibold">{el.nav.aade}</h1>
+        <p className="mt-1 text-sm text-ink-muted">
+          Ανεβάστε το αρχείο εξαγωγής myDATA/AADE για να ελέγξετε και να εισάγετε παραστατικά μαζικά.
+        </p>
+      </div>
 
       {(!org?.own_afm || org.own_afm === "000000000") && (
-        <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+        <div className="rounded border border-amber-ink/40 bg-amber-bg p-3 text-sm text-amber-ink">
           Ορίστε πρώτα το πραγματικό ΑΦΜ της επιχείρησης στις{" "}
           <Link href="/settings" className="underline">
             Ρυθμίσεις
@@ -49,12 +54,12 @@ export default async function AadePage() {
           <thead className="bg-bg text-ink-muted">
             <tr>
               <th className="p-2">Αρχείο</th>
-              <th className="p-2">Περίοδος</th>
-              <th className="p-2 text-right">Γραμμές</th>
-              <th className="p-2 text-right">Νέες</th>
-              <th className="p-2 text-right">Διπλότυπες</th>
+              <th className="hidden p-2 sm:table-cell">Περίοδος</th>
+              <th className="hidden p-2 text-right sm:table-cell">Γραμμές</th>
+              <th className="hidden p-2 text-right md:table-cell">Νέες</th>
+              <th className="hidden p-2 text-right md:table-cell">Διπλότυπες</th>
               <th className="p-2">Κατάσταση</th>
-              <th className="p-2">Ημ/νία</th>
+              <th className="hidden p-2 md:table-cell">Ημ/νία</th>
             </tr>
           </thead>
           <tbody>
@@ -65,16 +70,16 @@ export default async function AadePage() {
                     {b.filename}
                   </Link>
                 </td>
-                <td className="p-2">{b.period ?? "—"}</td>
-                <td className="p-2 text-right">{b.row_count}</td>
-                <td className="p-2 text-right">{b.new_count ?? "—"}</td>
-                <td className="p-2 text-right">{b.dup_count ?? "—"}</td>
+                <td className="hidden p-2 sm:table-cell">{b.period ?? "—"}</td>
+                <td className="hidden p-2 text-right sm:table-cell">{b.row_count}</td>
+                <td className="hidden p-2 text-right md:table-cell">{b.new_count ?? "—"}</td>
+                <td className="hidden p-2 text-right md:table-cell">{b.dup_count ?? "—"}</td>
                 <td className="p-2">
                   <Badge tone={STATUS_TONE[b.status as keyof typeof STATUS_TONE]}>
                     {STATUS_LABEL[b.status as keyof typeof STATUS_LABEL]}
                   </Badge>
                 </td>
-                <td className="p-2 text-xs text-ink-muted">{formatDate(b.uploaded_at)}</td>
+                <td className="hidden p-2 text-xs text-ink-muted md:table-cell">{formatDate(b.uploaded_at)}</td>
               </tr>
             ))}
           </tbody>

@@ -92,7 +92,7 @@ export function ProjectsGrid({
             <Link
               key={p.project_id}
               href={`/projects/${p.project_id}`}
-              className="rounded border border-line p-4 hover:border-line-strong"
+              className="group rounded border border-line p-4 transition-colors hover:border-line-strong hover:bg-surface"
             >
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="font-medium">{p.display_name}</span>
@@ -116,6 +116,10 @@ export function ProjectsGrid({
                   <Badge tone="amber">Χωρίς προϋπολογισμό</Badge>
                 </div>
               )}
+              <div className="mt-3 flex items-center justify-between border-t border-line pt-2 text-xs text-ink-muted">
+                <span>Στοιχεία έργου, δάνεια, μίσθωση, σημειώσεις…</span>
+                <span className="text-ink-faint transition-transform group-hover:translate-x-0.5">→</span>
+              </div>
             </Link>
           ))}
         </div>

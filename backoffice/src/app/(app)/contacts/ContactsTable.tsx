@@ -46,10 +46,10 @@ export function ContactsTable({ rollup }: { rollup: ContactRow[] }) {
           <thead className="bg-bg text-ink-muted">
             <tr>
               <th className="p-2">{el.contact.name}</th>
-              <th className="p-2">{el.contact.afm}</th>
-              <th className="p-2 text-right">{el.contact.totalIncome}</th>
-              <th className="p-2 text-right">{el.contact.totalExpense}</th>
-              <th className="p-2 text-right">{el.contact.outstanding}</th>
+              <th className="hidden p-2 md:table-cell">{el.contact.afm}</th>
+              <th className="hidden p-2 text-right sm:table-cell">{el.contact.totalIncome}</th>
+              <th className="hidden p-2 text-right sm:table-cell">{el.contact.totalExpense}</th>
+              <th className="hidden p-2 text-right md:table-cell">{el.contact.outstanding}</th>
               <th className="p-2 text-right">{el.contact.netBalance}</th>
             </tr>
           </thead>
@@ -61,10 +61,10 @@ export function ContactsTable({ rollup }: { rollup: ContactRow[] }) {
                     {c.name}
                   </Link>
                 </td>
-                <td className="p-2 font-mono text-xs text-ink-muted">{c.afm ?? "—"}</td>
-                <td className="p-2 text-right font-mono">{formatMoney(c.total_income)}</td>
-                <td className="p-2 text-right font-mono">{formatMoney(c.total_expense)}</td>
-                <td className="p-2 text-right font-mono">{formatMoney(c.outstanding)}</td>
+                <td className="hidden p-2 font-mono text-xs text-ink-muted md:table-cell">{c.afm ?? "—"}</td>
+                <td className="hidden p-2 text-right font-mono sm:table-cell">{formatMoney(c.total_income)}</td>
+                <td className="hidden p-2 text-right font-mono sm:table-cell">{formatMoney(c.total_expense)}</td>
+                <td className="hidden p-2 text-right font-mono md:table-cell">{formatMoney(c.outstanding)}</td>
                 <td className="p-2 text-right font-mono">{formatMoney(c.net_balance)}</td>
               </tr>
             ))}

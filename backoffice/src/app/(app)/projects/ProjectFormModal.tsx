@@ -15,6 +15,8 @@ interface Props {
     status?: string;
     business_model?: string | null;
     start_date?: string | null;
+    contract_value?: number | null;
+    contract_signed_date?: string | null;
   };
   trigger?: string;
 }
@@ -38,7 +40,7 @@ export function ProjectFormModal({ action, initial, trigger }: Props) {
         >
           <Field>
             <Label>{el.project.code}</Label>
-            <Input name="code" defaultValue={initial?.code} required disabled={!!initial} />
+            <Input name="code" defaultValue={initial?.code} required readOnly={!!initial} className={initial ? "bg-bg text-ink-muted" : ""} />
           </Field>
           <Field>
             <Label>{el.project.name}</Label>
@@ -79,6 +81,14 @@ export function ProjectFormModal({ action, initial, trigger }: Props) {
           <Field>
             <Label>Ημ/νία Έναρξης</Label>
             <Input type="date" name="start_date" defaultValue={initial?.start_date ?? ""} />
+          </Field>
+          <Field>
+            <Label>Συμβατική Αξία (€) — έργο πελάτη</Label>
+            <Input type="number" step="0.01" name="contract_value" defaultValue={initial?.contract_value ?? ""} />
+          </Field>
+          <Field>
+            <Label>Ημ/νία Υπογραφής Σύμβασης</Label>
+            <Input type="date" name="contract_signed_date" defaultValue={initial?.contract_signed_date ?? ""} />
           </Field>
           <div className="mt-2 flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => setOpen(false)}>

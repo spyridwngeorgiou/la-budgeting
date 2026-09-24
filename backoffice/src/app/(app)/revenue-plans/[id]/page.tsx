@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/format";
-import { Card, Button, AiSpark } from "@/components/ui";
+import { Card, Button } from "@/components/ui";
 import { computeRevenuePlan, type RoomType, type Assumption } from "@/lib/finance/revenuePlan";
 import { addRoomType, deleteRoomType, deleteRevenuePlan } from "../actions";
 import { YearTable } from "./YearTable";
@@ -12,7 +12,7 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
 
   const { data: plan } = await supabase
     .from("revenue_plans")
-    .select("id, name, start_year, years, notes, projects(display_name)")
+    .select("id, name, start_year, years, notes, project_id, projects(display_name)")
     .eq("id", id)
     .maybeSingle();
   if (!plan) notFound();
@@ -42,14 +42,57 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
   const project = Array.isArray(plan.projects) ? plan.projects[0] : plan.projects;
   const years = Array.from({ length: plan.years }, (_, i) => i + 1);
 
+  // Actual-vs-plan: a revenue plan was previously a one-time forecast with
+  // nothing ever checking it against what actually happened. Only possible
+  // when the plan is linked to a project (project_id) -- that's the only
+  // way to know which income transactions belong to it. Calendar mapping is
+  // exact (calendarYear = start_year + yearNumber - 1, month_number is a
+  // real calendar month), same math computeRevenuePlan already uses, so no
+  // separate date logic is needed here.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayMonthKey = todayIso.slice(0, 7);
+  let actualComparison: { monthKey: string; label: string; planned: number; actual: number }[] = [];
+
+  if (plan.project_id) {
+    const { data: actualTx } = await supabase
+      .from("transactions")
+      .select("tx_date, gross_amount")
+      .eq("project_id", plan.project_id)
+      .eq("direction", "income")
+      .neq("status", "cancelled")
+      .gte("tx_date", `${plan.start_year}-01-01`)
+      .lte("tx_date", todayIso);
+
+    const actualByMonth = new Map<string, number>();
+    for (const tx of actualTx ?? []) {
+      const key = tx.tx_date.slice(0, 7);
+      actualByMonth.set(key, (actualByMonth.get(key) ?? 0) + Number(tx.gross_amount ?? 0));
+    }
+
+    const plannedByMonth = new Map<string, number>();
+    for (const yt of result.yearTotals) {
+      const calendarYear = plan.start_year + yt.yearNumber - 1;
+      yt.monthlyRevenue.forEach((rev, i) => {
+        plannedByMonth.set(`${calendarYear}-${String(i + 1).padStart(2, "0")}`, rev);
+      });
+    }
+
+    actualComparison = [...plannedByMonth.keys()]
+      .filter((key) => key <= todayMonthKey)
+      .sort()
+      .map((key) => ({
+        monthKey: key,
+        label: new Date(key + "-01T00:00:00Z").toLocaleDateString("el-GR", { month: "short", year: "2-digit", timeZone: "UTC" }),
+        planned: plannedByMonth.get(key) ?? 0,
+        actual: actualByMonth.get(key) ?? 0,
+      }));
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold">
-            <AiSpark className="text-ai-ink" />
-            {plan.name}
-          </h1>
+          <h1 className="text-xl font-semibold">{plan.name}</h1>
           <p className="text-sm text-ink-muted">
             {plan.start_year}–{plan.start_year + plan.years - 1}
             {project && ` · ${project.display_name}`}
@@ -63,10 +106,46 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
         </form>
       </div>
 
-      <Card className="border-ai-border bg-ai-bg">
-        <div className="text-xs font-medium text-ai-ink">Συνολικά Έσοδα Περιόδου</div>
+      <Card>
+        <div className="text-xs font-medium text-ink-muted">Συνολικά Έσοδα Περιόδου</div>
         <div className="font-mono text-2xl">{formatMoney(result.grandTotal)}</div>
       </Card>
+
+      {!plan.project_id && (
+        <p className="text-xs text-ink-faint">
+          Η ανάλυση δεν είναι συνδεδεμένη με έργο, οπότε δεν υπάρχει σύγκριση με πραγματικά έσοδα.
+        </p>
+      )}
+
+      {plan.project_id && actualComparison.length > 0 && (
+        <div className="overflow-x-auto rounded-md border border-line">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-bg text-ink-muted">
+              <tr>
+                <th className="p-2">Πραγματικά vs Πρόβλεψη</th>
+                <th className="p-2 text-right">Πρόβλεψη</th>
+                <th className="p-2 text-right">Πραγματικό</th>
+                <th className="p-2 text-right">Διαφορά</th>
+              </tr>
+            </thead>
+            <tbody>
+              {actualComparison.map((r) => {
+                const diffPct = r.planned > 0 ? Math.round(((r.actual - r.planned) / r.planned) * 100) : null;
+                return (
+                  <tr key={r.monthKey} className={`border-t border-line ${r.monthKey === todayMonthKey ? "bg-sage/40" : ""}`}>
+                    <td className="p-2 capitalize">{r.label}</td>
+                    <td className="p-2 text-right font-mono text-ink-muted">{formatMoney(r.planned)}</td>
+                    <td className="p-2 text-right font-mono">{formatMoney(r.actual)}</td>
+                    <td className={`p-2 text-right font-mono ${diffPct != null && diffPct < 0 ? "text-red-ink" : diffPct != null ? "text-sage-ink" : "text-ink-faint"}`}>
+                      {diffPct != null ? `${diffPct > 0 ? "+" : ""}${diffPct}%` : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {result.summary.length > 0 && (
         <div className="overflow-x-auto rounded-md border border-line">

@@ -4,6 +4,7 @@ export type AccountType = "bank" | "cash" | "gold" | "loan" | "other";
 export type CategoryKind = "expense" | "income";
 export type TxType = "expense" | "income";
 export type TxStatus = "paid" | "upcoming" | "planned";
+export type TxStatusActive = "paid" | "upcoming";
 export type Recurrence = "monthly" | "oneoff";
 export type ContactKind = "vendor" | "client" | "authority" | "professional" | "other";
 export type ContactType = "supplier" | "client" | "both";
@@ -134,8 +135,17 @@ export const PROJECT_RISK_LABEL: Record<ProjectRiskLevel, string> = {
 export const TX_STATUS_LABEL: Record<TxStatus, string> = {
   paid: "Πληρωμένο",
   upcoming: "Επερχόμενο",
-  planned: "Σχεδιασμένο",
+  planned: "Επερχόμενο",
 };
+
+export const TX_ACTIVE_STATUS_LABEL: Record<TxStatusActive, string> = {
+  paid: "Πληρωμένο",
+  upcoming: "Επερχόμενο",
+};
+
+export function normalizeTxStatus(status: TxStatus | string): TxStatusActive {
+  return status === "paid" ? "paid" : "upcoming";
+}
 
 export const TX_TYPE_LABEL: Record<TxType, string> = {
   expense: "Έξοδο",

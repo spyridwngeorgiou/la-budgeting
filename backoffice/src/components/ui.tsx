@@ -64,7 +64,10 @@ export function Label({
   title?: string;
 }) {
   return (
-    <label className={`mb-1 block text-xs font-medium text-ink-muted ${className}`} title={title}>
+    <label
+      className={`mb-1 block text-xs font-medium text-ink-muted ${title ? "cursor-help underline decoration-dotted underline-offset-2" : ""} ${className}`}
+      title={title}
+    >
       {children}
     </label>
   );
@@ -72,6 +75,17 @@ export function Label({
 
 export function Field({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-col">{children}</div>;
+}
+
+// Inline definition-on-hover for jargon/acronyms (DSCR, ADR, opex, ...) that
+// show up as plain text outside a form Label -- same dotted-underline
+// affordance as Label's own `title` prop, just for prose/summary lines.
+export function Term({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <span title={title} className="cursor-help underline decoration-dotted underline-offset-2">
+      {children}
+    </span>
+  );
 }
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {

@@ -16,6 +16,7 @@ interface Option {
 
 export function ReviewForm({
   draftId,
+  queue,
   extraction,
   proposed,
   needsReviewReasons,
@@ -27,6 +28,7 @@ export function ReviewForm({
   accounts,
 }: {
   draftId: string;
+  queue: string;
   extraction: Extraction;
   proposed: { contact_id: string | null; project_id: string | null; category_id: string | null; direction?: "income" | "expense" };
   needsReviewReasons: string[];
@@ -37,6 +39,7 @@ export function ReviewForm({
   categories: Option[];
   accounts: Option[];
 }) {
+  const queueIds = queue ? queue.split(",").filter(Boolean) : [];
   const [direction, setDirection] = useState<"expense" | "income">(proposed.direction ?? "expense");
   const [hasInvoice, setHasInvoice] = useState((extraction.vat.value ?? 0) > 0);
   const [netAmount, setNetAmount] = useState((extraction.net.value ?? extraction.gross.value ?? 0).toString());
@@ -65,16 +68,29 @@ export function ReviewForm({
     <div className="flex flex-col gap-4 md:flex-row">
       {imageUrl && (
         <div className="md:w-1/2">
+          {/* On a phone, a tall portrait receipt photo at full natural height
+              could push the whole form below the fold right after taking
+              it -- the opposite of fast capture. Capped only below md,
+              where the two-column desktop layout has room for it full-size. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={imageUrl} alt="Παραστατικό" className="w-full rounded border border-line" />
+          <img
+            src={imageUrl}
+            alt="Παραστατικό"
+            className="max-h-[45vh] w-full rounded border border-line object-contain md:max-h-none md:object-fill"
+          />
         </div>
       )}
 
       <div className="flex flex-1 flex-col gap-3">
         <h1 className="text-xl font-semibold">Έλεγχος Πρόχειρης Κίνησης</h1>
+        {queueIds.length > 0 && (
+          <p className="text-xs text-ink-muted">
+            {queueIds.length} ακόμα κίνηση{queueIds.length > 1 ? "εις" : ""} από αυτή την περιγραφή σε αναμονή ελέγχου.
+          </p>
+        )}
 
         {needsReviewReasons.length > 0 && (
-          <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+          <div className="rounded border border-amber-ink/40 bg-amber-bg p-3 text-sm text-amber-ink">
             <ul className="list-disc pl-4">
               {needsReviewReasons.map((r) => (
                 <li key={r}>{r}</li>
@@ -91,7 +107,7 @@ export function ReviewForm({
           action={async (formData) => {
             setError(null);
             try {
-              await approveDraft(draftId, formData);
+              await approveDraft(draftId, queueIds, formData);
             } catch (e) {
               if (e instanceof Error && !e.message.includes("NEXT_REDIRECT")) setError(e.message);
               else if (e instanceof Error) throw e;
@@ -131,7 +147,7 @@ export function ReviewForm({
               name="contact_id"
               defaultValue={proposed.contact_id ?? ""}
               onBlur={() => setTouched((t) => new Set(t).add("contact_id"))}
-              className={amberFields.has("contact_id") ? "border-amber-400" : ""}
+              className={amberFields.has("contact_id") ? "border-amber-ink/70" : ""}
             >
               <option value="">—</option>
               {contacts.map((c) => (
@@ -143,7 +159,7 @@ export function ReviewForm({
             {amberFields.has("contact_id") && <Badge tone="amber">χρειάζεται έλεγχο</Badge>}
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field>
               <Label className="flex items-center gap-2">
                 Έργο
@@ -153,7 +169,7 @@ export function ReviewForm({
                 name="project_id"
                 defaultValue={proposed.project_id ?? ""}
                 onBlur={() => setTouched((t) => new Set(t).add("project_id"))}
-                className={amberFields.has("project_id") ? "border-amber-400" : ""}
+                className={amberFields.has("project_id") ? "border-amber-ink/70" : ""}
               >
                 <option value="">—</option>
                 {projects.map((p) => (
@@ -194,7 +210,7 @@ export function ReviewForm({
             Με παραστατικό
           </label>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field>
               <Label title={extraction.net.evidence ?? undefined}>Καθαρή Αξία</Label>
               <Input type="number" step="0.01" name="net_amount" value={netAmount} onChange={(e) => setNetAmount(e.target.value)} required />
@@ -239,7 +255,7 @@ export function ReviewForm({
           {error && <p className="text-sm text-red-ink">{error}</p>}
 
           <div className="mt-2 flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => discardDraft(draftId)}>
+            <Button type="button" variant="secondary" onClick={() => discardDraft(draftId, queueIds)}>
               Απόρριψη
             </Button>
             <SubmitButton disabled={!allTouched} pendingLabel="Καταχώρηση…">

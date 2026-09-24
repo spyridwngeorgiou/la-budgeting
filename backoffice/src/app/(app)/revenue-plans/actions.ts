@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId, formString } from "@/lib/supabase/org";
-import { aiEnabled, logAiUsage } from "@/lib/ai/client";
+import { aiEnabled, assertWithinAiBudget, logAiUsage } from "@/lib/ai/client";
 import { extractRevenuePlan } from "@/lib/ai/revenuePlanExtract";
 
 export async function createRevenuePlan(formData: FormData) {
@@ -48,8 +48,11 @@ export async function createRevenuePlanFromText(formData: FormData) {
   const [orgId, {
     data: { session },
   }] = await Promise.all([getCurrentOrgId(supabase), supabase.auth.getSession()]);
+  await assertWithinAiBudget(supabase, orgId);
 
+  const startedAt = Date.now();
   const { extraction, usage } = await extractRevenuePlan(text, new Date().getFullYear());
+  const latencyMs = Date.now() - startedAt;
 
   const years = Math.max(1, ...extraction.room_types.flatMap((rt) => rt.assumptions.map((a) => a.year_number)));
 
@@ -61,6 +64,7 @@ export async function createRevenuePlanFromText(formData: FormData) {
       start_year: extraction.start_year,
       years,
       notes: extraction.assumptions_note,
+      project_id: formString(formData, "project_id"),
       created_by: session?.user.id,
     })
     .select("id")
@@ -99,6 +103,7 @@ export async function createRevenuePlanFromText(formData: FormData) {
     cacheReadTokens: 0,
     outputTokens: usage.outputTokens,
     requestId: usage.requestId,
+    latencyMs,
   });
 
   revalidatePath("/revenue-plans");

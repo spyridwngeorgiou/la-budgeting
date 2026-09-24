@@ -5,7 +5,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { AiSpark } from "@/components/ui";
 import { createRevenuePlanFromText } from "./actions";
 
-export function AiCreateForm() {
+export function AiCreateForm({ projectId }: { projectId?: string }) {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +23,7 @@ export function AiCreateForm() {
       }}
       className="flex flex-col gap-2 rounded-lg border border-ai-border bg-ai-bg p-4"
     >
+      {projectId && <input type="hidden" name="project_id" value={projectId} />}
       <label className="flex items-center gap-1.5 text-sm font-medium text-ai-ink">
         <AiSpark />
         Περίγραψε την ανάλυση

@@ -4,14 +4,25 @@ import { el } from "@/lib/i18n/el";
 import { Badge } from "@/components/ui";
 import { AccountFormModal } from "./AccountFormModal";
 import { createAccount } from "./actions";
+import { BalanceAssertion, type LatestAssertion } from "./BalanceAssertion";
 
 export default async function AccountsPage() {
   const supabase = await createClient();
-  const { data: accounts } = await supabase
-    .from("v_account_balances")
-    .select("*")
-    .order("owner_scope")
-    .order("name");
+  const [{ data: accounts }, { data: assertions }] = await Promise.all([
+    supabase.from("v_account_balances").select("*").order("owner_scope").order("name"),
+    // Latest first so the per-account reduce below only ever keeps the most
+    // recent row it sees.
+    supabase
+      .from("account_balance_assertions")
+      .select("account_id, as_of_date, asserted_balance, computed_balance")
+      .order("as_of_date", { ascending: false }),
+  ]);
+  const latestAssertionByAccount = new Map<string, LatestAssertion>();
+  for (const row of assertions ?? []) {
+    if (!latestAssertionByAccount.has(row.account_id)) {
+      latestAssertionByAccount.set(row.account_id, row);
+    }
+  }
 
   const corporate = (accounts ?? []).filter((a) => a.owner_scope === "corporate");
   const personal = (accounts ?? []).filter((a) => a.owner_scope === "personal");
@@ -21,8 +32,13 @@ export default async function AccountsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{el.nav.accounts}</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold">{el.nav.accounts}</h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            Τράπεζες, μετρητά και μη ρευστά περιουσιακά στοιχεία, εταιρικά και προσωπικά, με τρέχον υπόλοιπο.
+          </p>
+        </div>
         <AccountFormModal action={createAccount} />
       </div>
 
@@ -56,6 +72,10 @@ export default async function AccountsPage() {
                       <div className="text-xs text-ink-muted">
                         Έναρξη {formatDate(a.opening_balance_date)}: {formatMoney(a.opening_balance)}
                       </div>
+                      <BalanceAssertion
+                        accountId={a.account_id!}
+                        latest={latestAssertionByAccount.get(a.account_id!) ?? null}
+                      />
                     </div>
                   ))}
                 </div>

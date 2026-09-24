@@ -40,3 +40,24 @@ export async function updateOwnAfm(formData: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath("/settings");
 }
+
+// Settings is a jsonb blob (org.settings) that several features already read
+// from directly (e.g. cashflow's min_cash_buffer) -- merged, not replaced,
+// so unrelated keys other screens rely on are never clobbered by this form.
+export async function updateOrgSettings(formData: FormData) {
+  const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
+
+  const budgetEuros = Number(formData.get("ai_monthly_budget_euros"));
+  if (!Number.isFinite(budgetEuros) || budgetEuros <= 0) {
+    throw new Error("Το όριο πρέπει να είναι θετικός αριθμός.");
+  }
+
+  const { data: org, error: readError } = await supabase.from("orgs").select("settings").eq("id", orgId).single();
+  if (readError) throw new Error(readError.message);
+
+  const nextSettings = { ...(org.settings as Record<string, unknown>), ai_monthly_budget_cents: Math.round(budgetEuros * 100) };
+  const { error } = await supabase.from("orgs").update({ settings: nextSettings }).eq("id", orgId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/settings");
+}

@@ -10,7 +10,7 @@ export function EntryTabs() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {([
           ["photo", "Φωτογραφία / PDF"],
           ["text", "Περιγραφή (κείμενο ή φωνή)"],
@@ -19,7 +19,7 @@ export function EntryTabs() {
             key={key}
             type="button"
             onClick={() => setTab(key)}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-center text-sm font-medium transition-colors ${
               tab === key
                 ? "border border-ai-border bg-ai-bg text-ai-ink"
                 : "border border-line-strong text-ink hover:bg-bg"

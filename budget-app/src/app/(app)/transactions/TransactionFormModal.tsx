@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, Pencil } from "lucide-react";
 import { Button, Input, Label, Select, Textarea } from "@/components/ui";
 import { ModalShell } from "@/components/Modal";
 import { formatEuro } from "@/lib/utils";
 import {
-  TX_STATUS_LABEL,
+  TX_ACTIVE_STATUS_LABEL,
   TX_TYPE_LABEL,
   VAT_STATUS_LABEL,
+  normalizeTxStatus,
   type Transaction,
   type Project,
   type Account,
@@ -33,6 +34,8 @@ export function TransactionFormModal({
   const [open, setOpen] = useState(false);
   const editing = Boolean(transaction);
   const today = new Date().toISOString().slice(0, 10);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(transaction?.project_id ?? "");
+  const [selectedAccountId, setSelectedAccountId] = useState<string>(transaction?.account_id ?? "");
 
   const [net, setNet] = useState<number>(
     transaction ? Number(transaction.net_amount ?? transaction.amount) || 0 : 0,
@@ -66,10 +69,20 @@ export function TransactionFormModal({
   };
 
   const onAccountChange = (accountId: string) => {
+    setSelectedAccountId(accountId);
     const acc = accounts.find((a) => a.id === accountId);
     // Cash payments usually have no invoice / VAT — auto-simplify the form.
     if (!editing && acc?.type === "cash") setHasInvoice(false);
   };
+
+  const allowedAccounts = useMemo(() => {
+    if (!selectedProjectId) return accounts.filter((a) => !a.project_id);
+    return accounts.filter((a) => !a.project_id || a.project_id === selectedProjectId);
+  }, [accounts, selectedProjectId]);
+
+  const safeSelectedAccountId = allowedAccounts.some((a) => a.id === selectedAccountId)
+    ? selectedAccountId
+    : "";
 
   return (
     <>
@@ -110,9 +123,9 @@ export function TransactionFormModal({
               <Label>Κατάσταση</Label>
               <Select
                 name="status"
-                defaultValue={transaction?.status ?? "upcoming"}
+                defaultValue={normalizeTxStatus(transaction?.status ?? "upcoming")}
               >
-                {Object.entries(TX_STATUS_LABEL).map(([v, l]) => (
+                {Object.entries(TX_ACTIVE_STATUS_LABEL).map(([v, l]) => (
                   <option key={v} value={v}>
                     {l}
                   </option>
@@ -242,7 +255,8 @@ export function TransactionFormModal({
               <Label>Έργο</Label>
               <Select
                 name="project_id"
-                defaultValue={transaction?.project_id ?? ""}
+                value={selectedProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
               >
                 <option value="">— Χωρίς έργο —</option>
                 {projects.map((p) => (
@@ -259,16 +273,19 @@ export function TransactionFormModal({
               <Label>Λογαριασμός</Label>
               <Select
                 name="account_id"
-                defaultValue={transaction?.account_id ?? ""}
+                value={safeSelectedAccountId}
                 onChange={(e) => onAccountChange(e.target.value)}
               >
-                <option value="">— Κανένας —</option>
-                {accounts.map((a) => (
+                <option value="">— Γενικό σύνολο (κοινό) —</option>
+                {allowedAccounts.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.name}
                   </option>
                 ))}
               </Select>
+              <p className="mt-1 text-[11px] text-muted">
+                Οι δεσμευμένοι λογαριασμοί (π.χ. δάνειο ΤΕΠΙΧ) εμφανίζονται μόνο στο αντίστοιχο έργο.
+              </p>
             </div>
             <div>
               <Label>Ημερομηνία</Label>

@@ -12,11 +12,27 @@ const OP_LABEL: Record<string, string> = {
 
 export default async function ChangesPage() {
   const supabase = await createClient();
-  const { data: changes } = await supabase
-    .from("agent_changes")
-    .select("*")
-    .eq("status", "pending")
-    .order("created_at", { ascending: false });
+  const [{ data: changes }, { data: history }] = await Promise.all([
+    supabase.from("agent_changes").select("*").eq("status", "pending").order("created_at", { ascending: false }),
+    // Audit trail: reviewed_by/reviewed_at already existed in the schema but
+    // were never surfaced anywhere -- once a change was approved/rejected it
+    // simply vanished, with no way to answer "who approved this and when".
+    supabase
+      .from("agent_changes")
+      .select("id, table_name, operation, status, reviewed_by, reviewed_at")
+      .in("status", ["approved", "rejected"])
+      .order("reviewed_at", { ascending: false })
+      .limit(20),
+  ]);
+
+  const reviewerIds = [...new Set((history ?? []).map((h) => h.reviewed_by).filter((id): id is string => !!id))];
+  const { data: reviewers } = reviewerIds.length
+    ? await supabase.from("profiles").select("user_id, display_name, email").in("user_id", reviewerIds)
+    : { data: [] };
+  const reviewerName = (id: string | null) => {
+    const p = reviewers?.find((r) => r.user_id === id);
+    return p?.display_name || p?.email || "—";
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -107,6 +123,40 @@ export default async function ChangesPage() {
             );
           })}
         </div>
+      )}
+
+      {history && history.length > 0 && (
+        <section>
+          <h2 className="mb-2 text-sm font-medium text-ink-muted">Ιστορικό Αποφάσεων</h2>
+          <div className="overflow-x-auto rounded border border-line">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-bg text-ink-muted">
+                <tr>
+                  <th className="p-1.5">Πίνακας</th>
+                  <th className="p-1.5">Ενέργεια</th>
+                  <th className="p-1.5">Απόφαση</th>
+                  <th className="p-1.5">Από</th>
+                  <th className="p-1.5">Πότε</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((h) => (
+                  <tr key={h.id} className="border-t border-line">
+                    <td className="p-1.5">{ALLOWLIST[h.table_name as WritableTable]?.label ?? h.table_name}</td>
+                    <td className="p-1.5">{OP_LABEL[h.operation] ?? h.operation}</td>
+                    <td className="p-1.5">
+                      <Badge tone={h.status === "approved" ? "green" : "red"}>
+                        {h.status === "approved" ? "Εγκρίθηκε" : "Απορρίφθηκε"}
+                      </Badge>
+                    </td>
+                    <td className="p-1.5">{reviewerName(h.reviewed_by)}</td>
+                    <td className="p-1.5 text-ink-faint">{h.reviewed_at ? formatDate(h.reviewed_at) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
     </div>
   );

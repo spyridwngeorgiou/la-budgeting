@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
-import { aiEnabled, logAiUsage } from "@/lib/ai/client";
+import { aiEnabled, assertWithinAiBudget, logAiUsage } from "@/lib/ai/client";
 import { phraseInsight } from "@/lib/ai/insights";
 import { formatMoney } from "@/lib/format";
 
@@ -18,6 +18,12 @@ export async function POST() {
   } = await supabase.auth.getSession();
   if (!session) return NextResponse.json({ error: "Μη εξουσιοδοτημένο." }, { status: 401 });
   const orgId = await getCurrentOrgId(supabase);
+  try {
+    await assertWithinAiBudget(supabase, orgId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Το όριο δαπάνης AI έχει εξαντληθεί.";
+    return NextResponse.json({ error: message }, { status: 429 });
+  }
 
   const todayIso = new Date().toISOString().slice(0, 10);
   const thisMonthKey = todayIso.slice(0, 7);
@@ -61,7 +67,9 @@ export async function POST() {
   }
   facts.push(`${pendingCount} εκκρεμείς κινήσεις, συνολικού ύψους ${formatMoney(pendingTotal)}.`);
 
+  const startedAt = Date.now();
   const { text, usage } = await phraseInsight(SYSTEM_PROMPT, facts);
+  const latencyMs = Date.now() - startedAt;
 
   await logAiUsage(supabase, {
     orgId,
@@ -71,6 +79,7 @@ export async function POST() {
     inputTokens: usage.inputTokens,
     cacheReadTokens: 0,
     outputTokens: usage.outputTokens,
+    latencyMs,
     requestId: usage.requestId,
   });
 

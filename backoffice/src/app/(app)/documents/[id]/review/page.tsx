@@ -3,8 +3,15 @@ import { createClient } from "@/lib/supabase/server";
 import { ReviewForm } from "./ReviewForm";
 import type { Extraction } from "@/lib/ai/schemas";
 
-export default async function DraftReviewPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DraftReviewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ queue?: string }>;
+}) {
   const { id } = await params;
+  const { queue } = await searchParams;
   const supabase = await createClient();
 
   const { data: draft } = await supabase
@@ -34,6 +41,7 @@ export default async function DraftReviewPage({ params }: { params: Promise<{ id
   return (
     <ReviewForm
       draftId={draft.id}
+      queue={queue ?? ""}
       extraction={draft.extracted as unknown as Extraction}
       proposed={draft.proposed as { contact_id: string | null; project_id: string | null; category_id: string | null; direction?: "income" | "expense" }}
       needsReviewReasons={(draft.needs_review_reasons as string[]) ?? []}

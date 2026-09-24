@@ -7,7 +7,8 @@ import { formatEuro, formatDate } from "@/lib/utils";
 import {
   CONTACT_KIND_LABEL,
   CONTACT_TYPE_LABEL,
-  TX_STATUS_LABEL,
+  TX_ACTIVE_STATUS_LABEL,
+  normalizeTxStatus,
   VAT_STATUS_LABEL,
   type Contact,
   type Transaction,
@@ -149,7 +150,7 @@ export default async function ContactDetailPage({
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                <Badge tone={t.status}>{TX_STATUS_LABEL[t.status]}</Badge>
+                <Badge tone={normalizeTxStatus(t.status)}>{TX_ACTIVE_STATUS_LABEL[normalizeTxStatus(t.status)]}</Badge>
                 <span
                   className={`font-semibold ${t.type === "income" ? "text-positive" : ""}`}
                 >

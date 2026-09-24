@@ -13,6 +13,8 @@ function fieldsFromForm(formData: FormData) {
     status: (formString(formData, "status") as ProjectStatus) ?? "active",
     business_model: (formString(formData, "business_model") as BusinessModel) ?? null,
     start_date: formString(formData, "start_date"),
+    contract_value: formData.get("contract_value") ? Number(formData.get("contract_value")) : null,
+    contract_signed_date: formString(formData, "contract_signed_date"),
   };
 }
 
@@ -34,4 +36,5 @@ export async function updateProject(id: string, formData: FormData) {
   const { error } = await supabase.from("projects").update(fieldsFromForm(formData)).eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath("/projects");
+  revalidatePath(`/projects/${id}`);
 }

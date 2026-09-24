@@ -94,7 +94,8 @@ export default async function AnalysisPage({
   if (direction !== "all") query = query.eq("direction", direction);
   if (scope !== "all") query = query.eq("scope", scope);
 
-  const { data: transactions } = await query;
+  const { data: transactions, error: queryError } = await query;
+  if (queryError) throw new Error(`Η φόρτωση κινήσεων απέτυχε: ${queryError.message}`);
 
   const dim = DIMENSIONS[groupBy];
 
@@ -154,9 +155,16 @@ export default async function AnalysisPage({
   // before -- this only raises the floor, never lowers a genuine ceiling.
   const todayMonth = new Date().toISOString().slice(0, 7);
   let effectiveMin = minMonth && minMonth < todayMonth ? minMonth : todayMonth;
-  const effectiveMax = maxMonth && maxMonth > todayMonth ? maxMonth : todayMonth;
+  let effectiveMax = maxMonth && maxMonth > todayMonth ? maxMonth : todayMonth;
   if (range === "12m") {
-    const floor = addMonths(effectiveMax, -11);
+    // Exactly 12 months, today-11 .. today -- anchored to today on both
+    // ends. A future-dated scheduled transaction must not push either edge:
+    // extending the ceiling would make "last 12 months" show 13+ columns,
+    // and anchoring the floor to that ceiling would shift the whole window
+    // forward, silently dropping real recent months off the start. Only
+    // "όλο το ιστορικό" (range=all) shows genuine future months.
+    effectiveMax = todayMonth;
+    const floor = addMonths(todayMonth, -11);
     if (effectiveMin < floor) effectiveMin = floor;
   }
   const months = monthRange(effectiveMin, effectiveMax);
@@ -229,7 +237,7 @@ export default async function AnalysisPage({
         </Link>
       </div>
 
-      <div className="flex flex-wrap gap-4 rounded-md border border-line bg-surface p-3 text-sm">
+      <div className="flex flex-wrap items-start gap-x-6 gap-y-3 rounded-md border border-line bg-surface p-3">
         <FilterGroup label="Ομαδοποίηση κατά" param="group_by" value={groupBy} current={params}
           options={[
             { value: "project", label: "Έργο" },
@@ -350,9 +358,9 @@ function FilterGroup({
   options: { value: string; label: string }[];
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-ink-muted">{label}:</span>
-      <div className="flex gap-1">
+    <div className="flex flex-none flex-col gap-1.5">
+      <span className="text-xs font-medium tracking-wide text-ink-muted uppercase">{label}</span>
+      <div className="flex flex-wrap gap-1">
         {options.map((o) => {
           const p = new URLSearchParams();
           for (const [k, v] of Object.entries(current)) {
@@ -364,7 +372,11 @@ function FilterGroup({
             <Link
               key={o.value}
               href={`/analysis?${p.toString()}`}
-              className={`rounded px-2 py-1 ${active ? "bg-ink text-white" : "bg-bg text-ink-muted hover:bg-line"}`}
+              className={`whitespace-nowrap rounded-full border px-3 py-1 text-xs transition-colors ${
+                active
+                  ? "border-ink bg-ink text-white"
+                  : "border-line-strong bg-surface text-ink-muted hover:border-ink-faint hover:bg-bg"
+              }`}
             >
               {o.label}
             </Link>

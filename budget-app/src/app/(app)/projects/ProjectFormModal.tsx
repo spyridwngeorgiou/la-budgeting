@@ -69,7 +69,7 @@ export function ProjectFormModal({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Προϋπολογισμός στόχος (€)</Label>
+              <Label>Προϋπολογισμός (€)</Label>
               <Input
                 name="budget_target"
                 type="number"

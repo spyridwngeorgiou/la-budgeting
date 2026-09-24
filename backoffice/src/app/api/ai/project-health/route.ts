@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
-import { aiEnabled, logAiUsage } from "@/lib/ai/client";
+import { aiEnabled, assertWithinAiBudget, logAiUsage } from "@/lib/ai/client";
 import { phraseInsight } from "@/lib/ai/insights";
 import { formatMoney, formatDate } from "@/lib/format";
 
@@ -21,6 +21,12 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getSession();
   if (!session) return NextResponse.json({ error: "Μη εξουσιοδοτημένο." }, { status: 401 });
   const orgId = await getCurrentOrgId(supabase);
+  try {
+    await assertWithinAiBudget(supabase, orgId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Το όριο δαπάνης AI έχει εξαντληθεί.";
+    return NextResponse.json({ error: message }, { status: 429 });
+  }
 
   const [{ data: rollup }, { data: pending }, { data: lastTx }] = await Promise.all([
     supabase.from("v_project_rollup").select("*").eq("project_id", project_id).maybeSingle(),
@@ -58,7 +64,9 @@ export async function POST(req: NextRequest) {
     facts.push("Δεν υπάρχει καμία κίνηση ακόμα σε αυτό το έργο.");
   }
 
+  const startedAt = Date.now();
   const { text, usage } = await phraseInsight(SYSTEM_PROMPT, facts);
+  const latencyMs = Date.now() - startedAt;
 
   await logAiUsage(supabase, {
     orgId,
@@ -67,6 +75,7 @@ export async function POST(req: NextRequest) {
     model: "claude-haiku-4-5",
     inputTokens: usage.inputTokens,
     cacheReadTokens: 0,
+    latencyMs,
     outputTokens: usage.outputTokens,
     requestId: usage.requestId,
   });

@@ -21,8 +21,14 @@ export default async function ProjectsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{el.nav.projects}</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold">{el.nav.projects}</h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            Προϋπολογισμός, πορεία και κατάσταση κάθε έργου. Μπείτε σε ένα έργο για δάνεια, μίσθωση
+            και σημειώσεις.
+          </p>
+        </div>
         <ProjectFormModal action={createProject} />
       </div>
 

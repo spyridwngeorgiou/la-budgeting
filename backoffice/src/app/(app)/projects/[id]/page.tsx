@@ -3,16 +3,37 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge, Card, Button, AiSpark } from "@/components/ui";
+import { Badge, Card, Button, Select, AiSpark, Term } from "@/components/ui";
 import { OnePagerSection, OnePagerRow, StatusNotes, type ProjectNote } from "@/components/onepager";
 import { computeLeaseSchedule } from "@/lib/finance/lease";
 import { computeLoanSchedule } from "@/lib/finance/loan";
 import { computeRevenuePlan } from "@/lib/finance/revenuePlan";
 import { computeProjectCashflow } from "@/lib/finance/projectCashflow";
+import { xirr } from "@/lib/finance/xirr";
 import { aiEnabled } from "@/lib/ai/client";
 import { ProjectHealthCheck } from "./ProjectHealthCheck";
 import { BudgetFormModal } from "../BudgetFormModal";
 import { saveProjectBudget } from "../budget-actions";
+import { ProjectFormModal } from "../ProjectFormModal";
+import { updateProject } from "../actions";
+import { LoanFormModal } from "../LoanFormModal";
+import { saveLoan, deleteLoan } from "../loan-actions";
+import { CapitalSourceFormModal } from "../CapitalSourceFormModal";
+import { saveCapitalSource, deleteCapitalSource } from "../capital-actions";
+import type { CapitalSourceKind } from "@/lib/domain/enums";
+
+const KIND_FALLBACK_LABEL: Record<CapitalSourceKind, string> = {
+  equity: "Ίδια κεφάλαια",
+  debt: "Δανεισμός",
+  co_investor: "Συνεπενδυτής",
+};
+import { ProjectNoteFormModal } from "../ProjectNoteFormModal";
+import { saveProjectNote, resolveProjectNote } from "../note-actions";
+import { setScenarioRevenuePlan, saveScenario, saveOpexLine, deleteOpexLine } from "../scenario-actions";
+import { ScenarioFormModal } from "../ScenarioFormModal";
+import { OpexLineFormModal } from "../OpexLineFormModal";
+import { AiCreateForm } from "../../revenue-plans/AiCreateForm";
+import { createRevenuePlan } from "../../revenue-plans/actions";
 
 // Σύνοψη Έργου -- the one-pager, modelled on the layout the Q004 workbook
 // already proved works: blocks of label / figure / explanatory note, bold
@@ -36,9 +57,18 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     { data: settlementPlans },
     { data: noBudgetRow },
     { data: loans },
+    { data: revenuePlanOptions },
+    { data: capitalSources },
+    { data: projectIncomeTx },
   ] = await Promise.all([
     supabase.from("v_project_rollup").select("*").eq("project_id", id).maybeSingle(),
-    supabase.from("projects").select("opening_date, phase, legal_relation, units").eq("id", id).maybeSingle(),
+    supabase
+      .from("projects")
+      .select(
+        "opening_date, phase, legal_relation, units, project_type, start_date, business_model, contract_value, contract_signed_date",
+      )
+      .eq("id", id)
+      .maybeSingle(),
     supabase
       .from("project_budgets")
       .select("contingency_pct, notes, budget_lines(line_code, label, amount)")
@@ -55,14 +85,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     supabase
       .from("project_scenarios")
       .select(
-        "id, name, flat_annual_revenue, revenue_plan_id, revenue_growth_pct, opex_growth_pct, growth_starts_after_operating_year, discount_rate_pct, dscr_covenant_min, notes, opex_lines(kind, label, annual_amount, from_operating_year, to_operating_year, note)",
+        "id, name, flat_annual_revenue, revenue_plan_id, revenue_growth_pct, opex_growth_pct, growth_starts_after_operating_year, discount_rate_pct, dscr_covenant_min, notes, opex_lines(id, kind, label, annual_amount, from_operating_year, to_operating_year, note, headcount, monthly_wage, salaries_per_year, employer_contribution_pct, premium_pct, months_active, pct_of_revenue)",
       )
       .eq("project_id", id)
       .eq("is_base", true)
       .maybeSingle(),
     supabase
       .from("project_notes")
-      .select("id, severity, body, exposure_amount, due_date")
+      .select("id, kind, severity, body, exposure_amount, due_date")
       .eq("project_id", id)
       .is("resolved_at", null)
       .order("sort_order"),
@@ -75,8 +105,27 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     supabase.from("v_qc_projects_without_budget").select("project_id").eq("project_id", id).maybeSingle(),
     supabase
       .from("loans")
-      .select("id, label, principal, interest_rate, term_years, grace_years, first_amortisation_month, loan_drawdowns(scheduled_month, amount)")
+      .select(
+        "id, label, principal, interest_rate, term_years, grace_years, first_amortisation_month, state, notes, loan_drawdowns(scheduled_month, amount)",
+      )
       .eq("project_id", id),
+    supabase.from("revenue_plans").select("id, name, project_id, start_year, years").order("name"),
+    supabase
+      .from("project_capital_sources")
+      .select("id, kind, contributor, amount, contributed_on, notes")
+      .eq("project_id", id)
+      .order("contributed_on"),
+    // Only the income side, paid -- capital-vs-revenue is the return
+    // question this answers; capex/opex outflows are excluded on purpose so
+    // debt-funded spend (which is not a capital contribution) never gets
+    // conflated with the capital that was actually put in. See the note by
+    // projectIrr below.
+    supabase
+      .from("transactions")
+      .select("tx_date, gross_amount")
+      .eq("project_id", id)
+      .eq("direction", "income")
+      .eq("status", "paid"),
   ]);
 
   if (!rollup) notFound();
@@ -119,6 +168,28 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   // here because both tranches carry equal principal (so an even split
   // reproduces exactly what was stored). Computed before the cash flow below
   // so it can feed straight into it.
+  // ΚΕΦΑΛΑΙΟ: who actually funded this project, and what has it returned so
+  // far. IRR here is deliberately capital-vs-revenue only (contributions
+  // out, paid income transactions in) -- NOT the project's full net cash
+  // flow, so debt-funded capex/opex (which is not capital anyone
+  // contributed) never gets conflated with the return on capital that was.
+  // A running/unrealized figure, not a final one, since most projects here
+  // haven't exited.
+  const capitalRows = capitalSources ?? [];
+  const capitalTotal = capitalRows.reduce((s, c) => s + Number(c.amount), 0);
+  const capitalByKind = capitalRows.reduce<Record<string, number>>((acc, c) => {
+    acc[c.kind] = (acc[c.kind] ?? 0) + Number(c.amount);
+    return acc;
+  }, {});
+  const revenueToDate = (projectIncomeTx ?? []).reduce((s, t) => s + Number(t.gross_amount ?? 0), 0);
+  const projectIrr =
+    capitalRows.length > 0
+      ? xirr([
+          ...capitalRows.map((c) => ({ date: c.contributed_on, amount: -Number(c.amount) })),
+          ...(projectIncomeTx ?? []).map((t) => ({ date: t.tx_date, amount: Number(t.gross_amount ?? 0) })),
+        ])
+      : null;
+
   const loanRows = loans ?? [];
   const programmeDrawdowns = new Map<string, number>();
   for (const l of loanRows) {
@@ -230,6 +301,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   const operatingResult = revenue - opexTotal - annualRent;
   const hasOperation = Boolean(scenario && revenue > 0);
+  const linkedPlans = (revenuePlanOptions ?? []).filter((p) => p.project_id === id);
 
   const settlementMonthly = (settlementPlans ?? []).reduce(
     (s, p) => s + Number(p.amount_per_installment ?? 0),
@@ -255,6 +327,20 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <ProjectFormModal
+            action={updateProject.bind(null, id)}
+            trigger="Επεξεργασία Έργου"
+            initial={{
+              code: rollup.code ?? undefined,
+              display_name: rollup.display_name ?? undefined,
+              project_type: project?.project_type ?? null,
+              status: rollup.status ?? undefined,
+              business_model: rollup.business_model ?? null,
+              start_date: project?.start_date ?? null,
+              contract_value: project?.contract_value ?? null,
+              contract_signed_date: project?.contract_signed_date ?? null,
+            }}
+          />
           <BudgetFormModal
             action={saveProjectBudget.bind(null, id)}
             initial={
@@ -341,6 +427,32 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           )}
         </OnePagerSection>
 
+        {/* ΣΥΜΒΑΣΗ ΠΕΛΑΤΗ — the revenue baseline client_project work never
+            had: the agreed contract value, billed to date (paid income
+            transactions on this project, same figure used above for
+            capital's revenueToDate), and what's left to invoice. Renders
+            only when a contract value is actually set, so this stays
+            invisible for own_development/hotel_lease projects. */}
+        {project?.contract_value != null && (
+          <OnePagerSection
+            title="ΣΥΜΒΑΣΗ ΠΕΛΑΤΗ"
+            subtitle={project.contract_signed_date ? `υπογραφή ${formatDate(project.contract_signed_date)}` : undefined}
+          >
+            <OnePagerRow label="Συμβατική αξία" amount={Number(project.contract_value)} />
+            <OnePagerRow
+              label="Τιμολογημένα μέχρι σήμερα"
+              amount={revenueToDate}
+              href={`/transactions?project_id=${id}&direction=income&status=paid`}
+            />
+            <OnePagerRow
+              label="Υπόλοιπο προς τιμολόγηση"
+              amount={Number(project.contract_value) - revenueToDate}
+              negative={Number(project.contract_value) - revenueToDate < 0}
+              emphasis
+            />
+          </OnePagerSection>
+        )}
+
         {/* ΔΑΝΕΙΟ — the loan programme, summarised */}
         {loanSchedule && (
           <OnePagerSection
@@ -363,6 +475,319 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             <OnePagerRow label="Συνολικό κόστος δανείου" amount={loanSchedule.totals.totalCost} emphasis />
           </OnePagerSection>
         )}
+
+        {/* Loan tranches, directly editable -- previously only reachable
+            through the Kansha AI chat's propose-and-approve flow. Renders
+            even with zero tranches yet, so "+ Δάνειο" is always reachable. */}
+        <OnePagerSection title="Σκέλη Δανείου">
+          <div className="flex flex-col gap-2">
+            {loanRows.map((l) => (
+              <div key={l.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-line/60 py-1.5 first:border-0 first:pt-0">
+                <div className="text-sm">
+                  <span className="font-medium">{l.label}</span>{" "}
+                  <span className="text-ink-muted">
+                    · {formatMoney(l.principal)} · {(Number(l.interest_rate) * 100).toFixed(2)}% ·{" "}
+                    {l.term_years} έτη
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <LoanFormModal
+                    action={saveLoan.bind(null, id, l.id)}
+                    trigger="Επεξεργασία"
+                    initial={{
+                      label: l.label,
+                      principal: Number(l.principal),
+                      interest_rate: Number(l.interest_rate),
+                      term_years: l.term_years,
+                      grace_years: l.grace_years,
+                      first_amortisation_month: l.first_amortisation_month,
+                      state: l.state,
+                      notes: l.notes,
+                    }}
+                  />
+                  <form action={deleteLoan.bind(null, id, l.id)}>
+                    <Button type="submit" variant="danger" className="!px-2 !py-1 text-xs">
+                      Διαγραφή
+                    </Button>
+                  </form>
+                </div>
+              </div>
+            ))}
+            <div>
+              <LoanFormModal action={saveLoan.bind(null, id, null)} />
+            </div>
+          </div>
+        </OnePagerSection>
+
+        {/* ΚΕΦΑΛΑΙΟ — who funded this project and what it has returned so
+            far. Answers "is this project making money?" directly, which
+            budget/actual and DSCR don't: those describe spend discipline and
+            debt coverage, not return on the capital someone actually put in. */}
+        <OnePagerSection
+          title="ΚΕΦΑΛΑΙΟ"
+          subtitle={capitalRows.length > 0 ? `σύνολο εισφορών ${formatMoney(capitalTotal)}` : undefined}
+        >
+          {capitalRows.length > 0 ? (
+            <>
+              {capitalByKind.equity != null && <OnePagerRow label="Ίδια κεφάλαια" amount={capitalByKind.equity} />}
+              {capitalByKind.debt != null && <OnePagerRow label="Δανεισμός (εκτός σκελών)" amount={capitalByKind.debt} />}
+              {capitalByKind.co_investor != null && (
+                <OnePagerRow label="Συνεπενδυτές" amount={capitalByKind.co_investor} />
+              )}
+              <OnePagerRow label="Σύνολο κεφαλαίου" amount={capitalTotal} emphasis />
+              <OnePagerRow
+                label="Έσοδα έργου μέχρι σήμερα"
+                amount={revenueToDate}
+                href={`/transactions?project_id=${id}&direction=income&status=paid`}
+              />
+              <div className="flex items-center justify-between border-t border-line/60 pt-1.5 text-sm">
+                <span className="flex items-center gap-1">
+                  <Term title="Ετησιοποιημένη απόδοση: κεφάλαιο εισφέρθηκε (έξοδος) έναντι εσόδων που εισπράχθηκαν (είσοδος), σταθμισμένη στον χρόνο. Τρέχουσα, όχι τελική — το έργο δεν έχει (απαραίτητα) ολοκληρωθεί.">
+                    IRR κεφαλαίου
+                  </Term>
+                </span>
+                <span className={`font-mono font-medium ${projectIrr != null && projectIrr < 0 ? "text-red-ink" : "text-sage-ink"}`}>
+                  {projectIrr != null ? `${(projectIrr * 100).toFixed(1)}%` : "—"}
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col gap-2 py-2">
+              <Badge tone="amber">Χωρίς καταχωρημένο κεφάλαιο</Badge>
+              <p className="text-sm text-ink-muted">
+                Δεν έχουν καταχωρηθεί πηγές κεφαλαίου για αυτό το έργο.
+              </p>
+            </div>
+          )}
+        </OnePagerSection>
+
+        {/* Capital sources, directly editable -- same pattern as loan
+            tranches above. Renders even with zero rows so "+ Κεφάλαιο" is
+            always reachable. */}
+        <OnePagerSection title="Πηγές Κεφαλαίου">
+          <div className="flex flex-col gap-2">
+            {capitalRows.map((c) => (
+              <div
+                key={c.id}
+                className="flex flex-wrap items-center justify-between gap-2 border-t border-line/60 py-1.5 first:border-0 first:pt-0"
+              >
+                <div className="text-sm">
+                  <span className="font-medium">{c.contributor || KIND_FALLBACK_LABEL[c.kind]}</span>{" "}
+                  <span className="text-ink-muted">
+                    · {formatMoney(c.amount)} · {KIND_FALLBACK_LABEL[c.kind]} · {formatDate(c.contributed_on)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CapitalSourceFormModal
+                    action={saveCapitalSource.bind(null, id, c.id)}
+                    trigger="Επεξεργασία"
+                    initial={{
+                      kind: c.kind,
+                      contributor: c.contributor,
+                      amount: Number(c.amount),
+                      contributed_on: c.contributed_on,
+                      notes: c.notes,
+                    }}
+                  />
+                  <form action={deleteCapitalSource.bind(null, id, c.id)}>
+                    <Button type="submit" variant="danger" className="!px-2 !py-1 text-xs">
+                      Διαγραφή
+                    </Button>
+                  </form>
+                </div>
+              </div>
+            ))}
+            <div>
+              <CapitalSourceFormModal action={saveCapitalSource.bind(null, id, null)} />
+            </div>
+          </div>
+        </OnePagerSection>
+
+        {/* Αναλύσεις Εσόδων -- a project can have several (conservative /
+            optimistic scenarios, revisions over time), previously only
+            reachable one-at-a-time through whichever plan happened to be
+            wired into the scenario, with no way to browse or create one
+            scoped to this project. Creation goes first (most projects here
+            still need their first analysis), then the full browsable list,
+            then -- as a clearly separate, secondary concern -- which one of
+            them currently feeds the ΛΕΙΤΟΥΡΓΙΑ model below. */}
+        <OnePagerSection title="Αναλύσεις Εσόδων">
+          <div className="flex flex-col gap-4">
+            {aiEnabled() && <AiCreateForm projectId={id} />}
+
+            <details className="rounded-md border border-line bg-bg p-3">
+              <summary className="cursor-pointer text-sm font-medium text-ink-muted">
+                ή ξεκίνα μια κενή ανάλυση χειροκίνητα
+              </summary>
+              <form action={createRevenuePlan} className="mt-3 flex flex-wrap items-end gap-3">
+                <input type="hidden" name="project_id" value={id} />
+                <div className="flex flex-col">
+                  <label className="mb-1 text-xs font-medium text-ink-muted">Όνομα</label>
+                  <input name="name" required className="rounded-md border border-line-strong px-3 py-2 text-sm" />
+                </div>
+                <div className="flex flex-col">
+                  <label className="mb-1 text-xs font-medium text-ink-muted">Έτος Έναρξης</label>
+                  <input
+                    name="start_year"
+                    type="number"
+                    defaultValue={new Date().getFullYear()}
+                    required
+                    className="w-28 rounded-md border border-line-strong px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="mb-1 text-xs font-medium text-ink-muted">Έτη</label>
+                  <input
+                    name="years"
+                    type="number"
+                    min={1}
+                    max={10}
+                    defaultValue={3}
+                    required
+                    className="w-20 rounded-md border border-line-strong px-3 py-2 text-sm"
+                  />
+                </div>
+                <Button type="submit" variant="secondary">
+                  Δημιουργία
+                </Button>
+              </form>
+            </details>
+
+            {linkedPlans.length === 0 ? (
+              <p className="text-sm text-ink-faint">Καμία ανάλυση εσόδων ακόμα για αυτό το έργο.</p>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                {linkedPlans.map((p) => (
+                  <Link
+                    key={p.id}
+                    href={`/revenue-plans/${p.id}`}
+                    className="flex items-center justify-between rounded border border-line px-3 py-2 text-sm transition-colors hover:border-line-strong hover:bg-bg"
+                  >
+                    <span>{p.name}</span>
+                    <span className="text-xs text-ink-muted">
+                      {p.start_year}–{p.start_year + p.years - 1}
+                      {scenario?.revenue_plan_id === p.id && " · ενεργή στη ΛΕΙΤΟΥΡΓΙΑ"}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {scenario && (
+              <form
+                action={setScenarioRevenuePlan.bind(null, id, scenario.id)}
+                className="flex flex-wrap items-end gap-3 border-t border-line/60 pt-3"
+              >
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-ink-muted">Ποια τροφοδοτεί τη ΛΕΙΤΟΥΡΓΙΑ παρακάτω</label>
+                  <Select name="revenue_plan_id" defaultValue={scenario.revenue_plan_id ?? ""}>
+                    <option value="">— Καμία (σταθερός ετήσιος τζίρος) —</option>
+                    {(revenuePlanOptions ?? []).map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                        {p.project_id && p.project_id !== id ? " (άλλο έργο)" : ""}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <Button type="submit" variant="secondary">
+                  Ενημέρωση
+                </Button>
+              </form>
+            )}
+          </div>
+        </OnePagerSection>
+
+        {/* Λειτουργικές Παραδοχές -- growth rates, discount rate, DSCR
+            covenant, and the opex line items themselves were previously not
+            editable anywhere in the app, not even through the AI chat
+            (project_scenarios/opex_lines aren't in writeTools.ts's
+            ALLOWLIST). This is what actually feeds the ΛΕΙΤΟΥΡΓΙΑ/DSCR/NPV
+            numbers below -- renders even with no scenario yet so the first
+            one can be created here instead of nowhere. */}
+        <OnePagerSection title="Λειτουργικές Παραδοχές">
+          <div className="flex flex-col gap-3">
+            {!scenario ? (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-ink-faint">Δεν υπάρχει ακόμα σενάριο λειτουργίας για αυτό το έργο.</p>
+                <ScenarioFormModal action={saveScenario.bind(null, id, null)} trigger="+ Σενάριο Λειτουργίας" />
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <div className="text-ink-muted">
+                    Ανάπτυξη εσόδων {(Number(scenario.revenue_growth_pct) * 100).toFixed(1)}% ·{" "}
+                    <Term title="Opex (Operating Expenses) — λειτουργικά έξοδα, εκτός μισθώματος και εξυπηρέτησης δανείου.">
+                      opex
+                    </Term>{" "}
+                    {(Number(scenario.opex_growth_pct) * 100).toFixed(1)}% · προεξόφληση{" "}
+                    {(Number(scenario.discount_rate_pct) * 100).toFixed(1)}% ·{" "}
+                    <Term title="DSCR (Debt Service Coverage Ratio) — Δείκτης Κάλυψης Εξυπηρέτησης Χρέους: λειτουργικό αποτέλεσμα ÷ ετήσια δόση δανείου. Πάνω από 1.0× σημαίνει ότι τα έσοδα καλύπτουν τη δόση.">
+                      DSCR
+                    </Term>{" "}
+                    ≥ {scenario.dscr_covenant_min}×
+                  </div>
+                  <ScenarioFormModal
+                    action={saveScenario.bind(null, id, scenario.id)}
+                    initial={{
+                      name: scenario.name,
+                      flat_annual_revenue: scenario.flat_annual_revenue,
+                      revenue_growth_pct: Number(scenario.revenue_growth_pct),
+                      opex_growth_pct: Number(scenario.opex_growth_pct),
+                      growth_starts_after_operating_year: scenario.growth_starts_after_operating_year,
+                      discount_rate_pct: Number(scenario.discount_rate_pct),
+                      dscr_covenant_min: Number(scenario.dscr_covenant_min),
+                      notes: scenario.notes,
+                    }}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5 border-t border-line/60 pt-3">
+                  {opexLines.map((l) => (
+                    <div key={l.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                      <span>
+                        {l.label}{" "}
+                        <span className="text-xs text-ink-faint">
+                          (έτη {l.from_operating_year}
+                          {l.to_operating_year ? `–${l.to_operating_year}` : "+"})
+                        </span>
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <OpexLineFormModal
+                          action={saveOpexLine.bind(null, id, scenario.id, l.id)}
+                          trigger="Επεξεργασία"
+                          initial={{
+                            kind: l.kind,
+                            label: l.label,
+                            from_operating_year: l.from_operating_year,
+                            to_operating_year: l.to_operating_year,
+                            headcount: l.headcount,
+                            monthly_wage: l.monthly_wage,
+                            salaries_per_year: l.salaries_per_year,
+                            employer_contribution_pct: l.employer_contribution_pct,
+                            premium_pct: l.premium_pct,
+                            months_active: l.months_active,
+                            pct_of_revenue: l.pct_of_revenue,
+                            annual_amount: l.annual_amount,
+                            note: l.note,
+                          }}
+                        />
+                        <form action={deleteOpexLine.bind(null, id, l.id)}>
+                          <Button type="submit" variant="danger" className="!px-2 !py-1 text-xs">
+                            Διαγραφή
+                          </Button>
+                        </form>
+                      </div>
+                    </div>
+                  ))}
+                  <div>
+                    <OpexLineFormModal action={saveOpexLine.bind(null, id, scenario.id, null)} />
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </OnePagerSection>
 
         {/* ΛΕΙΤΟΥΡΓΙΑ — the stabilised operating year */}
         {hasOperation && (
@@ -455,21 +880,49 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </OnePagerSection>
         )}
 
-        {/* ΚΑΤΑΣΤΑΣΗ — the block with no home until now */}
-        {(notes ?? []).length > 0 && (
-          <OnePagerSection title="ΚΑΤΑΣΤΑΣΗ">
-            <StatusNotes notes={(notes ?? []) as ProjectNote[]} />
-          </OnePagerSection>
-        )}
+        {/* ΚΑΤΑΣΤΑΣΗ -- always rendered now (not gated on notes.length), so
+            "+ Σημείωση" is reachable even with zero open notes. Previously
+            only writable through the Kansha AI chat's propose-and-approve
+            flow; StatusNotes only ever displayed, never edited. */}
+        <OnePagerSection title="ΚΑΤΑΣΤΑΣΗ">
+          <StatusNotes
+            notes={(notes ?? []) as ProjectNote[]}
+            renderActions={(n) => (
+              <>
+                <ProjectNoteFormModal
+                  action={saveProjectNote.bind(null, id, n.id)}
+                  trigger="Επεξεργασία"
+                  initial={{
+                    kind: n.kind,
+                    severity: n.severity,
+                    body: n.body,
+                    exposure_amount: n.exposure_amount,
+                    due_date: n.due_date,
+                  }}
+                />
+                <form action={resolveProjectNote.bind(null, id, n.id)}>
+                  <Button type="submit" variant="secondary" className="!px-2 !py-1 text-xs">
+                    Επίλυση
+                  </Button>
+                </form>
+              </>
+            )}
+            footer={
+              <div className="pt-1">
+                <ProjectNoteFormModal action={saveProjectNote.bind(null, id, null)} />
+              </div>
+            }
+          />
+        </OnePagerSection>
       </div>
 
       {leaseSchedule && leaseSchedule.diagnostics.length > 0 && (
-        <Card className="border-amber-300 bg-amber-50">
-          <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-amber-800">
+        <Card className="border-amber-ink/40 bg-amber-bg">
+          <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-amber-ink">
             <AiSpark />
             Σημειώσεις μοντέλου
           </div>
-          <ul className="list-disc pl-4 text-xs text-amber-800">
+          <ul className="list-disc pl-4 text-xs text-amber-ink">
             {leaseSchedule.diagnostics.map((d) => (
               <li key={d}>{d}</li>
             ))}

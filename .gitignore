@@ -24,3 +24,12 @@ budget-app/scripts/seed.json
 .DS_Store
 *.tsbuildinfo
 .vercel
+
+# Cloudflare wrangler
+.wrangler/
+
+# Client / financial data files (not for source control)
+*.xlsx
+*.pdf
+aade_exports/
+tools/__pycache__/

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
-import { aiEnabled, logAiUsage } from "@/lib/ai/client";
+import { aiEnabled, assertWithinAiBudget, logAiUsage } from "@/lib/ai/client";
 import { extractDocument, validateExtraction } from "@/lib/ai/extract";
 import { extractFromText, validateNlExtraction } from "@/lib/ai/nl";
 import { resolveEntities } from "@/lib/ai/resolve";
@@ -26,6 +26,7 @@ export async function uploadDocument(formData: FormData) {
 
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
+  await assertWithinAiBudget(supabase, orgId);
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -56,7 +57,9 @@ export async function uploadDocument(formData: FormData) {
 
   try {
     const base64 = Buffer.from(buffer).toString("base64");
+    const startedAt = Date.now();
     const { extraction, usage } = await extractDocument(base64, file.type, categoryNames);
+    const latencyMs = Date.now() - startedAt;
     const validation = validateExtraction(extraction);
     const resolved = await resolveEntities(supabase, {
       issuerAfm: extraction.issuer_afm,
@@ -103,6 +106,7 @@ export async function uploadDocument(formData: FormData) {
       cacheReadTokens: 0,
       outputTokens: usage.outputTokens,
       requestId: usage.requestId,
+      latencyMs,
     });
 
     redirect(`/documents/${draft.id}/review`);
@@ -134,6 +138,7 @@ export async function submitNlEntry(formData: FormData) {
 
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
+  await assertWithinAiBudget(supabase, orgId);
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -141,62 +146,73 @@ export async function submitNlEntry(formData: FormData) {
   const { data: categories } = await supabase.from("categories").select("name").order("sort_order");
   const categoryNames = (categories ?? []).map((c) => c.name);
 
-  const { extraction, usage } = await extractFromText(text, categoryNames);
-  const validation = validateNlExtraction(extraction);
-  const resolved = await resolveEntities(supabase, {
-    issuerAfm: null,
-    issuerName: extraction.counterparty_name,
-    projectMention: extraction.project_mention,
-    suggestedCategory: extraction.suggested_category,
-  });
+  const startedAt = Date.now();
+  const { entries, usage } = await extractFromText(text, categoryNames);
+  const latencyMs = Date.now() - startedAt;
 
-  const needsReview: string[] = [...validation.reasons];
-  if (!resolved.contactId) needsReview.push("Δεν βρέθηκε αντίστοιχη επαφή -- επιλέξτε ή δημιουργήστε.");
-  if (!resolved.projectId) needsReview.push("Δεν βρέθηκε αντίστοιχο έργο -- επιλέξτε.");
+  // One text/voice message can describe several transactions ("50 στον
+  // υδραυλικό, 30 βενζίνη") -- each entry is resolved and staged as its own
+  // independent draft so amounts/counterparties/projects never bleed into
+  // each other, and each still goes through its own human review.
+  const draftIds: string[] = [];
+  for (const entry of entries) {
+    const validation = validateNlExtraction(entry);
+    const resolved = await resolveEntities(supabase, {
+      issuerAfm: null,
+      issuerName: entry.counterparty_name,
+      projectMention: entry.project_mention,
+      suggestedCategory: entry.suggested_category,
+    });
 
-  // Normalise into the same shape as photo extraction so ReviewForm needs no
-  // special-casing: derive net/VAT from the single stated amount (people say
-  // what they handed over, i.e. gross) and carry the raw phrase as evidence.
-  const amount = extraction.amount.value ?? 0;
-  const breakdown = extraction.has_invoice ? deriveFromGross(amount, extraction.vat_rate ?? 0.24) : cashOnly(amount);
-  const normalized: Extraction = {
-    doc_type: "other",
-    issuer_name: extraction.counterparty_name,
-    issuer_afm: null,
-    invoice_number: null,
-    mydata_mark: null,
-    issue_date: extraction.issue_date ?? new Date().toISOString().slice(0, 10),
-    net: { value: breakdown.net, evidence: extraction.amount.evidence },
-    vat: { value: breakdown.vat, evidence: extraction.amount.evidence },
-    gross: { value: breakdown.gross, evidence: extraction.amount.evidence },
-    vat_rate: extraction.vat_rate,
-    withholding: { value: 0, evidence: null },
-    payment_hint: "unknown",
-    project_mention: extraction.project_mention,
-    suggested_category: extraction.suggested_category,
-    notes_for_human: [extraction.notes_for_human, `Περιγραφή: «${text}»`].filter(Boolean).join(" · "),
-  };
+    const needsReview: string[] = [...validation.reasons];
+    if (!resolved.contactId) needsReview.push("Δεν βρέθηκε αντίστοιχη επαφή -- επιλέξτε ή δημιουργήστε.");
+    if (!resolved.projectId) needsReview.push("Δεν βρέθηκε αντίστοιχο έργο -- επιλέξτε.");
 
-  const { data: draft, error: draftError } = await supabase
-    .from("transaction_drafts")
-    .insert({
-      org_id: orgId,
-      document_id: null,
-      source: "ai_nl",
-      extracted: normalized,
-      proposed: {
-        contact_id: resolved.contactId,
-        project_id: resolved.projectId,
-        category_id: resolved.categoryId,
-        contact_match_strength: resolved.contactMatchStrength,
-        direction: extraction.direction,
-      },
-      needs_review_reasons: needsReview,
-      status: "pending",
-    })
-    .select("id")
-    .single();
-  if (draftError) throw new Error(draftError.message);
+    // Normalise into the same shape as photo extraction so ReviewForm needs no
+    // special-casing: derive net/VAT from the single stated amount (people say
+    // what they handed over, i.e. gross) and carry the raw phrase as evidence.
+    const amount = entry.amount.value ?? 0;
+    const breakdown = entry.has_invoice ? deriveFromGross(amount, entry.vat_rate ?? 0.24) : cashOnly(amount);
+    const normalized: Extraction = {
+      doc_type: "other",
+      issuer_name: entry.counterparty_name,
+      issuer_afm: null,
+      invoice_number: null,
+      mydata_mark: null,
+      issue_date: entry.issue_date ?? new Date().toISOString().slice(0, 10),
+      net: { value: breakdown.net, evidence: entry.amount.evidence },
+      vat: { value: breakdown.vat, evidence: entry.amount.evidence },
+      gross: { value: breakdown.gross, evidence: entry.amount.evidence },
+      vat_rate: entry.vat_rate,
+      withholding: { value: 0, evidence: null },
+      payment_hint: "unknown",
+      project_mention: entry.project_mention,
+      suggested_category: entry.suggested_category,
+      notes_for_human: [entry.notes_for_human, `Περιγραφή: «${text}»`].filter(Boolean).join(" · "),
+    };
+
+    const { data: draft, error: draftError } = await supabase
+      .from("transaction_drafts")
+      .insert({
+        org_id: orgId,
+        document_id: null,
+        source: "ai_nl",
+        extracted: normalized,
+        proposed: {
+          contact_id: resolved.contactId,
+          project_id: resolved.projectId,
+          category_id: resolved.categoryId,
+          contact_match_strength: resolved.contactMatchStrength,
+          direction: entry.direction,
+        },
+        needs_review_reasons: needsReview,
+        status: "pending",
+      })
+      .select("id")
+      .single();
+    if (draftError) throw new Error(draftError.message);
+    draftIds.push(draft.id);
+  }
 
   await logAiUsage(supabase, {
     orgId,
@@ -207,7 +223,11 @@ export async function submitNlEntry(formData: FormData) {
     cacheReadTokens: 0,
     outputTokens: usage.outputTokens,
     requestId: usage.requestId,
+    latencyMs,
   });
 
-  redirect(`/documents/${draft.id}/review`);
+  if (draftIds.length > 1) {
+    redirect(`/documents/${draftIds[0]}/review?queue=${draftIds.slice(1).join(",")}`);
+  }
+  redirect(`/documents/${draftIds[0]}/review`);
 }

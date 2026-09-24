@@ -46,8 +46,13 @@ export default async function InstallmentsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{el.nav.installments}</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold">{el.nav.installments}</h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            Δόσεις προς τρίτους (π.χ. ρυθμίσεις φόρων, οφειλές) που δεν είναι δάνειο έργου.
+          </p>
+        </div>
         <InstallmentPlanFormModal
           action={createInstallmentPlan}
           contacts={contactOptions}

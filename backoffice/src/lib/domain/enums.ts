@@ -67,8 +67,20 @@ export type LiabilityKind = (typeof LIABILITY_KIND)[number];
 export const LIABILITY_STATE = ["in_application", "approved", "disbursed", "repaid"] as const;
 export type LiabilityState = (typeof LIABILITY_STATE)[number];
 
+export const CAPITAL_SOURCE_KIND = ["equity", "debt", "co_investor"] as const;
+export type CapitalSourceKind = (typeof CAPITAL_SOURCE_KIND)[number];
+
 export const ASSET_STATE = ["held", "pending_inheritance"] as const;
 export type AssetState = (typeof ASSET_STATE)[number];
+
+export const PROJECT_NOTE_KIND = ["status", "risk", "action", "milestone"] as const;
+export type ProjectNoteKind = (typeof PROJECT_NOTE_KIND)[number];
+
+export const OPEX_LINE_KIND = ["payroll", "pct_of_revenue", "fixed_annual"] as const;
+export type OpexLineKind = (typeof OPEX_LINE_KIND)[number];
+
+export const PROJECT_NOTE_SEVERITY = ["info", "watch", "urgent"] as const;
+export type ProjectNoteSeverity = (typeof PROJECT_NOTE_SEVERITY)[number];
 
 export const ORG_ROLE = ["viewer", "editor", "admin", "owner"] as const;
 export type OrgRole = (typeof ORG_ROLE)[number];

@@ -34,9 +34,9 @@ export type Extraction = z.infer<typeof ExtractionSchema>;
 // spoken/typed counterpart to photo extraction. People state what they
 // handed over (gross), not net, so there's a single `amount` field instead
 // of net/vat/gross -- deriveFromGross (lib/finance/money.ts) does the rest.
-export const NlExtractionSchema = z.object({
+const NlEntrySchema = z.object({
   direction: z.enum(["income", "expense"]),
-  counterparty_name: z.string().nullable().describe("Ποιος πληρώθηκε ή πλήρωσε, όπως αναφέρθηκε"),
+  counterparty_name: z.string().nullable().describe("Ποιος πληρώθηκε ή πλήρωσε, όπως αναφέρθηκε -- μόνο για αυτή τη συγκεκριμένη κίνηση"),
   amount: z.object({
     value: z.number().nullable(),
     evidence: z.string().nullable().describe("Η ακριβής φράση με το ποσό, π.χ. '50 ευρώ'"),
@@ -44,11 +44,21 @@ export const NlExtractionSchema = z.object({
   has_invoice: z.boolean().describe("true μόνο αν αναφέρεται ρητά τιμολόγιο/απόδειξη/παραστατικό"),
   vat_rate: z.union([z.literal(0), z.literal(0.06), z.literal(0.13), z.literal(0.24)]).nullable(),
   issue_date: z.string().nullable().describe("Ημερομηνία σε ISO YYYY-MM-DD αν αναφέρθηκε (π.χ. 'χθες', 'στις 3/9'), αλλιώς null για σήμερα"),
-  project_mention: z.string().nullable().describe("Οτιδήποτε παραπέμπει σε συγκεκριμένο έργο -- ελεύθερο κείμενο, ΟΧΙ ID"),
+  project_mention: z.string().nullable().describe("Οτιδήποτε παραπέμπει σε συγκεκριμένο έργο για ΑΥΤΗ την κίνηση -- ελεύθερο κείμενο, ΟΧΙ ID"),
   suggested_category: z.string().nullable().describe("Πρέπει να είναι ακριβώς ένα από τα ονόματα κατηγοριών που δόθηκαν, αλλιώς null"),
   notes_for_human: z.string().nullable(),
 });
 
+// The user often describes several expenses/incomes in one message or one
+// spoken take ("50 στον υδραυλικό, 30 βενζίνη, και πήρα 200 από τον Χ") --
+// each becomes its own entry with its own amount/counterparty/project so
+// nothing gets merged across transactions. Single-transaction text still
+// comes back as an array of length 1.
+export const NlExtractionSchema = z.object({
+  entries: z.array(NlEntrySchema).min(1),
+});
+
+export type NlEntry = z.infer<typeof NlEntrySchema>;
 export type NlExtraction = z.infer<typeof NlExtractionSchema>;
 
 // Revenue-estimation plans (Εκτιμήσεις Εσόδων) -- a generalised version of

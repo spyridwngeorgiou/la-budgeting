@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui";
+import { Button, Term } from "@/components/ui";
 import type { MonthCell } from "@/lib/finance/revenuePlan";
 import { saveYearAssumptions } from "../actions";
 
@@ -69,7 +69,9 @@ export function YearTable({
             <td />
           </tr>
           <tr className="border-b border-line">
-            <td className="p-1.5 text-ink-muted">ADR (€)</td>
+            <td className="p-1.5 text-ink-muted">
+              <Term title="ADR (Average Daily Rate) — μέση τιμή δωματίου ανά διανυκτέρευση.">ADR</Term> (€)
+            </td>
             {MONTHS.map((month) => (
               <td key={month} className="p-1">
                 <input

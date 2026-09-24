@@ -1,11 +1,12 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, Badge, Select, Button, Input } from "@/components/ui";
 import { DeleteButton } from "@/components/DeleteButton";
 import { PayButton } from "@/components/PayButton";
 import { formatEuro, formatDate } from "@/lib/utils";
 import {
-  TX_STATUS_LABEL,
+  TX_ACTIVE_STATUS_LABEL,
+  TX_TYPE_LABEL,
+  normalizeTxStatus,
   type Transaction,
   type Project,
   type Account,
@@ -51,8 +52,9 @@ export default async function TransactionsPage({
   const contactNameFor = (id: string | null) =>
     contacts.find((c) => c.id === id)?.name ?? "";
 
+  const statusFilter = sp.status === "planned" ? "upcoming" : sp.status;
   if (sp.project) transactions = transactions.filter((t) => t.project_id === sp.project);
-  if (sp.status) transactions = transactions.filter((t) => t.status === sp.status);
+  if (statusFilter) transactions = transactions.filter((t) => normalizeTxStatus(t.status) === statusFilter);
   if (sp.type) transactions = transactions.filter((t) => t.type === sp.type);
   if (sp.vat) transactions = transactions.filter((t) => t.vat_status === sp.vat);
   if (sp.invoice === "1") transactions = transactions.filter((t) => t.has_invoice);
@@ -70,39 +72,11 @@ export default async function TransactionsPage({
   const projName = (id: string | null) =>
     projects.find((p) => p.id === id)?.name ?? "—";
 
-  const total = transactions.reduce(
-    (s, t) => s + (t.type === "expense" ? num(t.amount) : -num(t.amount)),
-    0,
-  );
-
   const expenseRows = transactions.filter((t) => t.type === "expense");
+  const incomeRows = transactions.filter((t) => t.type === "income");
   const expenseTotal = expenseRows.reduce((s, t) => s + num(t.amount), 0);
-  const expensePaid = expenseRows
-    .filter((t) => t.status === "paid")
-    .reduce((s, t) => s + num(t.amount), 0);
-  const expenseUpcoming = expenseRows
-    .filter((t) => t.status === "upcoming")
-    .reduce((s, t) => s + num(t.amount), 0);
-  const expensePlanned = expenseRows
-    .filter((t) => t.status === "planned")
-    .reduce((s, t) => s + num(t.amount), 0);
-  const expenseInvoiced = expenseRows
-    .filter((t) => t.has_invoice)
-    .reduce((s, t) => s + num(t.amount), 0);
-  const expenseNoInvoice = expenseRows
-    .filter((t) => !t.has_invoice)
-    .reduce((s, t) => s + num(t.amount), 0);
-  const avgExpense = expenseRows.length > 0 ? expenseTotal / expenseRows.length : 0;
-
-  const expenseByProjectMap = new Map<string, number>();
-  for (const t of expenseRows) {
-    const key = projName(t.project_id);
-    expenseByProjectMap.set(key, (expenseByProjectMap.get(key) ?? 0) + num(t.amount));
-  }
-  const topExpenseProjects = [...expenseByProjectMap.entries()]
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 3);
+  const incomeTotal = incomeRows.reduce((s, t) => s + num(t.amount), 0);
+  const netBalance = incomeTotal - expenseTotal;
 
   const currentParams = {
     project: sp.project ?? "",
@@ -114,19 +88,6 @@ export default async function TransactionsPage({
   };
 
   const hasActiveFilters = Object.values(currentParams).some(Boolean);
-
-  const hrefWith = (patch: Partial<typeof currentParams>) => {
-    const next = { ...currentParams, ...patch };
-    const qs = new URLSearchParams();
-    for (const [k, v] of Object.entries(next)) {
-      if (v) qs.set(k, v);
-    }
-    const out = qs.toString();
-    return out ? `/transactions?${out}` : "/transactions";
-  };
-
-  const chipClass =
-    "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition";
 
   return (
     <div className="space-y-6">
@@ -143,7 +104,7 @@ export default async function TransactionsPage({
         />
       </div>
 
-      {/* Sticky filters + quick chips */}
+      {/* Sticky filters */}
       <div className="sticky top-2 z-20 -mx-2 rounded-xl border border-border bg-background/95 p-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:-mx-0 sm:p-3">
         <form className="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap">
           <div className="col-span-2 sm:w-56">
@@ -169,7 +130,7 @@ export default async function TransactionsPage({
             <label className="mb-1 block text-xs font-medium text-muted">Κατάσταση</label>
             <Select name="status" defaultValue={sp.status ?? ""}>
               <option value="">Όλες</option>
-              {Object.entries(TX_STATUS_LABEL).map(([v, l]) => (
+              {Object.entries(TX_ACTIVE_STATUS_LABEL).map(([v, l]) => (
                 <option key={v} value={v}>
                   {l}
                 </option>
@@ -187,104 +148,32 @@ export default async function TransactionsPage({
           <Button variant="secondary" type="submit" className="col-span-2 sm:col-span-1">
             Φιλτράρισμα
           </Button>
-        </form>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Link
-            href={hrefWith({ status: "upcoming" })}
-            className={`${chipClass} ${sp.status === "upcoming" ? "border-warning bg-warning/10 text-warning" : "border-border bg-white text-muted hover:bg-slate-50"}`}
-          >
-            Επερχόμενα
-          </Link>
-          <Link
-            href={hrefWith({ status: "paid" })}
-            className={`${chipClass} ${sp.status === "paid" ? "border-positive bg-positive/10 text-positive" : "border-border bg-white text-muted hover:bg-slate-50"}`}
-          >
-            Πληρωμένα
-          </Link>
-          <Link
-            href={hrefWith({ type: "expense" })}
-            className={`${chipClass} ${sp.type === "expense" ? "border-negative bg-negative/10 text-negative" : "border-border bg-white text-muted hover:bg-slate-50"}`}
-          >
-            Έξοδα
-          </Link>
-          <Link
-            href={hrefWith({ type: "income" })}
-            className={`${chipClass} ${sp.type === "income" ? "border-positive bg-positive/10 text-positive" : "border-border bg-white text-muted hover:bg-slate-50"}`}
-          >
-            Έσοδα
-          </Link>
-          <Link
-            href={hrefWith({ vat: "payable" })}
-            className={`${chipClass} ${sp.vat === "payable" ? "border-warning bg-warning/10 text-warning" : "border-border bg-white text-muted hover:bg-slate-50"}`}
-          >
-            ΦΠΑ πληρωτέο
-          </Link>
-          <Link
-            href={hrefWith({ invoice: "1" })}
-            className={`${chipClass} ${sp.invoice === "1" ? "border-primary bg-primary/10 text-primary" : "border-border bg-white text-muted hover:bg-slate-50"}`}
-          >
-            Με παραστατικό
-          </Link>
-          <Link
-            href={hrefWith({ invoice: "0" })}
-            className={`${chipClass} ${sp.invoice === "0" ? "border-slate-400 bg-slate-100 text-slate-700" : "border-border bg-white text-muted hover:bg-slate-50"}`}
-          >
-            Χωρίς παραστατικό
-          </Link>
           {hasActiveFilters && (
-            <Link
+            <a
               href="/transactions"
-              className="inline-flex items-center rounded-full border border-border bg-white px-3 py-1 text-xs font-medium text-muted transition hover:bg-slate-50"
+              className="col-span-2 inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium text-muted transition hover:bg-slate-100 sm:col-span-1"
             >
               Καθαρισμός
-            </Link>
+            </a>
           )}
-        </div>
+        </form>
       </div>
 
       <Card className="border-l-4 border-l-primary">
-        <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-3">
           <div>
-            <p className="text-xs font-medium text-muted">Σύνολο εξόδων (τρέχον φίλτρο)</p>
-            <p className="mt-1 text-xl font-bold text-primary">{formatEuro(expenseTotal)}</p>
-            <p className="text-[11px] text-muted">Μ.Ο. ανά κίνηση: {formatEuro(avgExpense)}</p>
+            <p className="text-xs font-medium text-muted">Σύνολο εξόδων</p>
+            <p className="mt-1 text-xl font-bold text-negative">{formatEuro(expenseTotal)}</p>
           </div>
           <div>
-            <p className="text-xs font-medium text-muted">Κατάσταση εξόδων</p>
-            <p className="mt-1 text-sm text-foreground">
-              Πληρωμένα <span className="font-semibold">{formatEuro(expensePaid)}</span>
-            </p>
-            <p className="text-sm text-warning">
-              Επερχόμενα <span className="font-semibold">{formatEuro(expenseUpcoming)}</span>
-            </p>
-            <p className="text-sm text-muted">
-              Planned <span className="font-semibold text-foreground">{formatEuro(expensePlanned)}</span>
-            </p>
+            <p className="text-xs font-medium text-muted">Σύνολο εσόδων</p>
+            <p className="mt-1 text-xl font-bold text-positive">{formatEuro(incomeTotal)}</p>
           </div>
           <div>
-            <p className="text-xs font-medium text-muted">Invoice split</p>
-            <p className="mt-1 text-sm text-primary">
-              Με παραστατικό <span className="font-semibold">{formatEuro(expenseInvoiced)}</span>
+            <p className="text-xs font-medium text-muted">Καθαρό αποτέλεσμα</p>
+            <p className={`mt-1 text-xl font-bold ${netBalance >= 0 ? "text-primary" : "text-negative"}`}>
+              {formatEuro(netBalance)}
             </p>
-            <p className="text-sm text-slate-700">
-              Χωρίς παραστατικό <span className="font-semibold">{formatEuro(expenseNoInvoice)}</span>
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-medium text-muted">Top έργα σε έξοδα</p>
-            {topExpenseProjects.length === 0 ? (
-              <p className="mt-1 text-sm text-muted">Δεν υπάρχουν έξοδα.</p>
-            ) : (
-              <ul className="mt-1 space-y-1 text-sm">
-                {topExpenseProjects.map((p) => (
-                  <li key={p.name} className="flex items-center justify-between gap-2">
-                    <span className="truncate text-muted">{p.name}</span>
-                    <span className="font-semibold">{formatEuro(p.value)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
         </div>
       </Card>
@@ -300,9 +189,7 @@ export default async function TransactionsPage({
             <Card key={t.id} className="p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate font-medium">
-                    {t.notes || projName(t.project_id)}
-                  </p>
+                  <p className="truncate font-medium">{t.notes || "Κίνηση"}</p>
                   <p className="text-xs text-muted">
                     {projName(t.project_id)} · {formatDate(t.tx_date)}
                   </p>
@@ -317,9 +204,14 @@ export default async function TransactionsPage({
                 </span>
               </div>
               <div className="mt-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Badge tone={t.status}>{TX_STATUS_LABEL[t.status]}</Badge>
-                  {t.status === "upcoming" && <PayButton id={t.id} />}
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                  <Badge tone={t.type}>{TX_TYPE_LABEL[t.type]}</Badge>
+                  <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
+                    {t.has_invoice ? "Με ΦΠΑ" : "Χωρίς ΦΠΑ"}
+                  </span>
+                  <Badge tone={normalizeTxStatus(t.status)}>{TX_ACTIVE_STATUS_LABEL[normalizeTxStatus(t.status)]}</Badge>
+                  <span>{t.source || "—"}</span>
+                  {normalizeTxStatus(t.status) === "upcoming" && <PayButton id={t.id} />}
                 </div>
                 <div className="flex items-center gap-1">
                   <TransactionFormModal
@@ -342,7 +234,9 @@ export default async function TransactionsPage({
         {transactions.length > 0 && (
           <Card className="flex items-center justify-between p-4">
             <span className="text-sm font-medium">Καθαρό σύνολο</span>
-            <span className="font-bold text-primary">{formatEuro(total)}</span>
+            <span className={`font-bold ${netBalance >= 0 ? "text-primary" : "text-negative"}`}>
+              {formatEuro(netBalance)}
+            </span>
           </Card>
         )}
       </div>
@@ -356,8 +250,10 @@ export default async function TransactionsPage({
                 <th className="px-4 py-2 font-medium">Ημ/νία</th>
                 <th className="px-4 py-2 font-medium">Έργο</th>
                 <th className="px-4 py-2 font-medium">Περιγραφή</th>
-                <th className="px-4 py-2 font-medium">Επαφή</th>
                 <th className="px-4 py-2 font-medium">Κατάσταση</th>
+                <th className="px-4 py-2 font-medium">Πηγή</th>
+                <th className="px-4 py-2 font-medium">Τύπος</th>
+                <th className="px-4 py-2 font-medium">ΦΠΑ</th>
                 <th className="px-4 py-2 text-right font-medium">Ποσό</th>
                 <th className="px-4 py-2"></th>
               </tr>
@@ -365,7 +261,7 @@ export default async function TransactionsPage({
             <tbody>
               {transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted">
+                  <td colSpan={9} className="px-4 py-8 text-center text-muted">
                     Δεν υπάρχουν κινήσεις.
                   </td>
                 </tr>
@@ -376,21 +272,16 @@ export default async function TransactionsPage({
                       {formatDate(t.tx_date)}
                     </td>
                     <td className="px-4 py-2">{projName(t.project_id)}</td>
-                    <td className="px-4 py-2">
-                      <span>{t.notes || "—"}</span>
-                      {t.source ? (
-                        <span className="block text-xs text-muted">{t.source}</span>
-                      ) : null}
-                    </td>
-                    <td className="px-4 py-2 text-xs">
-                      {contactNameFor(t.contact_id) || "—"}
-                    </td>
+                    <td className="px-4 py-2">{t.notes || "—"}</td>
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
-                        <Badge tone={t.status}>{TX_STATUS_LABEL[t.status]}</Badge>
-                        {t.status === "upcoming" && <PayButton id={t.id} label="" />}
+                        <span className="text-xs text-muted">{TX_ACTIVE_STATUS_LABEL[normalizeTxStatus(t.status)]}</span>
+                        {normalizeTxStatus(t.status) === "upcoming" && <PayButton id={t.id} label="" />}
                       </div>
                     </td>
+                    <td className="px-4 py-2 text-xs text-muted">{t.source || "—"}</td>
+                    <td className="px-4 py-2 text-xs text-muted">{TX_TYPE_LABEL[t.type]}</td>
+                    <td className="px-4 py-2 text-xs text-muted">{t.has_invoice ? "Με ΦΠΑ" : "Χωρίς ΦΠΑ"}</td>
                     <td
                       className={`px-4 py-2 text-right font-semibold ${
                         t.type === "income" ? "text-positive" : ""
@@ -422,11 +313,11 @@ export default async function TransactionsPage({
             {transactions.length > 0 && (
               <tfoot>
                 <tr className="border-t border-border bg-slate-50">
-                  <td colSpan={5} className="px-4 py-2 font-medium">
-                    Καθαρό σύνολο (έξοδα − έσοδα)
+                  <td colSpan={7} className="px-4 py-2 font-medium">
+                    Καθαρό σύνολο (έσοδα − έξοδα)
                   </td>
-                  <td className="px-4 py-2 text-right font-bold text-primary">
-                    {formatEuro(total)}
+                  <td className={`px-4 py-2 text-right font-bold ${netBalance >= 0 ? "text-primary" : "text-negative"}`}>
+                    {formatEuro(netBalance)}
                   </td>
                   <td></td>
                 </tr>

@@ -45,21 +45,49 @@ function parse(formData: FormData) {
   };
 }
 
+async function validateAccountProjectBinding(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  householdId: string,
+  payload: ReturnType<typeof parse>,
+) {
+  if (!payload.account_id) return;
+
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("id,household_id,project_id")
+    .eq("id", payload.account_id)
+    .maybeSingle();
+
+  if (!account || account.household_id !== householdId) {
+    throw new Error("Μη έγκυρος λογαριασμός.");
+  }
+
+  if (account.project_id && account.project_id !== payload.project_id) {
+    throw new Error("Ο λογαριασμός είναι δεσμευμένος σε άλλο έργο.");
+  }
+}
+
 export async function createTransaction(formData: FormData) {
   const householdId = await getHouseholdId();
   if (!householdId) return;
   const supabase = await createClient();
+  const payload = parse(formData);
+  await validateAccountProjectBinding(supabase, householdId, payload);
   await supabase
     .from("transactions")
-    .insert({ household_id: householdId, ...parse(formData) });
+    .insert({ household_id: householdId, ...payload });
   revalidateAll();
 }
 
 export async function updateTransaction(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
+  const householdId = await getHouseholdId();
+  if (!householdId) return;
   const supabase = await createClient();
-  await supabase.from("transactions").update(parse(formData)).eq("id", id);
+  const payload = parse(formData);
+  await validateAccountProjectBinding(supabase, householdId, payload);
+  await supabase.from("transactions").update(payload).eq("id", id);
   revalidateAll();
 }
 

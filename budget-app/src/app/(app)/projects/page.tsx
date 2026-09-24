@@ -32,17 +32,12 @@ export default async function ProjectsPage() {
     const rows = transactions.filter(
       (t) => t.project_id === projectId && t.type === "expense",
     );
+    const total = rows.reduce((s, t) => s + num(t.amount), 0);
     const paid = rows
       .filter((t) => t.status === "paid")
       .reduce((s, t) => s + num(t.amount), 0);
-    const committed = rows
-      .filter((t) => t.status !== "planned")
-      .reduce((s, t) => s + num(t.amount), 0);
     const upcoming = rows
       .filter((t) => t.status === "upcoming")
-      .reduce((s, t) => s + num(t.amount), 0);
-    const planned = rows
-      .filter((t) => t.status === "planned")
       .reduce((s, t) => s + num(t.amount), 0);
     const invoiced = rows
       .filter((t) => t.has_invoice)
@@ -50,7 +45,7 @@ export default async function ProjectsPage() {
     const cash = rows
       .filter((t) => !t.has_invoice)
       .reduce((s, t) => s + num(t.amount), 0);
-    return { paid, committed, upcoming, planned, invoiced, cash };
+    return { total, paid, upcoming, invoiced, cash };
   };
 
   return (
@@ -72,9 +67,10 @@ export default async function ProjectsPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {projects.map((p) => {
-            const { paid, committed, upcoming, planned, invoiced, cash } =
-              totalsFor(p.id);
-            const executionPct = committed > 0 ? Math.min(100, (paid / committed) * 100) : 0;
+            const { total, paid, upcoming, invoiced, cash } = totalsFor(p.id);
+            const budgetTarget = num(p.budget_target ?? 0);
+            const budgetProgressPct =
+              budgetTarget > 0 ? Math.min(100, (total / budgetTarget) * 100) : 0;
             return (
               <Card key={p.id} className="flex flex-col p-5">
                 <div className="mb-2 flex items-start justify-between gap-2">
@@ -88,40 +84,24 @@ export default async function ProjectsPage() {
                     {PROJECT_STATUS_LABEL[p.status]}
                   </Badge>
                 </div>
-                {p.description && (
-                  <p className="mb-3 line-clamp-2 text-sm text-muted">
-                    {p.description}
-                  </p>
-                )}
                 <div className="mt-auto space-y-1 border-t border-border pt-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted">Γενικό σύνολο</span>
+                    <span className="font-semibold text-primary">{formatEuro(total)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted">Προϋπολογισμός</span>
+                    <span className="font-medium">{formatEuro(budgetTarget)}</span>
+                  </div>
                   <div className="flex justify-between">
                     <span className="text-muted">Πληρωμένα</span>
                     <span className="font-medium">{formatEuro(paid)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted">Δεσμευμένα</span>
-                    <span className="font-semibold text-primary">
-                      {formatEuro(committed)}
-                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted">Επερχόμενα</span>
                     <span className="font-medium text-warning">
                       {formatEuro(upcoming)}
                     </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted">Planned</span>
-                    <span className="font-medium">{formatEuro(planned)}</span>
-                  </div>
-                  <div className="pt-1 text-[11px] text-muted">
-                    Εκτέλεση εξόδων: {Math.round(executionPct)}% (πληρωμένα / δεσμευμένα)
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-primary"
-                      style={{ width: `${executionPct}%` }}
-                    />
                   </div>
                   <div className="grid grid-cols-2 gap-2 pt-1 text-[11px]">
                     <span className="rounded-md bg-primary/10 px-2 py-1 text-primary">
@@ -131,25 +111,26 @@ export default async function ProjectsPage() {
                       Χωρίς: {formatEuro(cash)}
                     </span>
                   </div>
-                  {(p.budget_target || p.owner_contact_id || p.start_date || p.end_date) && (
-                    <div className="space-y-1 pt-2 text-[11px] text-muted">
-                      {p.budget_target ? (
-                        <p>
-                          Budget στόχος: <span className="font-medium text-foreground">{formatEuro(num(p.budget_target))}</span>
-                        </p>
-                      ) : null}
-                      {p.owner_contact_id ? (
-                        <p>
-                          Υπεύθυνος: <span className="font-medium text-foreground">{contactName(p.owner_contact_id)}</span>
-                        </p>
-                      ) : null}
-                      {(p.start_date || p.end_date) ? (
-                        <p>
-                          Διάστημα: {p.start_date ?? "—"} έως {p.end_date ?? "—"}
-                        </p>
-                      ) : null}
-                    </div>
-                  )}
+                  <div className="grid grid-cols-2 gap-2 pt-2 text-[11px] text-muted">
+                    <p>
+                      Υπεύθυνος:{" "}
+                      <span className="font-medium text-foreground">
+                        {p.owner_contact_id ? contactName(p.owner_contact_id) : "—"}
+                      </span>
+                    </p>
+                    <p className="text-right">
+                      Διάστημα: {p.start_date ?? "—"} έως {p.end_date ?? "—"}
+                    </p>
+                  </div>
+                  <div className="pt-2 text-[11px] text-muted">
+                    Γενικό σύνολο προς Προϋπολογισμό: {Math.round(budgetProgressPct)}%
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${budgetProgressPct}%` }}
+                    />
+                  </div>
                 </div>
                 <div className="mt-3 flex items-center gap-2">
                   <ProjectFormModal project={p} contacts={contacts} />

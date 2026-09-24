@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
-import { anthropic, AI_MODEL, aiEnabled, logAiUsage } from "@/lib/ai/client";
+import { anthropic, AI_MODEL, AI_MODEL_FALLBACK, aiEnabled, assertWithinAiBudget, isModelNotFoundError, logAiUsage } from "@/lib/ai/client";
 import { buildAssistantTools } from "@/lib/ai/tools";
 import { buildWriteTools } from "@/lib/ai/writeTools";
 import { buildRevenuePlanTools } from "@/lib/ai/revenuePlanTools";
@@ -41,6 +41,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Ο χρήστης δεν ανήκει σε οργανισμό." }, { status: 403 });
   }
 
+  try {
+    await assertWithinAiBudget(supabase, orgId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Το όριο δαπάνης AI έχει εξαντληθεί.";
+    return NextResponse.json({ error: message }, { status: 429 });
+  }
+
   const body = (await request.json()) as ChatRequestBody;
   if (!Array.isArray(body.messages) || body.messages.length === 0) {
     return NextResponse.json({ error: "Λείπουν μηνύματα." }, { status: 400 });
@@ -55,9 +62,9 @@ export async function POST(request: Request) {
     content: m.content,
   }));
 
-  try {
+  async function runChat(model: string): Promise<Anthropic.Beta.BetaMessage | undefined> {
     const runner = anthropic.beta.messages.toolRunner({
-      model: AI_MODEL,
+      model,
       max_tokens: 4096,
       system: ASSISTANT_SYSTEM_PROMPT,
       tools,
@@ -72,6 +79,21 @@ export async function POST(request: Request) {
         runner.pushMessages({ role: "assistant", content: message.content });
       }
     }
+    return final;
+  }
+
+  try {
+    const startedAt = Date.now();
+    let usedModel = AI_MODEL;
+    let final: Anthropic.Beta.BetaMessage | undefined;
+    try {
+      final = await runChat(AI_MODEL);
+    } catch (error) {
+      if (!isModelNotFoundError(error)) throw error;
+      usedModel = AI_MODEL_FALLBACK;
+      final = await runChat(AI_MODEL_FALLBACK);
+    }
+    const latencyMs = Date.now() - startedAt;
 
     if (!final) {
       return NextResponse.json({ error: "Δεν λήφθηκε απάντηση." }, { status: 500 });
@@ -86,11 +108,12 @@ export async function POST(request: Request) {
       orgId,
       userId: session.user.id,
       feature: "assistant",
-      model: AI_MODEL,
+      model: usedModel,
       inputTokens: final.usage.input_tokens,
       cacheReadTokens: final.usage.cache_read_input_tokens ?? 0,
       outputTokens: final.usage.output_tokens,
       requestId: final.id,
+      latencyMs,
     });
 
     return NextResponse.json({

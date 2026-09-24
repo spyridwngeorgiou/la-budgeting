@@ -78,31 +78,55 @@ const SEVERITY_LABEL = { info: "Ενημέρωση", watch: "Προσοχή", ur
 
 export interface ProjectNote {
   id: string;
+  kind?: "status" | "risk" | "action" | "milestone";
   severity: "info" | "watch" | "urgent";
   body: string;
   exposure_amount: number | null;
   due_date: string | null;
 }
 
-export function StatusNotes({ notes }: { notes: ProjectNote[] }) {
+export function StatusNotes({
+  notes,
+  renderActions,
+  footer,
+}: {
+  notes: ProjectNote[];
+  // Optional per-note actions (edit/resolve buttons) -- kept out of this
+  // component's own concerns so it stays a pure display piece for any
+  // future read-only usage, while the project page can still make notes
+  // directly editable instead of only reachable via the AI propose flow.
+  renderActions?: (note: ProjectNote) => React.ReactNode;
+  footer?: React.ReactNode;
+}) {
   if (notes.length === 0) {
-    return <p className="text-sm text-ink-faint">Καμία ανοιχτή σημείωση.</p>;
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-sm text-ink-faint">Καμία ανοιχτή σημείωση.</p>
+        {footer}
+      </div>
+    );
   }
   return (
-    <ul className="flex flex-col gap-2">
-      {notes.map((n) => (
-        <li key={n.id} className="flex flex-col gap-1 border-t border-line/60 pt-2 first:border-0 first:pt-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge tone={SEVERITY_TONE[n.severity]}>{SEVERITY_LABEL[n.severity]}</Badge>
-            {n.exposure_amount != null && (
-              <span className="font-mono text-sm tabular-nums text-red-ink">
-                έκθεση {formatMoney(n.exposure_amount)}
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-ink">{n.body}</p>
-        </li>
-      ))}
-    </ul>
+    <div className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-2">
+        {notes.map((n) => (
+          <li key={n.id} className="flex flex-col gap-1 border-t border-line/60 pt-2 first:border-0 first:pt-0">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone={SEVERITY_TONE[n.severity]}>{SEVERITY_LABEL[n.severity]}</Badge>
+                {n.exposure_amount != null && (
+                  <span className="font-mono text-sm tabular-nums text-red-ink">
+                    έκθεση {formatMoney(n.exposure_amount)}
+                  </span>
+                )}
+              </div>
+              {renderActions && <div className="flex items-center gap-1.5">{renderActions(n)}</div>}
+            </div>
+            <p className="text-sm text-ink">{n.body}</p>
+          </li>
+        ))}
+      </ul>
+      {footer}
+    </div>
   );
 }
