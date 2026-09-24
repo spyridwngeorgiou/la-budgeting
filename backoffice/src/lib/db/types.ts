@@ -2062,6 +2062,25 @@ export type Database = {
           },
         ]
       }
+      activity_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          at: string
+          changes: Json | null
+          entity: string
+          entity_id: string | null
+          id: number
+          label: string | null
+          org_id: string
+          project_id: string | null
+          via: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       project_files: {
         Row: {
           created_at: string
@@ -4038,6 +4057,10 @@ export type Database = {
     }
     Functions: {
       ensure_plans_current: { Args: { p_org_id?: string }; Returns: undefined }
+      org_sign_ins: {
+        Args: { p_org: string; p_since?: string }
+        Returns: { at: string; user_id: string; email: string }[]
+      }
       has_role: {
         Args: { p_min: Database["public"]["Enums"]["org_role"]; p_org: string }
         Returns: boolean

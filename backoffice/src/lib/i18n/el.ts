@@ -19,6 +19,7 @@ export const el = {
     assistant: "Kansha AI",
     changes: "Εκκρεμείς Αλλαγές",
     revenuePlans: "Εκτιμήσεις Εσόδων",
+    activity: "Ιστορικό",
     scenarios: "Σενάρια",
   },
   common: {

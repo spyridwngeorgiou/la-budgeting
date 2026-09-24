@@ -25,6 +25,7 @@ const NAV_ITEMS: { href: string; label: string; ai?: boolean }[] = [
   { href: "/installments", label: el.nav.installments },
   { href: "/cashflow", label: el.nav.cashflow },
   { href: "/scenarios", label: el.nav.scenarios },
+  { href: "/activity", label: el.nav.activity },
   { href: "/settings", label: el.nav.settings },
 ];
 
