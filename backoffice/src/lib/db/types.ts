@@ -2062,6 +2062,85 @@ export type Database = {
           },
         ]
       }
+      project_files: {
+        Row: {
+          created_at: string
+          duplicate_of: string | null
+          external_id: string | null
+          file_modified_at: string | null
+          folder: string[]
+          id: string
+          mime_type: string | null
+          notes: string | null
+          org_id: string
+          project_id: string
+          size_bytes: number | null
+          source: string
+          storage_path: string | null
+          title: string
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          duplicate_of?: string | null
+          external_id?: string | null
+          file_modified_at?: string | null
+          folder?: string[]
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          org_id: string
+          project_id: string
+          size_bytes?: number | null
+          source?: string
+          storage_path?: string | null
+          title: string
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          duplicate_of?: string | null
+          external_id?: string | null
+          file_modified_at?: string | null
+          folder?: string[]
+          id?: string
+          mime_type?: string | null
+          notes?: string | null
+          org_id?: string
+          project_id?: string
+          size_bytes?: number | null
+          source?: string
+          storage_path?: string | null
+          title?: string
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_files_duplicate_of_fkey"
+            columns: ["duplicate_of"]
+            isOneToOne: false
+            referencedRelation: "project_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_files_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_leases: {
         Row: {
           created_at: string

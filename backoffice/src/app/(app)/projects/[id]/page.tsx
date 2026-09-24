@@ -266,6 +266,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 : undefined
             }
           />
+          <Link href={`/projects/${id}/files`}>
+            <Button variant="secondary">Αρχεία</Button>
+          </Link>
           <Link href={`/transactions?project_id=${id}`}>
             <Button variant="secondary">{el.nav.transactions}</Button>
           </Link>
