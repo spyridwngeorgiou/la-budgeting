@@ -29,7 +29,40 @@ ORIGIN = {
     "AADE": "aade",
     "Χειρόγραφο": "manual",
     "Τραπεζικό αρχείο": "bank_file",
+    # Entered in the app first, then copied back into the workbook -- a
+    # person typed it by hand, so it's 'manual' (tx_origin has no 'app').
+    "Εφαρμογή": "manual",
 }
+
+# Short property names used in Καθημερινά col M «Ακίνητο» and in the
+# Ρυθμίσεις «ΠΑΡΟΧΕΣ ΑΝΑ ΑΚΙΝΗΤΟ» block -> project code. Matched on a
+# normalized prefix (see property_code_for), fail-loud on anything unknown.
+PROPERTY_SHORT_NAME = {
+    "ΗΛΙΟΥΠΟΛΗ": "Q001_ILIOUPOLI_P15_RESIDENCES",
+    "ΛΑΖΑΡΑΚΗ": "Q003_LAZARAKI32_GLYFADA",
+    "ΑΓ. ΚΩΝΣΤΑΝΤΙΝΟΥ": "Q004_AGIOU_KWNSTANTINOU20_GLYFADA",
+    "ΑΓΙΟΥ ΚΩΝΣΤΑΝΤΙΝΟΥ": "Q004_AGIOU_KWNSTANTINOU20_GLYFADA",
+    "ΚΑΒΟΥΡΙ": "Q006_KAVOURI_AKTIS2",
+    "ΚΟΛΩΝΑΚΙ": "Q007_KOLONAKI_KARNEADOU37",
+}
+
+
+def _strip_accents_upper(value: str) -> str:
+    import unicodedata
+    decomposed = unicodedata.normalize("NFD", value)
+    return "".join(ch for ch in decomposed if unicodedata.category(ch) != "Mn").upper().strip()
+
+
+def property_code_for(short_name: str, *, row: int | None = None) -> str:
+    """'Καβούρι, Ακτής 2' / 'Ηλιούπολη' -> project code; raises if unknown."""
+    key = _strip_accents_upper(short_name)
+    for prefix, code in PROPERTY_SHORT_NAME.items():
+        if key.startswith(prefix):
+            return code
+    where = f" (row {row})" if row is not None else ""
+    raise UnmappedLiteralError(
+        f"Unmapped property name {short_name!r}{where}. Add it to PROPERTY_SHORT_NAME in tools/mappings.py."
+    )
 
 OWNER_SCOPE = {
     "Εταιρικός": "corporate",

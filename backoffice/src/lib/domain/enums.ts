@@ -113,6 +113,7 @@ export const ORIGIN_FROM_GREEK: Record<string, TxOrigin> = {
   AADE: "aade",
   Χειρόγραφο: "manual",
   "Τραπεζικό αρχείο": "bank_file",
+  Εφαρμογή: "manual",
 };
 
 export const OWNER_SCOPE_FROM_GREEK: Record<string, OwnerScope> = {

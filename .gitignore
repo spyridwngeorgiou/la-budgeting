@@ -33,3 +33,6 @@ budget-app/scripts/seed.json
 *.pdf
 aade_exports/
 tools/__pycache__/
+
+# Reconciliation / promotion reports (contain financial data)
+tools/out/
