@@ -62,7 +62,7 @@ export function YearTable({
                   max={100}
                   step="0.1"
                   defaultValue={Math.round((byMonth.get(month)?.occupancyPct ?? 0) * 1000) / 10}
-                  className="w-full rounded border border-line-strong px-1 py-1 text-center tabular-nums"
+                  className="w-full rounded-md border border-line-strong px-1 py-1 text-center tabular-nums"
                 />
               </td>
             ))}
@@ -80,7 +80,7 @@ export function YearTable({
                   min={0}
                   step="0.01"
                   defaultValue={byMonth.get(month)?.adr ?? 0}
-                  className="w-full rounded border border-line-strong px-1 py-1 text-center tabular-nums"
+                  className="w-full rounded-md border border-line-strong px-1 py-1 text-center tabular-nums"
                 />
               </td>
             ))}

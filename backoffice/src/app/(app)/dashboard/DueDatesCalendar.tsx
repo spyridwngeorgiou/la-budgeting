@@ -44,7 +44,7 @@ export function DueDatesCalendar({ dueDates, todayIso }: { dueDates: DueTx[]; to
   const monthLabel = today.toLocaleDateString("el-GR", { month: "long", year: "numeric", timeZone: "UTC" });
 
   return (
-    <div className="rounded border border-line p-3">
+    <div className="rounded-lg border border-line p-3">
       <div className="mb-2 text-sm font-medium text-ink capitalize">{monthLabel}</div>
       <div className="grid grid-cols-7 gap-1 text-center text-xs">
         {WEEKDAY_LABELS.map((w) => (

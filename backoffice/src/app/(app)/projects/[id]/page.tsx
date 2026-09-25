@@ -622,7 +622,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                   <Link
                     key={p.id}
                     href={`/revenue-plans/${p.id}`}
-                    className="flex items-center justify-between rounded border border-line px-3 py-2 text-sm transition-colors hover:border-line-strong hover:bg-bg"
+                    className="flex items-center justify-between rounded-lg border border-line px-3 py-2 text-sm transition-colors hover:border-line-strong hover:bg-bg"
                   >
                     <span>{p.name}</span>
                     <span className="text-xs text-ink-muted">

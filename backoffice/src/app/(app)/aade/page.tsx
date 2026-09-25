@@ -30,7 +30,7 @@ export default async function AadePage() {
       </div>
 
       {(!org?.own_afm || org.own_afm === "000000000") && (
-        <div className="rounded border border-amber-ink/40 bg-amber-bg p-3 text-sm text-amber-ink">
+        <div className="rounded-lg border border-amber-ink/40 bg-amber-bg p-3 text-sm text-amber-ink">
           Ορίστε πρώτα το πραγματικό ΑΦΜ της επιχείρησης στις{" "}
           <Link href="/settings" className="underline">
             Ρυθμίσεις
@@ -39,7 +39,7 @@ export default async function AadePage() {
         </div>
       )}
 
-      <form action={uploadAadeFile} className="flex items-center gap-2 rounded border border-line p-4">
+      <form action={uploadAadeFile} className="flex items-center gap-2 rounded-lg border border-line p-4">
         <input type="file" name="file" accept=".xlsx" required className="text-sm" />
         <SubmitButton pendingLabel="Εισαγωγή…">Εισαγωγή Αρχείου myDATA</SubmitButton>
       </form>
@@ -49,7 +49,7 @@ export default async function AadePage() {
           Δεν έχει γίνει ακόμα καμία εισαγωγή. Ανεβάστε ένα αρχείο myDATA (.xlsx) παραπάνω.
         </p>
       ) : (
-      <div className="overflow-x-auto rounded border border-line">
+      <div className="overflow-x-auto rounded-lg border border-line">
         <table className="w-full text-left text-sm">
           <thead className="bg-bg text-ink-muted">
             <tr>

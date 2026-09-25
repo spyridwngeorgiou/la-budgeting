@@ -41,7 +41,7 @@ export function ContactsTable({ rollup }: { rollup: ContactRow[] }) {
         className="max-w-md"
       />
 
-      <div className="overflow-x-auto rounded border border-line">
+      <div className="overflow-x-auto rounded-lg border border-line">
         <table className="w-full text-left text-sm">
           <thead className="bg-bg text-ink-muted">
             <tr>

@@ -62,17 +62,17 @@ export default async function PropertiesPage({ searchParams }: { searchParams: P
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <Link href={`/properties?month=${shiftMonth(month, -1)}`} className="rounded border border-line px-2 py-1 hover:bg-bg">
+          <Link href={`/properties?month=${shiftMonth(month, -1)}`} className="rounded-md border border-line px-2 py-1 hover:bg-bg">
             ←
           </Link>
           <span className="min-w-24 text-center font-medium">{monthLabel(month)}</span>
-          <Link href={`/properties?month=${shiftMonth(month, 1)}`} className="rounded border border-line px-2 py-1 hover:bg-bg">
+          <Link href={`/properties?month=${shiftMonth(month, 1)}`} className="rounded-md border border-line px-2 py-1 hover:bg-bg">
             →
           </Link>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-md border border-line bg-surface">
+      <div className="overflow-x-auto rounded-lg border border-line bg-surface">
         <table className="min-w-full text-sm">
           <thead>
             <tr className="border-b border-line text-ink-muted">

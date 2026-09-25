@@ -76,7 +76,7 @@ export function NlEntryForm() {
           else throw e;
         }
       }}
-      className="flex flex-col gap-3 rounded border border-line bg-surface p-4"
+      className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4"
     >
       <div className="flex items-start gap-2">
         <textarea

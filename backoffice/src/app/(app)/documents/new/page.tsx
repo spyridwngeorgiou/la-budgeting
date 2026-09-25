@@ -12,7 +12,7 @@ export default async function NewDocumentPage() {
     return (
       <div className="flex flex-col gap-4">
         <h1 className="text-xl font-semibold">Kansha Operator</h1>
-        <div className="rounded border border-amber-ink/40 bg-amber-bg p-4 text-sm text-amber-ink">
+        <div className="rounded-lg border border-amber-ink/40 bg-amber-bg p-4 text-sm text-amber-ink">
           Ο βοηθός AI δεν είναι ακόμα ενεργοποιημένος. Χρειάζεται ANTHROPIC_API_KEY και
           AI_ENABLED=true στις μεταβλητές περιβάλλοντος.
         </div>
@@ -32,7 +32,7 @@ export default async function NewDocumentPage() {
       </div>
 
       {ownAfmMissing && (
-        <div className="rounded border border-amber-ink/40 bg-amber-bg p-3 text-sm text-amber-ink">
+        <div className="rounded-lg border border-amber-ink/40 bg-amber-bg p-3 text-sm text-amber-ink">
           Συνιστάται να ορίσετε πρώτα το ΑΦΜ της επιχείρησης στις{" "}
           <Link href="/settings" className="underline">
             Ρυθμίσεις

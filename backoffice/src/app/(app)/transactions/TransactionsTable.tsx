@@ -191,7 +191,7 @@ export function TransactionsTable({
         </Card>
       </div>
 
-      <div className="max-h-[70vh] overflow-auto rounded border border-line">
+      <div className="max-h-[70vh] overflow-auto rounded-lg border border-line">
         <table className="w-full text-left text-sm">
           <thead className="sticky top-0 z-10 border-b border-line-strong bg-bg text-ink-muted">
             <tr>

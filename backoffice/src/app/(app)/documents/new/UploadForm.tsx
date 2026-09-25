@@ -81,7 +81,7 @@ export function UploadForm() {
           }
         }
       }}
-      className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4 shadow-sm"
+      className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4 shadow-sm"
     >
       {/* Two separate inputs on purpose: `capture` makes phones open the
           camera directly, which also makes picking a PDF impossible -- so
@@ -114,7 +114,7 @@ export function UploadForm() {
             setDragging(false);
             choose(e.dataTransfer.files?.[0]);
           }}
-          className={`flex min-h-64 flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
+          className={`flex min-h-64 flex-col items-center justify-center gap-4 rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors ${
             dragging ? "border-ai-strong bg-ai-bg" : "border-ai-border bg-ai-bg/30"
           }`}
         >
@@ -148,7 +148,7 @@ export function UploadForm() {
           <p className="text-xs text-ink-faint">PDF, JPG, PNG ή WEBP · έως 10 MB · ένα παραστατικό ανά αρχείο</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3 rounded-xl border-2 border-ai-border bg-ai-bg/30 p-4">
+        <div className="flex flex-col gap-3 rounded-lg border-2 border-ai-border bg-ai-bg/30 p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm">
               {isPdf ? <FileText className="h-6 w-6 text-red-ink" /> : <ImageIcon className="h-6 w-6 text-ai-strong" />}
@@ -170,7 +170,7 @@ export function UploadForm() {
           </div>
           {preview && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="Προεπισκόπηση" className="max-h-80 rounded border border-line object-contain" />
+            <img src={preview} alt="Προεπισκόπηση" className="max-h-80 rounded-lg border border-line object-contain" />
           )}
         </div>
       )}

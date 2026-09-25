@@ -23,7 +23,7 @@ export default async function WithholdingPage() {
           Δεν υπάρχουν ακόμα κινήσεις με παρακράτηση.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded border border-line">
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-left text-sm">
             <thead className="bg-bg text-ink-muted">
               <tr>

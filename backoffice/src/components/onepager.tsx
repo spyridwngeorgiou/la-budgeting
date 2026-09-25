@@ -17,7 +17,7 @@ export function OnePagerSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="break-inside-avoid rounded-md border border-line bg-surface p-4">
+    <section className="break-inside-avoid rounded-lg border border-line bg-surface p-4">
       <h2 className="text-sm font-semibold tracking-wide text-ink">{title}</h2>
       {subtitle && <p className="mb-2 text-xs text-ink-faint">{subtitle}</p>}
       <div className={subtitle ? "" : "mt-2"}>{children}</div>

@@ -113,7 +113,7 @@ export function TransactionFormModal({
             {(["expense", "income"] as const).map((d) => (
               <label
                 key={d}
-                className={`flex-1 cursor-pointer rounded border px-3 py-2 text-center text-sm ${
+                className={`flex-1 cursor-pointer rounded-md border px-3 py-2 text-center text-sm ${
                   direction === d ? "border-ink bg-ink text-white" : "border-line-strong"
                 }`}
               >

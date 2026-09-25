@@ -92,7 +92,7 @@ export function ProjectsGrid({
             <Link
               key={p.project_id}
               href={`/projects/${p.project_id}`}
-              className="group rounded border border-line p-4 transition-colors hover:border-line-strong hover:bg-surface"
+              className="group rounded-lg border border-line p-4 transition-colors hover:border-line-strong hover:bg-surface"
             >
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="font-medium">{p.display_name}</span>

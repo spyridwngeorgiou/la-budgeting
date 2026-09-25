@@ -271,7 +271,7 @@ export default async function AnalysisPage({
       {rows.length === 0 ? (
         <p className="text-sm text-ink-muted">Δεν βρέθηκαν κινήσεις για αυτά τα φίλτρα.</p>
       ) : (
-        <div className="overflow-x-auto rounded border border-line">
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full border-collapse text-left text-xs">
             <thead className="bg-bg text-ink-muted">
               <tr>

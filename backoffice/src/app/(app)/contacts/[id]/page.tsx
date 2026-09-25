@@ -50,7 +50,7 @@ export default async function ContactDetailPage({
 
       <section>
         <h2 className="mb-2 text-sm font-medium text-ink-muted">{el.nav.transactions}</h2>
-        <div className="overflow-x-auto rounded border border-line">
+        <div className="overflow-x-auto rounded-lg border border-line">
           <table className="w-full text-left text-sm">
             <thead className="bg-bg text-ink-muted">
               <tr>

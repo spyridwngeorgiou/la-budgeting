@@ -31,7 +31,7 @@ export function CashflowChart({ rows, buffer }: { rows: ChartRow[]; buffer: numb
   const todayLabel = rows.find((r) => r.isToday)?.label;
 
   return (
-    <div className="h-72 w-full rounded border border-line bg-surface p-3">
+    <div className="h-72 w-full rounded-lg border border-line bg-surface p-3">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={rows} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#dcdfde" vertical={false} />

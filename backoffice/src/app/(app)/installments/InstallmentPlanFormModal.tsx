@@ -50,7 +50,7 @@ export function InstallmentPlanFormModal({ action, contacts, projects, categorie
 
           <div className="flex gap-2">
             {(["expense", "income"] as const).map((d) => (
-              <label key={d} className="flex flex-1 items-center justify-center gap-2 rounded border border-line-strong px-3 py-2 text-sm">
+              <label key={d} className="flex flex-1 items-center justify-center gap-2 rounded-md border border-line-strong px-3 py-2 text-sm">
                 <input type="radio" name="direction" value={d} defaultChecked={d === "expense"} />
                 {d === "expense" ? el.transaction.expense : el.transaction.income}
               </label>

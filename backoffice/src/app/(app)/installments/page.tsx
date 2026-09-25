@@ -72,7 +72,7 @@ export default async function InstallmentsPage() {
       {(progress ?? []).map((plan) => {
         const rows = installmentsByPlan.get(plan.plan_id!) ?? [];
         return (
-          <div key={plan.plan_id} className="rounded border border-line p-4">
+          <div key={plan.plan_id} className="rounded-lg border border-line p-4">
             <div className="mb-2 flex items-center justify-between">
               <span className="font-medium">{planLabels.get(plan.plan_id!) ?? plan.label}</span>
               <div className="flex items-center gap-2">

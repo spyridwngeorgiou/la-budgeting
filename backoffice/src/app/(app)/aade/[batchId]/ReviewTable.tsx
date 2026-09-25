@@ -88,7 +88,7 @@ export function ReviewTable({
       </label>
 
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded border border-line-strong bg-bg p-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line-strong bg-bg p-2 text-sm">
           <span>{selected.size} επιλεγμένες:</span>
           <Select value={bulkProject} onChange={(e) => setBulkProject(e.target.value)}>
             <option value="">Έργο —</option>
@@ -120,7 +120,7 @@ export function ReviewTable({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded border border-line">
+      <div className="overflow-x-auto rounded-lg border border-line">
         <table className="w-full text-left text-sm">
           <thead className="bg-bg text-ink-muted">
             <tr>

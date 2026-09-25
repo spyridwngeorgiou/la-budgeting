@@ -76,7 +76,7 @@ export function ReviewForm({
           <img
             src={imageUrl}
             alt="Παραστατικό"
-            className="max-h-[45vh] w-full rounded border border-line object-contain md:max-h-none md:object-fill"
+            className="max-h-[45vh] w-full rounded-lg border border-line object-contain md:max-h-none md:object-fill"
           />
         </div>
       )}
@@ -90,7 +90,7 @@ export function ReviewForm({
         )}
 
         {needsReviewReasons.length > 0 && (
-          <div className="rounded border border-amber-ink/40 bg-amber-bg p-3 text-sm text-amber-ink">
+          <div className="rounded-lg border border-amber-ink/40 bg-amber-bg p-3 text-sm text-amber-ink">
             <ul className="list-disc pl-4">
               {needsReviewReasons.map((r) => (
                 <li key={r}>{r}</li>
@@ -119,7 +119,7 @@ export function ReviewForm({
             {(["expense", "income"] as const).map((d) => (
               <label
                 key={d}
-                className={`flex-1 cursor-pointer rounded border px-3 py-2 text-center text-sm ${
+                className={`flex-1 cursor-pointer rounded-md border px-3 py-2 text-center text-sm ${
                   direction === d ? "border-ink bg-ink text-white" : "border-line-strong"
                 }`}
               >

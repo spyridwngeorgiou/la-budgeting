@@ -237,13 +237,13 @@ export default async function DashboardPage() {
             <Link
               key={a.account_id}
               href={`/transactions?account_id=${a.account_id}`}
-              className="rounded border border-line p-3 transition-colors hover:border-line-strong hover:bg-surface"
+              className="rounded-lg border border-line p-3 transition-colors hover:border-line-strong hover:bg-surface"
             >
               <div className="text-xs text-ink-muted">{a.name}</div>
               <div className="font-mono text-lg">{formatMoney(a.current_balance)}</div>
             </Link>
           ))}
-          <div className="rounded border border-ink bg-ink p-3 text-white">
+          <div className="rounded-lg border border-ink bg-ink p-3 text-white">
             <div className="text-xs text-white/70">Σύνολο Ρευστών</div>
             <div className="font-mono text-lg">{formatMoney(liquidTotal)}</div>
           </div>
@@ -359,11 +359,11 @@ function Stat({ label, value, href }: { label: string; value: string; href?: str
     return (
       <Link
         href={href}
-        className="block rounded border border-line p-3 transition-colors hover:border-line-strong hover:bg-surface"
+        className="block rounded-lg border border-line p-3 transition-colors hover:border-line-strong hover:bg-surface"
       >
         {content}
       </Link>
     );
   }
-  return <div className="rounded border border-line p-3">{content}</div>;
+  return <div className="rounded-lg border border-line p-3">{content}</div>;
 }

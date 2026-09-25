@@ -74,7 +74,7 @@ export default async function ChangesPage() {
 
                 {c.reason && <p className="mb-2 text-sm text-ink-muted">{c.reason}</p>}
 
-                <div className="mb-3 overflow-x-auto rounded border border-line">
+                <div className="mb-3 overflow-x-auto rounded-lg border border-line">
                   <table className="w-full text-left text-xs">
                     <thead className="bg-bg text-ink-muted">
                       <tr>
@@ -128,7 +128,7 @@ export default async function ChangesPage() {
       {history && history.length > 0 && (
         <section>
           <h2 className="mb-2 text-sm font-medium text-ink-muted">Ιστορικό Αποφάσεων</h2>
-          <div className="overflow-x-auto rounded border border-line">
+          <div className="overflow-x-auto rounded-lg border border-line">
             <table className="w-full text-left text-xs">
               <thead className="bg-bg text-ink-muted">
                 <tr>

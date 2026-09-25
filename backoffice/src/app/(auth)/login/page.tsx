@@ -21,14 +21,14 @@ export default function LoginPage() {
           type="email"
           placeholder={el.auth.email}
           required
-          className="rounded border border-line-strong px-3 py-2"
+          className="rounded-md border border-line-strong px-3 py-2"
         />
         <input
           name="password"
           type="password"
           placeholder={el.auth.password}
           required
-          className="rounded border border-line-strong px-3 py-2"
+          className="rounded-md border border-line-strong px-3 py-2"
         />
         <SubmitButton className="w-full">{el.auth.signIn}</SubmitButton>
       </form>

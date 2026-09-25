@@ -78,7 +78,7 @@ export function ChatPanel({ initialPrompt }: { initialPrompt?: string } = {}) {
 
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col gap-3">
-      <div className="flex-1 overflow-y-auto rounded border border-line bg-surface p-4">
+      <div className="flex-1 overflow-y-auto rounded-lg border border-line bg-surface p-4">
         {messages.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
             <p className="text-sm text-ink-muted">
