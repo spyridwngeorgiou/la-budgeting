@@ -4,25 +4,35 @@ import { el } from "@/lib/i18n/el";
 import { Badge } from "@/components/ui";
 import { AccountFormModal } from "./AccountFormModal";
 import { createAccount } from "./actions";
-import { BalanceAssertion, type LatestAssertion } from "./BalanceAssertion";
+import { BalanceAssertion, type BalanceCheck } from "./BalanceAssertion";
 
 export default async function AccountsPage() {
   const supabase = await createClient();
-  const [{ data: accounts }, { data: assertions }, { data: sinceCounts }] = await Promise.all([
+  const [{ data: accounts }, { data: checkRows }] = await Promise.all([
     supabase.from("v_account_balances").select("*").order("owner_scope").order("name"),
-    // Latest first so the per-account reduce below only ever keeps the most
-    // recent row it sees.
-    supabase
-      .from("account_balance_assertions")
-      .select("account_id, as_of_date, asserted_balance, computed_balance")
-      .order("as_of_date", { ascending: false }),
-    supabase.from("v_cash_since_last_count").select("account_id, account_kind, business_since, personal_since, expected_now"),
+    // Newest first per account; each row carries its live period breakdown (0035).
+    supabase.from("v_balance_checks").select("*").order("as_of_date", { ascending: false }),
   ]);
-  const latestAssertionByAccount = new Map<string, LatestAssertion>();
-  for (const row of assertions ?? []) {
-    if (!latestAssertionByAccount.has(row.account_id)) {
-      latestAssertionByAccount.set(row.account_id, row);
-    }
+  const checksByAccount = new Map<string, BalanceCheck[]>();
+  for (const r of checkRows ?? []) {
+    const list = checksByAccount.get(r.account_id!) ?? [];
+    list.push({
+      id: r.id!,
+      as_of_date: r.as_of_date!,
+      asserted_balance: Number(r.asserted_balance),
+      from_import: Boolean(r.from_import),
+      period_start: r.period_start!,
+      period_start_balance: Number(r.period_start_balance),
+      period_start_source: r.period_start_source as BalanceCheck["period_start_source"],
+      period_income: Number(r.period_income),
+      period_income_n: Number(r.period_income_n),
+      period_expense: Number(r.period_expense),
+      period_expense_n: Number(r.period_expense_n),
+      expected_balance: Number(r.expected_balance),
+      period_gap: Number(r.period_gap),
+      total_gap: Number(r.total_gap),
+    });
+    checksByAccount.set(r.account_id!, list);
   }
 
   const corporate = (accounts ?? []).filter((a) => a.owner_scope === "corporate");
@@ -75,18 +85,10 @@ export default async function AccountsPage() {
                       </div>
                       <BalanceAssertion
                         accountId={a.account_id!}
-                        latest={latestAssertionByAccount.get(a.account_id!) ?? null}
-                        sinceCount={(() => {
-                          const s = (sinceCounts ?? []).find((c) => c.account_id === a.account_id);
-                          return s
-                            ? {
-                                business_since: Number(s.business_since ?? 0),
-                                personal_since: Number(s.personal_since ?? 0),
-                                expected_now: Number(s.expected_now ?? 0),
-                                isCash: s.account_kind === "cash",
-                              }
-                            : null;
-                        })()}
+                        checks={checksByAccount.get(a.account_id!) ?? []}
+                        expectedToday={Number(a.current_balance ?? 0)}
+                        defaultFrom={checksByAccount.get(a.account_id!)?.[0]?.as_of_date ?? a.opening_balance_date ?? ""}
+                        isCash={a.kind === "cash"}
                       />
                     </div>
                   ))}

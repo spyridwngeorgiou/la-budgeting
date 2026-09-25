@@ -142,7 +142,7 @@ export default async function DashboardPage() {
   const driftItems = (accountIssues ?? [])
     .filter((a) => a.issue === "drift")
     .map((a) => ({
-      label: `${a.account_name}: η μέτρηση διαφέρει ${Number(a.drift) > 0 ? "+" : ""}${formatMoney(a.drift)} από την εφαρμογή — λείπουν κινήσεις`,
+      label: `${a.account_name}: λείπουν ${Number(a.drift) < 0 ? "έξοδα" : "έσοδα"} ${formatMoney(Math.abs(Number(a.drift)))} (έλεγχος με πραγματικό υπόλοιπο)`,
       href: "/accounts",
     }));
   const uncountedAccounts = (accountIssues ?? []).filter((a) => a.issue !== "drift").length;

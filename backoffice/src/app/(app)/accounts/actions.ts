@@ -35,6 +35,8 @@ export async function assertAccountBalance(accountId: string, formData: FormData
 
   const assertedBalance = Number(formData.get("asserted_balance"));
   const asOfDate = String(formData.get("as_of_date"));
+  const periodStart = formString(formData, "period_start");
+  if (periodStart && periodStart >= asOfDate) throw new Error("Η αρχή του ελέγχου πρέπει να είναι πριν την ημερομηνία του υπολοίπου.");
   if (!Number.isFinite(assertedBalance)) throw new Error("Μη έγκυρο υπόλοιπο.");
 
   // Snapshot the balance AS OF the count's own date, not today's -- a count
@@ -56,6 +58,7 @@ export async function assertAccountBalance(accountId: string, formData: FormData
       as_of_date: asOfDate,
       asserted_balance: assertedBalance,
       computed_balance: Number(computedBalance),
+      period_start: periodStart,
       created_by: session?.user.id,
     },
     { onConflict: "account_id,as_of_date" },

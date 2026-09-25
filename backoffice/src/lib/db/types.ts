@@ -428,6 +428,7 @@ export type Database = {
       }
       account_balance_assertions: {
         Row: {
+          period_start: string | null
           account_id: string
           as_of_date: string
           asserted_balance: number
@@ -438,6 +439,7 @@ export type Database = {
           org_id: string
         }
         Insert: {
+          period_start?: string | null
           account_id: string
           as_of_date: string
           asserted_balance: number
@@ -448,6 +450,7 @@ export type Database = {
           org_id: string
         }
         Update: {
+          period_start?: string | null
           account_id?: string
           as_of_date?: string
           asserted_balance?: number
@@ -3479,6 +3482,27 @@ export type Database = {
       }
     }
     Views: {
+      v_balance_checks: {
+        Row: {
+          account_id: string | null
+          as_of_date: string | null
+          asserted_balance: number | null
+          expected_balance: number | null
+          from_import: boolean | null
+          id: string | null
+          org_id: string | null
+          period_expense: number | null
+          period_expense_n: number | null
+          period_gap: number | null
+          period_income: number | null
+          period_income_n: number | null
+          period_start: string | null
+          period_start_balance: number | null
+          period_start_source: string | null
+          total_gap: number | null
+        }
+        Relationships: []
+      }
       v_qc_account_drift: {
         Row: {
           account_id: string | null
