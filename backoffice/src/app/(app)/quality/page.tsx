@@ -10,6 +10,50 @@ import { markInvoiceReceived } from "./actions";
 // underlying view has a different shape.
 const CHECKS = [
   {
+    view: "v_qc_account_drift" as const,
+    title: "Υπόλοιπα που δεν συμφωνούν με την πραγματικότητα",
+    why: "Η τελευταία μέτρηση (ταμείο ή τράπεζα) διαφέρει από αυτό που υπολογίζει η εφαρμογή — λείπουν ή περισσεύουν κινήσεις. Ή ο λογαριασμός δεν έχει μετρηθεί πάνω από 35 ημέρες, οπότε μια διαφορά δεν θα φαινόταν. Μην «διορθώνετε» το υπόλοιπο έναρξης· βρείτε τις κινήσεις.",
+    render: (r: {
+      account_id: string; account_name: string | null; counted_on: string | null;
+      drift: number | null; days_since_count: number | null; issue: string | null;
+    }) => (
+      <Row key={r.account_id}>
+        <Link href="/accounts" className="flex-1 hover:underline">
+          {r.account_name}
+        </Link>
+        {r.issue === "drift" && (
+          <>
+            <span className="text-xs text-ink-muted">μέτρηση {formatDate(r.counted_on)}</span>
+            <Badge tone={Math.abs(Number(r.drift)) >= 50 ? "red" : "amber"}>
+              {Number(r.drift) > 0 ? "+" : ""}
+              {formatMoney(r.drift)} {Number(r.drift) > 0 ? "περισσότερα από την εφαρμογή" : "λιγότερα από την εφαρμογή"}
+            </Badge>
+          </>
+        )}
+        {r.issue === "stale" && <Badge tone="amber">χωρίς μέτρηση {r.days_since_count} ημέρες</Badge>}
+        {r.issue === "never_counted" && <Badge tone="amber">δεν έχει μετρηθεί ποτέ</Badge>}
+      </Row>
+    ),
+  },
+  {
+    view: "v_qc_counterparty_without_contact" as const,
+    title: "Αντισυμβαλλόμενοι χωρίς επαφή",
+    why: "Κινήσεις με όνομα αντισυμβαλλόμενου που δεν αντιστοιχεί σε επαφή — δεν εμφανίζονται στο ιστορικό προμηθευτή και δεν ελέγχεται ΑΦΜ. Δημιουργήστε την επαφή ή συνδέστε την κίνηση με υπάρχουσα.",
+    render: (r: {
+      counterparty_name: string; n: number | null; gross_amount: number | null;
+      last_tx_date: string | null; transaction_ids: string[] | null;
+    }) => (
+      <Row key={r.counterparty_name}>
+        <Link href={`/transactions?ids=${(r.transaction_ids ?? []).join(",")}`} className="flex-1 hover:underline">
+          {r.counterparty_name}
+        </Link>
+        <span className="text-xs text-ink-muted">τελευταία {formatDate(r.last_tx_date)}</span>
+        <span className="font-mono">{formatMoney(r.gross_amount)}</span>
+        <Badge tone="amber">{r.n}×</Badge>
+      </Row>
+    ),
+  },
+  {
     view: "v_qc_uninvoiced_large_expenses" as const,
     title: "Δαπάνες χωρίς παραστατικό (φορολογικός κίνδυνος)",
     why: "Επιχειρηματική δαπάνη πάνω από το όριο χωρίς παραστατικό δεν εκπίπτει και χάνεται ο ΦΠΑ· με μετρητά πάνω από το όριο δεν εκπίπτει ούτε με παραστατικό. Ζητήστε το παραστατικό από τον προμηθευτή.",

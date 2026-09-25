@@ -3479,6 +3479,31 @@ export type Database = {
       }
     }
     Views: {
+      v_qc_account_drift: {
+        Row: {
+          account_id: string | null
+          account_name: string | null
+          computed_amount: number | null
+          counted_amount: number | null
+          counted_on: string | null
+          days_since_count: number | null
+          drift: number | null
+          issue: string | null
+          org_id: string | null
+        }
+        Relationships: []
+      }
+      v_qc_counterparty_without_contact: {
+        Row: {
+          counterparty_name: string | null
+          gross_amount: number | null
+          last_tx_date: string | null
+          n: number | null
+          org_id: string | null
+          transaction_ids: string[] | null
+        }
+        Relationships: []
+      }
       v_cash_since_last_count: {
         Row: {
           account_id: string | null

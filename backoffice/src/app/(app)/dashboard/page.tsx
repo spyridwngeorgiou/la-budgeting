@@ -132,7 +132,32 @@ export default async function DashboardPage() {
     0,
   );
 
+  // Where the ledger and reality disagree (or the app is blind): warned about,
+  // never silently "fixed" by editing opening balances -- v_qc_account_drift /
+  // v_qc_counterparty_without_contact (0033).
+  const [{ data: accountIssues }, { data: contactless }] = await Promise.all([
+    supabase.from("v_qc_account_drift").select("account_name, drift, issue, days_since_count"),
+    supabase.from("v_qc_counterparty_without_contact").select("n"),
+  ]);
+  const driftItems = (accountIssues ?? [])
+    .filter((a) => a.issue === "drift")
+    .map((a) => ({
+      label: `${a.account_name}: η μέτρηση διαφέρει ${Number(a.drift) > 0 ? "+" : ""}${formatMoney(a.drift)} από την εφαρμογή — λείπουν κινήσεις`,
+      href: "/accounts",
+    }));
+  const uncountedAccounts = (accountIssues ?? []).filter((a) => a.issue !== "drift").length;
+  const contactlessRows = (contactless ?? []).reduce((s, r) => s + Number(r.n ?? 0), 0);
+
   const worklist = [
+    ...driftItems,
+    uncountedAccounts > 0 && {
+      label: `${uncountedAccounts} ${uncountedAccounts === 1 ? "λογαριασμός" : "λογαριασμοί"} χωρίς μέτρηση υπολοίπου τον τελευταίο μήνα`,
+      href: "/accounts",
+    },
+    contactlessRows > 0 && {
+      label: `${contactlessRows} ${contactlessRows === 1 ? "κίνηση" : "κινήσεις"} με αντισυμβαλλόμενο χωρίς επαφή`,
+      href: "/quality",
+    },
     overdue.length > 0 && {
       label: `${overdue.length} ληξιπρόθεσμ${overdue.length === 1 ? "η υποχρέωση" : "ες υποχρεώσεις"}`,
       href: `/transactions?ids=${overdue.map((tx) => tx.id).join(",")}`,
