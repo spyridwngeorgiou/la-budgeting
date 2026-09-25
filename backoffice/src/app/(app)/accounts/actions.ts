@@ -37,12 +37,13 @@ export async function assertAccountBalance(accountId: string, formData: FormData
   const asOfDate = String(formData.get("as_of_date"));
   if (!Number.isFinite(assertedBalance)) throw new Error("Μη έγκυρο υπόλοιπο.");
 
-  const { data: account, error: accountError } = await supabase
-    .from("v_account_balances")
-    .select("current_balance")
-    .eq("account_id", accountId)
-    .maybeSingle();
-  if (accountError || !account) throw new Error(accountError?.message ?? "Ο λογαριασμός δεν βρέθηκε.");
+  // Snapshot the balance AS OF the count's own date, not today's -- a count
+  // entered a few days late must compare against what the ledger said then.
+  const { data: computedBalance, error: balanceError } = await supabase.rpc("account_balance_as_of", {
+    p_account: accountId,
+    p_date: asOfDate,
+  });
+  if (balanceError || computedBalance == null) throw new Error(balanceError?.message ?? "Ο λογαριασμός δεν βρέθηκε.");
 
   const {
     data: { session },
@@ -54,7 +55,7 @@ export async function assertAccountBalance(accountId: string, formData: FormData
       account_id: accountId,
       as_of_date: asOfDate,
       asserted_balance: assertedBalance,
-      computed_balance: account.current_balance ?? 0,
+      computed_balance: Number(computedBalance),
       created_by: session?.user.id,
     },
     { onConflict: "account_id,as_of_date" },

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId, formString } from "@/lib/supabase/org";
-import { deriveFromNet, cashOnly, isIdentityConsistent } from "@/lib/finance/money";
+import { deriveFromNet, cashOnly, isIdentityConsistent, splitProportionally, toCents } from "@/lib/finance/money";
 import type { TxDirection, TxScope, TxStatus } from "@/lib/domain/enums";
 
 // The one place transaction money fields get computed for the manual-entry
@@ -28,18 +28,23 @@ function deriveMoney(formData: FormData) {
 
 function fieldsFromForm(formData: FormData) {
   const money = deriveMoney(formData);
+  const status = String(formData.get("status")) as TxStatus;
+  const scope = String(formData.get("scope") ?? "business") as TxScope;
 
   return {
     tx_date: String(formData.get("tx_date")),
     due_date: formString(formData, "due_date"),
-    paid_on: formString(formData, "paid_on"),
+    // Only a paid row has a payment date; clearing it on the others keeps a
+    // re-opened row from claiming it was paid.
+    paid_on: status === "paid" ? formString(formData, "paid_on") : null,
     contact_id: formString(formData, "contact_id"),
     project_id: formString(formData, "project_id"),
+    property_project_id: scope === "personal" ? formString(formData, "property_project_id") : null,
     category_id: formString(formData, "category_id"),
     account_id: formString(formData, "account_id"),
     direction: String(formData.get("direction")) as TxDirection,
-    scope: String(formData.get("scope") ?? "business") as TxScope,
-    status: String(formData.get("status")) as TxStatus,
+    scope,
+    status,
     net_amount: money.net,
     vat_amount: money.vat,
     vat_rate: money.hasInvoice ? money.vatRate : null,
@@ -85,6 +90,56 @@ export async function markPaid(id: string) {
     .update({ status: "paid", paid_on: new Date().toISOString().slice(0, 10) })
     .eq("id", id);
 
+  if (error) throw new Error(error.message);
+  revalidatePath("/transactions");
+}
+
+// Pay part of a pending one-off commitment: the paid slice becomes its own
+// paid row and the commitment shrinks by exactly that much, atomically, in
+// record_partial_payment (0030). Paying the whole remaining amount is just
+// markPaid -- no child row needed.
+export async function recordPartialPayment(parentId: string, formData: FormData) {
+  const supabase = await createClient();
+  const { data: parent, error: loadError } = await supabase
+    .from("transactions")
+    .select("net_amount, vat_amount, withholding_amount, gross_amount, account_id")
+    .eq("id", parentId)
+    .single();
+  if (loadError) throw new Error(loadError.message);
+
+  const amount = Number(formData.get("amount"));
+  const paidOn = String(formData.get("paid_on") || new Date().toISOString().slice(0, 10));
+  const accountId = formString(formData, "account_id") ?? parent.account_id;
+
+  if (toCents(amount) === toCents(parent.gross_amount)) {
+    const { error } = await supabase
+      .from("transactions")
+      .update({ status: "paid", paid_on: paidOn, account_id: accountId })
+      .eq("id", parentId);
+    if (error) throw new Error(error.message);
+    revalidatePath("/transactions");
+    return;
+  }
+
+  const { paid } = splitProportionally(
+    {
+      net: Number(parent.net_amount ?? parent.gross_amount),
+      vat: Number(parent.vat_amount),
+      withholding: Number(parent.withholding_amount),
+      gross: Number(parent.gross_amount),
+    },
+    amount,
+  );
+  const { error } = await supabase.rpc("record_partial_payment", {
+    p_parent: parentId,
+    p_expected_parent_gross: Number(parent.gross_amount),
+    p_paid_on: paidOn,
+    p_account: accountId,
+    p_child_net: paid.net,
+    p_child_vat: paid.vat,
+    p_child_wh: paid.withholding,
+    p_child_gross: paid.gross,
+  });
   if (error) throw new Error(error.message);
   revalidatePath("/transactions");
 }

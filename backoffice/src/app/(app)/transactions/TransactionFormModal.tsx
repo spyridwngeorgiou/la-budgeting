@@ -17,8 +17,10 @@ interface Option {
 export interface TransactionInitial {
   tx_date?: string;
   due_date?: string | null;
+  paid_on?: string | null;
   contact_id?: string | null;
   project_id?: string | null;
+  property_project_id?: string | null;
   category_id?: string | null;
   account_id?: string | null;
   direction?: string;
@@ -65,6 +67,8 @@ export function TransactionFormModal({
   const [projectId, setProjectId] = useState(initial?.project_id ?? "");
   const [categoryId, setCategoryId] = useState(initial?.category_id ?? "");
   const [suggested, setSuggested] = useState(false);
+  const [status, setStatus] = useState(initial?.status ?? "pending");
+  const [scope, setScope] = useState(initial?.scope ?? "business");
 
   // "Learn from history": picking a contact on a brand-new transaction (never
   // on an edit -- initial is only set when editing, and an existing row's
@@ -274,7 +278,7 @@ export function TransactionFormModal({
           <div className="grid grid-cols-2 gap-3">
             <Field>
               <Label>{el.transaction.status}</Label>
-              <Select name="status" defaultValue={initial?.status ?? "pending"}>
+              <Select name="status" value={status} onChange={(e) => setStatus(e.target.value)}>
                 <option value="paid">{el.transaction.paid}</option>
                 <option value="pending">{el.transaction.pending}</option>
                 <option value="scheduled">{el.transaction.scheduled}</option>
@@ -283,12 +287,40 @@ export function TransactionFormModal({
             </Field>
             <Field>
               <Label>Πεδίο</Label>
-              <Select name="scope" defaultValue={initial?.scope ?? "business"}>
+              <Select name="scope" value={scope} onChange={(e) => setScope(e.target.value)}>
                 <option value="business">Επιχειρηματικό</option>
                 <option value="personal">Προσωπικό</option>
               </Select>
             </Field>
           </div>
+
+          {/* A paid row must carry its payment date (DB constraint tx_paid_needs_date);
+              editing a paid row without this field used to blank it and fail. */}
+          {status === "paid" && (
+            <Field>
+              <Label>Ημ/νία πληρωμής</Label>
+              <Input
+                type="date"
+                name="paid_on"
+                defaultValue={initial?.paid_on ?? new Date().toISOString().slice(0, 10)}
+                required
+              />
+            </Field>
+          )}
+
+          {scope === "personal" && (
+            <Field>
+              <Label>Ακίνητο</Label>
+              <Select name="property_project_id" defaultValue={initial?.property_project_id ?? ""}>
+                <option value="">—</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
 
           <Field>
             <Label>{el.transaction.description}</Label>

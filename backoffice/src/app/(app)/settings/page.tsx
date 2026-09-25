@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrg, getCurrentMembership } from "@/lib/supabase/org";
 import { el } from "@/lib/i18n/el";
 import { Card, Badge } from "@/components/ui";
-import { updateOwnAfm, updateOrgSettings } from "./actions";
+import { updateOwnAfm, updateOrgSettings, updateTaxRiskSettings } from "./actions";
 import { Button, Input, Select, Label, Field } from "@/components/ui";
 import { ChangePasswordForm } from "./ChangePasswordForm";
 import { monthlyBudgetCents } from "@/lib/ai/client";
@@ -141,6 +141,26 @@ export default async function SettingsPage() {
           <Field>
             <Label>Όριο (€ / μήνα)</Label>
             <Input type="number" name="ai_monthly_budget_euros" step="1" min="1" defaultValue={currentBudgetEuros} required />
+          </Field>
+          <Button type="submit">{el.common.save}</Button>
+        </form>
+      </Card>
+
+      <Card className="max-w-md">
+        <h2 className="mb-3 text-sm font-medium text-ink-muted">Φορολογικός Κίνδυνος Παραστατικών</h2>
+        <p className="mb-3 text-xs text-ink-muted">
+          Επιχειρηματικές δαπάνες πάνω από το όριο χωρίς παραστατικό (ή πληρωμένες με μετρητά) δεν
+          εκπίπτουν. Χρησιμοποιείται από τον έλεγχο «Δαπάνες χωρίς παραστατικό» στους Ελέγχους Ποιότητας.
+          Επιβεβαιώστε όριο και συντελεστή με τον λογιστή σας.
+        </p>
+        <form action={updateTaxRiskSettings} className="flex items-end gap-3">
+          <Field>
+            <Label>Όριο (€)</Label>
+            <Input type="number" name="uninvoiced_threshold_eur" step="1" min="0" defaultValue={Number(settings.uninvoiced_threshold_eur ?? 500)} required />
+          </Field>
+          <Field>
+            <Label>Φόρος εισοδήματος (%)</Label>
+            <Input type="number" name="corporate_tax_rate_pct" step="0.1" min="0" max="100" defaultValue={Number(settings.corporate_tax_rate ?? 0.22) * 100} required />
           </Field>
           <Button type="submit">{el.common.save}</Button>
         </form>

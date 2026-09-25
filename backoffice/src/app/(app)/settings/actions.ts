@@ -61,3 +61,28 @@ export async function updateOrgSettings(formData: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath("/settings");
 }
+
+// Read by v_qc_uninvoiced_large_expenses (0029) straight from orgs.settings.
+export async function updateTaxRiskSettings(formData: FormData) {
+  const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
+
+  const threshold = Number(formData.get("uninvoiced_threshold_eur"));
+  const taxRatePct = Number(formData.get("corporate_tax_rate_pct"));
+  if (!Number.isFinite(threshold) || threshold < 0 || !Number.isFinite(taxRatePct) || taxRatePct < 0 || taxRatePct > 100) {
+    throw new Error("Μη έγκυρο όριο ή συντελεστής.");
+  }
+
+  const { data: org, error: readError } = await supabase.from("orgs").select("settings").eq("id", orgId).single();
+  if (readError) throw new Error(readError.message);
+
+  const nextSettings = {
+    ...(org.settings as Record<string, unknown>),
+    uninvoiced_threshold_eur: threshold,
+    corporate_tax_rate: Math.round(taxRatePct * 10) / 1000,
+  };
+  const { error } = await supabase.from("orgs").update({ settings: nextSettings }).eq("id", orgId);
+  if (error) throw new Error(error.message);
+  revalidatePath("/settings");
+  revalidatePath("/quality");
+}

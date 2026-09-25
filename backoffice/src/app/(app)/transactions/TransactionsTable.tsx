@@ -5,6 +5,7 @@ import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { AiSpark, Badge, Button, Input, Card } from "@/components/ui";
 import { TransactionFormModal, type TransactionInitial } from "./TransactionFormModal";
+import { PartialPaymentModal } from "./PartialPaymentModal";
 import { createTransaction, updateTransaction, markPaid, deleteTransaction, getSourceDocumentUrl } from "./actions";
 
 const AI_ORIGINS = new Set(["ai_document", "ai_nl"]);
@@ -26,6 +27,9 @@ interface TxRow {
   id: string;
   tx_date: string;
   due_date: string | null;
+  paid_on: string | null;
+  plan_id: string | null;
+  property_project_id: string | null;
   description: string | null;
   direction: string;
   status: string;
@@ -72,6 +76,7 @@ export function TransactionsTable({
   // "create") is active -- not one per row. `key` forces a clean remount
   // when switching targets, so stale form state never leaks between rows.
   const [target, setTarget] = useState<"create" | TxRow | null>(null);
+  const [paying, setPaying] = useState<TxRow | null>(null);
   const [search, setSearch] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [loadingSource, setLoadingSource] = useState<string | null>(null);
@@ -108,6 +113,8 @@ export function TransactionsTable({
   const initialFor = (tx: TxRow): TransactionInitial => ({
     tx_date: tx.tx_date,
     due_date: tx.due_date,
+    paid_on: tx.paid_on,
+    property_project_id: tx.property_project_id,
     direction: tx.direction,
     status: tx.status,
     scope: tx.scope ?? undefined,
@@ -244,6 +251,15 @@ export function TransactionsTable({
                         {loadingSource === tx.id ? "…" : "Πρωτότυπο"}
                       </Button>
                     )}
+                    {(tx.status === "pending" || tx.status === "scheduled") && !tx.plan_id && (
+                      <Button
+                        variant="secondary"
+                        className="!px-2 !py-1 text-xs"
+                        onClick={() => setPaying(tx)}
+                      >
+                        Μερική πληρωμή
+                      </Button>
+                    )}
                     {tx.status !== "paid" && (
                       <form action={markPaid.bind(null, tx.id)}>
                         <Button type="submit" variant="secondary" className="!px-2 !py-1 text-xs">
@@ -293,6 +309,18 @@ export function TransactionsTable({
           accounts={accounts}
           initial={target === "create" ? undefined : initialFor(target)}
           onClose={() => setTarget(null)}
+        />
+      )}
+
+      {paying && (
+        <PartialPaymentModal
+          key={paying.id}
+          transactionId={paying.id}
+          label={paying.description ?? paying.contact_name ?? formatDate(paying.tx_date)}
+          remaining={Number(paying.gross_amount ?? 0)}
+          accountId={paying.account_id}
+          accounts={accounts}
+          onClose={() => setPaying(null)}
         />
       )}
     </div>

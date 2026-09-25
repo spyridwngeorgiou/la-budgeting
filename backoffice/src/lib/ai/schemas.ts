@@ -24,6 +24,7 @@ export const ExtractionSchema = z.object({
   withholding: MoneyField,
   payment_hint: z.enum(["cash", "card", "bank_transfer", "cheque", "unknown"]),
   project_mention: z.string().nullable().describe("Οτιδήποτε στο έγγραφο παραπέμπει σε συγκεκριμένο έργο -- ελεύθερο κείμενο, ΟΧΙ ID"),
+  supply_number: z.string().nullable().describe("Μόνο σε λογαριασμό ΔΕΗ/ρεύματος, ΕΥΔΑΠ/νερού ή τηλεπικοινωνιών: ο αριθμός παροχής / σύνδεσης / λογαριασμού συμβολαίου ακριβώς όπως γράφεται -- αλλιώς null"),
   suggested_category: z.string().nullable().describe("Πρέπει να είναι ακριβώς ένα από τα ονόματα κατηγοριών που δόθηκαν, αλλιώς null"),
   notes_for_human: z.string().nullable().describe("Οτιδήποτε αξίζει να ελέγξει ο άνθρωπος, π.χ. 'το ΦΠΑ είναι δυσανάγνωστο'"),
 });

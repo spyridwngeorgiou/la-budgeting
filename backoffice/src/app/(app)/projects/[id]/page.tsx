@@ -27,6 +27,8 @@ const KIND_FALLBACK_LABEL: Record<CapitalSourceKind, string> = {
   co_investor: "Συνεπενδυτής",
 };
 import { ProjectNoteFormModal } from "../ProjectNoteFormModal";
+import { UtilityFormModal, UTILITY_KIND_LABELS } from "../UtilityFormModal";
+import { saveUtility, deleteUtility } from "../utility-actions";
 import { saveProjectNote, resolveProjectNote } from "../note-actions";
 import { setScenarioRevenuePlan, saveScenario, saveOpexLine, deleteOpexLine } from "../scenario-actions";
 import { ScenarioFormModal } from "../ScenarioFormModal";
@@ -126,6 +128,23 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       .eq("direction", "income")
       .eq("status", "paid"),
   ]);
+
+  const twelveMonthsAgo = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - 11, 1))
+    .toISOString()
+    .slice(0, 10);
+  const [{ data: utilities }, { data: monthlyCostRows }] = await Promise.all([
+    supabase.from("property_utilities").select("*").eq("project_id", id).order("kind"),
+    supabase
+      .from("v_property_monthly_cost")
+      .select("month, paid_amount")
+      .eq("project_id", id)
+      .gte("month", twelveMonthsAgo),
+  ]);
+  const monthlyCost = new Map<string, number>();
+  for (const r of monthlyCostRows ?? []) {
+    if (r.month) monthlyCost.set(r.month, (monthlyCost.get(r.month) ?? 0) + Number(r.paid_amount ?? 0));
+  }
+  const monthlyCostList = [...monthlyCost.entries()].sort(([a], [b]) => b.localeCompare(a));
 
   if (!rollup) notFound();
 
@@ -819,6 +838,58 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               />
             ))}
             <OnePagerRow label="ΣΥΝΟΛΟ ΜΗΝΑ" amount={monthlyRent + settlementMonthly} emphasis />
+          </OnePagerSection>
+        )}
+
+        {/* ΠΑΡΟΧΕΣ — supply/contract/RF numbers; payments quoting them are
+            attributed to this property automatically (0027 + v_property_monthly_cost). */}
+        <OnePagerSection title="ΠΑΡΟΧΕΣ" subtitle="Ρεύμα, νερό, internet — αριθμοί παροχής για αυτόματη αντιστοίχιση πληρωμών.">
+          {(utilities ?? []).map((u) => (
+            <div key={u.id} className="flex flex-wrap items-center gap-2 border-t border-line py-1.5 text-sm first:border-t-0">
+              <span className="w-28 text-ink-muted">{UTILITY_KIND_LABELS[u.kind]}</span>
+              <span className="flex-1">
+                {u.provider && <span>{u.provider} · </span>}
+                <span className="font-mono">{u.supply_number ?? "—"}</span>
+                {u.rf_code && <span className="ml-2 font-mono text-xs text-ink-faint">{u.rf_code}</span>}
+              </span>
+              <UtilityFormModal
+                action={saveUtility.bind(null, id, u.id)}
+                trigger="Επεξεργασία"
+                initial={{
+                  kind: u.kind,
+                  provider: u.provider,
+                  supply_number: u.supply_number,
+                  contract_account: u.contract_account,
+                  rf_code: u.rf_code,
+                  meter_number: u.meter_number,
+                  notes: u.notes,
+                }}
+              />
+              <form action={deleteUtility.bind(null, id, u.id)}>
+                <Button type="submit" variant="danger" className="!px-2 !py-1 text-xs">
+                  {el.common.delete}
+                </Button>
+              </form>
+            </div>
+          ))}
+          {(utilities ?? []).length === 0 && (
+            <p className="py-1 text-sm text-ink-muted">Δεν έχουν καταχωρηθεί παροχές.</p>
+          )}
+          <div className="pt-2">
+            <UtilityFormModal action={saveUtility.bind(null, id, null)} />
+          </div>
+        </OnePagerSection>
+
+        {monthlyCostList.length > 0 && (
+          <OnePagerSection title="ΚΟΣΤΟΣ ΛΕΙΤΟΥΡΓΙΑΣ ΑΝΑ ΜΗΝΑ" subtitle="Ενοίκιο, παροχές, κοινόχρηστα — τελευταίοι 12 μήνες.">
+            {monthlyCostList.map(([month, amount]) => (
+              <OnePagerRow
+                key={month}
+                label={formatDate(month).slice(3)}
+                amount={amount}
+                href={`/properties?month=${month.slice(0, 7)}`}
+              />
+            ))}
           </OnePagerSection>
         )}
 

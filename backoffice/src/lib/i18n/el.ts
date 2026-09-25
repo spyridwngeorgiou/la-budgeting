@@ -5,6 +5,7 @@ export const el = {
     dashboard: "Κέντρο Ελέγχου",
     transactions: "Κινήσεις",
     projects: "Έργα",
+    properties: "Ακίνητα",
     contacts: "Επαφές",
     accounts: "Λογαριασμοί",
     vat: "ΦΠΑ",

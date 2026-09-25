@@ -69,6 +69,45 @@ export function cashOnly(grossAmount: number): MoneyBreakdown {
   return { net: grossAmount, vat: 0, vatRate: 0, withholding: 0, gross: grossAmount };
 }
 
+// Carve a partial payment of `paidGross` out of a pending commitment, keeping
+// net + vat - withholding = gross exact (to the cent) on BOTH halves. Net and
+// withholding scale proportionally; the rounding residue lands on VAT, or on
+// net when there is no VAT (cash / no-invoice rows must keep vat = 0).
+export function splitProportionally(
+  parent: Pick<MoneyBreakdown, "net" | "vat" | "withholding" | "gross">,
+  paidGross: number,
+): { paid: MoneyBreakdown; remaining: MoneyBreakdown } {
+  const parentGross = toCents(parent.gross);
+  const paid = toCents(paidGross);
+  if (paid <= 0 || paid >= parentGross) {
+    throw new Error("Το ποσό πρέπει να είναι θετικό και μικρότερο από το υπόλοιπο της κίνησης.");
+  }
+  const ratio = paid / parentGross;
+  const parentNet = toCents(parent.net);
+  const parentVat = toCents(parent.vat);
+  const parentWh = toCents(parent.withholding);
+
+  const wh = Math.round(parentWh * ratio);
+  let net: number;
+  let vat: number;
+  if (parentVat === 0) {
+    vat = 0;
+    net = paid + wh;
+  } else {
+    net = Math.round(parentNet * ratio);
+    vat = paid - net + wh;
+  }
+
+  const vatRate = parent.net ? Math.round((parent.vat / parent.net) * 100) / 100 : 0;
+  const make = (n: number, v: number, w: number): MoneyBreakdown => ({
+    net: fromCents(n), vat: fromCents(v), vatRate, withholding: fromCents(w), gross: fromCents(n + v - w),
+  });
+  return {
+    paid: make(net, vat, wh),
+    remaining: make(parentNet - net, parentVat - vat, parentWh - wh),
+  };
+}
+
 const CENT_TOLERANCE = 0.02;
 
 // The QC identity check (also enforced by v_qc_amount_identity_mismatch).

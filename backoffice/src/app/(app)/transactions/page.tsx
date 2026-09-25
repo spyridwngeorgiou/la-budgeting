@@ -60,7 +60,7 @@ export default async function TransactionsPage({
   let query = supabase
     .from("transactions")
     .select(
-      "id, tx_date, due_date, description, direction, status, scope, gross_amount, net_amount, vat_amount, vat_rate, withholding_amount, has_invoice, invoice_number, contact_id, project_id, category_id, account_id, origin, source_document_id, contacts(name), projects(display_name), categories(name), accounts(name)",
+      "id, tx_date, due_date, paid_on, plan_id, property_project_id, description, direction, status, scope, gross_amount, net_amount, vat_amount, vat_rate, withholding_amount, has_invoice, invoice_number, contact_id, project_id, category_id, account_id, origin, source_document_id, contacts(name), projects(display_name), categories(name), accounts(name)",
       { count: "exact" },
     )
     .order("tx_date", { ascending: false })
@@ -100,6 +100,9 @@ export default async function TransactionsPage({
       id: tx.id,
       tx_date: tx.tx_date,
       due_date: tx.due_date,
+      paid_on: tx.paid_on,
+      plan_id: tx.plan_id,
+      property_project_id: tx.property_project_id,
       description: tx.description,
       direction: tx.direction,
       status: tx.status,

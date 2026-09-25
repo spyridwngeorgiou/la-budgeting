@@ -6,6 +6,9 @@ export interface ResolvedEntities {
   contactMatchStrength: "afm" | "name" | "none";
   projectId: string | null;
   categoryId: string | null;
+  // Set when the project came from a registered utility supply/contract/RF
+  // number (property_utilities, 0027) rather than from a name mention.
+  utilityMatch?: "electricity" | "water" | "internet" | "phone" | "other";
 }
 
 // Deterministic resolution ladder, ΑΦΜ first -- the strong key. Never
@@ -15,7 +18,15 @@ export interface ResolvedEntities {
 // model; resolution happens here in Postgres, which is what it's for.
 export async function resolveEntities(
   supabase: SupabaseClient,
-  input: { issuerAfm: string | null; issuerName: string | null; projectMention: string | null; suggestedCategory: string | null },
+  input: {
+    issuerAfm: string | null;
+    issuerName: string | null;
+    projectMention: string | null;
+    suggestedCategory: string | null;
+    // Free text to search for a utility supply number when no project was named.
+    orgId?: string;
+    rawText?: string | null;
+  },
 ): Promise<ResolvedEntities> {
   let contactId: string | null = null;
   let contactMatchStrength: ResolvedEntities["contactMatchStrength"] = "none";
@@ -75,6 +86,19 @@ export async function resolveEntities(
     }
   }
 
+  // A ΔΕΗ/ΕΥΔΑΠ bill rarely names the property, but it always quotes the
+  // supply number -- the one matcher (match_property_utility) is shared with
+  // v_property_monthly_cost so both agree on which property a bill belongs to.
+  let utilityMatch: ResolvedEntities["utilityMatch"];
+  if (!projectId && input.orgId && input.rawText?.trim()) {
+    const { data } = await supabase.rpc("match_property_utility", { p_org: input.orgId, p_text: input.rawText });
+    const hit = (data as { project_id: string; kind: ResolvedEntities["utilityMatch"] }[] | null)?.[0];
+    if (hit) {
+      projectId = hit.project_id;
+      utilityMatch = hit.kind;
+    }
+  }
+
   let categoryId: string | null = null;
   if (input.suggestedCategory) {
     const { data } = await supabase
@@ -85,5 +109,5 @@ export async function resolveEntities(
     if (data) categoryId = data.id;
   }
 
-  return { contactId, contactMatchStrength, projectId, categoryId };
+  return { contactId, contactMatchStrength, projectId, categoryId, utilityMatch };
 }

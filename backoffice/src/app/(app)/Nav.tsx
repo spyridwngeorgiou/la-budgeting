@@ -22,6 +22,7 @@ const NAV_ITEMS: { href: string; label: string; ai?: boolean }[] = [
   { href: "/dashboard", label: el.nav.dashboard },
   { href: "/transactions", label: el.nav.transactions },
   { href: "/projects", label: el.nav.projects },
+  { href: "/properties", label: el.nav.properties },
   { href: "/analysis", label: el.nav.analysis },
   { href: "/vat", label: el.nav.vat },
   { href: "/cashflow", label: el.nav.cashflow },

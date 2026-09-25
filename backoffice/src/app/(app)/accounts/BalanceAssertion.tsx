@@ -21,7 +21,23 @@ function driftTone(drift: number): "green" | "amber" | "red" {
   return "red";
 }
 
-export function BalanceAssertion({ accountId, latest }: { accountId: string; latest: LatestAssertion | null }) {
+// Mirrors the workbook's «Διαδρομή μετρητών»: last physical count plus the
+// business and personal movements paid since = what should be in hand now.
+export interface SinceLastCount {
+  business_since: number;
+  personal_since: number;
+  expected_now: number;
+}
+
+export function BalanceAssertion({
+  accountId,
+  latest,
+  sinceCount,
+}: {
+  accountId: string;
+  latest: LatestAssertion | null;
+  sinceCount?: SinceLastCount | null;
+}) {
   const [open, setOpen] = useState(!latest);
   const drift = latest ? latest.asserted_balance - latest.computed_balance : null;
 
@@ -35,6 +51,26 @@ export function BalanceAssertion({ accountId, latest }: { accountId: string; lat
           </Badge>
         </div>
       )}
+      {latest && sinceCount && (
+        <div className="mt-1 flex flex-col gap-0.5 text-xs text-ink-muted">
+          <div className="flex justify-between">
+            <span>Μετρήθηκαν {formatDate(latest.as_of_date)}</span>
+            <span className="font-mono">{formatMoney(latest.asserted_balance)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Εταιρικά από τότε</span>
+            <span className="font-mono">{formatMoney(sinceCount.business_since)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Προσωπικά από τότε</span>
+            <span className="font-mono">{formatMoney(sinceCount.personal_since)}</span>
+          </div>
+          <div className="flex justify-between font-medium text-ink">
+            <span>Πρέπει να υπάρχουν σήμερα</span>
+            <span className="font-mono">{formatMoney(sinceCount.expected_now)}</span>
+          </div>
+        </div>
+      )}
       {open ? (
         <form
           action={async (formData) => {
@@ -43,7 +79,13 @@ export function BalanceAssertion({ accountId, latest }: { accountId: string; lat
           }}
           className="mt-1.5 flex items-center gap-1.5"
         >
-          <input type="hidden" name="as_of_date" value={new Date().toISOString().slice(0, 10)} />
+          <Input
+            type="date"
+            name="as_of_date"
+            defaultValue={new Date().toISOString().slice(0, 10)}
+            required
+            className="!w-32 !py-1 text-xs"
+          />
           <Input
             type="number"
             step="0.01"

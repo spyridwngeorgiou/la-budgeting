@@ -8,7 +8,7 @@ import { BalanceAssertion, type LatestAssertion } from "./BalanceAssertion";
 
 export default async function AccountsPage() {
   const supabase = await createClient();
-  const [{ data: accounts }, { data: assertions }] = await Promise.all([
+  const [{ data: accounts }, { data: assertions }, { data: sinceCounts }] = await Promise.all([
     supabase.from("v_account_balances").select("*").order("owner_scope").order("name"),
     // Latest first so the per-account reduce below only ever keeps the most
     // recent row it sees.
@@ -16,6 +16,7 @@ export default async function AccountsPage() {
       .from("account_balance_assertions")
       .select("account_id, as_of_date, asserted_balance, computed_balance")
       .order("as_of_date", { ascending: false }),
+    supabase.from("v_cash_since_last_count").select("account_id, account_kind, business_since, personal_since, expected_now"),
   ]);
   const latestAssertionByAccount = new Map<string, LatestAssertion>();
   for (const row of assertions ?? []) {
@@ -75,6 +76,16 @@ export default async function AccountsPage() {
                       <BalanceAssertion
                         accountId={a.account_id!}
                         latest={latestAssertionByAccount.get(a.account_id!) ?? null}
+                        sinceCount={(() => {
+                          const s = (sinceCounts ?? []).find((c) => c.account_id === a.account_id && c.account_kind === "cash");
+                          return s
+                            ? {
+                                business_since: Number(s.business_since ?? 0),
+                                personal_since: Number(s.personal_since ?? 0),
+                                expected_now: Number(s.expected_now ?? 0),
+                              }
+                            : null;
+                        })()}
                       />
                     </div>
                   ))}

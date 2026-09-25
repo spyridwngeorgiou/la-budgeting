@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toCents, fromCents, deriveFromNet, deriveFromGross, cashOnly, isIdentityConsistent, isValidAfm } from "./money";
+import { toCents, fromCents, deriveFromNet, deriveFromGross, cashOnly, isIdentityConsistent, isValidAfm, splitProportionally } from "./money";
 
 describe("toCents / fromCents", () => {
   it("round-trips without floating-point drift", () => {
@@ -88,5 +88,42 @@ describe("isValidAfm", () => {
     // 090000045: verified against the algorithm in isValidAfm itself --
     // sum(d[i] * 2^(8-i)) % 11 % 10 == d[8].
     expect(isValidAfm("090000045")).toBe(true);
+  });
+});
+
+describe("splitProportionally", () => {
+  const exact = (b: { net: number; vat: number; withholding: number; gross: number }) =>
+    toCents(b.net) + toCents(b.vat) - toCents(b.withholding) === toCents(b.gross);
+
+  it("splits a cash commitment (no VAT) -- the workbook's προσύμφωνο case", () => {
+    const { paid, remaining } = splitProportionally(cashOnly(19000), 2000);
+    expect(paid).toMatchObject({ net: 2000, vat: 0, withholding: 0, gross: 2000 });
+    expect(remaining).toMatchObject({ net: 17000, vat: 0, withholding: 0, gross: 17000 });
+  });
+
+  it("keeps the identity exact on both halves at 24% VAT with 20% withholding", () => {
+    const parent = deriveFromNet(10000, 0.24, 2000); // gross 10400
+    const { paid, remaining } = splitProportionally(parent, 3333.33);
+    expect(paid.gross).toBe(3333.33);
+    expect(exact(paid)).toBe(true);
+    expect(exact(remaining)).toBe(true);
+    expect(toCents(paid.gross) + toCents(remaining.gross)).toBe(toCents(parent.gross));
+    expect(toCents(paid.vat) + toCents(remaining.vat)).toBe(toCents(parent.vat));
+    expect(toCents(paid.withholding) + toCents(remaining.withholding)).toBe(toCents(parent.withholding));
+  });
+
+  it("handles one-cent edges", () => {
+    const parent = deriveFromNet(100, 0.24); // gross 124
+    for (const amount of [0.01, 123.99, 61.99]) {
+      const { paid, remaining } = splitProportionally(parent, amount);
+      expect(exact(paid) && exact(remaining)).toBe(true);
+      expect(remaining.vat).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("rejects zero, negative, and full-or-more amounts", () => {
+    for (const amount of [0, -5, 124, 200]) {
+      expect(() => splitProportionally(deriveFromNet(100, 0.24), amount)).toThrow();
+    }
   });
 });

@@ -168,6 +168,8 @@ async function ingestAttachment(
       issuerName: extraction.issuer_name,
       projectMention: extraction.project_mention,
       suggestedCategory: extraction.suggested_category,
+      orgId,
+      rawText: [extraction.supply_number, extraction.project_mention, extraction.notes_for_human].filter(Boolean).join(" "),
     });
 
     const needsReview: string[] = [...validation.reasons];
@@ -234,6 +236,8 @@ async function ingestText(
       issuerName: entry.counterparty_name,
       projectMention: entry.project_mention,
       suggestedCategory: entry.suggested_category,
+      orgId,
+      rawText: text,
     });
 
     const needsReview: string[] = [...validation.reasons];
@@ -256,6 +260,7 @@ async function ingestText(
       withholding: { value: 0, evidence: null },
       payment_hint: "unknown",
       project_mention: entry.project_mention,
+      supply_number: null,
       suggested_category: entry.suggested_category,
       notes_for_human: [entry.notes_for_human, `Email: «${text}»`].filter(Boolean).join(" · "),
     };

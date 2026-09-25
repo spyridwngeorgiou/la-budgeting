@@ -1069,6 +1069,63 @@ export type Database = {
           },
         ]
       }
+      property_utilities: {
+        Row: {
+          contract_account: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          kind: Database["public"]["Enums"]["utility_kind"]
+          match_keys: string[] | null
+          meter_number: string | null
+          notes: string | null
+          org_id: string
+          project_id: string
+          provider: string | null
+          rf_code: string | null
+          supply_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          contract_account?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kind: Database["public"]["Enums"]["utility_kind"]
+          meter_number?: string | null
+          notes?: string | null
+          org_id: string
+          project_id: string
+          provider?: string | null
+          rf_code?: string | null
+          supply_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contract_account?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kind?: Database["public"]["Enums"]["utility_kind"]
+          meter_number?: string | null
+          notes?: string | null
+          org_id?: string
+          project_id?: string
+          provider?: string | null
+          rf_code?: string | null
+          supply_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_utilities_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_inbound_addresses: {
         Row: {
           address: string
@@ -3071,8 +3128,10 @@ export type Database = {
           origin: Database["public"]["Enums"]["tx_origin"]
           other_taxes: number
           paid_on: string | null
+          parent_transaction_id: string | null
           plan_id: string | null
           project_id: string | null
+          property_project_id: string | null
           scope: Database["public"]["Enums"]["tx_scope"]
           signed_amount: number | null
           source_document_id: string | null
@@ -3115,8 +3174,10 @@ export type Database = {
           origin?: Database["public"]["Enums"]["tx_origin"]
           other_taxes?: number
           paid_on?: string | null
+          parent_transaction_id?: string | null
           plan_id?: string | null
           project_id?: string | null
+          property_project_id?: string | null
           scope?: Database["public"]["Enums"]["tx_scope"]
           signed_amount?: number | null
           source_document_id?: string | null
@@ -3159,8 +3220,10 @@ export type Database = {
           origin?: Database["public"]["Enums"]["tx_origin"]
           other_taxes?: number
           paid_on?: string | null
+          parent_transaction_id?: string | null
           plan_id?: string | null
           project_id?: string | null
+          property_project_id?: string | null
           scope?: Database["public"]["Enums"]["tx_scope"]
           signed_amount?: number | null
           source_document_id?: string | null
@@ -3416,6 +3479,65 @@ export type Database = {
       }
     }
     Views: {
+      v_cash_since_last_count: {
+        Row: {
+          account_id: string | null
+          account_kind: Database["public"]["Enums"]["account_kind"] | null
+          account_name: string | null
+          business_since: number | null
+          counted_amount: number | null
+          counted_on: string | null
+          drift_at_count: number | null
+          expected_now: number | null
+          org_id: string | null
+          personal_since: number | null
+        }
+        Relationships: []
+      }
+      v_property_monthly_cost: {
+        Row: {
+          bucket: string | null
+          business_amount: number | null
+          month: string | null
+          open_amount: number | null
+          org_id: string | null
+          paid_amount: number | null
+          personal_amount: number | null
+          project_id: string | null
+        }
+        Relationships: []
+      }
+      v_qc_uninvoiced_large_expenses: {
+        Row: {
+          account_name: string | null
+          contact_name: string | null
+          description: string | null
+          gross_amount: number | null
+          lost_deduction_est: number | null
+          lost_input_vat_est: number | null
+          org_id: string | null
+          paid_on: string | null
+          project_id: string | null
+          project_name: string | null
+          risk_kind: string | null
+          transaction_id: string | null
+          tx_date: string | null
+        }
+        Relationships: []
+      }
+      v_uninvoiced_exposure: {
+        Row: {
+          gross_amount: number | null
+          lost_deduction_est: number | null
+          lost_input_vat_est: number | null
+          month: string | null
+          n: number | null
+          org_id: string | null
+          project_id: string | null
+          project_name: string | null
+        }
+        Relationships: []
+      }
       v_account_balances: {
         Row: {
           account_id: string | null
@@ -4140,7 +4262,29 @@ export type Database = {
       }
     }
     Functions: {
+      account_balance_as_of: { Args: { p_account: string; p_date: string }; Returns: number }
       ensure_plans_current: { Args: { p_org_id?: string }; Returns: undefined }
+      match_property_utility: {
+        Args: { p_org: string; p_text: string }
+        Returns: {
+          kind: Database["public"]["Enums"]["utility_kind"]
+          project_id: string
+          utility_id: string
+        }[]
+      }
+      record_partial_payment: {
+        Args: {
+          p_account: string | null
+          p_child_gross: number
+          p_child_net: number
+          p_child_vat: number
+          p_child_wh: number
+          p_expected_parent_gross: number
+          p_paid_on: string
+          p_parent: string
+        }
+        Returns: string
+      }
       has_role: {
         Args: { p_min: Database["public"]["Enums"]["org_role"]; p_org: string }
         Returns: boolean
@@ -4227,6 +4371,7 @@ export type Database = {
         | "general"
       tx_direction: "income" | "expense"
       tx_origin: "aade" | "manual" | "bank_file" | "ai_document" | "ai_nl" | "ai_email"
+      utility_kind: "electricity" | "water" | "internet" | "phone" | "other"
       tx_scope: "business" | "personal"
       tx_status: "paid" | "pending" | "scheduled" | "cancelled"
     }
@@ -4427,6 +4572,7 @@ export const Constants = {
       ],
       tx_direction: ["income", "expense"],
       tx_origin: ["aade", "manual", "bank_file", "ai_document", "ai_nl", "ai_email"],
+      utility_kind: ["electricity", "water", "internet", "phone", "other"],
       tx_scope: ["business", "personal"],
       tx_status: ["paid", "pending", "scheduled", "cancelled"],
     },

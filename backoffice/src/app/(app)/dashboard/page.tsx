@@ -121,6 +121,17 @@ export default async function DashboardPage() {
   // signal already computed elsewhere in the app (quality checks, draft
   // review, AI change approval, VAT filing) so a zero-item list is a real,
   // trustworthy "nothing needs you today", not just "nothing overdue".
+  // Tax risk: paid business expenses above the threshold with no invoice (or
+  // paid in cash) -- v_qc_uninvoiced_large_expenses (0029). Shown as money
+  // lost, not a row count: that's the number that makes someone chase the invoice.
+  const { data: uninvoiced } = await supabase
+    .from("v_qc_uninvoiced_large_expenses")
+    .select("lost_deduction_est, lost_input_vat_est");
+  const uninvoicedLost = (uninvoiced ?? []).reduce(
+    (sum, r) => sum + Number(r.lost_deduction_est ?? 0) + Number(r.lost_input_vat_est ?? 0),
+    0,
+  );
+
   const worklist = [
     overdue.length > 0 && {
       label: `${overdue.length} ληξιπρόθεσμ${overdue.length === 1 ? "η υποχρέωση" : "ες υποχρεώσεις"}`,
@@ -149,6 +160,10 @@ export default async function DashboardPage() {
     overBudgetProjects.length > 0 && {
       label: `${overBudgetProjects.length} έργ${overBudgetProjects.length === 1 ? "ο εκτός" : "α εκτός"} προϋπολογισμού`,
       href: `/projects/${overBudgetProjects[0].project_id}`,
+    },
+    (uninvoiced ?? []).length > 0 && {
+      label: `${(uninvoiced ?? []).length} δαπάνες χωρίς παραστατικό — ~${formatMoney(uninvoicedLost)} φόρος & ΦΠΑ που χάνονται`,
+      href: "/quality",
     },
     unfiledVatPeriods.length > 0 && {
       label: `${unfiledVatPeriods.length} περίοδ${unfiledVatPeriods.length === 1 ? "ος ΦΠΑ" : "οι ΦΠΑ"} χωρίς υποβολή`,

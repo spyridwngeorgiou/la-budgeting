@@ -1,13 +1,49 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatMoney } from "@/lib/format";
-import { Badge } from "@/components/ui";
+import { Badge, Button, Input } from "@/components/ui";
+import { markInvoiceReceived } from "./actions";
 
 // Business-language framing for each check: not "amount_identity_mismatch"
 // but why it matters and what to do about it. Ported from the workbook's
 // Έλεγχοι Ποιότητας sheet, one check per row-render function since each
 // underlying view has a different shape.
 const CHECKS = [
+  {
+    view: "v_qc_uninvoiced_large_expenses" as const,
+    title: "Δαπάνες χωρίς παραστατικό (φορολογικός κίνδυνος)",
+    why: "Επιχειρηματική δαπάνη πάνω από το όριο χωρίς παραστατικό δεν εκπίπτει και χάνεται ο ΦΠΑ· με μετρητά πάνω από το όριο δεν εκπίπτει ούτε με παραστατικό. Ζητήστε το παραστατικό από τον προμηθευτή.",
+    render: (r: {
+      transaction_id: string; paid_on: string | null; contact_name: string | null; description: string | null;
+      project_name: string | null; gross_amount: number | null; risk_kind: string | null;
+      lost_deduction_est: number | null; lost_input_vat_est: number | null;
+    }) => (
+      <Row key={r.transaction_id}>
+        <span>{formatDate(r.paid_on)}</span>
+        <span className="flex-1">
+          {r.contact_name ?? r.description ?? "—"}
+          {r.project_name && <span className="text-ink-faint"> · {r.project_name}</span>}
+        </span>
+        <span className="font-mono">{formatMoney(r.gross_amount)}</span>
+        {r.risk_kind === "no_invoice" ? (
+          <Badge tone="amber">χωρίς παραστατικό</Badge>
+        ) : (
+          <Badge tone="red">μετρητά &gt; όριο</Badge>
+        )}
+        <span className="text-xs text-ink-muted">
+          χάνονται ~{formatMoney(Number(r.lost_deduction_est ?? 0) + Number(r.lost_input_vat_est ?? 0))}
+        </span>
+        {r.risk_kind === "no_invoice" && (
+          <form action={markInvoiceReceived.bind(null, r.transaction_id)} className="flex items-center gap-1">
+            <Input name="invoice_number" placeholder="Αρ. παραστατικού" className="!h-7 w-32 !py-0 text-xs" />
+            <Button type="submit" variant="secondary" className="!px-2 !py-1 text-xs">
+              Ήρθε
+            </Button>
+          </form>
+        )}
+      </Row>
+    ),
+  },
   {
     view: "v_qc_missing_project_or_account" as const,
     title: "Κινήσεις χωρίς έργο ή λογαριασμό",
@@ -213,6 +249,21 @@ export default async function QualityPage() {
 
   const totalIssues = results.reduce((sum, r) => sum + r.count, 0);
 
+  const { data: exposureRows } = await supabase
+    .from("v_uninvoiced_exposure")
+    .select("gross_amount, lost_deduction_est, lost_input_vat_est, month");
+  const thisYear = String(new Date().getFullYear());
+  const exposure = (exposureRows ?? []).reduce(
+    (acc, r) => {
+      const lost = Number(r.lost_deduction_est ?? 0) + Number(r.lost_input_vat_est ?? 0);
+      acc.gross += Number(r.gross_amount ?? 0);
+      acc.lost += lost;
+      if (r.month?.startsWith(thisYear)) acc.lostThisYear += lost;
+      return acc;
+    },
+    { gross: 0, lost: 0, lostThisYear: 0 },
+  );
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3">
@@ -225,6 +276,26 @@ export default async function QualityPage() {
         Αυτόματοι έλεγχοι πάνω στα δεδομένα σας, ώστε να εντοπίζονται λάθη πριν γίνουν πρόβλημα
         στο ΦΠΑ ή στα οικονομικά των έργων.
       </p>
+
+      {exposure.gross > 0 && (
+        <div className="rounded-lg border border-line bg-amber-bg p-4 text-sm">
+          <div className="font-semibold">Εκτιμώμενη φορολογική απώλεια από δαπάνες χωρίς παραστατικό</div>
+          <div className="mt-1 flex flex-wrap gap-x-6 gap-y-1">
+            <span>
+              Δαπάνες: <span className="font-mono">{formatMoney(exposure.gross)}</span>
+            </span>
+            <span>
+              Χαμένος φόρος + ΦΠΑ: <span className="font-mono font-semibold">{formatMoney(exposure.lost)}</span>
+            </span>
+            <span>
+              Φέτος: <span className="font-mono">{formatMoney(exposure.lostThisYear)}</span>
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-ink-muted">
+            Εκτίμηση με το όριο και τον συντελεστή των Ρυθμίσεων — επιβεβαιώστε με τον λογιστή.
+          </p>
+        </div>
+      )}
 
       {results.map((check) => (
         <div key={check.view} className="rounded-lg border border-line bg-surface p-4">

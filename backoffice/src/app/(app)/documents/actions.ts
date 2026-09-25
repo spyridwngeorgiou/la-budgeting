@@ -66,6 +66,8 @@ export async function uploadDocument(formData: FormData) {
       issuerName: extraction.issuer_name,
       projectMention: extraction.project_mention,
       suggestedCategory: extraction.suggested_category,
+      orgId,
+      rawText: [extraction.supply_number, extraction.project_mention, extraction.notes_for_human].filter(Boolean).join(" "),
     });
 
     const needsReview: string[] = [...validation.reasons];
@@ -162,6 +164,8 @@ export async function submitNlEntry(formData: FormData) {
       issuerName: entry.counterparty_name,
       projectMention: entry.project_mention,
       suggestedCategory: entry.suggested_category,
+      orgId,
+      rawText: text,
     });
 
     const needsReview: string[] = [...validation.reasons];
@@ -187,6 +191,7 @@ export async function submitNlEntry(formData: FormData) {
       withholding: { value: 0, evidence: null },
       payment_hint: "unknown",
       project_mention: entry.project_mention,
+      supply_number: null,
       suggested_category: entry.suggested_category,
       notes_for_human: [entry.notes_for_human, `Περιγραφή: «${text}»`].filter(Boolean).join(" · "),
     };
