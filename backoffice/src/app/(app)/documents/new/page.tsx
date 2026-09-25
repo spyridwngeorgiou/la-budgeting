@@ -24,20 +24,12 @@ export default async function NewDocumentPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">Kansha Operator</h1>
-      <p className="text-sm text-ink-muted">
-        Ανεβάστε φωτογραφία απόδειξης/τιμολογίου, ή πείτε/γράψτε την κίνηση με απλά λόγια, για νέες
-        κινήσεις — τίποτα δεν καταχωρείται αυτόματα χωρίς έλεγχο. Για αλλαγές σε λογαριασμούς, έργα,
-        επαφές ή πλάνα δόσεων (π.χ. «άλλαξε το όνομα της επαφής Χ»), μιλήστε στο{" "}
-        <Link href="/assistant" className="underline">
-          Kansha AI
-        </Link>{" "}
-        — κάθε πρόταση περνάει από{" "}
-        <Link href="/changes" className="underline">
-          έγκριση
-        </Link>{" "}
-        πριν εφαρμοστεί.
-      </p>
+      <div>
+        <h1 className="text-2xl font-semibold">Νέα κίνηση</h1>
+        <p className="mt-1 text-sm text-ink-muted">
+          Το AI συμπληρώνει τα στοιχεία — εσείς τα ελέγχετε πριν καταχωρηθούν.
+        </p>
+      </div>
 
       {ownAfmMissing && (
         <div className="rounded border border-amber-ink/40 bg-amber-bg p-3 text-sm text-amber-ink">
@@ -50,6 +42,18 @@ export default async function NewDocumentPage() {
       )}
 
       <EntryTabs />
+
+      <p className="text-xs text-ink-faint">
+        Για αλλαγές σε λογαριασμούς, έργα, επαφές ή δόσεις (π.χ. «άλλαξε το όνομα της επαφής Χ») χρησιμοποιήστε το{" "}
+        <Link href="/assistant" className="underline">
+          Kansha AI
+        </Link>
+        · κάθε πρόταση περνάει από{" "}
+        <Link href="/changes" className="underline">
+          έγκριση
+        </Link>
+        .
+      </p>
     </div>
   );
 }

@@ -100,7 +100,7 @@ export function NlEntryForm() {
         )}
       </div>
       {error && <p className="text-sm text-red-ink">{error}</p>}
-      <SubmitButton variant="ai" pendingLabel="Ανάλυση περιγραφής…" disabled={!text.trim()}>
+      <SubmitButton variant={text.trim() ? "aiSolid" : "ai"} className="w-full py-3 text-base" pendingLabel="Ανάλυση περιγραφής…" disabled={!text.trim()}>
         <AiSpark className="mr-1.5" />
         Ανάλυση με AI
       </SubmitButton>

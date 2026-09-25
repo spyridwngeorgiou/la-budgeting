@@ -16,7 +16,7 @@ const MAX_BYTES = 10 * 1024 * 1024;
 function describeProblem(file: File): string | null {
   const name = file.name.toLowerCase();
   if (file.type === "image/heic" || file.type === "image/heif" || name.endsWith(".heic") || name.endsWith(".heif")) {
-    return "Οι φωτογραφίες HEIC του iPhone δεν διαβάζονται. Τραβήξτε τη φωτογραφία με το κουμπί «Φωτογραφία» εδώ, ή στο iPhone: Ρυθμίσεις → Κάμερα → Μορφές → «Πιο συμβατή».";
+    return "Οι φωτογραφίες HEIC του iPhone δεν διαβάζονται. Τραβήξτε τη φωτογραφία με το κουμπί «Φωτογραφία με κάμερα» εδώ, ή στο iPhone: Ρυθμίσεις → Κάμερα → Μορφές → «Πιο συμβατή».";
   }
   if (!ACCEPTED.includes(file.type)) {
     return `Το αρχείο «${file.name}» δεν υποστηρίζεται. Δεκτά: PDF, JPG, PNG, WEBP.`;
@@ -81,7 +81,7 @@ export function UploadForm() {
           }
         }
       }}
-      className="flex flex-col gap-3 rounded border border-line bg-surface p-4"
+      className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4 shadow-sm"
     >
       {/* Two separate inputs on purpose: `capture` makes phones open the
           camera directly, which also makes picking a PDF impossible -- so
@@ -114,41 +114,44 @@ export function UploadForm() {
             setDragging(false);
             choose(e.dataTransfer.files?.[0]);
           }}
-          className={`flex flex-col items-center gap-3 rounded-md border-2 border-dashed p-6 text-center transition-colors ${
-            dragging ? "border-ai-border bg-ai-bg" : "border-line-strong"
+          className={`flex min-h-64 flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
+            dragging ? "border-ai-strong bg-ai-bg" : "border-ai-border bg-ai-bg/30"
           }`}
         >
-          <div className="grid w-full max-w-md grid-cols-1 gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => cameraInput.current?.click()}
-              className="flex items-center justify-center gap-2 rounded-md border border-line-strong bg-white px-4 py-3 text-sm font-medium hover:bg-bg"
-            >
-              <Camera className="h-5 w-5" />
-              Φωτογραφία
-            </button>
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-ai-bg text-ai-strong">
+            <Upload className="h-7 w-7" />
+          </span>
+          <div className="flex flex-col gap-1">
+            <p className="text-lg font-semibold text-ink">
+              {dragging ? "Αφήστε το αρχείο εδώ" : "Σύρετε εδώ το παραστατικό"}
+            </p>
+            <p className="text-sm text-ink-muted">ή επιλέξτε από τη συσκευή σας</p>
+          </div>
+          <div className="flex w-full max-w-md flex-col gap-2 sm:flex-row sm:justify-center">
             <button
               type="button"
               onClick={() => fileInput.current?.click()}
-              className="flex items-center justify-center gap-2 rounded-md border border-line-strong bg-white px-4 py-3 text-sm font-medium hover:bg-bg"
+              className="flex items-center justify-center gap-2 rounded-md bg-ai-strong px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-ai-ink"
             >
               <FileText className="h-5 w-5" />
-              Αρχείο PDF ή εικόνα
+              Επιλογή αρχείου
+            </button>
+            <button
+              type="button"
+              onClick={() => cameraInput.current?.click()}
+              className="flex items-center justify-center gap-2 rounded-md border border-ai-border bg-white px-5 py-3 text-sm font-semibold text-ai-ink transition-colors hover:bg-ai-bg"
+            >
+              <Camera className="h-5 w-5" />
+              Φωτογραφία με κάμερα
             </button>
           </div>
-          <p className="flex items-center gap-1.5 text-xs text-ink-muted">
-            <Upload className="h-3.5 w-3.5" />
-            ή σύρετε το αρχείο εδώ
-          </p>
-          <p className="text-xs text-ink-faint">
-            Ένα παραστατικό ανά αρχείο · PDF, JPG, PNG, WEBP · έως 10 MB
-          </p>
+          <p className="text-xs text-ink-faint">PDF, JPG, PNG ή WEBP · έως 10 MB · ένα παραστατικό ανά αρχείο</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2 rounded-md border border-line p-3">
+        <div className="flex flex-col gap-3 rounded-xl border-2 border-ai-border bg-ai-bg/30 p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-bg">
-              {isPdf ? <FileText className="h-5 w-5 text-red-ink" /> : <ImageIcon className="h-5 w-5 text-ink-muted" />}
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm">
+              {isPdf ? <FileText className="h-6 w-6 text-red-ink" /> : <ImageIcon className="h-6 w-6 text-ai-strong" />}
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium">{file.name}</div>
@@ -175,8 +178,9 @@ export function UploadForm() {
       {error && <p className="text-sm text-red-ink">{error}</p>}
 
       <SubmitButton
-        variant="ai"
+        variant={file ? "aiSolid" : "ai"}
         disabled={!file}
+        className="w-full py-3 text-base"
         pendingLabel="Ανάλυση παραστατικού… (μπορεί να πάρει ως 30 δευτερόλεπτα)"
       >
         <AiSpark className="mr-1.5" />

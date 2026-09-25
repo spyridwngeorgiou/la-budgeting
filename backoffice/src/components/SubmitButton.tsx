@@ -17,7 +17,7 @@ export function SubmitButton({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   pendingLabel?: string;
-  variant?: "primary" | "secondary" | "danger" | "ai";
+  variant?: "primary" | "secondary" | "danger" | "ai" | "aiSolid";
 }) {
   const { pending } = useFormStatus();
   return (

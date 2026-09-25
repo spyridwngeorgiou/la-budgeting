@@ -4,7 +4,7 @@ export function Button({
   variant = "primary",
   className = "",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "danger" | "ai" }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "danger" | "ai" | "aiSolid" }) {
   const base = "rounded-md px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50";
   const variants = {
     primary: "bg-ink text-white hover:bg-ink/85",
@@ -14,6 +14,8 @@ export function Button({
     // the assistant) uses this same violet treatment, so it reads as "this
     // button calls the AI" on sight, consistently across the whole app.
     ai: "border border-ai-border bg-ai-bg text-ai-ink hover:bg-ai-border/40",
+    // The same AI action once it is ready to run -- the one button to press.
+    aiSolid: "border border-ai-strong bg-ai-strong text-white shadow-sm hover:bg-ai-ink",
   };
   return <button className={`${base} ${variants[variant]} ${className}`} {...props} />;
 }
