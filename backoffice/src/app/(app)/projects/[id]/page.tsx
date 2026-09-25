@@ -7,8 +7,7 @@ import { Badge, Card, Button, Select, AiSpark, Term } from "@/components/ui";
 import { OnePagerSection, OnePagerRow, StatusNotes, type ProjectNote } from "@/components/onepager";
 import { computeLeaseSchedule } from "@/lib/finance/lease";
 import { computeLoanSchedule } from "@/lib/finance/loan";
-import { computeRevenuePlan } from "@/lib/finance/revenuePlan";
-import { computeProjectCashflow } from "@/lib/finance/projectCashflow";
+import { computeScenarioResult } from "@/lib/finance/scenarioResult";
 import { xirr } from "@/lib/finance/xirr";
 import { aiEnabled } from "@/lib/ai/client";
 import { ProjectHealthCheck } from "./ProjectHealthCheck";
@@ -222,82 +221,22 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   // ΤΑΜΕΙΑΚΗ ΡΟΗ from the same computeProjectCashflow run, so every figure on
   // the page is internally consistent. Projects with a single flat annual
   // figure (Q004) keep the simpler direct computation -- there is no
-  // multi-year grid or loan to assemble a cash flow from.
-  let revenue = Number(scenario?.flat_annual_revenue ?? 0);
-  let opexTotal = opexLines
-    .filter((l) => l.from_operating_year === 1 && (l.to_operating_year == null || l.to_operating_year >= 1))
-    .reduce((s, l) => s + Number(l.annual_amount ?? 0), 0);
-  let annualRent = firstYearRent?.annualAmount ?? 0;
-  let cashflow: ReturnType<typeof computeProjectCashflow> | null = null;
+  // multi-year grid or loan to assemble a cash flow from. Shared with the
+  // scenario comparison view (compare/page.tsx) so the two can't disagree.
+  const scenarioResult = scenario
+    ? await computeScenarioResult(supabase, scenario, {
+        leaseSchedule,
+        leaseStartMonth: lease?.lease_start_month ?? null,
+        leaseTermYears: lease?.term_years ?? null,
+        loanSchedule,
+        openingDate: project?.opening_date ?? null,
+      })
+    : null;
 
-  if (scenario?.revenue_plan_id) {
-    const { data: plan } = await supabase
-      .from("revenue_plans")
-      .select("start_year, revenue_plan_room_types(id, name, unit_count, revenue_plan_assumptions(year_number, month_number, occupancy_pct, adr))")
-      .eq("id", scenario.revenue_plan_id)
-      .maybeSingle();
-
-    if (plan) {
-      const roomTypes = (plan.revenue_plan_room_types ?? []).map((rt) => ({
-        id: rt.id,
-        name: rt.name,
-        unitCount: rt.unit_count,
-      }));
-      const assumptions = (plan.revenue_plan_room_types ?? []).flatMap((rt) =>
-        (rt.revenue_plan_assumptions ?? []).map((a) => ({
-          roomTypeId: rt.id,
-          yearNumber: a.year_number,
-          monthNumber: a.month_number,
-          occupancyPct: a.occupancy_pct,
-          adr: a.adr,
-        })),
-      );
-      const revenuePlanResult = computeRevenuePlan(plan.start_year, roomTypes, assumptions);
-
-      // "First full modelled year" for the headline ΛΕΙΤΟΥΡΓΙΑ figure --
-      // year 1 is usually a partial opening-year stub, same convention the
-      // workbook itself uses ("Έσοδα πρώτου πλήρους έτους").
-      const headlineYearIdx = Math.min(1, revenuePlanResult.yearTotals.length - 1);
-      const headlineYear = revenuePlanResult.yearTotals[headlineYearIdx];
-      const headlineYearNumber = headlineYearIdx + 1;
-      revenue = headlineYear?.annualRevenue ?? 0;
-      opexTotal = opexLines
-        .filter(
-          (l) =>
-            l.from_operating_year <= headlineYearNumber &&
-            (l.to_operating_year == null || l.to_operating_year >= headlineYearNumber),
-        )
-        .reduce((s, l) => s + Number(l.annual_amount ?? 0), 0);
-      const headlineLeaseRow = leaseSchedule?.rows.find((r) => r.leaseYear === headlineYearNumber);
-      annualRent = headlineLeaseRow?.annualAmount ?? annualRent;
-
-      if (indexedTerms && project?.opening_date) {
-        const openingMonth = `${String(project.opening_date).slice(0, 7)}-01`;
-        const opexAnnualByOperatingYear = opexLines
-          .filter((l) => l.from_operating_year === l.to_operating_year)
-          .sort((a, b) => a.from_operating_year - b.from_operating_year)
-          .map((l) => Number(l.annual_amount ?? 0));
-
-        cashflow = computeProjectCashflow({
-          openingMonth,
-          baseYear: plan.start_year,
-          revenueMonthlyByOperatingYear: revenuePlanResult.yearTotals.map((y) => y.monthlyRevenue),
-          opexAnnualByOperatingYear:
-            opexAnnualByOperatingYear.length > 0 ? opexAnnualByOperatingYear : [opexTotal],
-          revenueGrowthPct: Number(scenario.revenue_growth_pct ?? 0),
-          opexGrowthPct: Number(scenario.opex_growth_pct ?? 0),
-          growthStartsAfterOperatingYear: Number(scenario.growth_starts_after_operating_year ?? 3),
-          leaseSchedule,
-          leaseStartMonth: lease?.lease_start_month ?? null,
-          leaseFirstPaymentMonth: lease?.lease_start_month ?? null,
-          loanSchedule,
-          horizonYears: Number(lease?.term_years ?? 23),
-          discountRatePct: Number(scenario.discount_rate_pct ?? 0.09),
-          dscrCovenantMin: Number(scenario.dscr_covenant_min ?? 1.2),
-        });
-      }
-    }
-  }
+  const revenue = scenarioResult?.revenue ?? 0;
+  const opexTotal = scenarioResult?.opexTotal ?? 0;
+  const annualRent = scenarioResult?.annualRent ?? firstYearRent?.annualAmount ?? 0;
+  const cashflow = scenarioResult?.cashflow ?? null;
 
   const operatingResult = revenue - opexTotal - annualRent;
   const hasOperation = Boolean(scenario && revenue > 0);
@@ -354,6 +293,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           />
           <Link href={`/transactions?project_id=${id}`}>
             <Button variant="secondary">{el.nav.transactions}</Button>
+          </Link>
+          <Link href={`/projects/${id}/compare`}>
+            <Button variant="secondary">Σύγκριση σεναρίων</Button>
           </Link>
         </div>
       </div>
