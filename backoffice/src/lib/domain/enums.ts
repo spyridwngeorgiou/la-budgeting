@@ -12,7 +12,7 @@ export type TxScope = (typeof TX_SCOPE)[number];
 export const TX_STATUS = ["paid", "pending", "scheduled", "cancelled"] as const;
 export type TxStatus = (typeof TX_STATUS)[number];
 
-export const TX_ORIGIN = ["aade", "manual", "bank_file", "ai_document", "ai_nl"] as const;
+export const TX_ORIGIN = ["aade", "manual", "bank_file", "ai_document", "ai_nl", "ai_email"] as const;
 export type TxOrigin = (typeof TX_ORIGIN)[number];
 
 export const ACCOUNT_KIND = ["bank", "cash", "gold", "crypto", "other"] as const;

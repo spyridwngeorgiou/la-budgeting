@@ -1069,6 +1069,35 @@ export type Database = {
           },
         ]
       }
+      email_inbound_addresses: {
+        Row: {
+          address: string
+          created_at: string
+          id: string
+          org_id: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          id?: string
+          org_id: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          id?: string
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_inbound_addresses_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           address: string | null
@@ -4197,7 +4226,7 @@ export type Database = {
         | "hospitality"
         | "general"
       tx_direction: "income" | "expense"
-      tx_origin: "aade" | "manual" | "bank_file" | "ai_document" | "ai_nl"
+      tx_origin: "aade" | "manual" | "bank_file" | "ai_document" | "ai_nl" | "ai_email"
       tx_scope: "business" | "personal"
       tx_status: "paid" | "pending" | "scheduled" | "cancelled"
     }
@@ -4397,7 +4426,7 @@ export const Constants = {
         "general",
       ],
       tx_direction: ["income", "expense"],
-      tx_origin: ["aade", "manual", "bank_file", "ai_document", "ai_nl"],
+      tx_origin: ["aade", "manual", "bank_file", "ai_document", "ai_nl", "ai_email"],
       tx_scope: ["business", "personal"],
       tx_status: ["paid", "pending", "scheduled", "cancelled"],
     },
