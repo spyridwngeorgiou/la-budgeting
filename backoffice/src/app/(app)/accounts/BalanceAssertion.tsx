@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Badge, Button, Field, Input, Label } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { formatMoney, formatDate } from "@/lib/format";
-import { assertAccountBalance } from "./actions";
 
 // One row of v_balance_checks (0035): a real balance on a date, and whether
 // the movements recorded for the period leading up to it explain it.
@@ -31,7 +30,7 @@ const START_LABEL = {
   app: "Υπόλοιπο εφαρμογής (μη επιβεβαιωμένο)",
 } as const;
 
-const ok = (gap: number) => Math.abs(gap) < 1;
+export const okGap = (gap: number) => Math.abs(gap) < 1;
 
 // A period-breakdown line: label left, monospace figure right -- the same
 // grammar OnePagerRow uses everywhere else in the app.
@@ -48,7 +47,7 @@ function BreakdownRow({ label, value, emphasis, tone }: { label: string; value: 
 // an income wasn't recorded (or an expense was recorded that never happened).
 // Negative = LESS money than the app thinks: an expense wasn't recorded.
 function GapHeadline({ gap, isCash, gapPeriods }: { gap: number; isCash: boolean; gapPeriods: BalanceCheck[] }) {
-  if (ok(gap)) {
+  if (okGap(gap)) {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-sage-strong/50 bg-sage/30 px-3 py-2.5">
         <Badge tone="green">Συμφωνεί</Badge>
@@ -94,9 +93,9 @@ function PeriodBreakdown({ check, accountId }: { check: BalanceCheck; accountId:
       <BreakdownRow label="Πραγματικό υπόλοιπο" value={formatMoney(check.asserted_balance)} emphasis />
       <BreakdownRow
         label="Διαφορά περιόδου"
-        value={ok(check.period_gap) ? "0,00 €" : `${check.period_gap > 0 ? "+" : "−"}${formatMoney(Math.abs(check.period_gap))}`}
+        value={okGap(check.period_gap) ? "0,00 €" : `${check.period_gap > 0 ? "+" : "−"}${formatMoney(Math.abs(check.period_gap))}`}
         emphasis
-        tone={ok(check.period_gap) ? "text-sage-ink" : "text-red-ink"}
+        tone={okGap(check.period_gap) ? "text-sage-ink" : "text-red-ink"}
       />
       <Link
         href={`/transactions?account_id=${accountId}&from=${check.period_start}&to=${check.as_of_date}`}
@@ -108,95 +107,44 @@ function PeriodBreakdown({ check, accountId }: { check: BalanceCheck; accountId:
   );
 }
 
+// Pure display: the read-only content shown inside an expanded row on the
+// accounts table (AccountsTable.tsx). Entering a new check is a separate
+// concern -- NewCheckModal -- so this never mounts a form.
 export function BalanceAssertion({
   accountId,
   checks,
-  expectedToday,
-  defaultFrom,
   isCash,
 }: {
   accountId: string;
   checks: BalanceCheck[]; // newest first
-  expectedToday: number;
-  defaultFrom: string;
   isCash: boolean;
 }) {
-  const [open, setOpen] = useState(checks.length === 0);
   const [showHistory, setShowHistory] = useState(false);
   const latest = checks[0];
-  const today = new Date().toISOString().slice(0, 10);
+
+  if (!latest) {
+    return (
+      <div className="rounded-lg border border-amber-ink/30 bg-amber-bg px-3 py-2.5 text-xs text-amber-ink">
+        Δεν έχει γίνει έλεγχος. Βάλτε το πραγματικό υπόλοιπο από {isCash ? "την καταμέτρηση του ταμείου" : "το e-banking"} για να
+        δείτε αν λείπουν κινήσεις.
+      </div>
+    );
+  }
 
   return (
-    <div className="mt-3 flex flex-col gap-3 border-t border-line pt-3">
-      {latest ? (
-        <>
-          <div className="flex items-center justify-between text-xs text-ink-faint">
-            <span>Τελευταίος έλεγχος {formatDate(latest.as_of_date)}</span>
-          </div>
-          <GapHeadline gap={latest.total_gap} isCash={isCash} gapPeriods={checks.filter((c) => !ok(c.period_gap))} />
-          {/* Periods where a gap arose are always shown; clean older ones fold away. */}
-          {checks
-            .filter((c, i) => showHistory || i === 0 || !ok(c.period_gap))
-            .map((c) => (
-              <PeriodBreakdown key={c.id} check={c} accountId={accountId} />
-            ))}
-          {checks.some((c, i) => i > 0 && ok(c.period_gap)) && (
-            <button type="button" onClick={() => setShowHistory(!showHistory)} className="self-start text-xs text-ink-faint underline hover:text-ink">
-              {showHistory
-                ? "Απόκρυψη παλαιότερων ελέγχων"
-                : `Παλαιότεροι έλεγχοι χωρίς διαφορά (${checks.filter((c, i) => i > 0 && ok(c.period_gap)).length})`}
-            </button>
-          )}
-        </>
-      ) : (
-        <div className="rounded-lg border border-amber-ink/30 bg-amber-bg px-3 py-2.5 text-xs text-amber-ink">
-          Δεν έχει γίνει έλεγχος. Βάλτε το πραγματικό υπόλοιπο από {isCash ? "την καταμέτρηση του ταμείου" : "το e-banking"} για
-          να δείτε αν λείπουν κινήσεις.
-        </div>
-      )}
-
-      {open ? (
-        <form
-          action={async (formData) => {
-            await assertAccountBalance(accountId, formData);
-            setOpen(false);
-          }}
-          className="flex flex-col gap-3 rounded-lg border border-line bg-bg/60 p-3"
-        >
-          <div className="text-xs text-ink-muted">
-            Η εφαρμογή περιμένει σήμερα <span className="font-mono font-medium text-ink">{formatMoney(expectedToday)}</span>
-          </div>
-          {/* Stacked, not a 3-up grid: these cards live in a 3-column page
-              grid, so a viewport breakpoint here doesn't know the CARD is
-              narrow and clips the date inputs. */}
-          <div className="flex flex-col gap-2.5">
-            <Field>
-              <Label>Πραγματικό υπόλοιπο</Label>
-              <Input type="number" step="0.01" name="asserted_balance" placeholder="0,00" required />
-            </Field>
-            <div className="grid grid-cols-2 gap-2.5">
-              <Field>
-                <Label>στις</Label>
-                <Input type="date" name="as_of_date" defaultValue={today} max={today} required />
-              </Field>
-              <Field>
-                <Label>Έλεγχος από</Label>
-                <Input type="date" name="period_start" defaultValue={defaultFrom} />
-              </Field>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            {checks.length > 0 && (
-              <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-                Άκυρο
-              </Button>
-            )}
-            <Button type="submit">Έλεγχος</Button>
-          </div>
-        </form>
-      ) : (
-        <button type="button" onClick={() => setOpen(true)} className="self-start text-xs text-ink-muted underline hover:text-ink">
-          Νέος έλεγχος με πραγματικό υπόλοιπο
+    <div className="flex flex-col gap-3">
+      <GapHeadline gap={latest.total_gap} isCash={isCash} gapPeriods={checks.filter((c) => !okGap(c.period_gap))} />
+      {/* Periods where a gap arose are always shown; clean older ones fold away. */}
+      {checks
+        .filter((c, i) => showHistory || i === 0 || !okGap(c.period_gap))
+        .map((c) => (
+          <PeriodBreakdown key={c.id} check={c} accountId={accountId} />
+        ))}
+      {checks.some((c, i) => i > 0 && okGap(c.period_gap)) && (
+        <button type="button" onClick={() => setShowHistory(!showHistory)} className="self-start text-xs text-ink-faint underline hover:text-ink">
+          {showHistory
+            ? "Απόκρυψη παλαιότερων ελέγχων"
+            : `Παλαιότεροι έλεγχοι χωρίς διαφορά (${checks.filter((c, i) => i > 0 && okGap(c.period_gap)).length})`}
         </button>
       )}
     </div>

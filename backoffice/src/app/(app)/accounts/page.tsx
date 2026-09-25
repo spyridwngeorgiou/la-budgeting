@@ -1,10 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
-import { formatMoney, formatDate } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge, Card } from "@/components/ui";
 import { AccountFormModal } from "./AccountFormModal";
 import { createAccount } from "./actions";
-import { BalanceAssertion, type BalanceCheck } from "./BalanceAssertion";
+import type { BalanceCheck } from "./BalanceAssertion";
+import { AccountsTable } from "./AccountsTable";
 
 export default async function AccountsPage() {
   const supabase = await createClient();
@@ -72,27 +72,18 @@ export default async function AccountsPage() {
             .map((group) => (
               <section key={group.title}>
                 <h2 className="mb-2 text-sm font-medium text-ink-muted">{group.title}</h2>
-                <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {group.rows.map((a) => (
-                    <Card key={a.account_id} className="shadow-sm">
-                      <div className="mb-1.5 flex items-center justify-between">
-                        <span className="text-sm font-medium text-ink">{a.name}</span>
-                        {!a.is_liquid && <Badge tone="amber">μη ρευστό</Badge>}
-                      </div>
-                      <div className="font-mono text-2xl font-semibold tabular-nums text-ink">{formatMoney(a.current_balance)}</div>
-                      <div className="mt-0.5 text-xs text-ink-faint">
-                        Έναρξη {formatDate(a.opening_balance_date)}: {formatMoney(a.opening_balance)}
-                      </div>
-                      <BalanceAssertion
-                        accountId={a.account_id!}
-                        checks={checksByAccount.get(a.account_id!) ?? []}
-                        expectedToday={Number(a.current_balance ?? 0)}
-                        defaultFrom={checksByAccount.get(a.account_id!)?.[0]?.as_of_date ?? a.opening_balance_date ?? ""}
-                        isCash={a.kind === "cash"}
-                      />
-                    </Card>
-                  ))}
-                </div>
+                <AccountsTable
+                  accounts={group.rows.map((a) => ({
+                    account_id: a.account_id!,
+                    name: a.name!,
+                    kind: a.kind!,
+                    is_liquid: a.is_liquid!,
+                    opening_balance: Number(a.opening_balance ?? 0),
+                    opening_balance_date: a.opening_balance_date!,
+                    current_balance: Number(a.current_balance ?? 0),
+                  }))}
+                  checksByAccount={checksByAccount}
+                />
               </section>
             ))}
         </>
