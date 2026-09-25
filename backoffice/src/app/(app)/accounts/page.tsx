@@ -77,12 +77,13 @@ export default async function AccountsPage() {
                         accountId={a.account_id!}
                         latest={latestAssertionByAccount.get(a.account_id!) ?? null}
                         sinceCount={(() => {
-                          const s = (sinceCounts ?? []).find((c) => c.account_id === a.account_id && c.account_kind === "cash");
+                          const s = (sinceCounts ?? []).find((c) => c.account_id === a.account_id);
                           return s
                             ? {
                                 business_since: Number(s.business_since ?? 0),
                                 personal_since: Number(s.personal_since ?? 0),
                                 expected_now: Number(s.expected_now ?? 0),
+                                isCash: s.account_kind === "cash",
                               }
                             : null;
                         })()}

@@ -27,6 +27,7 @@ export interface SinceLastCount {
   business_since: number;
   personal_since: number;
   expected_now: number;
+  isCash: boolean;
 }
 
 export function BalanceAssertion({
@@ -54,7 +55,7 @@ export function BalanceAssertion({
       {latest && sinceCount && (
         <div className="mt-1 flex flex-col gap-0.5 text-xs text-ink-muted">
           <div className="flex justify-between">
-            <span>Μετρήθηκαν {formatDate(latest.as_of_date)}</span>
+            <span>{sinceCount.isCash ? "Μετρήθηκαν" : "Πραγματικό υπόλοιπο"} {formatDate(latest.as_of_date)}</span>
             <span className="font-mono">{formatMoney(latest.asserted_balance)}</span>
           </div>
           <div className="flex justify-between">
@@ -66,7 +67,7 @@ export function BalanceAssertion({
             <span className="font-mono">{formatMoney(sinceCount.personal_since)}</span>
           </div>
           <div className="flex justify-between font-medium text-ink">
-            <span>Πρέπει να υπάρχουν σήμερα</span>
+            <span>{sinceCount.isCash ? "Πρέπει να υπάρχουν σήμερα" : "Πρέπει να δείχνει η τράπεζα σήμερα"}</span>
             <span className="font-mono">{formatMoney(sinceCount.expected_now)}</span>
           </div>
         </div>
@@ -90,7 +91,7 @@ export function BalanceAssertion({
             type="number"
             step="0.01"
             name="asserted_balance"
-            placeholder="Πραγματικό υπόλοιπο"
+            placeholder="Πραγματικό υπόλοιπο (e-banking / ταμείο)"
             required
             className="!py-1 text-xs"
           />
