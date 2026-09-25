@@ -13,6 +13,7 @@ export function SubmitButton({
   children,
   pendingLabel = "…",
   variant,
+  disabled,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   pendingLabel?: string;
@@ -20,7 +21,7 @@ export function SubmitButton({
 }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" variant={variant} disabled={pending} {...props}>
+    <Button type="submit" variant={variant} {...props} disabled={pending || disabled}>
       {pending ? pendingLabel : children}
     </Button>
   );

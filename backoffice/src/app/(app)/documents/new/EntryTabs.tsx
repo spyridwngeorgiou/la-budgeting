@@ -12,9 +12,9 @@ export function EntryTabs() {
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2">
         {([
-          ["photo", "Φωτογραφία / PDF"],
-          ["text", "Περιγραφή (κείμενο ή φωνή)"],
-        ] as const).map(([key, label]) => (
+          ["photo", "Έχω παραστατικό", "φωτογραφία ή PDF"],
+          ["text", "Δεν έχω παραστατικό", "γράψτε ή πείτε την κίνηση"],
+        ] as const).map(([key, label, hint]) => (
           <button
             key={key}
             type="button"
@@ -26,7 +26,10 @@ export function EntryTabs() {
             }`}
           >
             {tab === key && <AiSpark />}
-            {label}
+            <span className="flex flex-col leading-tight">
+              <span>{label}</span>
+              <span className="text-xs font-normal opacity-70">{hint}</span>
+            </span>
           </button>
         ))}
       </div>
