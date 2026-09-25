@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Badge, Button, Input } from "@/components/ui";
+import { Badge, Button, Field, Input, Label } from "@/components/ui";
 import { formatMoney, formatDate } from "@/lib/format";
 import { assertAccountBalance } from "./actions";
 
@@ -33,68 +33,76 @@ const START_LABEL = {
 
 const ok = (gap: number) => Math.abs(gap) < 1;
 
+// A period-breakdown line: label left, monospace figure right -- the same
+// grammar OnePagerRow uses everywhere else in the app.
+function BreakdownRow({ label, value, emphasis, tone }: { label: string; value: string; emphasis?: boolean; tone?: string }) {
+  return (
+    <div className={`flex items-baseline justify-between gap-3 py-0.5 ${emphasis ? "font-semibold text-ink" : "text-ink-muted"}`}>
+      <span>{label}</span>
+      <span className={`font-mono text-sm tabular-nums ${tone ?? ""}`}>{value}</span>
+    </div>
+  );
+}
+
 // Positive gap = there is MORE money in reality than the app knows about:
 // an income wasn't recorded (or an expense was recorded that never happened).
 // Negative = LESS money than the app thinks: an expense wasn't recorded.
 function GapHeadline({ gap, isCash, gapPeriods }: { gap: number; isCash: boolean; gapPeriods: BalanceCheck[] }) {
   if (ok(gap)) {
     return (
-      <div className="rounded border border-sage-strong/50 bg-sage/30 px-2.5 py-1.5 text-sm font-medium text-sage-ink">
-        Συμφωνεί — δεν λείπουν κινήσεις
+      <div className="flex items-center gap-2 rounded-lg border border-sage-strong/50 bg-sage/30 px-3 py-2.5">
+        <Badge tone="green">Συμφωνεί</Badge>
+        <span className="text-sm text-sage-ink">Δεν λείπουν κινήσεις</span>
       </div>
     );
   }
   const where = isCash ? "στο ταμείο" : "στην τράπεζα";
   return (
-    <div className="rounded border border-red-ink/40 bg-red-bg px-2.5 py-1.5 text-red-ink">
-      <div className="text-base font-semibold">
-        {gap < 0 ? "Λείπουν έξοδα" : "Λείπουν έσοδα"}: {formatMoney(Math.abs(gap))}
+    <div className="rounded-lg border border-red-ink/30 bg-red-bg px-3 py-2.5">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-sm font-semibold text-red-ink">{gap < 0 ? "Λείπουν έξοδα" : "Λείπουν έσοδα"}</span>
+        <span className="font-mono text-lg font-bold tabular-nums text-red-ink">{formatMoney(Math.abs(gap))}</span>
       </div>
-      <div className="text-xs">
+      <p className="mt-0.5 text-xs text-red-ink/80">
         {gap < 0
           ? `Υπάρχουν ${formatMoney(Math.abs(gap))} λιγότερα ${where} από όσα δείχνει η εφαρμογή — κάποια πληρωμή δεν έχει περαστεί.`
           : `Υπάρχουν ${formatMoney(gap)} περισσότερα ${where} από όσα δείχνει η εφαρμογή — κάποια είσπραξη δεν έχει περαστεί (ή περάστηκε πληρωμή που δεν έγινε).`}
-      </div>
+      </p>
       {gapPeriods.length > 0 && (
-        <div className="mt-1 text-xs font-medium">
+        <p className="mt-1.5 text-xs font-medium text-red-ink">
           Η διαφορά προέκυψε: {gapPeriods.map((c) => `${formatDate(c.period_start)} → ${formatDate(c.as_of_date)}`).join(", ")}
-        </div>
+        </p>
       )}
     </div>
   );
 }
 
 function PeriodBreakdown({ check, accountId }: { check: BalanceCheck; accountId: string }) {
-  const Row = ({ label, value, strong, tone }: { label: string; value: string; strong?: boolean; tone?: string }) => (
-    <div className={`flex justify-between gap-2 ${strong ? "font-medium text-ink" : ""} ${tone ?? ""}`}>
-      <span>{label}</span>
-      <span className="font-mono tabular-nums">{value}</span>
-    </div>
-  );
   return (
-    <div className="flex flex-col gap-0.5 rounded border border-line px-2.5 py-2 text-xs text-ink-muted">
-      <div className="mb-1 flex items-center justify-between">
-        <span className="font-medium text-ink">
+    <div className="rounded-lg border border-line bg-bg/60 px-3 py-2.5">
+      <div className="mb-1.5 flex items-center justify-between border-b border-line pb-1.5">
+        <span className="text-xs font-semibold text-ink">
           {formatDate(check.period_start)} → {formatDate(check.as_of_date)}
         </span>
         {check.from_import && <Badge tone="neutral">από Excel</Badge>}
       </div>
-      <Row label={`${START_LABEL[check.period_start_source]} ${formatDate(check.period_start)}`} value={formatMoney(check.period_start_balance)} />
-      <Row label={`+ Έσοδα που περάστηκαν (${check.period_income_n})`} value={formatMoney(check.period_income)} />
-      <Row label={`− Έξοδα που περάστηκαν (${check.period_expense_n})`} value={formatMoney(check.period_expense)} />
-      <Row label="= Αναμενόμενο υπόλοιπο" value={formatMoney(check.expected_balance)} strong />
-      <Row label="Πραγματικό υπόλοιπο" value={formatMoney(check.asserted_balance)} strong />
-      <Row
+      <BreakdownRow label={START_LABEL[check.period_start_source]} value={formatMoney(check.period_start_balance)} />
+      <BreakdownRow label={`+ Έσοδα (${check.period_income_n})`} value={formatMoney(check.period_income)} />
+      <BreakdownRow label={`− Έξοδα (${check.period_expense_n})`} value={formatMoney(check.period_expense)} />
+      <BreakdownRow label="= Αναμενόμενο υπόλοιπο" value={formatMoney(check.expected_balance)} emphasis />
+      <div className="my-1 border-t border-line" />
+      <BreakdownRow label="Πραγματικό υπόλοιπο" value={formatMoney(check.asserted_balance)} emphasis />
+      <BreakdownRow
         label="Διαφορά περιόδου"
         value={ok(check.period_gap) ? "0,00 €" : `${check.period_gap > 0 ? "+" : "−"}${formatMoney(Math.abs(check.period_gap))}`}
-        strong
+        emphasis
         tone={ok(check.period_gap) ? "text-sage-ink" : "text-red-ink"}
       />
       <Link
         href={`/transactions?account_id=${accountId}&from=${check.period_start}&to=${check.as_of_date}`}
-        className="mt-1 underline"
+        className="mt-1.5 inline-block text-xs text-ink-muted underline hover:text-ink"
       >
-        Κινήσεις της περιόδου
+        Κινήσεις της περιόδου →
       </Link>
     </div>
   );
@@ -119,11 +127,11 @@ export function BalanceAssertion({
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <div className="mt-2 flex flex-col gap-2 border-t border-line/60 pt-2">
+    <div className="mt-3 flex flex-col gap-3 border-t border-line pt-3">
       {latest ? (
         <>
-          <div className="flex items-center justify-between text-xs text-ink-muted">
-            <span>Έλεγχος {formatDate(latest.as_of_date)}</span>
+          <div className="flex items-center justify-between text-xs text-ink-faint">
+            <span>Τελευταίος έλεγχος {formatDate(latest.as_of_date)}</span>
           </div>
           <GapHeadline gap={latest.total_gap} isCash={isCash} gapPeriods={checks.filter((c) => !ok(c.period_gap))} />
           {/* Periods where a gap arose are always shown; clean older ones fold away. */}
@@ -133,7 +141,7 @@ export function BalanceAssertion({
               <PeriodBreakdown key={c.id} check={c} accountId={accountId} />
             ))}
           {checks.some((c, i) => i > 0 && ok(c.period_gap)) && (
-            <button type="button" onClick={() => setShowHistory(!showHistory)} className="text-left text-xs text-ink-faint underline">
+            <button type="button" onClick={() => setShowHistory(!showHistory)} className="self-start text-xs text-ink-faint underline hover:text-ink">
               {showHistory
                 ? "Απόκρυψη παλαιότερων ελέγχων"
                 : `Παλαιότεροι έλεγχοι χωρίς διαφορά (${checks.filter((c, i) => i > 0 && ok(c.period_gap)).length})`}
@@ -141,10 +149,10 @@ export function BalanceAssertion({
           )}
         </>
       ) : (
-        <p className="text-xs text-amber-ink">
+        <div className="rounded-lg border border-amber-ink/30 bg-amber-bg px-3 py-2.5 text-xs text-amber-ink">
           Δεν έχει γίνει έλεγχος. Βάλτε το πραγματικό υπόλοιπο από {isCash ? "την καταμέτρηση του ταμείου" : "το e-banking"} για
           να δείτε αν λείπουν κινήσεις.
-        </p>
+        </div>
       )}
 
       {open ? (
@@ -153,36 +161,41 @@ export function BalanceAssertion({
             await assertAccountBalance(accountId, formData);
             setOpen(false);
           }}
-          className="flex flex-col gap-1.5 rounded bg-bg p-2"
+          className="flex flex-col gap-3 rounded-lg border border-line bg-bg/60 p-3"
         >
           <div className="text-xs text-ink-muted">
-            Η εφαρμογή περιμένει σήμερα: <span className="font-mono text-ink">{formatMoney(expectedToday)}</span>
+            Η εφαρμογή περιμένει σήμερα <span className="font-mono font-medium text-ink">{formatMoney(expectedToday)}</span>
           </div>
-          <label className="flex items-center justify-between gap-2 text-xs">
-            <span>Πραγματικό υπόλοιπο</span>
-            <Input type="number" step="0.01" name="asserted_balance" required className="!w-32 !py-1 text-xs" />
-          </label>
-          <label className="flex items-center justify-between gap-2 text-xs">
-            <span>στις</span>
-            <Input type="date" name="as_of_date" defaultValue={today} max={today} required className="!w-32 !py-1 text-xs" />
-          </label>
-          <label className="flex items-center justify-between gap-2 text-xs">
-            <span>Έλεγχος κινήσεων από</span>
-            <Input type="date" name="period_start" defaultValue={defaultFrom} className="!w-32 !py-1 text-xs" />
-          </label>
-          <div className="flex justify-end gap-1.5">
+          {/* Stacked, not a 3-up grid: these cards live in a 3-column page
+              grid, so a viewport breakpoint here doesn't know the CARD is
+              narrow and clips the date inputs. */}
+          <div className="flex flex-col gap-2.5">
+            <Field>
+              <Label>Πραγματικό υπόλοιπο</Label>
+              <Input type="number" step="0.01" name="asserted_balance" placeholder="0,00" required />
+            </Field>
+            <div className="grid grid-cols-2 gap-2.5">
+              <Field>
+                <Label>στις</Label>
+                <Input type="date" name="as_of_date" defaultValue={today} max={today} required />
+              </Field>
+              <Field>
+                <Label>Έλεγχος από</Label>
+                <Input type="date" name="period_start" defaultValue={defaultFrom} />
+              </Field>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
             {checks.length > 0 && (
-              <Button type="button" variant="secondary" className="!px-2 !py-1 text-xs" onClick={() => setOpen(false)}>
+              <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
                 Άκυρο
               </Button>
             )}
-            <Button type="submit" className="!px-2 !py-1 text-xs">
-              Έλεγχος
-            </Button>
+            <Button type="submit">Έλεγχος</Button>
           </div>
         </form>
       ) : (
-        <button type="button" onClick={() => setOpen(true)} className="text-left text-xs text-ink-faint underline">
+        <button type="button" onClick={() => setOpen(true)} className="self-start text-xs text-ink-muted underline hover:text-ink">
           Νέος έλεγχος με πραγματικό υπόλοιπο
         </button>
       )}

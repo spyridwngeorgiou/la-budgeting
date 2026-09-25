@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge } from "@/components/ui";
+import { Badge, Card } from "@/components/ui";
 import { AccountFormModal } from "./AccountFormModal";
 import { createAccount } from "./actions";
 import { BalanceAssertion, type BalanceCheck } from "./BalanceAssertion";
@@ -59,9 +59,9 @@ export default async function AccountsPage() {
         </p>
       ) : (
         <>
-          <div className="rounded border border-ink bg-ink p-4 text-white">
+          <div className="rounded-lg border border-ink bg-ink p-4 text-white">
             <div className="text-xs text-white/70">Σύνολο Ρευστών Διαθεσίμων</div>
-            <div className="font-mono text-2xl">{formatMoney(totalLiquid)}</div>
+            <div className="font-mono text-2xl font-semibold tabular-nums">{formatMoney(totalLiquid)}</div>
           </div>
 
           {[
@@ -72,15 +72,15 @@ export default async function AccountsPage() {
             .map((group) => (
               <section key={group.title}>
                 <h2 className="mb-2 text-sm font-medium text-ink-muted">{group.title}</h2>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {group.rows.map((a) => (
-                    <div key={a.account_id} className="rounded border border-line p-3">
-                      <div className="mb-1 flex items-center justify-between">
-                        <span className="text-sm font-medium">{a.name}</span>
+                    <Card key={a.account_id} className="shadow-sm">
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <span className="text-sm font-medium text-ink">{a.name}</span>
                         {!a.is_liquid && <Badge tone="amber">μη ρευστό</Badge>}
                       </div>
-                      <div className="font-mono text-lg">{formatMoney(a.current_balance)}</div>
-                      <div className="text-xs text-ink-muted">
+                      <div className="font-mono text-2xl font-semibold tabular-nums text-ink">{formatMoney(a.current_balance)}</div>
+                      <div className="mt-0.5 text-xs text-ink-faint">
                         Έναρξη {formatDate(a.opening_balance_date)}: {formatMoney(a.opening_balance)}
                       </div>
                       <BalanceAssertion
@@ -90,7 +90,7 @@ export default async function AccountsPage() {
                         defaultFrom={checksByAccount.get(a.account_id!)?.[0]?.as_of_date ?? a.opening_balance_date ?? ""}
                         isCash={a.kind === "cash"}
                       />
-                    </div>
+                    </Card>
                   ))}
                 </div>
               </section>
