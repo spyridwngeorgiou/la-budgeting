@@ -5,7 +5,7 @@ __pycache__/
 # Excel temp/lock files
 ~$*.xlsx
 
-# Node / Next.js (budget-app has its own .gitignore too)
+# Node / Next.js
 node_modules/
 .next/
 out/
@@ -15,10 +15,6 @@ build/
 .env
 .env.local
 .env.*.local
-!budget-app/.env.local.example
-
-# Local seed data
-budget-app/scripts/seed.json
 
 # Editor
 .DS_Store
