@@ -28,6 +28,14 @@ import type { Json } from "@/lib/db/types";
 
 export type SyncStatus = "connecting" | "live" | "saving" | "saved" | "offline" | "error";
 
+// Someone else on the board right now, for «Πού είναι οι άλλοι».
+export interface Peer {
+  userId: string;
+  name: string;
+  color: string;
+  pointer?: { x: number; y: number };
+}
+
 export type CommentEvent = {
   kind: "insert" | "update" | "delete";
   record: Record<string, unknown> | null;
@@ -98,7 +106,8 @@ export function useBoardSync({
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [status, setStatus] = useState<SyncStatus>("connecting");
-  const [peerCount, setPeerCount] = useState(0);
+  const [peers, setPeers] = useState<Peer[]>([]);
+  const peerCount = peers.length;
 
   // Last version we know the rest of the room has (from the initial load,
   // a remote delta, or our own broadcast). An element whose version is
@@ -273,7 +282,18 @@ export function useBoardSync({
           color: colorFor(meta.userId),
         });
       }
-      setPeerCount(new Set([...collaborators.values()].map((c) => c.id)).size);
+      // One entry per person (several tabs collapse into the latest).
+      const byUser = new Map<string, Peer>();
+      for (const c of collaborators.values()) {
+        if (!c.id) continue;
+        byUser.set(c.id, {
+          userId: c.id,
+          name: c.username ?? "",
+          color: c.color?.stroke ?? "#868e96",
+          pointer: c.pointer ? { x: c.pointer.x, y: c.pointer.y } : undefined,
+        });
+      }
+      setPeers([...byUser.values()]);
       a.updateScene({ collaborators });
     };
 
@@ -346,5 +366,5 @@ export function useBoardSync({
     };
   }, [supabase, boardId, presenceKey, pending, applyRemote, trackPresence, reloadFromDatabase, save]);
 
-  return { status, peerCount, handleChange, handlePointer, colorFor };
+  return { status, peerCount, peers, handleChange, handlePointer, colorFor };
 }

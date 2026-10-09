@@ -8,7 +8,9 @@ import { collabStoragePath } from "@/lib/collab/paths";
 // we never persist those (they'd bloat every element read and every
 // broadcast). Instead the bytes go to the private `collab` bucket at
 // <org>/<project>/<board>/<file> (0038, collab_path_ok) and a board_files
-// row records the Excalidraw fileId -> object path mapping.
+// row records the Excalidraw fileId -> object path mapping. Project-level
+// files (0060: the Files card, chat attachments) live under
+// <org>/<project>/shared/ with board_id null.
 
 export const COLLAB_MAX_BYTES = 25 * 1024 * 1024;
 export const COLLAB_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
@@ -22,21 +24,26 @@ const EXT: Record<string, string> = {
 };
 
 type Client = SupabaseClient<Database>;
+// boardId null: a project-level file.
 export interface BoardScope {
   orgId: string;
   projectId: string;
-  boardId: string;
+  boardId: string | null;
 }
 
 export function isAllowedCollabFile(mimeType: string, size: number) {
   return (COLLAB_FILE_TYPES as readonly string[]).includes(mimeType) && size > 0 && size <= COLLAB_MAX_BYTES;
 }
 
+export function isImageType(mimeType: string) {
+  return (COLLAB_IMAGE_TYPES as readonly string[]).includes(mimeType);
+}
+
 export async function dataUrlToBlob(dataURL: string): Promise<Blob> {
   return (await fetch(dataURL)).blob();
 }
 
-function blobToDataUrl(blob: Blob): Promise<string> {
+export function fileToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
@@ -45,28 +52,38 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+export function imageSize(dataURL: string): Promise<{ w: number; h: number }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth || 400, h: img.naturalHeight || 300 });
+    img.onerror = () => resolve({ w: 400, h: 300 });
+    img.src = dataURL;
+  });
+}
+
 // Uploads once per (board, fileId): Excalidraw's fileIds are content
 // hashes, so pasting the same image twice is a no-op here. Returns the
 // board_files row id (used for the /files/<id> download route).
+// `derivedFrom`: the PDF a page bitmap was rendered from (0060).
 export async function uploadBoardFile(
   supabase: Client,
   scope: BoardScope,
-  file: { fileId: string; blob: Blob; mimeType: string; name?: string | null },
+  file: { fileId: string; blob: Blob; mimeType: string; name?: string | null; derivedFrom?: string | null },
 ): Promise<string> {
   if (!isAllowedCollabFile(file.mimeType, file.blob.size)) throw new Error("unsupported");
 
-  const { data: existing } = await supabase
-    .from("board_files")
-    .select("id")
-    .eq("board_id", scope.boardId)
-    .eq("file_id", file.fileId)
-    .maybeSingle();
+  const findExisting = async () => {
+    let q = supabase.from("board_files").select("id").eq("project_id", scope.projectId).eq("file_id", file.fileId);
+    q = scope.boardId ? q.eq("board_id", scope.boardId) : q.is("board_id", null);
+    return (await q.maybeSingle()).data;
+  };
+  const existing = await findExisting();
   if (existing) return existing.id;
 
   const storagePath = collabStoragePath(
     scope.orgId,
     scope.projectId,
-    scope.boardId,
+    scope.boardId ?? "shared",
     `${file.fileId}.${EXT[file.mimeType] ?? "bin"}`,
   );
   const { error: uploadError } = await supabase.storage
@@ -79,7 +96,7 @@ export async function uploadBoardFile(
     .from("board_files")
     .insert({
       board_id: scope.boardId,
-      // Overwritten from the board by trigger; sent only to satisfy types.
+      // Overwritten from the board / project by trigger; sent only to satisfy types.
       org_id: scope.orgId,
       project_id: scope.projectId,
       file_id: file.fileId,
@@ -87,17 +104,13 @@ export async function uploadBoardFile(
       mime_type: file.mimeType,
       size_bytes: file.blob.size,
       original_name: file.name?.slice(0, 255) ?? null,
+      derived_from: file.derivedFrom ?? null,
     })
     .select("id")
     .single();
   if (error) {
     // Lost the race to another collaborator's insert -- theirs is identical.
-    const { data: again } = await supabase
-      .from("board_files")
-      .select("id")
-      .eq("board_id", scope.boardId)
-      .eq("file_id", file.fileId)
-      .maybeSingle();
+    const again = await findExisting();
     if (again) return again.id;
     throw error;
   }
@@ -105,17 +118,25 @@ export async function uploadBoardFile(
 }
 
 // Fetches image bytes for the given Excalidraw fileIds and returns them in
-// the shape api.addFiles() wants. Ids with no board_files row yet (another
-// collaborator still uploading) are simply absent from the result.
-export async function loadBoardFiles(supabase: Client, boardId: string, fileIds: string[]): Promise<BinaryFileData[]> {
-  if (fileIds.length === 0) return [];
-  const { data: rows } = await supabase
+// the shape api.addFiles() wants. `missing` lists ids with no board_files
+// row at all: either a collaborator is still uploading, or the file was
+// deleted (0060) -- the caller tells the two apart by retrying.
+export async function loadBoardFiles(
+  supabase: Client,
+  boardId: string,
+  fileIds: string[],
+): Promise<{ loaded: BinaryFileData[]; missing: string[] }> {
+  if (fileIds.length === 0) return { loaded: [], missing: [] };
+  const { data: rows, error } = await supabase
     .from("board_files")
     .select("file_id, storage_path, mime_type")
     .eq("board_id", boardId)
     .in("file_id", fileIds);
-  const images = (rows ?? []).filter((r) => (COLLAB_IMAGE_TYPES as readonly string[]).includes(r.mime_type));
-  if (images.length === 0) return [];
+  const present = new Set((rows ?? []).map((r) => r.file_id));
+  // On a query error nothing is "missing" -- it's just not known yet.
+  const missing = error ? [] : fileIds.filter((id) => !present.has(id));
+  const images = (rows ?? []).filter((r) => isImageType(r.mime_type));
+  if (images.length === 0) return { loaded: [], missing };
 
   const { data: signed } = await supabase.storage.from("collab").createSignedUrls(
     images.map((r) => r.storage_path),
@@ -131,7 +152,7 @@ export async function loadBoardFiles(supabase: Client, boardId: string, fileIds:
         return {
           id: row.file_id as FileId,
           mimeType: row.mime_type as BinaryFileData["mimeType"],
-          dataURL: (await blobToDataUrl(await res.blob())) as DataURL,
+          dataURL: (await fileToDataUrl(await res.blob())) as DataURL,
           created: Date.now(),
           lastRetrieved: Date.now(),
         } satisfies BinaryFileData;
@@ -140,5 +161,5 @@ export async function loadBoardFiles(supabase: Client, boardId: string, fileIds:
       }
     }),
   );
-  return results.filter((r): r is NonNullable<typeof r> => r !== null);
+  return { loaded: results.filter((r): r is NonNullable<typeof r> => r !== null), missing };
 }

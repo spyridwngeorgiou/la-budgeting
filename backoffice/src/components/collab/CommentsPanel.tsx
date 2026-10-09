@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { el } from "@/lib/i18n/el";
 import { Button } from "@/components/ui";
+import { MentionText, MentionTextarea } from "./MentionTextarea";
 import type { BoardComment } from "./types";
 
 export type CommentAnchor = { element_id: string | null; scene_x: number; scene_y: number };
@@ -33,11 +34,16 @@ export function CommentsPanel({
   onResolve,
   onDelete,
   onFocus,
+  canManage,
+  confirm,
 }: {
   comments: BoardComment[];
   people: Record<string, string>;
   meId: string;
   canEdit: boolean;
+  // Project lead or org editor: may delete anyone's comment (0060).
+  canManage: boolean;
+  confirm: (req: { message: string }) => Promise<boolean>;
   focusedId: string | null;
   draftAnchor: CommentAnchor | null;
   canAnchorToSelection: boolean;
@@ -73,6 +79,16 @@ export function CommentsPanel({
   const visible = roots.filter((r) => showResolved || !r.resolved_at);
   const resolvedCount = roots.filter((r) => r.resolved_at).length;
   const nameOf = (id: string | null) => (id && people[id]) || el.collab.unknownUser;
+  const mentionPeople = useMemo(() => Object.entries(people).map(([userId, name]) => ({ userId, name })), [people]);
+  const names = useMemo(() => Object.values(people), [people]);
+
+  async function confirmDelete(id: string) {
+    const hasReplies = (replies.get(id) ?? []).length > 0;
+    const ok = await confirm({
+      message: hasReplies ? el.collab.comments.confirmDeleteThread : el.collab.comments.confirmDelete,
+    });
+    if (ok) onDelete(id);
+  }
 
   async function submit() {
     const body = draft.trim();
@@ -85,17 +101,16 @@ export function CommentsPanel({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex flex-col gap-2 border-b border-line p-3">
-        <textarea
+        <MentionTextarea
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={setDraft}
+          onSubmit={() => void submit()}
+          people={mentionPeople}
           placeholder={el.collab.comments.placeholder}
           rows={3}
-          maxLength={4000}
-          className="w-full resize-none rounded-md border border-line-strong bg-surface px-3 py-2 text-sm focus:border-sage-strong focus:outline-none"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void submit();
-          }}
+          submitOn="mod-enter"
         />
+        <p className="text-[11px] text-ink-faint">{el.collab.comments.mentionHint}</p>
         <div className="flex flex-wrap items-center gap-1.5">
           {draftAnchor ? (
             <button
@@ -140,10 +155,12 @@ export function CommentsPanel({
               focused={focusedId === root.id}
               nameOf={nameOf}
               canResolve={canEdit || root.author_id === meId}
+              canManage={canManage}
+              names={names}
               meId={meId}
               onReply={(body) => onCreate(body, null, root.id)}
               onResolve={onResolve}
-              onDelete={onDelete}
+              onDelete={(id) => void confirmDelete(id)}
               onFocus={onFocus}
             />
           ))}
@@ -168,6 +185,8 @@ function Thread({
   focused,
   nameOf,
   canResolve,
+  canManage,
+  names,
   meId,
   onReply,
   onResolve,
@@ -179,6 +198,8 @@ function Thread({
   focused: boolean;
   nameOf: (id: string | null) => string;
   canResolve: boolean;
+  canManage: boolean;
+  names: string[];
   meId: string;
   onReply: (body: string) => Promise<boolean>;
   onResolve: (id: string, resolved: boolean) => void;
@@ -194,10 +215,22 @@ function Thread({
         root.resolved_at ? "opacity-60" : ""
       }`}
     >
-      <CommentBody comment={root} nameOf={nameOf} mine={root.author_id === meId} onDelete={onDelete} />
+      <CommentBody
+        comment={root}
+        nameOf={nameOf}
+        names={names}
+        canDelete={root.author_id === meId || canManage}
+        onDelete={onDelete}
+      />
       {replies.map((r) => (
         <div key={r.id} className="mt-2 border-l-2 border-line pl-2">
-          <CommentBody comment={r} nameOf={nameOf} mine={r.author_id === meId} onDelete={onDelete} />
+          <CommentBody
+            comment={r}
+            nameOf={nameOf}
+            names={names}
+            canDelete={r.author_id === meId || canManage}
+            onDelete={onDelete}
+          />
         </div>
       ))}
       <div className="mt-2 flex items-center gap-1.5">
@@ -240,12 +273,14 @@ function Thread({
 function CommentBody({
   comment,
   nameOf,
-  mine,
+  names,
+  canDelete,
   onDelete,
 }: {
   comment: BoardComment;
   nameOf: (id: string | null) => string;
-  mine: boolean;
+  names: string[];
+  canDelete: boolean;
   onDelete: (id: string) => void;
 }) {
   return (
@@ -254,10 +289,10 @@ function CommentBody({
         <span className="font-medium text-ink">{nameOf(comment.author_id)}</span>
         <span className="flex items-center gap-1.5">
           {timeFormatter.format(new Date(comment.created_at))}
-          {mine && (
+          {canDelete && (
             <button
               type="button"
-              className="text-ink-faint hover:text-red-ink"
+              className="-my-2 flex h-9 w-9 items-center justify-center rounded text-base text-ink-faint hover:bg-red-bg hover:text-red-ink"
               onClick={() => onDelete(comment.id)}
               aria-label={el.collab.comments.delete}
               title={el.collab.comments.delete}
@@ -267,7 +302,9 @@ function CommentBody({
           )}
         </span>
       </div>
-      <p className="mt-0.5 whitespace-pre-wrap break-words">{comment.body}</p>
+      <p className="mt-0.5 whitespace-pre-wrap break-words">
+        <MentionText body={comment.body} names={names} />
+      </p>
     </div>
   );
 }

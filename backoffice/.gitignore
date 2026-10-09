@@ -14,3 +14,5 @@ cloudflare-env.d.ts
 
 # Copied from node_modules by scripts/copy-excalidraw-assets.mjs
 public/excalidraw-assets/
+# Copied from node_modules/pdfjs-dist by the same script
+public/pdfjs/

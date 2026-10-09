@@ -45,3 +45,14 @@ body {
   color: var(--foreground);
   font-family: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
 }
+
+/*
+ * Collaboration board (components/collab/BoardCanvas.tsx): Excalidraw's own
+ * shape toolbar is for power users, so it stays tucked away until
+ * «Περισσότερα εργαλεία» on the quick-add bar is pressed. Only the shapes
+ * island is hidden -- the menu, undo/redo and zoom stay.
+ */
+.collab-tools-collapsed .excalidraw .shapes-section .App-toolbar,
+.collab-tools-collapsed .excalidraw .App-toolbar--mobile {
+  display: none;
+}
