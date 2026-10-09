@@ -57,8 +57,8 @@ export async function POST(request: Request) {
 
   const ctx = newChatToolContext({ supabase, orgId, userId: session.user.id, conversationId: null });
   const readTools = buildAssistantTools(ctx);
-  const { tools: writeTools, collectedChangeIds } = buildWriteTools(supabase, orgId, session.user.id);
-  const { tools: revenuePlanTools, collectedRevenuePlanIds } = buildRevenuePlanTools(supabase, orgId, session.user.id);
+  const writeTools = buildWriteTools(ctx);
+  const revenuePlanTools = buildRevenuePlanTools(ctx);
   const tools = [...readTools, ...writeTools, ...revenuePlanTools];
   const messages: Anthropic.Beta.BetaMessageParam[] = body.messages.map((m) => ({
     role: m.role,
@@ -122,8 +122,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       text: text || "Δεν μπόρεσα να διατυπώσω απάντηση.",
       sources: buildSources(ctx.sources),
-      change_ids: [...collectedChangeIds],
-      revenue_plan_ids: [...collectedRevenuePlanIds],
+      change_ids: ctx.changeIds,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Άγνωστο σφάλμα.";

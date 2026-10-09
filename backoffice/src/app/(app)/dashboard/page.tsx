@@ -76,7 +76,7 @@ export default async function DashboardPage() {
     supabase.from("vat_periods").select("period_start, status").eq("org_id", orgId),
     supabase.from("v_qc_missing_project_or_account").select("transaction_id", { count: "exact", head: true }).eq("org_id", orgId),
     supabase.from("transaction_drafts").select("id", { count: "exact" }).eq("org_id", orgId).eq("status", "pending").order("created_at"),
-    supabase.from("agent_changes").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("status", "pending"),
+    supabase.from("agent_changes").select("id", { count: "exact", head: true }).eq("org_id", orgId).in("status", ["pending", "conflict"]),
   ]);
 
   const noBudget = new Set((withoutBudget ?? []).map((r) => r.project_id));

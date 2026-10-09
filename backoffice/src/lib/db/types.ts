@@ -584,53 +584,102 @@ export type Database = {
           },
         ]
       }
+      agent_change_columns: {
+        Row: {
+          column_name: string
+          table_name: string
+        }
+        Insert: {
+          column_name: string
+          table_name: string
+        }
+        Update: {
+          column_name?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       agent_changes: {
         Row: {
+          action: string | null
           after: Json
+          base_updated_at: string | null
           before: Json | null
+          changed_fields: string[] | null
+          conflict: Json | null
+          conversation_id: string | null
           created_at: string
+          error: string | null
           id: string
           operation: Database["public"]["Enums"]["agent_change_op"]
           org_id: string
+          params: Json | null
           reason: string | null
           requested_by: string | null
+          result: Json | null
           reviewed_at: string | null
           reviewed_by: string | null
           row_id: string | null
           status: Database["public"]["Enums"]["agent_change_status"]
           table_name: string
+          untrusted_context: boolean
         }
         Insert: {
+          action?: string | null
           after: Json
+          base_updated_at?: string | null
           before?: Json | null
+          changed_fields?: string[] | null
+          conflict?: Json | null
+          conversation_id?: string | null
           created_at?: string
+          error?: string | null
           id?: string
           operation: Database["public"]["Enums"]["agent_change_op"]
           org_id: string
+          params?: Json | null
           reason?: string | null
           requested_by?: string | null
+          result?: Json | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           row_id?: string | null
           status?: Database["public"]["Enums"]["agent_change_status"]
           table_name: string
+          untrusted_context?: boolean
         }
         Update: {
+          action?: string | null
           after?: Json
+          base_updated_at?: string | null
           before?: Json | null
+          changed_fields?: string[] | null
+          conflict?: Json | null
+          conversation_id?: string | null
           created_at?: string
+          error?: string | null
           id?: string
           operation?: Database["public"]["Enums"]["agent_change_op"]
           org_id?: string
+          params?: Json | null
           reason?: string | null
           requested_by?: string | null
+          result?: Json | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           row_id?: string | null
           status?: Database["public"]["Enums"]["agent_change_status"]
           table_name?: string
+          untrusted_context?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: "agent_changes_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "agent_changes_org_id_fkey"
             columns: ["org_id"]
@@ -6346,6 +6395,10 @@ export type Database = {
           n: number
         }[]
       }
+      apply_agent_change: {
+        Args: { p_change: string; p_force?: boolean }
+        Returns: Json
+      }
       approve_collab_proposal: {
         Args: { p_indexes?: number[]; p_proposal: string }
         Returns: Json
@@ -6536,8 +6589,13 @@ export type Database = {
         | "dup_in_batch"
       aade_kind: "expenses" | "income"
       account_kind: "bank" | "cash" | "gold" | "crypto" | "other"
-      agent_change_op: "insert" | "update" | "delete"
-      agent_change_status: "pending" | "approved" | "rejected"
+      agent_change_op: "insert" | "update" | "delete" | "action"
+      agent_change_status:
+        | "pending"
+        | "approved"
+        | "rejected"
+        | "conflict"
+        | "failed"
       asset_state: "held" | "pending_inheritance"
       bank_sign_mode:
         | "signed"
@@ -6796,8 +6854,14 @@ export const Constants = {
       ],
       aade_kind: ["expenses", "income"],
       account_kind: ["bank", "cash", "gold", "crypto", "other"],
-      agent_change_op: ["insert", "update", "delete"],
-      agent_change_status: ["pending", "approved", "rejected"],
+      agent_change_op: ["insert", "update", "delete", "action"],
+      agent_change_status: [
+        "pending",
+        "approved",
+        "rejected",
+        "conflict",
+        "failed",
+      ],
       asset_state: ["held", "pending_inheritance"],
       bank_sign_mode: [
         "signed",
