@@ -6311,9 +6311,40 @@ export type Database = {
     }
     Functions: {
       account_balance_as_of: { Args: { p_account: string; p_date: string }; Returns: number }
+      ai_aggregate: {
+        Args: {
+          p_account?: string
+          p_category?: string
+          p_contact?: string
+          p_direction?: Database["public"]["Enums"]["tx_direction"]
+          p_from?: string
+          p_group_by: string
+          p_org: string
+          p_project?: string
+          p_scope?: Database["public"]["Enums"]["tx_scope"]
+          p_status?: Database["public"]["Enums"]["tx_status"]
+          p_to?: string
+        }
+        Returns: {
+          expense_gross: number
+          gross_total: number
+          group_key: string
+          income_gross: number
+          label: string
+          n: number
+          net_total: number
+        }[]
+      }
       ai_budget_check: {
         Args: { p_default_monthly_cents: number; p_org: string }
         Returns: Json
+      }
+      ai_data_quality: {
+        Args: { p_org: string }
+        Returns: {
+          check_name: string
+          n: number
+        }[]
       }
       approve_collab_proposal: {
         Args: { p_indexes?: number[]; p_proposal: string }

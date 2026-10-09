@@ -6,6 +6,8 @@ import { buildAssistantTools } from "@/lib/ai/tools";
 import { buildWriteTools } from "@/lib/ai/writeTools";
 import { buildRevenuePlanTools } from "@/lib/ai/revenuePlanTools";
 import { ASSISTANT_SYSTEM_PROMPT } from "@/lib/ai/prompts";
+import { newChatToolContext } from "@/lib/ai/chatContext";
+import { buildSources } from "@/lib/ai/links";
 import type Anthropic from "@anthropic-ai/sdk";
 
 // Non-streaming by design: this agentic loop can take several tool-call
@@ -53,7 +55,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Λείπουν μηνύματα." }, { status: 400 });
   }
 
-  const { tools: readTools, collectedIds } = buildAssistantTools(supabase, orgId);
+  const ctx = newChatToolContext({ supabase, orgId, userId: session.user.id, conversationId: null });
+  const readTools = buildAssistantTools(ctx);
   const { tools: writeTools, collectedChangeIds } = buildWriteTools(supabase, orgId, session.user.id);
   const { tools: revenuePlanTools, collectedRevenuePlanIds } = buildRevenuePlanTools(supabase, orgId, session.user.id);
   const tools = [...readTools, ...writeTools, ...revenuePlanTools];
@@ -118,7 +121,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       text: text || "Δεν μπόρεσα να διατυπώσω απάντηση.",
-      transaction_ids: [...collectedIds],
+      sources: buildSources(ctx.sources),
       change_ids: [...collectedChangeIds],
       revenue_plan_ids: [...collectedRevenuePlanIds],
     });
