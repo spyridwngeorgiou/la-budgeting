@@ -33,6 +33,7 @@ export const el = {
     search: "Αναζήτηση",
     loading: "Φόρτωση…",
     markPaid: "Πληρώθηκε",
+    error: "Σφάλμα",
   },
   transaction: {
     type: "Τύπος",

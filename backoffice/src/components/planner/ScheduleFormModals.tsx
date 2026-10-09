@@ -2,16 +2,16 @@
 
 import { useState } from "react";
 import { Button, Field, Input, Label, Select } from "@/components/ui";
-import { SubmitButton } from "@/components/SubmitButton";
 import { el } from "@/lib/i18n/el";
 import { MILESTONE_KIND, PHASE_STATUS, type MilestoneKind, type PhaseStatus } from "@/lib/domain/enums";
 import type { Option } from "./TaskFormModal";
+import { FormModal } from "@/components/Modal";
 
 // Phase and milestone editors for the timeline -- the schedule skeleton,
 // org editors only (RLS refuses everyone else; the page doesn't render
 // these for them either).
 
-function Modal({
+function ScheduleModal({
   trigger,
   small,
   action,
@@ -23,33 +23,21 @@ function Modal({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  if (!open) {
-    return (
+  return (
+    <>
       <Button variant="secondary" className={small ? "!px-2 !py-1 text-xs" : ""} onClick={() => setOpen(true)}>
         {trigger}
       </Button>
-    );
-  }
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded bg-white p-5">
-        <form
-          action={async (formData) => {
-            await action(formData);
-            setOpen(false);
-          }}
-          className="flex flex-col gap-3"
+      {open && (
+        <FormModal
+          onClose={() => setOpen(false)}
+          action={action}
+          className="max-h-[90vh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded bg-white p-5"
         >
           {children}
-          <div className="mt-2 flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-              {el.common.cancel}
-            </Button>
-            <SubmitButton>{el.common.save}</SubmitButton>
-          </div>
-        </form>
-      </div>
-    </div>
+        </FormModal>
+      )}
+    </>
   );
 }
 
@@ -74,7 +62,7 @@ export function PhaseFormModal({
 }) {
   const p = el.planner.phase;
   return (
-    <Modal trigger={trigger ?? el.planner.newPhase} small={!!initial} action={action}>
+    <ScheduleModal trigger={trigger ?? el.planner.newPhase} small={!!initial} action={action}>
       <Field>
         <Label>{p.name}</Label>
         <Input name="name" defaultValue={initial?.name ?? ""} required maxLength={500} />
@@ -113,7 +101,7 @@ export function PhaseFormModal({
           <Input type="date" name="actual_end" defaultValue={initial?.actual_end ?? ""} />
         </Field>
       </div>
-    </Modal>
+    </ScheduleModal>
   );
 }
 
@@ -138,7 +126,7 @@ export function MilestoneFormModal({
 }) {
   const m = el.planner.milestone;
   return (
-    <Modal trigger={trigger ?? el.planner.newMilestone} small={!!initial} action={action}>
+    <ScheduleModal trigger={trigger ?? el.planner.newMilestone} small={!!initial} action={action}>
       <Field>
         <Label>{m.title}</Label>
         <Input name="title" defaultValue={initial?.title ?? ""} required maxLength={500} />
@@ -179,6 +167,6 @@ export function MilestoneFormModal({
           className="rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-sage-strong focus:outline-none"
         />
       </Field>
-    </Modal>
+    </ScheduleModal>
   );
 }

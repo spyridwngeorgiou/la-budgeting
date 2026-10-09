@@ -7,6 +7,7 @@ import { el } from "@/lib/i18n/el";
 import { formatMoney } from "@/lib/format";
 import { recordPartialPayment } from "./actions";
 import { todayAthens } from "@/lib/dates";
+import { Modal } from "@/components/Modal";
 
 interface Props {
   transactionId: string;
@@ -27,80 +28,78 @@ export function PartialPaymentModal({ transactionId, label, remaining, accountId
   const left = Math.round((remaining - paid) * 100) / 100;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded bg-white p-5">
-        <h2 className="mb-1 text-base font-semibold">Μερική πληρωμή</h2>
-        <p className="mb-4 text-sm text-ink-muted">
-          {label} · υπόλοιπο <span className="font-mono">{formatMoney(remaining)}</span>
-        </p>
-        <form
-          action={async (formData) => {
-            setError(null);
-            try {
-              await recordPartialPayment(transactionId, formData);
-              onClose();
-            } catch (e) {
-              setError(e instanceof Error ? e.message : String(e));
-            }
-          }}
-          className="flex flex-col gap-3"
-        >
-          <div className="grid grid-cols-2 gap-3">
-            <Field>
-              <Label>Ποσό που πληρώθηκε</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0.01"
-                max={remaining}
-                name="amount"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                required
-                autoFocus
-              />
-            </Field>
-            <Field>
-              <Label>Ημ/νία πληρωμής</Label>
-              <Input type="date" name="paid_on" defaultValue={todayAthens()} required />
-            </Field>
-          </div>
+    <Modal onClose={onClose} className="w-[calc(100%-2rem)] max-w-md rounded bg-white p-5" closeOnBackdrop={false}>
+      <h2 className="mb-1 text-base font-semibold">Μερική πληρωμή</h2>
+      <p className="mb-4 text-sm text-ink-muted">
+        {label} · υπόλοιπο <span className="font-mono">{formatMoney(remaining)}</span>
+      </p>
+      <form
+        action={async (formData) => {
+          setError(null);
+          try {
+            await recordPartialPayment(transactionId, formData);
+            onClose();
+          } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
+          }
+        }}
+        className="flex flex-col gap-3"
+      >
+        <div className="grid grid-cols-2 gap-3">
           <Field>
-            <Label>{el.transaction.account}</Label>
-            <Select name="account_id" defaultValue={accountId ?? ""} required>
-              <option value="">—</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.label}
-                </option>
-              ))}
-            </Select>
+            <Label>Ποσό που πληρώθηκε</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0.01"
+              max={remaining}
+              name="amount"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              required
+              autoFocus
+            />
           </Field>
+          <Field>
+            <Label>Ημ/νία πληρωμής</Label>
+            <Input type="date" name="paid_on" defaultValue={todayAthens()} required />
+          </Field>
+        </div>
+        <Field>
+          <Label>{el.transaction.account}</Label>
+          <Select name="account_id" defaultValue={accountId ?? ""} required>
+            <option value="">—</option>
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
 
-          <div className="rounded bg-bg p-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-ink-muted">Καταγράφεται ως πληρωμένη</span>
-              <span className="font-mono">{formatMoney(paid)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-ink-muted">Παραμένει εκκρεμές</span>
-              <span className={`font-mono ${left < 0 ? "text-red-ink" : ""}`}>{formatMoney(Math.max(left, 0))}</span>
-            </div>
-            {paid > 0 && left === 0 && (
-              <p className="mt-1 text-xs text-ink-faint">Ολόκληρο το υπόλοιπο — η κίνηση θα σημειωθεί ως πληρωμένη.</p>
-            )}
+        <div className="rounded bg-bg p-3 text-sm">
+          <div className="flex justify-between">
+            <span className="text-ink-muted">Καταγράφεται ως πληρωμένη</span>
+            <span className="font-mono">{formatMoney(paid)}</span>
           </div>
-
-          {error && <p className="text-sm text-red-ink">{error}</p>}
-
-          <div className="mt-1 flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={onClose}>
-              {el.common.cancel}
-            </Button>
-            <SubmitButton>Καταχώριση</SubmitButton>
+          <div className="flex justify-between">
+            <span className="text-ink-muted">Παραμένει εκκρεμές</span>
+            <span className={`font-mono ${left < 0 ? "text-red-ink" : ""}`}>{formatMoney(Math.max(left, 0))}</span>
           </div>
-        </form>
-      </div>
-    </div>
+          {paid > 0 && left === 0 && (
+            <p className="mt-1 text-xs text-ink-faint">Ολόκληρο το υπόλοιπο — η κίνηση θα σημειωθεί ως πληρωμένη.</p>
+          )}
+        </div>
+
+        {error && <p className="text-sm text-red-ink">{error}</p>}
+
+        <div className="mt-1 flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {el.common.cancel}
+          </Button>
+          <SubmitButton>Καταχώριση</SubmitButton>
+        </div>
+      </form>
+    </Modal>
   );
 }

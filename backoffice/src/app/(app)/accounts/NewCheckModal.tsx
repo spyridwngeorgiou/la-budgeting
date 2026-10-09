@@ -5,6 +5,7 @@ import { Button, Field, Input, Label } from "@/components/ui";
 import { formatMoney } from "@/lib/format";
 import { assertAccountBalance } from "./actions";
 import { todayAthens } from "@/lib/dates";
+import { Modal } from "@/components/Modal";
 
 // Data entry, split out from the read-only breakdown (BalanceAssertion) so
 // reviewing accounts and entering a new check are two differently-sized
@@ -25,8 +26,8 @@ export function NewCheckModal({
   const [open, setOpen] = useState(false);
   const today = todayAthens();
 
-  if (!open) {
-    return (
+  return (
+    <>
       <Button
         type="button"
         variant={hasChecks ? "secondary" : "primary"}
@@ -35,45 +36,42 @@ export function NewCheckModal({
       >
         Νέος έλεγχος
       </Button>
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)}>
-      <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-sm" onClick={(e) => e.stopPropagation()}>
-        <h2 className="mb-1 text-base font-semibold text-ink">Νέος έλεγχος υπολοίπου</h2>
-        <p className="mb-3 text-xs text-ink-muted">
-          Η εφαρμογή περιμένει σήμερα <span className="font-mono font-medium text-ink">{formatMoney(expectedToday)}</span>
-        </p>
-        <form
-          action={async (formData) => {
-            await assertAccountBalance(accountId, formData);
-            setOpen(false);
-          }}
-          className="flex flex-col gap-3"
-        >
-          <Field>
-            <Label>Πραγματικό υπόλοιπο</Label>
-            <Input type="number" step="0.01" name="asserted_balance" placeholder="0,00" required autoFocus />
-          </Field>
-          <div className="grid grid-cols-2 gap-2.5">
+      {open && (
+        <Modal onClose={() => setOpen(false)} className="w-[calc(100%-2rem)] max-w-sm rounded-lg bg-white p-5 shadow-sm">
+          <h2 className="mb-1 text-base font-semibold text-ink">Νέος έλεγχος υπολοίπου</h2>
+          <p className="mb-3 text-xs text-ink-muted">
+            Η εφαρμογή περιμένει σήμερα <span className="font-mono font-medium text-ink">{formatMoney(expectedToday)}</span>
+          </p>
+          <form
+            action={async (formData) => {
+              await assertAccountBalance(accountId, formData);
+              setOpen(false);
+            }}
+            className="flex flex-col gap-3"
+          >
             <Field>
-              <Label>στις</Label>
-              <Input type="date" name="as_of_date" defaultValue={today} max={today} required />
+              <Label>Πραγματικό υπόλοιπο</Label>
+              <Input type="number" step="0.01" name="asserted_balance" placeholder="0,00" required autoFocus />
             </Field>
-            <Field>
-              <Label>Έλεγχος από</Label>
-              <Input type="date" name="period_start" defaultValue={defaultFrom} />
-            </Field>
-          </div>
-          <div className="mt-1 flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-              Άκυρο
-            </Button>
-            <Button type="submit">Έλεγχος</Button>
-          </div>
-        </form>
-      </div>
-    </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              <Field>
+                <Label>στις</Label>
+                <Input type="date" name="as_of_date" defaultValue={today} max={today} required />
+              </Field>
+              <Field>
+                <Label>Έλεγχος από</Label>
+                <Input type="date" name="period_start" defaultValue={defaultFrom} />
+              </Field>
+            </div>
+            <div className="mt-1 flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+                Άκυρο
+              </Button>
+              <Button type="submit">Έλεγχος</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </>
   );
 }
