@@ -182,17 +182,3 @@ export function boardToText(
   const out = lines.join("\n");
   return out.length > maxChars ? `${out.slice(0, maxChars)}\n…(περικόπηκε)` : out;
 }
-
-// Wraps untrusted content in a named fence the system prompt refers to.
-// Any fence-like tag inside the content is defanged so text on the board
-// can't "close" the fence early and pose as instructions after it.
-export const UNTRUSTED_TAGS = ["board_data", "file_data", "comment_data", "chat_history"] as const;
-export type UntrustedTag = (typeof UNTRUSTED_TAGS)[number];
-
-export function fenceUntrusted(tag: UntrustedTag, content: string, attrs: Record<string, string> = {}): string {
-  const defanged = content.replace(/<\s*(\/?)\s*(board_data|file_data|comment_data|chat_history)/gi, "‹$1$2");
-  const attrText = Object.entries(attrs)
-    .map(([k, v]) => ` ${k}="${v.replace(/["<>]/g, "")}"`)
-    .join("");
-  return `<${tag}${attrText}>\n${defanged}\n</${tag}>`;
-}
