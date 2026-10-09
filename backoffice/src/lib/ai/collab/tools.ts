@@ -3,7 +3,8 @@ import { z } from "zod";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db/types";
-import { boardToText, fenceUntrusted, type BoardCommentLike } from "./boardText";
+import { boardToText, type BoardCommentLike } from "./boardText";
+import { fenceUntrusted } from "@/lib/ai/shared/fence";
 import { canvasSpecSchema, validateCanvasSpec } from "./skeletons";
 import { PROPOSAL_COLUMNS, plannerProposalSchema, type ProposalView } from "./proposals";
 

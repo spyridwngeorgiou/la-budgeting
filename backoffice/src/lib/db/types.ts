@@ -584,53 +584,102 @@ export type Database = {
           },
         ]
       }
+      agent_change_columns: {
+        Row: {
+          column_name: string
+          table_name: string
+        }
+        Insert: {
+          column_name: string
+          table_name: string
+        }
+        Update: {
+          column_name?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       agent_changes: {
         Row: {
+          action: string | null
           after: Json
+          base_updated_at: string | null
           before: Json | null
+          changed_fields: string[] | null
+          conflict: Json | null
+          conversation_id: string | null
           created_at: string
+          error: string | null
           id: string
           operation: Database["public"]["Enums"]["agent_change_op"]
           org_id: string
+          params: Json | null
           reason: string | null
           requested_by: string | null
+          result: Json | null
           reviewed_at: string | null
           reviewed_by: string | null
           row_id: string | null
           status: Database["public"]["Enums"]["agent_change_status"]
           table_name: string
+          untrusted_context: boolean
         }
         Insert: {
+          action?: string | null
           after: Json
+          base_updated_at?: string | null
           before?: Json | null
+          changed_fields?: string[] | null
+          conflict?: Json | null
+          conversation_id?: string | null
           created_at?: string
+          error?: string | null
           id?: string
           operation: Database["public"]["Enums"]["agent_change_op"]
           org_id: string
+          params?: Json | null
           reason?: string | null
           requested_by?: string | null
+          result?: Json | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           row_id?: string | null
           status?: Database["public"]["Enums"]["agent_change_status"]
           table_name: string
+          untrusted_context?: boolean
         }
         Update: {
+          action?: string | null
           after?: Json
+          base_updated_at?: string | null
           before?: Json | null
+          changed_fields?: string[] | null
+          conflict?: Json | null
+          conversation_id?: string | null
           created_at?: string
+          error?: string | null
           id?: string
           operation?: Database["public"]["Enums"]["agent_change_op"]
           org_id?: string
+          params?: Json | null
           reason?: string | null
           requested_by?: string | null
+          result?: Json | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           row_id?: string | null
           status?: Database["public"]["Enums"]["agent_change_status"]
           table_name?: string
+          untrusted_context?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: "agent_changes_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "agent_changes_org_id_fkey"
             columns: ["org_id"]
@@ -640,6 +689,48 @@ export type Database = {
           },
           {
             foreignKeyName: "agent_changes_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+        ]
+      }
+      ai_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_conversations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_conversations_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "v_net_worth"
@@ -712,9 +803,66 @@ export type Database = {
           },
         ]
       }
+      ai_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          meta: Json
+          org_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          meta?: Json
+          org_id: string
+          role: string
+          user_id?: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          meta?: Json
+          org_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_messages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_messages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+        ]
+      }
       ai_usage: {
         Row: {
           cache_read_tokens: number | null
+          cache_write_tokens: number | null
+          conversation_id: string | null
           cost_cents: number | null
           created_at: string
           feature: string
@@ -730,6 +878,8 @@ export type Database = {
         }
         Insert: {
           cache_read_tokens?: number | null
+          cache_write_tokens?: number | null
+          conversation_id?: string | null
           cost_cents?: number | null
           created_at?: string
           feature: string
@@ -745,6 +895,8 @@ export type Database = {
         }
         Update: {
           cache_read_tokens?: number | null
+          cache_write_tokens?: number | null
+          conversation_id?: string | null
           cost_cents?: number | null
           created_at?: string
           feature?: string
@@ -759,6 +911,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ai_usage_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ai_usage_org_id_fkey"
             columns: ["org_id"]
@@ -6201,6 +6360,45 @@ export type Database = {
     }
     Functions: {
       account_balance_as_of: { Args: { p_account: string; p_date: string }; Returns: number }
+      ai_aggregate: {
+        Args: {
+          p_account?: string
+          p_category?: string
+          p_contact?: string
+          p_direction?: Database["public"]["Enums"]["tx_direction"]
+          p_from?: string
+          p_group_by: string
+          p_org: string
+          p_project?: string
+          p_scope?: Database["public"]["Enums"]["tx_scope"]
+          p_status?: Database["public"]["Enums"]["tx_status"]
+          p_to?: string
+        }
+        Returns: {
+          expense_gross: number
+          gross_total: number
+          group_key: string
+          income_gross: number
+          label: string
+          n: number
+          net_total: number
+        }[]
+      }
+      ai_budget_check: {
+        Args: { p_default_monthly_cents: number; p_org: string }
+        Returns: Json
+      }
+      ai_data_quality: {
+        Args: { p_org: string }
+        Returns: {
+          check_name: string
+          n: number
+        }[]
+      }
+      apply_agent_change: {
+        Args: { p_change: string; p_force?: boolean }
+        Returns: Json
+      }
       approve_collab_proposal: {
         Args: { p_indexes?: number[]; p_proposal: string }
         Returns: Json
@@ -6391,8 +6589,13 @@ export type Database = {
         | "dup_in_batch"
       aade_kind: "expenses" | "income"
       account_kind: "bank" | "cash" | "gold" | "crypto" | "other"
-      agent_change_op: "insert" | "update" | "delete"
-      agent_change_status: "pending" | "approved" | "rejected"
+      agent_change_op: "insert" | "update" | "delete" | "action"
+      agent_change_status:
+        | "pending"
+        | "approved"
+        | "rejected"
+        | "conflict"
+        | "failed"
       asset_state: "held" | "pending_inheritance"
       bank_sign_mode:
         | "signed"
@@ -6651,8 +6854,14 @@ export const Constants = {
       ],
       aade_kind: ["expenses", "income"],
       account_kind: ["bank", "cash", "gold", "crypto", "other"],
-      agent_change_op: ["insert", "update", "delete"],
-      agent_change_status: ["pending", "approved", "rejected"],
+      agent_change_op: ["insert", "update", "delete", "action"],
+      agent_change_status: [
+        "pending",
+        "approved",
+        "rejected",
+        "conflict",
+        "failed",
+      ],
       asset_state: ["held", "pending_inheritance"],
       bank_sign_mode: [
         "signed",

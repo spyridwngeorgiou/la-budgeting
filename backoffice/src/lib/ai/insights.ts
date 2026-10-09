@@ -11,7 +11,10 @@ import { anthropic, AI_MODEL_FAST } from "./client";
 export async function phraseInsight(
   systemPrompt: string,
   facts: string[],
-): Promise<{ text: string; usage: { inputTokens: number; outputTokens: number; requestId: string } }> {
+): Promise<{
+  text: string;
+  usage: { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; requestId: string };
+}> {
   const response = await anthropic.messages.create({
     model: AI_MODEL_FAST,
     max_tokens: 400,
@@ -30,6 +33,8 @@ export async function phraseInsight(
     usage: {
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
+      cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
+      cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
       requestId: response.id,
     },
   };

@@ -10,6 +10,7 @@ import {
   estimateCostCents,
   isModelNotFoundError,
   monthlyBudgetCents,
+  usageOf,
 } from "@/lib/ai/client";
 import { collabToolDefinitions, createCollabToolRunner } from "@/lib/ai/collab/tools";
 import { COLLAB_SYSTEM_PROMPT, collabContextBlock, withChatHistory } from "@/lib/ai/collab/prompt";
@@ -203,7 +204,8 @@ export async function POST(request: Request) {
       let failed = false;
 
       const logUsage = async (msg: Anthropic.Message, startedAt: number) => {
-        const cost = estimateCostCents(model, msg.usage.input_tokens, msg.usage.output_tokens);
+        // Priced with cache reads/writes; the RPC stores the token counts it has columns for.
+        const cost = estimateCostCents(model, usageOf(msg.usage));
         await supabase.rpc("log_collab_ai_usage", {
           p_project: projectId,
           p_model: model,
