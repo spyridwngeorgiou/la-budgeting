@@ -5,6 +5,7 @@ import { formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { aiEnabled } from "@/lib/ai/client";
 import { DashboardSummary } from "./DashboardSummary";
+import { AskAssistantCard } from "./AskAssistantCard";
 import { DueDatesCalendar } from "./DueDatesCalendar";
 import { monthGridRange } from "@/lib/planner/calendar";
 import { monthKeyOf, todayAthens } from "@/lib/dates";
@@ -230,6 +231,7 @@ export default async function DashboardPage() {
       </section>
 
       {aiEnabled() && <DashboardSummary />}
+      {aiEnabled() && <AskAssistantCard />}
 
       <section>
         <h2 className="mb-2 text-sm font-medium text-ink-muted">Ρευστότητα</h2>
