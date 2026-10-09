@@ -63,8 +63,9 @@ select results_eq($$
   select p.proname::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.prosecdef order by 1
 $$, $$ values
-  ('ensure_plans_current'), ('handle_new_user'), ('has_role'), ('my_org_ids'),
-  ('regenerate_plan'), ('regenerate_plan_unchecked')
+  ('can_access_project'), ('ensure_plans_current'), ('handle_new_user'), ('has_role'),
+  ('my_org_ids'), ('planner_can_read'), ('planner_can_write'), ('planner_guard'),
+  ('planner_people'), ('planner_projects'), ('regenerate_plan'), ('regenerate_plan_unchecked')
 $$, 'SECURITY DEFINER functions match the reviewed allowlist');
 
 select ok(not has_function_privilege('authenticated', 'public.ensure_plans_current(uuid)', 'execute'),

@@ -72,23 +72,38 @@ select s.org_id, s.id, 'fixed_annual', 'Λειτουργικό κόστος', 40
 from s
 on conflict do nothing;
 
--- ── ΚΑΤΑΣΤΑΣΗ: the status block, verbatim ──────────────────────────────────
+-- ── ΚΑΤΑΣΤΑΣΗ: the status block ───────────────────────────────────────────
+-- Since 0041 project_notes holds only status/risk bullets: the two dated
+-- bullets are milestones and the invoice chase is a task, still linked to
+-- the risk note that carries its 16.100 exposure.
 
 insert into project_notes (org_id, project_id, kind, severity, body, exposure_amount, sort_order)
 select p.org_id, p.id, v.kind::project_note_kind, v.severity::project_note_severity,
        v.body, v.exposure, v.sort_order
 from projects p, (values
-  ('milestone', 'info',
-   'Άνοιγμα προγραμματισμένο για Δεκέμβριο 2026.', null::numeric, 1),
   ('risk', 'watch',
-   'Η ανακαίνιση των 90.000 δεν έχει ανατεθεί με σύμβαση — είναι εκτίμηση.', null, 2),
-  ('action', 'urgent',
+   'Η ανακαίνιση των 90.000 δεν έχει ανατεθεί με σύμβαση — είναι εκτίμηση.', null::numeric, 2),
+  ('risk', 'urgent',
    'Χρειάζεται τιμολόγιο για τα 35.000 μεσιτικά που πληρώθηκαν 30/07/2026. '
-   || 'Χωρίς αυτό κοστίζει 16.100 σε φόρο και ΦΠΑ (24% ΦΠΑ + 22% φόρος).', 16100.00, 3),
-  ('milestone', 'info',
-   'Το κτηματολόγιο της μίσθωσης καταχωρήθηκε 27/08/2026, κόστος 569,50.', null, 4)
+   || 'Χωρίς αυτό κοστίζει 16.100 σε φόρο και ΦΠΑ (24% ΦΠΑ + 22% φόρος).', 16100.00, 3)
 ) as v(kind, severity, body, exposure, sort_order)
 where p.code = 'Q004_AGIOU_KWNSTANTINOU20_GLYFADA'
 on conflict do nothing;
+
+insert into project_milestones (org_id, project_id, title, kind, due_date, done_at, sort_order)
+select p.org_id, p.id, v.title, v.kind::milestone_kind, v.due_date::date, v.done_at::timestamptz, v.sort_order
+from projects p, (values
+  ('Άνοιγμα προγραμματισμένο για Δεκέμβριο 2026', 'handover', '2026-12-01', null, 1),
+  ('Καταχώρηση μίσθωσης στο κτηματολόγιο (κόστος 569,50)', 'permit', '2026-08-27', '2026-08-27', 4)
+) as v(title, kind, due_date, done_at, sort_order)
+where p.code = 'Q004_AGIOU_KWNSTANTINOU20_GLYFADA'
+  and not exists (select 1 from project_milestones m where m.project_id = p.id and m.title = v.title);
+
+insert into tasks (org_id, project_id, title, priority, sort_key, source_note_id)
+select p.org_id, p.id, 'Τιμολόγιο για τα 35.000 μεσιτικά', 'urgent', 1024, n.id
+from projects p
+join project_notes n on n.project_id = p.id and n.exposure_amount = 16100.00
+where p.code = 'Q004_AGIOU_KWNSTANTINOU20_GLYFADA'
+  and not exists (select 1 from tasks t where t.project_id = p.id and t.source_note_id = n.id);
 
 commit;
