@@ -19,7 +19,7 @@ function ScheduleModal({
 }: {
   trigger: string;
   small?: boolean;
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<unknown>;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -56,7 +56,7 @@ export function PhaseFormModal({
   initial,
   trigger,
 }: {
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<unknown>;
   initial?: PhaseInitial;
   trigger?: string;
 }) {
@@ -119,7 +119,7 @@ export function MilestoneFormModal({
   initial,
   trigger,
 }: {
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<unknown>;
   phases: Option[];
   initial?: MilestoneInitial;
   trigger?: string;

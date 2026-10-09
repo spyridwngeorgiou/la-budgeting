@@ -4,6 +4,7 @@ import { useState } from "react";
 import { SubmitButton } from "@/components/SubmitButton";
 import { AiSpark } from "@/components/ui";
 import { createRevenuePlanFromText } from "./actions";
+import { errorOf } from "@/lib/actions";
 
 export function AiCreateForm({ projectId }: { projectId?: string }) {
   const [text, setText] = useState("");
@@ -13,13 +14,8 @@ export function AiCreateForm({ projectId }: { projectId?: string }) {
     <form
       action={async (formData) => {
         setError(null);
-        try {
-          await createRevenuePlanFromText(formData);
-        } catch (e) {
-          if (e instanceof Error && !e.message.includes("NEXT_REDIRECT")) setError(e.message);
-          else if (!(e instanceof Error)) setError("Σφάλμα.");
-          else throw e;
-        }
+        const message = errorOf(await createRevenuePlanFromText(formData));
+        if (message) setError(message);
       }}
       className="flex flex-col gap-2 rounded-lg border border-ai-border bg-ai-bg p-4"
     >

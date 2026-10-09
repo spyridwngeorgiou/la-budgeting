@@ -5,9 +5,10 @@ import { Button, Input, Label, Field } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { el } from "@/lib/i18n/el";
 import { Modal } from "@/components/Modal";
+import { errorOf } from "@/lib/actions";
 
 interface Props {
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<unknown>;
   initial?: { name?: string; afm?: string | null; phone?: string | null; email?: string | null };
   trigger?: string;
 }
@@ -25,7 +26,8 @@ export function ContactFormModal({ action, initial, trigger }: Props) {
             action={async (formData) => {
               setError(null);
               try {
-                await action(formData);
+                const message = errorOf(await action(formData));
+                if (message) return setError(message);
                 setOpen(false);
               } catch (e) {
                 setError(e instanceof Error ? e.message : "Σφάλμα");

@@ -7,6 +7,7 @@ import { getCurrentOrgId, formString } from "@/lib/supabase/org";
 import { aiEnabled, assertWithinAiBudget, logAiUsage } from "@/lib/ai/client";
 import { extractRevenuePlan } from "@/lib/ai/revenuePlanExtract";
 import { currentYear } from "@/lib/dates";
+import { action, UserError, type ActionResult } from "@/lib/actions";
 
 export async function createRevenuePlan(formData: FormData) {
   const supabase = await createClient();
@@ -26,7 +27,7 @@ export async function createRevenuePlan(formData: FormData) {
     })
     .select("id")
     .single();
-  if (error) throw new Error(error.message);
+  if (error) throw error;
 
   revalidatePath("/revenue-plans");
   redirect(`/revenue-plans/${data.id}`);
@@ -38,83 +39,85 @@ export async function createRevenuePlan(formData: FormData) {
 // instead of through the chat tool-loop. Writes immediately, same reasoning
 // as the chat tool: a brand-new standalone analysis, not a mutation of real
 // financial data, fully editable/deletable afterward.
-export async function createRevenuePlanFromText(formData: FormData) {
-  if (!aiEnabled()) {
-    throw new Error("Ο βοηθός AI δεν είναι ενεργοποιημένος. Ορίστε ANTHROPIC_API_KEY και AI_ENABLED=true.");
-  }
-  const text = String(formData.get("text") ?? "").trim();
-  if (!text) throw new Error("Περιγράψτε την ανάλυση που θέλετε (τύποι δωματίων, τιμές, πληρότητα).");
+export async function createRevenuePlanFromText(formData: FormData): Promise<ActionResult> {
+  return action(async () => {
+    if (!aiEnabled()) {
+      throw new UserError("Ο βοηθός AI δεν είναι ενεργοποιημένος. Ορίστε ANTHROPIC_API_KEY και AI_ENABLED=true.");
+    }
+    const text = String(formData.get("text") ?? "").trim();
+    if (!text) throw new UserError("Περιγράψτε την ανάλυση που θέλετε (τύποι δωματίων, τιμές, πληρότητα).");
 
-  const supabase = await createClient();
-  const [orgId, {
-    data: { session },
-  }] = await Promise.all([getCurrentOrgId(supabase), supabase.auth.getSession()]);
-  await assertWithinAiBudget(supabase, orgId);
+    const supabase = await createClient();
+    const [orgId, {
+      data: { session },
+    }] = await Promise.all([getCurrentOrgId(supabase), supabase.auth.getSession()]);
+    await assertWithinAiBudget(supabase, orgId);
 
-  const startedAt = Date.now();
-  const { extraction, usage } = await extractRevenuePlan(text, currentYear());
-  const latencyMs = Date.now() - startedAt;
+    const startedAt = Date.now();
+    const { extraction, usage } = await extractRevenuePlan(text, currentYear());
+    const latencyMs = Date.now() - startedAt;
 
-  const years = Math.max(1, ...extraction.room_types.flatMap((rt) => rt.assumptions.map((a) => a.year_number)));
+    const years = Math.max(1, ...extraction.room_types.flatMap((rt) => rt.assumptions.map((a) => a.year_number)));
 
-  const { data: plan, error: planError } = await supabase
-    .from("revenue_plans")
-    .insert({
-      org_id: orgId,
-      name: extraction.name,
-      start_year: extraction.start_year,
-      years,
-      notes: extraction.assumptions_note,
-      project_id: formString(formData, "project_id"),
-      created_by: session?.user.id,
-    })
-    .select("id")
-    .single();
-  if (planError) throw new Error(planError.message);
-
-  for (const rt of extraction.room_types) {
-    const { data: roomType, error: rtError } = await supabase
-      .from("revenue_plan_room_types")
-      .insert({ org_id: orgId, revenue_plan_id: plan.id, name: rt.name, unit_count: rt.unit_count })
+    const { data: plan, error: planError } = await supabase
+      .from("revenue_plans")
+      .insert({
+        org_id: orgId,
+        name: extraction.name,
+        start_year: extraction.start_year,
+        years,
+        notes: extraction.assumptions_note,
+        project_id: formString(formData, "project_id"),
+        created_by: session?.user.id,
+      })
       .select("id")
       .single();
-    if (rtError) throw new Error(rtError.message);
+    if (planError) throw planError;
 
-    if (rt.assumptions.length > 0) {
-      const { error: aError } = await supabase.from("revenue_plan_assumptions").insert(
-        rt.assumptions.map((a) => ({
-          org_id: orgId,
-          room_type_id: roomType.id,
-          year_number: a.year_number,
-          month_number: a.month_number,
-          occupancy_pct: a.occupancy_pct,
-          adr: a.adr,
-        })),
-      );
-      if (aError) throw new Error(aError.message);
+    for (const rt of extraction.room_types) {
+      const { data: roomType, error: rtError } = await supabase
+        .from("revenue_plan_room_types")
+        .insert({ org_id: orgId, revenue_plan_id: plan.id, name: rt.name, unit_count: rt.unit_count })
+        .select("id")
+        .single();
+      if (rtError) throw rtError;
+
+      if (rt.assumptions.length > 0) {
+        const { error: aError } = await supabase.from("revenue_plan_assumptions").insert(
+          rt.assumptions.map((a) => ({
+            org_id: orgId,
+            room_type_id: roomType.id,
+            year_number: a.year_number,
+            month_number: a.month_number,
+            occupancy_pct: a.occupancy_pct,
+            adr: a.adr,
+          })),
+        );
+        if (aError) throw aError;
+      }
     }
-  }
 
-  await logAiUsage(supabase, {
-    orgId,
-    userId: session?.user.id ?? null,
-    feature: "revenue_plan_creation",
-    model: "claude-opus-5",
-    inputTokens: usage.inputTokens,
-    cacheReadTokens: 0,
-    outputTokens: usage.outputTokens,
-    requestId: usage.requestId,
-    latencyMs,
+    await logAiUsage(supabase, {
+      orgId,
+      userId: session?.user.id ?? null,
+      feature: "revenue_plan_creation",
+      model: "claude-opus-5",
+      inputTokens: usage.inputTokens,
+      cacheReadTokens: 0,
+      outputTokens: usage.outputTokens,
+      requestId: usage.requestId,
+      latencyMs,
+    });
+
+    revalidatePath("/revenue-plans");
+    redirect(`/revenue-plans/${plan.id}`);
   });
-
-  revalidatePath("/revenue-plans");
-  redirect(`/revenue-plans/${plan.id}`);
 }
 
 export async function deleteRevenuePlan(id: string) {
   const supabase = await createClient();
   const { error } = await supabase.from("revenue_plans").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) throw error;
   revalidatePath("/revenue-plans");
   redirect("/revenue-plans");
 }
@@ -128,14 +131,14 @@ export async function addRoomType(planId: string, formData: FormData) {
     name: String(formData.get("name")),
     unit_count: Number(formData.get("unit_count")),
   });
-  if (error) throw new Error(error.message);
+  if (error) throw error;
   revalidatePath(`/revenue-plans/${planId}`);
 }
 
 export async function deleteRoomType(planId: string, roomTypeId: string) {
   const supabase = await createClient();
   const { error } = await supabase.from("revenue_plan_room_types").delete().eq("id", roomTypeId);
-  if (error) throw new Error(error.message);
+  if (error) throw error;
   revalidatePath(`/revenue-plans/${planId}`);
 }
 
@@ -163,6 +166,6 @@ export async function saveYearAssumptions(planId: string, roomTypeId: string, ye
   const { error } = await supabase.from("revenue_plan_assumptions").upsert(rows, {
     onConflict: "room_type_id,year_number,month_number",
   });
-  if (error) throw new Error(error.message);
+  if (error) throw error;
   revalidatePath(`/revenue-plans/${planId}`);
 }

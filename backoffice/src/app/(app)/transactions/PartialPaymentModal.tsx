@@ -8,6 +8,7 @@ import { formatMoney } from "@/lib/format";
 import { recordPartialPayment } from "./actions";
 import { todayAthens } from "@/lib/dates";
 import { Modal } from "@/components/Modal";
+import { errorOf } from "@/lib/actions";
 
 interface Props {
   transactionId: string;
@@ -37,7 +38,8 @@ export function PartialPaymentModal({ transactionId, label, remaining, accountId
         action={async (formData) => {
           setError(null);
           try {
-            await recordPartialPayment(transactionId, formData);
+            const message = errorOf(await recordPartialPayment(transactionId, formData));
+            if (message) return setError(message);
             onClose();
           } catch (e) {
             setError(e instanceof Error ? e.message : String(e));

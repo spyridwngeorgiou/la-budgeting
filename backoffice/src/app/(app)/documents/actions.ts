@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { aiEnabled, assertWithinAiBudget, logAiUsage } from "@/lib/ai/client";
@@ -10,101 +10,225 @@ import { resolveEntities } from "@/lib/ai/resolve";
 import { deriveFromGross, cashOnly } from "@/lib/finance/money";
 import type { Extraction } from "@/lib/ai/schemas";
 import { todayAthens } from "@/lib/dates";
+import { action, UserError, type ActionResult } from "@/lib/actions";
 
 // Synchronous end-to-end for v1: upload, extract, resolve, and stage a draft
 // all within one request. No queue/worker -- the dataset and document sizes
 // here (a downscaled phone photo, one Opus call) comfortably fit inside a
 // single request, and a job queue is complexity this doesn't need yet.
-export async function uploadDocument(formData: FormData) {
-  if (!aiEnabled()) {
-    throw new Error("Ο βοηθός AI δεν είναι ενεργοποιημένος. Ορίστε ANTHROPIC_API_KEY και AI_ENABLED=true.");
-  }
+export async function uploadDocument(formData: FormData): Promise<ActionResult> {
+  return action(async () => {
+    if (!aiEnabled()) {
+      throw new UserError("Ο βοηθός AI δεν είναι ενεργοποιημένος. Ορίστε ANTHROPIC_API_KEY και AI_ENABLED=true.");
+    }
 
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    throw new Error("Επιλέξτε μια φωτογραφία ή αρχείο.");
-  }
+    const file = formData.get("file");
+    if (!(file instanceof File) || file.size === 0) {
+      throw new UserError("Επιλέξτε μια φωτογραφία ή αρχείο.");
+    }
 
-  const supabase = await createClient();
-  const orgId = await getCurrentOrgId(supabase);
-  await assertWithinAiBudget(supabase, orgId);
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    const supabase = await createClient();
+    const orgId = await getCurrentOrgId(supabase);
+    await assertWithinAiBudget(supabase, orgId);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-  const buffer = await file.arrayBuffer();
-  const storagePath = `${orgId}/${Date.now()}-${file.name}`;
-  const { error: uploadError } = await supabase.storage
-    .from("documents")
-    .upload(storagePath, buffer, { contentType: file.type });
-  if (uploadError) throw new Error(uploadError.message);
+    const buffer = await file.arrayBuffer();
+    const storagePath = `${orgId}/${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage
+      .from("documents")
+      .upload(storagePath, buffer, { contentType: file.type });
+    if (uploadError) throw uploadError;
 
-  const { data: document, error: docError } = await supabase
-    .from("documents")
-    .insert({ org_id: orgId, storage_path: storagePath, mime_type: file.type, byte_size: file.size, uploaded_by: session?.user.id })
-    .select("id")
-    .single();
-  if (docError) throw new Error(docError.message);
-
-  const { data: job, error: jobError } = await supabase
-    .from("document_jobs")
-    .insert({ org_id: orgId, document_id: document.id, status: "processing" })
-    .select("id")
-    .single();
-  if (jobError) throw new Error(jobError.message);
-
-  const { data: categories } = await supabase.from("categories").select("name").eq("org_id", orgId).order("sort_order");
-  const categoryNames = (categories ?? []).map((c) => c.name);
-
-  try {
-    const base64 = Buffer.from(buffer).toString("base64");
-    const startedAt = Date.now();
-    const { extraction, usage } = await extractDocument(base64, file.type, categoryNames);
-    const latencyMs = Date.now() - startedAt;
-    const validation = validateExtraction(extraction);
-    const resolved = await resolveEntities(supabase, {
-      issuerAfm: extraction.issuer_afm,
-      issuerName: extraction.issuer_name,
-      projectMention: extraction.project_mention,
-      suggestedCategory: extraction.suggested_category,
-      orgId,
-      rawText: [extraction.supply_number, extraction.project_mention, extraction.notes_for_human].filter(Boolean).join(" "),
-    });
-
-    const needsReview: string[] = [...validation.reasons];
-    if (!resolved.contactId) needsReview.push("Δεν βρέθηκε αντίστοιχη επαφή -- επιλέξτε ή δημιουργήστε.");
-    if (!resolved.projectId) needsReview.push("Δεν βρέθηκε αντίστοιχο έργο -- επιλέξτε.");
-
-    const { data: draft, error: draftError } = await supabase
-      .from("transaction_drafts")
-      .insert({
-        org_id: orgId,
-        document_id: document.id,
-        source: "ai_document",
-        extracted: extraction,
-        proposed: {
-          contact_id: resolved.contactId,
-          project_id: resolved.projectId,
-          category_id: resolved.categoryId,
-          contact_match_strength: resolved.contactMatchStrength,
-        },
-        needs_review_reasons: needsReview,
-        status: "pending",
-      })
+    const { data: document, error: docError } = await supabase
+      .from("documents")
+      .insert({ org_id: orgId, storage_path: storagePath, mime_type: file.type, byte_size: file.size, uploaded_by: session?.user.id })
       .select("id")
       .single();
-    if (draftError) throw new Error(draftError.message);
+    if (docError) throw docError;
 
-    await supabase
+    const { data: job, error: jobError } = await supabase
       .from("document_jobs")
-      .update({ status: "extracted", model: "claude-opus-5", input_tokens: usage.inputTokens, output_tokens: usage.outputTokens })
-      .eq("id", job.id);
+      .insert({ org_id: orgId, document_id: document.id, status: "processing" })
+      .select("id")
+      .single();
+    if (jobError) throw jobError;
+
+    const { data: categories } = await supabase.from("categories").select("name").eq("org_id", orgId).order("sort_order");
+    const categoryNames = (categories ?? []).map((c) => c.name);
+
+    try {
+      const base64 = Buffer.from(buffer).toString("base64");
+      const startedAt = Date.now();
+      const { extraction, usage } = await extractDocument(base64, file.type, categoryNames);
+      const latencyMs = Date.now() - startedAt;
+      const validation = validateExtraction(extraction);
+      const resolved = await resolveEntities(supabase, {
+        issuerAfm: extraction.issuer_afm,
+        issuerName: extraction.issuer_name,
+        projectMention: extraction.project_mention,
+        suggestedCategory: extraction.suggested_category,
+        orgId,
+        rawText: [extraction.supply_number, extraction.project_mention, extraction.notes_for_human].filter(Boolean).join(" "),
+      });
+
+      const needsReview: string[] = [...validation.reasons];
+      if (!resolved.contactId) needsReview.push("Δεν βρέθηκε αντίστοιχη επαφή -- επιλέξτε ή δημιουργήστε.");
+      if (!resolved.projectId) needsReview.push("Δεν βρέθηκε αντίστοιχο έργο -- επιλέξτε.");
+
+      const { data: draft, error: draftError } = await supabase
+        .from("transaction_drafts")
+        .insert({
+          org_id: orgId,
+          document_id: document.id,
+          source: "ai_document",
+          extracted: extraction,
+          proposed: {
+            contact_id: resolved.contactId,
+            project_id: resolved.projectId,
+            category_id: resolved.categoryId,
+            contact_match_strength: resolved.contactMatchStrength,
+          },
+          needs_review_reasons: needsReview,
+          status: "pending",
+        })
+        .select("id")
+        .single();
+      if (draftError) throw draftError;
+
+      await supabase
+        .from("document_jobs")
+        .update({ status: "extracted", model: "claude-opus-5", input_tokens: usage.inputTokens, output_tokens: usage.outputTokens })
+        .eq("id", job.id);
+
+      await logAiUsage(supabase, {
+        orgId,
+        userId: session?.user.id ?? null,
+        feature: "document_extraction",
+        model: "claude-opus-5",
+        inputTokens: usage.inputTokens,
+        cacheReadTokens: 0,
+        outputTokens: usage.outputTokens,
+        requestId: usage.requestId,
+        latencyMs,
+      });
+
+      redirect(`/documents/${draft.id}/review`);
+    } catch (error) {
+      unstable_rethrow(error);
+      await supabase
+        .from("document_jobs")
+        .update({ status: "failed", last_error: error instanceof Error ? error.message : String(error), attempts: 1 })
+        .eq("id", job.id);
+      throw new UserError(
+        error instanceof Error
+          ? `Δεν μπορέσαμε να διαβάσουμε το παραστατικό: ${error.message}`
+          : "Δεν μπορέσαμε να διαβάσουμε το παραστατικό.",
+      );
+    }
+  });
+}
+
+// The typed/spoken counterpart to uploadDocument -- same draft table, same
+// review screen, same approveDraft gate. No document/storage involved, so
+// no document_jobs row either (its document_id is NOT NULL); ai_usage still
+// gets logged so spend is tracked regardless of entry method.
+export async function submitNlEntry(formData: FormData): Promise<ActionResult> {
+  return action(async () => {
+    if (!aiEnabled()) {
+      throw new UserError("Ο βοηθός AI δεν είναι ενεργοποιημένος. Ορίστε ANTHROPIC_API_KEY και AI_ENABLED=true.");
+    }
+
+    const text = String(formData.get("text") ?? "").trim();
+    if (!text) throw new UserError("Γράψτε ή πείτε μια περιγραφή της κίνησης.");
+
+    const supabase = await createClient();
+    const orgId = await getCurrentOrgId(supabase);
+    await assertWithinAiBudget(supabase, orgId);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const { data: categories } = await supabase.from("categories").select("name").eq("org_id", orgId).order("sort_order");
+    const categoryNames = (categories ?? []).map((c) => c.name);
+
+    const startedAt = Date.now();
+    const { entries, usage } = await extractFromText(text, categoryNames);
+    const latencyMs = Date.now() - startedAt;
+
+    // One text/voice message can describe several transactions ("50 στον
+    // υδραυλικό, 30 βενζίνη") -- each entry is resolved and staged as its own
+    // independent draft so amounts/counterparties/projects never bleed into
+    // each other, and each still goes through its own human review.
+    const draftIds: string[] = [];
+    for (const entry of entries) {
+      const validation = validateNlExtraction(entry);
+      const resolved = await resolveEntities(supabase, {
+        issuerAfm: null,
+        issuerName: entry.counterparty_name,
+        projectMention: entry.project_mention,
+        suggestedCategory: entry.suggested_category,
+        orgId,
+        rawText: text,
+      });
+
+      const needsReview: string[] = [...validation.reasons];
+      if (!resolved.contactId) needsReview.push("Δεν βρέθηκε αντίστοιχη επαφή -- επιλέξτε ή δημιουργήστε.");
+      if (!resolved.projectId) needsReview.push("Δεν βρέθηκε αντίστοιχο έργο -- επιλέξτε.");
+
+      // Normalise into the same shape as photo extraction so ReviewForm needs no
+      // special-casing: derive net/VAT from the single stated amount (people say
+      // what they handed over, i.e. gross) and carry the raw phrase as evidence.
+      const amount = entry.amount.value ?? 0;
+      const breakdown = entry.has_invoice ? deriveFromGross(amount, entry.vat_rate ?? 0.24) : cashOnly(amount);
+      const normalized: Extraction = {
+        doc_type: "other",
+        issuer_name: entry.counterparty_name,
+        issuer_afm: null,
+        invoice_number: null,
+        mydata_mark: null,
+        issue_date: entry.issue_date ?? todayAthens(),
+        net: { value: breakdown.net, evidence: entry.amount.evidence },
+        vat: { value: breakdown.vat, evidence: entry.amount.evidence },
+        gross: { value: breakdown.gross, evidence: entry.amount.evidence },
+        vat_rate: entry.vat_rate,
+        withholding: { value: 0, evidence: null },
+        payment_hint: "unknown",
+        project_mention: entry.project_mention,
+        supply_number: null,
+        suggested_category: entry.suggested_category,
+        notes_for_human: [entry.notes_for_human, `Περιγραφή: «${text}»`].filter(Boolean).join(" · "),
+      };
+
+      const { data: draft, error: draftError } = await supabase
+        .from("transaction_drafts")
+        .insert({
+          org_id: orgId,
+          document_id: null,
+          source: "ai_nl",
+          extracted: normalized,
+          proposed: {
+            contact_id: resolved.contactId,
+            project_id: resolved.projectId,
+            category_id: resolved.categoryId,
+            contact_match_strength: resolved.contactMatchStrength,
+            direction: entry.direction,
+          },
+          needs_review_reasons: needsReview,
+          status: "pending",
+        })
+        .select("id")
+        .single();
+      if (draftError) throw draftError;
+      draftIds.push(draft.id);
+    }
 
     await logAiUsage(supabase, {
       orgId,
       userId: session?.user.id ?? null,
-      feature: "document_extraction",
-      model: "claude-opus-5",
+      feature: "nl_entry",
+      model: "claude-haiku-4-5",
       inputTokens: usage.inputTokens,
       cacheReadTokens: 0,
       outputTokens: usage.outputTokens,
@@ -112,128 +236,9 @@ export async function uploadDocument(formData: FormData) {
       latencyMs,
     });
 
-    redirect(`/documents/${draft.id}/review`);
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) throw error;
-    await supabase
-      .from("document_jobs")
-      .update({ status: "failed", last_error: error instanceof Error ? error.message : String(error), attempts: 1 })
-      .eq("id", job.id);
-    throw new Error(
-      error instanceof Error
-        ? `Δεν μπορέσαμε να διαβάσουμε το παραστατικό: ${error.message}`
-        : "Δεν μπορέσαμε να διαβάσουμε το παραστατικό.",
-    );
-  }
-}
-
-// The typed/spoken counterpart to uploadDocument -- same draft table, same
-// review screen, same approveDraft gate. No document/storage involved, so
-// no document_jobs row either (its document_id is NOT NULL); ai_usage still
-// gets logged so spend is tracked regardless of entry method.
-export async function submitNlEntry(formData: FormData) {
-  if (!aiEnabled()) {
-    throw new Error("Ο βοηθός AI δεν είναι ενεργοποιημένος. Ορίστε ANTHROPIC_API_KEY και AI_ENABLED=true.");
-  }
-
-  const text = String(formData.get("text") ?? "").trim();
-  if (!text) throw new Error("Γράψτε ή πείτε μια περιγραφή της κίνησης.");
-
-  const supabase = await createClient();
-  const orgId = await getCurrentOrgId(supabase);
-  await assertWithinAiBudget(supabase, orgId);
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const { data: categories } = await supabase.from("categories").select("name").eq("org_id", orgId).order("sort_order");
-  const categoryNames = (categories ?? []).map((c) => c.name);
-
-  const startedAt = Date.now();
-  const { entries, usage } = await extractFromText(text, categoryNames);
-  const latencyMs = Date.now() - startedAt;
-
-  // One text/voice message can describe several transactions ("50 στον
-  // υδραυλικό, 30 βενζίνη") -- each entry is resolved and staged as its own
-  // independent draft so amounts/counterparties/projects never bleed into
-  // each other, and each still goes through its own human review.
-  const draftIds: string[] = [];
-  for (const entry of entries) {
-    const validation = validateNlExtraction(entry);
-    const resolved = await resolveEntities(supabase, {
-      issuerAfm: null,
-      issuerName: entry.counterparty_name,
-      projectMention: entry.project_mention,
-      suggestedCategory: entry.suggested_category,
-      orgId,
-      rawText: text,
-    });
-
-    const needsReview: string[] = [...validation.reasons];
-    if (!resolved.contactId) needsReview.push("Δεν βρέθηκε αντίστοιχη επαφή -- επιλέξτε ή δημιουργήστε.");
-    if (!resolved.projectId) needsReview.push("Δεν βρέθηκε αντίστοιχο έργο -- επιλέξτε.");
-
-    // Normalise into the same shape as photo extraction so ReviewForm needs no
-    // special-casing: derive net/VAT from the single stated amount (people say
-    // what they handed over, i.e. gross) and carry the raw phrase as evidence.
-    const amount = entry.amount.value ?? 0;
-    const breakdown = entry.has_invoice ? deriveFromGross(amount, entry.vat_rate ?? 0.24) : cashOnly(amount);
-    const normalized: Extraction = {
-      doc_type: "other",
-      issuer_name: entry.counterparty_name,
-      issuer_afm: null,
-      invoice_number: null,
-      mydata_mark: null,
-      issue_date: entry.issue_date ?? todayAthens(),
-      net: { value: breakdown.net, evidence: entry.amount.evidence },
-      vat: { value: breakdown.vat, evidence: entry.amount.evidence },
-      gross: { value: breakdown.gross, evidence: entry.amount.evidence },
-      vat_rate: entry.vat_rate,
-      withholding: { value: 0, evidence: null },
-      payment_hint: "unknown",
-      project_mention: entry.project_mention,
-      supply_number: null,
-      suggested_category: entry.suggested_category,
-      notes_for_human: [entry.notes_for_human, `Περιγραφή: «${text}»`].filter(Boolean).join(" · "),
-    };
-
-    const { data: draft, error: draftError } = await supabase
-      .from("transaction_drafts")
-      .insert({
-        org_id: orgId,
-        document_id: null,
-        source: "ai_nl",
-        extracted: normalized,
-        proposed: {
-          contact_id: resolved.contactId,
-          project_id: resolved.projectId,
-          category_id: resolved.categoryId,
-          contact_match_strength: resolved.contactMatchStrength,
-          direction: entry.direction,
-        },
-        needs_review_reasons: needsReview,
-        status: "pending",
-      })
-      .select("id")
-      .single();
-    if (draftError) throw new Error(draftError.message);
-    draftIds.push(draft.id);
-  }
-
-  await logAiUsage(supabase, {
-    orgId,
-    userId: session?.user.id ?? null,
-    feature: "nl_entry",
-    model: "claude-haiku-4-5",
-    inputTokens: usage.inputTokens,
-    cacheReadTokens: 0,
-    outputTokens: usage.outputTokens,
-    requestId: usage.requestId,
-    latencyMs,
+    if (draftIds.length > 1) {
+      redirect(`/documents/${draftIds[0]}/review?queue=${draftIds.slice(1).join(",")}`);
+    }
+    redirect(`/documents/${draftIds[0]}/review`);
   });
-
-  if (draftIds.length > 1) {
-    redirect(`/documents/${draftIds[0]}/review?queue=${draftIds.slice(1).join(",")}`);
-  }
-  redirect(`/documents/${draftIds[0]}/review`);
 }

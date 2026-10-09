@@ -4,6 +4,7 @@ import { Badge, Button } from "@/components/ui";
 import { ReviewTable } from "./ReviewTable";
 import { commitBatch } from "../actions";
 import { el } from "@/lib/i18n/el";
+import { ActionForm } from "@/components/ActionForm";
 
 export default async function AadeBatchReviewPage({
   params,
@@ -47,9 +48,9 @@ export default async function AadeBatchReviewPage({
         {batch.status === "committed" ? (
           <Badge tone="green">Ολοκληρώθηκε</Badge>
         ) : (
-          <form action={commitBatch.bind(null, batchId)}>
+          <ActionForm action={commitBatch.bind(null, batchId)}>
             <Button type="submit">Οριστικοποίηση Εισαγωγής</Button>
-          </form>
+          </ActionForm>
         )}
       </div>
 

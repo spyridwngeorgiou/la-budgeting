@@ -13,12 +13,13 @@ import type { DateFormat } from "@/lib/ingest/text";
 import { INGEST_DECISION, type IngestDecision, type StatementSummary } from "@/lib/ingest/types";
 import { loadProfiles, stageMovements } from "./stage";
 import { athensMinuteLabel } from "@/lib/dates";
+import type { ActionResult } from "@/lib/actions";
 
 // Bank statement upload -> stage -> review -> commit/undo. Every step
 // returns { error } instead of throwing where the user must read the
 // message (thrown Server Action messages are hidden in production).
 
-export type InboxResult = { ok: true } | { error: string };
+export type InboxResult = ActionResult;
 
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
   // Web Crypto rather than node:crypto: available in Workers as-is.

@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button } from "./ui";
 import { SubmitButton } from "./SubmitButton";
 import { el } from "@/lib/i18n/el";
+import { errorOf } from "@/lib/actions";
 
 // One modal for the whole back office, on the native <dialog>: showModal()
 // puts it in the top layer (no z-index wars), makes the page behind inert,
@@ -141,12 +142,4 @@ export function FormModal({
       </form>
     </Modal>
   );
-}
-
-export function errorOf(result: unknown): string | null {
-  if (result && typeof result === "object" && "error" in result) {
-    const e = (result as { error: unknown }).error;
-    if (typeof e === "string" && e) return e;
-  }
-  return null;
 }

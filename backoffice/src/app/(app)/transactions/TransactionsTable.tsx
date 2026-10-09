@@ -8,6 +8,7 @@ import { TransactionFormModal, type TransactionInitial } from "./TransactionForm
 import { PartialPaymentModal } from "./PartialPaymentModal";
 import { createTransaction, updateTransaction, markPaid, deleteTransaction, getSourceDocumentUrl } from "./actions";
 import { todayAthens } from "@/lib/dates";
+import { errorOf } from "@/lib/actions";
 
 const AI_ORIGINS = new Set(["ai_document", "ai_nl"]);
 
@@ -147,7 +148,8 @@ export function TransactionsTable({
     if (!window.confirm(`Διαγραφή της κίνησης «${label}»; Η ενέργεια δεν αναιρείται.`)) return;
     setDeleting(tx.id);
     try {
-      await deleteTransaction(tx.id);
+      const message = errorOf(await deleteTransaction(tx.id));
+      if (message) window.alert(message);
     } finally {
       setDeleting(null);
     }
@@ -262,7 +264,12 @@ export function TransactionsTable({
                       </Button>
                     )}
                     {tx.status !== "paid" && (
-                      <form action={markPaid.bind(null, tx.id)}>
+                      <form
+                        action={async () => {
+                          const message = errorOf(await markPaid(tx.id));
+                          if (message) window.alert(message);
+                        }}
+                      >
                         <Button type="submit" variant="secondary" className="!px-2 !py-1 text-xs">
                           {el.common.markPaid}
                         </Button>

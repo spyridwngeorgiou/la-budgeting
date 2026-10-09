@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db/types";
 import type { TxDirection } from "@/lib/domain/enums";
 import { el } from "@/lib/i18n/el";
+import { pgErrorToGreek } from "@/lib/actions";
 
 // The «Πιθανό διπλότυπο» guard shared by every path that writes one
 // transaction directly (manual form, draft approval). The rule lives in SQL
@@ -61,5 +62,5 @@ export function transactionWriteError(error: { code?: string; message: string })
   if (error.code === "23505" && error.message.includes("tx_mark_uq")) return el.ingest.markExists;
   if (error.code === "23505" && error.message.includes("tx_fingerprint_uq")) return el.ingest.aadeFingerprintExists;
   if (error.message.includes("tx_paid_needs_date")) return el.ingest.paidOnRequired;
-  return error.message;
+  return pgErrorToGreek(error);
 }

@@ -6,6 +6,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { el } from "@/lib/i18n/el";
 import { TASK_PRIORITY, TASK_STATUS, type TaskPriority, type TaskStatus } from "@/lib/domain/enums";
 import { Modal } from "@/components/Modal";
+import { errorOf } from "@/lib/actions";
 
 export interface Option {
   id: string;
@@ -156,13 +157,14 @@ export function TaskFormModal({
   initial,
   trigger,
 }: {
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<unknown>;
   projects: Option[];
   people: Option[];
   initial?: TaskInitial;
   trigger?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <>
@@ -173,12 +175,15 @@ export function TaskFormModal({
         <Modal onClose={() => setOpen(false)} className="max-h-[90vh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded bg-white p-5" closeOnBackdrop={false}>
           <form
             action={async (formData) => {
-              await action(formData);
+              setError(null);
+              const message = errorOf(await action(formData));
+              if (message) return setError(message);
               setOpen(false);
             }}
             className="flex flex-col gap-3"
           >
             <TaskFields initial={initial} projects={projects} people={people} />
+            {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="mt-2 flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
                 {el.common.cancel}

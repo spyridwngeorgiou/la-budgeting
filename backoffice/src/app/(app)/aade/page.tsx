@@ -6,6 +6,7 @@ import { el } from "@/lib/i18n/el";
 import { Badge } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { uploadAadeFile } from "./actions";
+import { ActionForm } from "@/components/ActionForm";
 
 const STATUS_LABEL = { draft: "Πρόχειρο", committed: "Ολοκληρώθηκε", discarded: "Απορρίφθηκε" } as const;
 const STATUS_TONE = { draft: "amber", committed: "green", discarded: "neutral" } as const;
@@ -39,10 +40,10 @@ export default async function AadePage() {
         </div>
       )}
 
-      <form action={uploadAadeFile} className="flex items-center gap-2 rounded-lg border border-line p-4">
+      <ActionForm action={uploadAadeFile} className="flex flex-wrap items-center gap-2 rounded-lg border border-line p-4">
         <input type="file" name="file" accept=".xlsx" required className="text-sm" />
         <SubmitButton pendingLabel="Εισαγωγή…">Εισαγωγή Αρχείου myDATA</SubmitButton>
-      </form>
+      </ActionForm>
 
       {(batches ?? []).length === 0 ? (
         <p className="p-6 text-center text-sm text-ink-muted">

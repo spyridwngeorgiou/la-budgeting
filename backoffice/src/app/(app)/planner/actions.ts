@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { MILESTONE_KIND, PHASE_STATUS, TASK_PRIORITY, TASK_STATUS, type TaskStatus } from "@/lib/domain/enums";
 import { keyAtEnd, planMove } from "@/lib/planner/sortKey";
+import { action, UserError, type ActionResult } from "@/lib/actions";
 
 // Planner writes. RLS (0040) is the authorization boundary -- these never
 // read the org from the session (a partner has none); org_id comes from the
@@ -35,25 +36,25 @@ function revalidatePlanner(projectId?: string) {
 }
 
 function fail(error: { message: string } | null) {
-  if (error) throw new Error(error.message);
+  if (error) throw error;
 }
 
 async function projectOrg(supabase: Client, projectId: string): Promise<string> {
   const { data, error } = await supabase.rpc("planner_projects").eq("id", projectId).maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Το έργο δεν βρέθηκε ή δεν έχετε πρόσβαση.");
+  if (error) throw error;
+  if (!data) throw new UserError("Το έργο δεν βρέθηκε ή δεν έχετε πρόσβαση.");
   return data.org_id;
 }
 
 async function taskScope(supabase: Client, taskId: string) {
   const { data, error } = await supabase.from("tasks").select("org_id, project_id").eq("id", taskId).maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Η εργασία δεν βρέθηκε.");
+  if (error) throw error;
+  if (!data) throw new UserError("Η εργασία δεν βρέθηκε.");
   return data;
 }
 
 function dateRangeOk(start: string | null, end: string | null) {
-  if (start && end && end < start) throw new Error("Η λήξη είναι πριν από την έναρξη.");
+  if (start && end && end < start) throw new UserError("Η λήξη είναι πριν από την έναρξη.");
 }
 
 // ── Tasks ──────────────────────────────────────────────────────────────────
@@ -94,45 +95,49 @@ async function endOfColumnKey(supabase: Client, projectId: string, status: TaskS
   return keyAtEnd((data ?? []).map((t) => ({ id: t.id, sort_key: Number(t.sort_key) })));
 }
 
-export async function createTask(formData: FormData) {
-  const supabase = await createClient();
-  const projectId = uuid.parse(formData.get("project_id"));
-  const fields = readTask(formData);
-  const orgId = await projectOrg(supabase, projectId);
-  const { error } = await supabase.from("tasks").insert({
-    ...fields,
-    org_id: orgId,
-    project_id: projectId,
-    sort_key: await endOfColumnKey(supabase, projectId, fields.status),
+export async function createTask(formData: FormData): Promise<ActionResult> {
+  return action(async () => {
+    const supabase = await createClient();
+    const projectId = uuid.parse(formData.get("project_id"));
+    const fields = readTask(formData);
+    const orgId = await projectOrg(supabase, projectId);
+    const { error } = await supabase.from("tasks").insert({
+      ...fields,
+      org_id: orgId,
+      project_id: projectId,
+      sort_key: await endOfColumnKey(supabase, projectId, fields.status),
+    });
+    fail(error);
+    revalidatePlanner(projectId);
   });
-  fail(error);
-  revalidatePlanner(projectId);
 }
 
-export async function updateTask(taskId: string, formData: FormData) {
-  const supabase = await createClient();
-  uuid.parse(taskId);
-  const fields = readTask(formData);
-  const scope = await taskScope(supabase, taskId);
-  const phaseId = optionalUuid.parse(formData.get("phase_id"));
-  const milestoneId = optionalUuid.parse(formData.get("milestone_id"));
-  const projectId = optionalUuid.parse(formData.get("project_id")) ?? scope.project_id;
-  const moved = projectId !== scope.project_id;
+export async function updateTask(taskId: string, formData: FormData): Promise<ActionResult> {
+  return action(async () => {
+    const supabase = await createClient();
+    uuid.parse(taskId);
+    const fields = readTask(formData);
+    const scope = await taskScope(supabase, taskId);
+    const phaseId = optionalUuid.parse(formData.get("phase_id"));
+    const milestoneId = optionalUuid.parse(formData.get("milestone_id"));
+    const projectId = optionalUuid.parse(formData.get("project_id")) ?? scope.project_id;
+    const moved = projectId !== scope.project_id;
 
-  // Phase and milestone belong to the old project (composite FK), so a move
-  // clears them; planner_guard refuses the move for anyone but an editor.
-  const { error } = await supabase
-    .from("tasks")
-    .update({
-      ...fields,
-      project_id: projectId,
-      phase_id: moved ? null : phaseId,
-      milestone_id: moved ? null : milestoneId,
-    })
-    .eq("id", taskId);
-  fail(error);
-  revalidatePlanner(scope.project_id);
-  if (moved) revalidatePlanner(projectId);
+    // Phase and milestone belong to the old project (composite FK), so a move
+    // clears them; planner_guard refuses the move for anyone but an editor.
+    const { error } = await supabase
+      .from("tasks")
+      .update({
+        ...fields,
+        project_id: projectId,
+        phase_id: moved ? null : phaseId,
+        milestone_id: moved ? null : milestoneId,
+      })
+      .eq("id", taskId);
+    fail(error);
+    revalidatePlanner(scope.project_id);
+    if (moved) revalidatePlanner(projectId);
+  });
 }
 
 export type MoveResult = { ok: true } | { ok: false; error: string };
@@ -213,17 +218,19 @@ export async function setTaskArchived(taskId: string, archived: boolean) {
   revalidatePlanner(scope.project_id);
 }
 
-export async function deleteTask(taskId: string, returnTo: string) {
-  const supabase = await createClient();
-  uuid.parse(taskId);
-  const scope = await taskScope(supabase, taskId);
-  // RLS lets only org editors delete; a refused delete affects zero rows
-  // rather than erroring, so check it actually happened.
-  const { data, error } = await supabase.from("tasks").delete().eq("id", taskId).select("id");
-  fail(error);
-  if (!data || data.length === 0) throw new Error("Δεν έχετε δικαίωμα διαγραφής.");
-  revalidatePlanner(scope.project_id);
-  redirect(returnTo.startsWith("/") ? returnTo : "/planner");
+export async function deleteTask(taskId: string, returnTo: string): Promise<ActionResult> {
+  return action(async () => {
+    const supabase = await createClient();
+    uuid.parse(taskId);
+    const scope = await taskScope(supabase, taskId);
+    // RLS lets only org editors delete; a refused delete affects zero rows
+    // rather than erroring, so check it actually happened.
+    const { data, error } = await supabase.from("tasks").delete().eq("id", taskId).select("id");
+    fail(error);
+    if (!data || data.length === 0) throw new UserError("Δεν έχετε δικαίωμα διαγραφής.");
+    revalidatePlanner(scope.project_id);
+    redirect(returnTo.startsWith("/") ? returnTo : "/planner");
+  });
 }
 
 // ── Checklist ──────────────────────────────────────────────────────────────
@@ -317,29 +324,31 @@ const phaseFields = z.object({
   sort_order: z.coerce.number().int().min(0).max(10_000).default(0),
 });
 
-export async function savePhase(projectId: string, phaseId: string | null, formData: FormData) {
-  const supabase = await createClient();
-  uuid.parse(projectId);
-  const fields = phaseFields.parse({
-    name: formData.get("name"),
-    status: formData.get("status") ?? "planned",
-    planned_start: formData.get("planned_start"),
-    planned_end: formData.get("planned_end"),
-    actual_start: formData.get("actual_start"),
-    actual_end: formData.get("actual_end"),
-    sort_order: formData.get("sort_order") || 0,
+export async function savePhase(projectId: string, phaseId: string | null, formData: FormData): Promise<ActionResult> {
+  return action(async () => {
+    const supabase = await createClient();
+    uuid.parse(projectId);
+    const fields = phaseFields.parse({
+      name: formData.get("name"),
+      status: formData.get("status") ?? "planned",
+      planned_start: formData.get("planned_start"),
+      planned_end: formData.get("planned_end"),
+      actual_start: formData.get("actual_start"),
+      actual_end: formData.get("actual_end"),
+      sort_order: formData.get("sort_order") || 0,
+    });
+    dateRangeOk(fields.planned_start, fields.planned_end);
+    dateRangeOk(fields.actual_start, fields.actual_end);
+    if (phaseId) {
+      const { error } = await supabase.from("project_phases").update(fields).eq("id", uuid.parse(phaseId));
+      fail(error);
+    } else {
+      const orgId = await projectOrg(supabase, projectId);
+      const { error } = await supabase.from("project_phases").insert({ ...fields, org_id: orgId, project_id: projectId });
+      fail(error);
+    }
+    revalidatePlanner(projectId);
   });
-  dateRangeOk(fields.planned_start, fields.planned_end);
-  dateRangeOk(fields.actual_start, fields.actual_end);
-  if (phaseId) {
-    const { error } = await supabase.from("project_phases").update(fields).eq("id", uuid.parse(phaseId));
-    fail(error);
-  } else {
-    const orgId = await projectOrg(supabase, projectId);
-    const { error } = await supabase.from("project_phases").insert({ ...fields, org_id: orgId, project_id: projectId });
-    fail(error);
-  }
-  revalidatePlanner(projectId);
 }
 
 export async function deletePhase(projectId: string, phaseId: string) {
@@ -357,27 +366,29 @@ const milestoneFields = z.object({
   phase_id: optionalUuid,
 });
 
-export async function saveMilestone(projectId: string, milestoneId: string | null, formData: FormData) {
-  const supabase = await createClient();
-  uuid.parse(projectId);
-  const fields = milestoneFields.parse({
-    title: formData.get("title"),
-    description: formData.get("description"),
-    kind: formData.get("kind") ?? "general",
-    due_date: formData.get("due_date"),
-    phase_id: formData.get("phase_id"),
+export async function saveMilestone(projectId: string, milestoneId: string | null, formData: FormData): Promise<ActionResult> {
+  return action(async () => {
+    const supabase = await createClient();
+    uuid.parse(projectId);
+    const fields = milestoneFields.parse({
+      title: formData.get("title"),
+      description: formData.get("description"),
+      kind: formData.get("kind") ?? "general",
+      due_date: formData.get("due_date"),
+      phase_id: formData.get("phase_id"),
+    });
+    if (milestoneId) {
+      const { error } = await supabase.from("project_milestones").update(fields).eq("id", uuid.parse(milestoneId));
+      fail(error);
+    } else {
+      const orgId = await projectOrg(supabase, projectId);
+      const { error } = await supabase
+        .from("project_milestones")
+        .insert({ ...fields, org_id: orgId, project_id: projectId });
+      fail(error);
+    }
+    revalidatePlanner(projectId);
   });
-  if (milestoneId) {
-    const { error } = await supabase.from("project_milestones").update(fields).eq("id", uuid.parse(milestoneId));
-    fail(error);
-  } else {
-    const orgId = await projectOrg(supabase, projectId);
-    const { error } = await supabase
-      .from("project_milestones")
-      .insert({ ...fields, org_id: orgId, project_id: projectId });
-    fail(error);
-  }
-  revalidatePlanner(projectId);
 }
 
 export async function setMilestoneDone(projectId: string, milestoneId: string, done: boolean) {

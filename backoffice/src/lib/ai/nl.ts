@@ -2,6 +2,7 @@ import "server-only";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { anthropic, AI_MODEL_FAST } from "./client";
 import { NlExtractionSchema, type NlEntry } from "./schemas";
+import { UserError } from "@/lib/actions";
 
 const SYSTEM_PROMPT = `Είστε βοηθός καταχώρησης οικονομικών κινήσεων μιας ελληνικής επιχείρησης ακινήτων/κατασκευών. Ο χρήστης περιγράφει μία Ή ΠΕΡΙΣΣΟΤΕΡΕΣ κινήσεις στα Ελληνικά, γραπτά ή απομαγνητοφωνημένη από φωνή -- εξάγετε τα δομημένα στοιχεία.
 
@@ -26,7 +27,7 @@ export async function extractFromText(text: string, categoryNames: string[]): Pr
   });
 
   if (!response.parsed_output) {
-    throw new Error("Η ανάλυση του κειμένου απέτυχε (μη έγκυρη μορφή απάντησης).");
+    throw new UserError("Η ανάλυση του κειμένου απέτυχε (μη έγκυρη μορφή απάντησης).");
   }
 
   return {

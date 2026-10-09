@@ -14,6 +14,7 @@ import {
   resendPartnerInvite,
   cancelPartnerInvite,
 } from "./partner-actions";
+import { ActionForm } from "@/components/ActionForm";
 
 // Server component, rendered per request -- "now" is the request time.
 function isExpired(iso: string) {
@@ -101,7 +102,7 @@ export async function PartnersPanel({ projectId, isAdmin }: { projectId: string;
               </div>
               {isAdmin && (
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <form
+                  <ActionForm
                     action={updatePartnerRole.bind(null, projectId, m.user_id)}
                     className="flex items-center gap-1.5"
                   >
@@ -116,17 +117,17 @@ export async function PartnersPanel({ projectId, isAdmin }: { projectId: string;
                     <SubmitButton variant="secondary" className="!px-2 !py-1 text-xs">
                       {el.partner.update}
                     </SubmitButton>
-                  </form>
-                  <form action={resendPartnerAccess.bind(null, projectId, m.user_id)}>
+                  </ActionForm>
+                  <ActionForm action={resendPartnerAccess.bind(null, projectId, m.user_id)}>
                     <SubmitButton variant="secondary" className="!px-2 !py-1 text-xs">
                       {el.partner.resend}
                     </SubmitButton>
-                  </form>
-                  <form action={removePartner.bind(null, projectId, m.user_id)}>
+                  </ActionForm>
+                  <ActionForm action={removePartner.bind(null, projectId, m.user_id)}>
                     <SubmitButton variant="danger" className="!px-2 !py-1 text-xs">
                       {el.partner.remove}
                     </SubmitButton>
-                  </form>
+                  </ActionForm>
                 </div>
               )}
             </div>
@@ -151,16 +152,16 @@ export async function PartnersPanel({ projectId, isAdmin }: { projectId: string;
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <form action={resendPartnerInvite.bind(null, projectId, inv.id)}>
+                <ActionForm action={resendPartnerInvite.bind(null, projectId, inv.id)}>
                   <SubmitButton variant="secondary" className="!px-2 !py-1 text-xs">
                     {el.partner.resend}
                   </SubmitButton>
-                </form>
-                <form action={cancelPartnerInvite.bind(null, projectId, inv.id)}>
+                </ActionForm>
+                <ActionForm action={cancelPartnerInvite.bind(null, projectId, inv.id)}>
                   <SubmitButton variant="danger" className="!px-2 !py-1 text-xs">
                     {el.partner.cancelInvite}
                   </SubmitButton>
-                </form>
+                </ActionForm>
               </div>
             </div>
           );
@@ -168,7 +169,7 @@ export async function PartnersPanel({ projectId, isAdmin }: { projectId: string;
       </div>
 
       {isAdmin && (
-        <form
+        <ActionForm
           action={invitePartner.bind(null, projectId)}
           className="mt-4 flex flex-col gap-3 border-t border-line pt-4"
         >
@@ -213,7 +214,7 @@ export async function PartnersPanel({ projectId, isAdmin }: { projectId: string;
           <div className="flex justify-end">
             <SubmitButton>{el.partner.invite}</SubmitButton>
           </div>
-        </form>
+        </ActionForm>
       )}
     </Card>
   );

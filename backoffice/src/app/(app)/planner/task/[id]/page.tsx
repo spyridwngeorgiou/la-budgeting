@@ -21,6 +21,7 @@ import {
   toggleChecklistItem,
   updateTask,
 } from "../../actions";
+import { ActionForm } from "@/components/ActionForm";
 
 export default async function TaskDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -104,7 +105,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <Card>
           {canWrite ? (
-            <form action={updateTask.bind(null, id)} className="flex flex-col gap-3">
+            <ActionForm action={updateTask.bind(null, id)} className="flex flex-col gap-3">
               <TaskFields
                 initial={task}
                 projects={projectOptions}
@@ -116,7 +117,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
               <div className="flex justify-end">
                 <SubmitButton>{el.common.save}</SubmitButton>
               </div>
-            </form>
+            </ActionForm>
           ) : (
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
               <dt className="text-ink-muted">{el.planner.task.priority}</dt>

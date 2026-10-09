@@ -7,9 +7,11 @@ import { el } from "@/lib/i18n/el";
 import { ACCOUNT_KIND, OWNER_SCOPE } from "@/lib/domain/enums";
 import { todayAthens } from "@/lib/dates";
 import { Modal } from "@/components/Modal";
+import { errorOf } from "@/lib/actions";
 
-export function AccountFormModal({ action }: { action: (formData: FormData) => Promise<void> }) {
+export function AccountFormModal({ action }: { action: (formData: FormData) => Promise<unknown> }) {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <>
@@ -18,7 +20,9 @@ export function AccountFormModal({ action }: { action: (formData: FormData) => P
         <Modal onClose={() => setOpen(false)} className="w-[calc(100%-2rem)] max-w-md rounded bg-white p-5" closeOnBackdrop={false}>
           <form
             action={async (formData) => {
-              await action(formData);
+              setError(null);
+              const message = errorOf(await action(formData));
+              if (message) return setError(message);
               setOpen(false);
             }}
             className="flex flex-col gap-3"
@@ -64,6 +68,7 @@ export function AccountFormModal({ action }: { action: (formData: FormData) => P
                 required
               />
             </Field>
+            {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="mt-2 flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
                 {el.common.cancel}

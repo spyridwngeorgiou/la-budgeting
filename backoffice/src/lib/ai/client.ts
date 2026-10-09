@@ -1,5 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { UserError } from "@/lib/actions";
 
 // Importing "server-only" makes any accidental client-side import of this
 // module a build error, not a leaked API key at runtime.
@@ -90,7 +91,7 @@ export async function assertWithinAiBudget(supabase: any, orgId: string): Promis
   const spentCents = (data ?? []).reduce((sum: number, row: { cost_cents: number | null }) => sum + Number(row.cost_cents ?? 0), 0);
   const capCents = monthlyBudgetCents((org?.settings as Record<string, unknown> | null)?.ai_monthly_budget_cents);
   if (spentCents >= capCents) {
-    throw new Error(
+    throw new UserError(
       `Το μηνιαίο όριο δαπάνης AI (${(capCents / 100).toFixed(2)} €) έχει εξαντληθεί. ` +
         `Δαπανήθηκαν ${(spentCents / 100).toFixed(2)} € αυτόν τον μήνα. Το όριο ρυθμίζεται με τη μεταβλητή περιβάλλοντος AI_MONTHLY_BUDGET_CENTS.`,
     );

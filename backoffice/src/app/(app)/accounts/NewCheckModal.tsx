@@ -6,6 +6,7 @@ import { formatMoney } from "@/lib/format";
 import { assertAccountBalance } from "./actions";
 import { todayAthens } from "@/lib/dates";
 import { Modal } from "@/components/Modal";
+import { errorOf } from "@/lib/actions";
 
 // Data entry, split out from the read-only breakdown (BalanceAssertion) so
 // reviewing accounts and entering a new check are two differently-sized
@@ -24,6 +25,7 @@ export function NewCheckModal({
   hasChecks: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const today = todayAthens();
 
   return (
@@ -44,7 +46,9 @@ export function NewCheckModal({
           </p>
           <form
             action={async (formData) => {
-              await assertAccountBalance(accountId, formData);
+              setError(null);
+              const message = errorOf(await assertAccountBalance(accountId, formData));
+              if (message) return setError(message);
               setOpen(false);
             }}
             className="flex flex-col gap-3"
@@ -63,6 +67,7 @@ export function NewCheckModal({
                 <Input type="date" name="period_start" defaultValue={defaultFrom} />
               </Field>
             </div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="mt-1 flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
                 Άκυρο
