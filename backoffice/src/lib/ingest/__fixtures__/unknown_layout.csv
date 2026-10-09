@@ -1,0 +1,5 @@
+Statement export
+Account,GR12 0110 1250 0000 0001 2345 678
+Date,Details,Debit,Credit,Balance
+2026-03-21,"CARD PAYMENT, KIOSK",12.50,,"1,987.50"
+2026-03-22,SALARY TRANSFER,,"2,000.00","3,987.50"
