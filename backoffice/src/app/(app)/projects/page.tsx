@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { Button } from "@/components/ui";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { el } from "@/lib/i18n/el";
 import { ProjectFormModal } from "./ProjectFormModal";
@@ -31,7 +33,12 @@ export default async function ProjectsPage() {
             και σημειώσεις.
           </p>
         </div>
-        <ProjectFormModal action={createProject} />
+        <div className="flex shrink-0 items-center gap-2">
+          <Link href="/collab">
+            <Button variant="secondary">{el.collab.navLabel}</Button>
+          </Link>
+          <ProjectFormModal action={createProject} />
+        </div>
       </div>
 
       <ProjectsGrid rollup={rollup ?? []} noBudgetIds={noBudgetIds} />
