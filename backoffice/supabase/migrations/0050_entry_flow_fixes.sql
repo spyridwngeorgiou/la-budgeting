@@ -43,7 +43,7 @@ create function public.find_possible_duplicates(
   reason text
 )
 language sql stable security invoker set search_path = public as $$
-  with input as (
+  with needle as (
     select nullif(upper(regexp_replace(coalesce(p_invoice_number, ''), '\s+', '', 'g')), '') as inv,
            nullif(p_counterparty_afm, '') as afm
   )
@@ -54,7 +54,7 @@ language sql stable security invoker set search_path = public as $$
            else 'amount_date'
          end as reason
   from transactions t
-  cross join input i
+  cross join needle i
   left join contacts c on c.id = t.contact_id
   where t.org_id = p_org
     and t.status <> 'cancelled'
