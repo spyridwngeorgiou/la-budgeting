@@ -647,6 +647,48 @@ export type Database = {
           },
         ]
       }
+      ai_conversations: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_conversations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_conversations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+        ]
+      }
       ai_corrections: {
         Row: {
           ai_value: Json | null
@@ -712,9 +754,66 @@ export type Database = {
           },
         ]
       }
+      ai_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          meta: Json
+          org_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          meta?: Json
+          org_id: string
+          role: string
+          user_id?: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          meta?: Json
+          org_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_messages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_messages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+        ]
+      }
       ai_usage: {
         Row: {
           cache_read_tokens: number | null
+          cache_write_tokens: number | null
+          conversation_id: string | null
           cost_cents: number | null
           created_at: string
           feature: string
@@ -730,6 +829,8 @@ export type Database = {
         }
         Insert: {
           cache_read_tokens?: number | null
+          cache_write_tokens?: number | null
+          conversation_id?: string | null
           cost_cents?: number | null
           created_at?: string
           feature: string
@@ -745,6 +846,8 @@ export type Database = {
         }
         Update: {
           cache_read_tokens?: number | null
+          cache_write_tokens?: number | null
+          conversation_id?: string | null
           cost_cents?: number | null
           created_at?: string
           feature?: string
@@ -759,6 +862,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ai_usage_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ai_usage_org_id_fkey"
             columns: ["org_id"]
@@ -6201,6 +6311,10 @@ export type Database = {
     }
     Functions: {
       account_balance_as_of: { Args: { p_account: string; p_date: string }; Returns: number }
+      ai_budget_check: {
+        Args: { p_default_monthly_cents: number; p_org: string }
+        Returns: Json
+      }
       approve_collab_proposal: {
         Args: { p_indexes?: number[]; p_proposal: string }
         Returns: Json
