@@ -28,6 +28,9 @@ export interface BoardBootstrap {
   // user_id -> display name, from collab_people() (names only, no emails).
   people: Record<string, string>;
   backHref: string;
+  // Board assistant rights, or null when AI is disabled (the panel is then
+  // hidden). UI hints only: the database enforces every decision.
+  ai: { canEdit: boolean; canApproveTasks: boolean; canApproveMilestones: boolean } | null;
 }
 
 export const COMMENT_COLUMNS =

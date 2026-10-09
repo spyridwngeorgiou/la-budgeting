@@ -13,14 +13,16 @@ import { dataUrlToBlob, isAllowedCollabFile, loadBoardFiles, uploadBoardFile, CO
 import { StickyNoteButton, insertSkeletons, viewportCenter } from "./StickyNoteButton";
 import { CommentsLayer } from "./CommentsLayer";
 import { CommentsPanel, type CommentAnchor } from "./CommentsPanel";
+import { AiPanel } from "./AiPanel";
+import { AiSpark } from "@/components/ui";
 import { COMMENT_COLUMNS, type BoardBootstrap, type BoardComment } from "./types";
 
 // Side-panel registry. One panel is open at a time: a right-hand drawer on
-// desktop, a bottom sheet on phones. Stage 2b's AiPanel registers here as a
-// second entry -- it needs the same `api` handle (to place generated
-// elements via insertSkeletons) that comments use, which is why panels
-// live inside the canvas component rather than in the server page.
-type PanelId = "comments";
+// desktop, a bottom sheet on phones. The board assistant (AiPanel) needs
+// the same `api` handle (to place generated elements via insertSkeletons)
+// that comments use, which is why panels live inside the canvas component
+// rather than in the server page.
+type PanelId = "comments" | "ai";
 
 const STATUS_LABEL: Record<SyncStatus, string> = {
   connecting: el.collab.board.loading,
@@ -359,6 +361,19 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
             <span className="hidden sm:inline">{el.collab.board.attachFile}</span>
           </button>
         )}
+        {bootstrap.ai && (
+          <button
+            type="button"
+            className={`flex h-9 items-center gap-1 rounded-lg border px-2.5 text-xs font-medium shadow-sm ${
+              panel === "ai" ? "border-ai-strong bg-ai-strong text-white" : "border-ai-border bg-ai-bg text-ai-ink hover:bg-ai-border/40"
+            }`}
+            onClick={() => setPanel((p) => (p === "ai" ? null : "ai"))}
+            title={el.collabAi.title}
+          >
+            <AiSpark />
+            <span className="hidden sm:inline">{el.collabAi.open}</span>
+          </button>
+        )}
         <button
           type="button"
           className={`flex h-9 items-center gap-1 rounded-lg border px-2.5 text-xs font-medium shadow-sm ${
@@ -372,7 +387,7 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
         </button>
       </div>
     ),
-    [canEdit, api, panel, comments],
+    [canEdit, api, panel, comments, bootstrap.ai],
   );
 
   return (
@@ -463,9 +478,21 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
       </div>
 
       {panel && (
-        <aside className="flex min-h-0 flex-col border-line bg-surface max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-20 max-md:max-h-[65dvh] max-md:rounded-t-xl max-md:border-t max-md:shadow-2xl md:w-80 md:border-l">
+        <aside
+          className={`flex min-h-0 flex-col border-line bg-surface max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-20 max-md:max-h-[65dvh] max-md:rounded-t-xl max-md:border-t max-md:shadow-2xl md:border-l ${
+            panel === "ai" ? "max-md:h-[65dvh] md:w-96" : "md:w-80"
+          }`}
+        >
           <div className="flex items-center justify-between border-b border-line px-3 py-2">
-            <h2 className="text-sm font-medium">{el.collab.comments.title}</h2>
+            <h2 className="flex items-center gap-1.5 text-sm font-medium">
+              {panel === "ai" ? (
+                <>
+                  <AiSpark className="text-ai-ink" /> {el.collabAi.title}
+                </>
+              ) : (
+                el.collab.comments.title
+              )}
+            </h2>
             <button
               type="button"
               className="rounded px-2 py-1 text-sm text-ink-muted hover:bg-bg"
@@ -478,6 +505,15 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
               ×
             </button>
           </div>
+          {panel === "ai" && bootstrap.ai ? (
+            <AiPanel
+              supabase={supabase}
+              boardId={boardId}
+              api={api}
+              rights={bootstrap.ai}
+              onToast={(message) => toast(message)}
+            />
+          ) : (
           <CommentsPanel
             comments={comments}
             people={bootstrap.people}
@@ -499,6 +535,7 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
             onDelete={(id) => void deleteComment(id)}
             onFocus={focusComment}
           />
+          )}
         </aside>
       )}
 

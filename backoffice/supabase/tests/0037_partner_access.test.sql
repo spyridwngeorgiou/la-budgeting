@@ -98,7 +98,8 @@ begin
     where table_schema = 'public'
       and table_name not in (
         'boards', 'board_elements', 'board_files', 'board_comments', 'project_activity',
-        'project_members', 'profiles'
+        'project_members', 'profiles',
+        'collab_ai_threads', 'collab_ai_messages', 'collab_ai_proposals'
       )
   loop
     begin

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/supabase/access";
 import { el } from "@/lib/i18n/el";
+import { aiEnabled } from "@/lib/ai/client";
 import { BoardLoader } from "@/components/collab/BoardLoader";
 import { COMMENT_COLUMNS, type BoardBootstrap } from "@/components/collab/types";
 
@@ -25,12 +26,22 @@ export default async function BoardPage({ params }: { params: Promise<{ projectI
     .maybeSingle();
   if (!board) notFound();
 
-  const [{ data: canEdit }, { data: elements }, { data: comments }, { data: people }] = await Promise.all([
+  const [{ data: canEdit }, { data: elements }, { data: comments }, { data: people }, { data: myMembership }] = await Promise.all([
     supabase.rpc("can_edit_collab", { p_project: projectId }),
     supabase.from("board_elements").select("data").eq("board_id", boardId).eq("is_deleted", false),
     supabase.from("board_comments").select(COMMENT_COLUMNS).eq("board_id", boardId).order("created_at"),
     supabase.rpc("collab_people", { p_project: projectId }),
+    supabase.from("project_members").select("role").eq("project_id", projectId).eq("user_id", access.userId).maybeSingle(),
   ]);
+
+  // Who may decide planner proposals -- mirrors approve_collab_proposal()
+  // (lead: tasks; org editor and up: tasks and milestones). Only decides
+  // which buttons show; the database enforces it.
+  const isOrgEditor =
+    access.kind === "internal" &&
+    access.membership.orgId === board.org_id &&
+    ["editor", "admin", "owner"].includes(access.membership.role);
+  const isLead = myMembership?.role === "lead";
 
   const peopleMap: Record<string, string> = {};
   for (const p of people ?? []) {
@@ -51,6 +62,9 @@ export default async function BoardPage({ params }: { params: Promise<{ projectI
     comments: comments ?? [],
     people: { ...peopleMap, [access.userId]: myName },
     backHref: `/collab/${projectId}`,
+    ai: aiEnabled()
+      ? { canEdit: canEdit === true, canApproveTasks: isOrgEditor || isLead, canApproveMilestones: isOrgEditor }
+      : null,
   };
 
   return (
