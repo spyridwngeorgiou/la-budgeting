@@ -1,10 +1,15 @@
 import type { NextConfig } from "next";
+import { LEGACY_REDIRECTS } from "./src/lib/redirects";
 
 // Deployment-portability constraint (see README): no Vercel-only primitives
 // anywhere in this app, so a future move to Cloudflare Workers (OpenNext) or
 // a plain VPS is a config change, not a rewrite.
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Old URLs keep working after the navigation moved them (src/lib/redirects.ts).
+  async redirects() {
+    return LEGACY_REDIRECTS.map((r) => ({ ...r, permanent: false }));
+  },
   experimental: {
     serverActions: {
       // Default is 1 MB, below what the document upload (10 MB, phone

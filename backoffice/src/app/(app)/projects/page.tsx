@@ -34,6 +34,9 @@ export default async function ProjectsPage() {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <Link href="/projects/revenue-plans">
+            <Button variant="secondary">{el.nav.revenuePlans}</Button>
+          </Link>
           <Link href="/collab">
             <Button variant="secondary">{el.collab.navLabel}</Button>
           </Link>

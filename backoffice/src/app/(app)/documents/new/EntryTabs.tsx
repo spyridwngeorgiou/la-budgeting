@@ -20,8 +20,8 @@ const CHOICES = [
   },
 ] as const;
 
-export function EntryTabs() {
-  const [tab, setTab] = useState<"photo" | "text">("photo");
+export function EntryTabs({ initial = "photo" }: { initial?: "photo" | "text" }) {
+  const [tab, setTab] = useState<"photo" | "text">(initial);
 
   return (
     <div className="flex flex-col gap-4">

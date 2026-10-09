@@ -267,6 +267,40 @@ const CHECKS = [
     ),
   },
   {
+    view: "v_qc_capex_to_lessor" as const,
+    title: "Επένδυση (capex) πληρωμένη στον εκμισθωτή",
+    why: "Δαπάνη με κατηγορία «επένδυση» προς επαφή που είναι και ο εκμισθωτής (ενοίκιο ή διακανονισμός) του ίδιου έργου — συνήθως είναι ενοίκιο ή συμψηφισμός, όχι επένδυση.",
+    render: (r: {
+      transaction_id: string | null; tx_date: string | null; contact_name: string | null;
+      project_name: string | null; gross_amount: number | null;
+    }) => (
+      <Row key={r.transaction_id}>
+        <span>{formatDate(r.tx_date)}</span>
+        <Link href={`/transactions?ids=${r.transaction_id}`} className="flex-1 hover:underline">
+          {r.contact_name ?? "—"} <span className="text-ink-faint">· {r.project_name ?? "—"}</span>
+        </Link>
+        <span className="font-mono">{formatMoney(r.gross_amount)}</span>
+      </Row>
+    ),
+  },
+  {
+    view: "v_qc_spend_without_treatment" as const,
+    title: "Δαπάνες έργου χωρίς λογιστική μεταχείριση",
+    why: "Η κατηγορία λείπει ή δεν δηλώνει αν είναι επένδυση, λειτουργικό κόστος κ.λπ. — η δαπάνη δεν κατανέμεται σωστά στον προϋπολογισμό του έργου.",
+    render: (r: {
+      transaction_id: string | null; tx_date: string | null; description: string | null;
+      project_name: string | null; gross_amount: number | null;
+    }) => (
+      <Row key={r.transaction_id}>
+        <span>{formatDate(r.tx_date)}</span>
+        <Link href={`/transactions?ids=${r.transaction_id}`} className="flex-1 hover:underline">
+          {r.description ?? "—"} <span className="text-ink-faint">· {r.project_name ?? "—"}</span>
+        </Link>
+        <span className="font-mono">{formatMoney(r.gross_amount)}</span>
+      </Row>
+    ),
+  },
+  {
     view: "v_qc_projects_without_budget" as const,
     title: "Έργα χωρίς προϋπολογισμό",
     why: "Χωρίς προϋπολογισμό, το έργο δεν έχει σημείο αναφοράς για «πόσο απομένει» ή «πόσο υπερβήκαμε».",

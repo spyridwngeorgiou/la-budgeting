@@ -29,8 +29,8 @@ export async function createRevenuePlan(formData: FormData) {
     .single();
   if (error) throw error;
 
-  revalidatePath("/revenue-plans");
-  redirect(`/revenue-plans/${data.id}`);
+  revalidatePath("/projects/revenue-plans");
+  redirect(`/projects/revenue-plans/${data.id}`);
 }
 
 // The page's own "type it, get the analysis" entry point -- reuses exactly
@@ -109,8 +109,8 @@ export async function createRevenuePlanFromText(formData: FormData): Promise<Act
       latencyMs,
     });
 
-    revalidatePath("/revenue-plans");
-    redirect(`/revenue-plans/${plan.id}`);
+    revalidatePath("/projects/revenue-plans");
+    redirect(`/projects/revenue-plans/${plan.id}`);
   });
 }
 
@@ -118,8 +118,8 @@ export async function deleteRevenuePlan(id: string) {
   const supabase = await createClient();
   const { error } = await supabase.from("revenue_plans").delete().eq("id", id);
   if (error) throw error;
-  revalidatePath("/revenue-plans");
-  redirect("/revenue-plans");
+  revalidatePath("/projects/revenue-plans");
+  redirect("/projects/revenue-plans");
 }
 
 export async function addRoomType(planId: string, formData: FormData) {
@@ -132,14 +132,14 @@ export async function addRoomType(planId: string, formData: FormData) {
     unit_count: Number(formData.get("unit_count")),
   });
   if (error) throw error;
-  revalidatePath(`/revenue-plans/${planId}`);
+  revalidatePath(`/projects/revenue-plans/${planId}`);
 }
 
 export async function deleteRoomType(planId: string, roomTypeId: string) {
   const supabase = await createClient();
   const { error } = await supabase.from("revenue_plan_room_types").delete().eq("id", roomTypeId);
   if (error) throw error;
-  revalidatePath(`/revenue-plans/${planId}`);
+  revalidatePath(`/projects/revenue-plans/${planId}`);
 }
 
 // One save per (room type, year) -- 12 months of occupancy%/ADR pairs,
@@ -167,5 +167,5 @@ export async function saveYearAssumptions(planId: string, roomTypeId: string, ye
     onConflict: "room_type_id,year_number,month_number",
   });
   if (error) throw error;
-  revalidatePath(`/revenue-plans/${planId}`);
+  revalidatePath(`/projects/revenue-plans/${planId}`);
 }

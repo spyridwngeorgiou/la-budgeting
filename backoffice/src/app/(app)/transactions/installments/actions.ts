@@ -43,14 +43,14 @@ export async function createInstallmentPlan(formData: FormData) {
   const { error: genError } = await supabase.rpc("regenerate_plan", { p_plan_id: plan.id });
   if (genError) throw new Error(genError.message);
 
-  revalidatePath("/installments");
+  revalidatePath("/transactions/installments");
 }
 
 export async function regeneratePlan(planId: string) {
   const supabase = await createClient();
   const { error } = await supabase.rpc("regenerate_plan", { p_plan_id: planId });
   if (error) throw new Error(error.message);
-  revalidatePath("/installments");
+  revalidatePath("/transactions/installments");
 }
 
 export async function markInstallmentPaid(transactionId: string) {
@@ -61,5 +61,5 @@ export async function markInstallmentPaid(transactionId: string) {
     .eq("id", transactionId);
 
   if (error) throw new Error(error.message);
-  revalidatePath("/installments");
+  revalidatePath("/transactions/installments");
 }

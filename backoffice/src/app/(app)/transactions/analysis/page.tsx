@@ -341,7 +341,7 @@ function FilterGroup({
           return (
             <Link
               key={o.value}
-              href={`/analysis?${p.toString()}`}
+              href={`/transactions/analysis?${p.toString()}`}
               className={`whitespace-nowrap rounded-full border px-3 py-1 text-xs transition-colors ${
                 active
                   ? "border-ink bg-ink text-white"

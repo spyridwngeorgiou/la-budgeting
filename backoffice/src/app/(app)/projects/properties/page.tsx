@@ -58,11 +58,11 @@ export default async function PropertiesPage({ searchParams }: { searchParams: P
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <Link href={`/properties?month=${addMonths(month, -1)}`} className="rounded-md border border-line px-2 py-1 hover:bg-bg">
+          <Link href={`/projects/properties?month=${addMonths(month, -1)}`} className="rounded-md border border-line px-2 py-1 hover:bg-bg">
             ←
           </Link>
           <span className="min-w-24 text-center font-medium">{monthLabel(month)}</span>
-          <Link href={`/properties?month=${addMonths(month, 1)}`} className="rounded-md border border-line px-2 py-1 hover:bg-bg">
+          <Link href={`/projects/properties?month=${addMonths(month, 1)}`} className="rounded-md border border-line px-2 py-1 hover:bg-bg">
             →
           </Link>
         </div>

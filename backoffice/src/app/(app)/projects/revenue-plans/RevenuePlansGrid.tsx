@@ -53,7 +53,7 @@ export function RevenuePlansGrid({ plans }: { plans: RevenuePlanRow[] }) {
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((p) => (
-            <Link key={p.id} href={`/revenue-plans/${p.id}`}>
+            <Link key={p.id} href={`/projects/revenue-plans/${p.id}`}>
               <Card className="h-full transition-colors hover:border-line-strong hover:bg-bg">
                 <div className="text-sm font-medium">{p.name}</div>
                 {p.projectName && <div className="text-xs text-ink-muted">{p.projectName}</div>}

@@ -26,7 +26,7 @@ export async function toggleVatFiled(periodStart: string, currentlyFiled: boolea
   );
 
   if (error) throw new Error(error.message);
-  revalidatePath("/vat");
+  revalidatePath("/reports/vat");
 }
 
 export async function upsertVatPeriodFiling(periodStart: string, formData: FormData) {
@@ -51,5 +51,5 @@ export async function upsertVatPeriodFiling(periodStart: string, formData: FormD
   );
 
   if (error) throw new Error(error.message);
-  revalidatePath("/vat");
+  revalidatePath("/reports/vat");
 }

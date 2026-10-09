@@ -1,8 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate } from "@/lib/format";
 import { Badge, Card, Button, AiSpark } from "@/components/ui";
 import { ALLOWLIST, type WritableTable } from "@/lib/ai/writeTools";
-import { approveChange, rejectChange } from "./actions";
+import { approveChange, rejectChange } from "./change-actions";
+import { el } from "@/lib/i18n/el";
+import { ActionForm } from "@/components/ActionForm";
 
 const OP_LABEL: Record<string, string> = {
   insert: "Νέα εγγραφή",
@@ -10,16 +13,20 @@ const OP_LABEL: Record<string, string> = {
   delete: "Διαγραφή",
 };
 
-export default async function ChangesPage() {
+// «Εκκρεμότητες» panel of /assistant (was the /changes page): the AI's
+// proposed writes waiting for a human, plus the recent decisions.
+export async function PendingChanges() {
   const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
   const [{ data: changes }, { data: history }] = await Promise.all([
-    supabase.from("agent_changes").select("*").eq("status", "pending").order("created_at", { ascending: false }),
+    supabase.from("agent_changes").select("*").eq("org_id", orgId).eq("status", "pending").order("created_at", { ascending: false }),
     // Audit trail: reviewed_by/reviewed_at already existed in the schema but
     // were never surfaced anywhere -- once a change was approved/rejected it
     // simply vanished, with no way to answer "who approved this and when".
     supabase
       .from("agent_changes")
       .select("id, table_name, operation, status, reviewed_by, reviewed_at")
+      .eq("org_id", orgId)
       .in("status", ["approved", "rejected"])
       .order("reviewed_at", { ascending: false })
       .limit(20),
@@ -35,10 +42,10 @@ export default async function ChangesPage() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <section id="changes" className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
         <AiSpark className="text-ai-ink" />
-        <h1 className="text-xl font-semibold">Εκκρεμείς Αλλαγές AI</h1>
+        <h2 className="text-base font-semibold">{el.nav.changes}</h2>
       </div>
       <p className="text-sm text-ink-muted">
         Προτάσεις αλλαγών από το Kansha Operator σε λογαριασμούς, έργα, επαφές και πλάνα δόσεων.
@@ -108,16 +115,16 @@ export default async function ChangesPage() {
                 </div>
 
                 <div className="flex justify-end gap-2">
-                  <form action={rejectChange.bind(null, c.id)}>
+                  <ActionForm action={rejectChange.bind(null, c.id)}>
                     <Button type="submit" variant="secondary">
                       Απόρριψη
                     </Button>
-                  </form>
-                  <form action={approveChange.bind(null, c.id)}>
+                  </ActionForm>
+                  <ActionForm action={approveChange.bind(null, c.id)}>
                     <Button type="submit" variant={c.operation === "delete" ? "danger" : "primary"}>
                       Έγκριση
                     </Button>
-                  </form>
+                  </ActionForm>
                 </div>
               </Card>
             );
@@ -158,6 +165,6 @@ export default async function ChangesPage() {
           </div>
         </section>
       )}
-    </div>
+    </section>
   );
 }

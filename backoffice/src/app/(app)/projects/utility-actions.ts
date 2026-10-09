@@ -27,7 +27,7 @@ export async function saveUtility(projectId: string, utilityId: string | null, f
     : await supabase.from("property_utilities").insert({ ...fields, org_id: orgId });
   if (error) throw new Error(error.message);
   revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/properties");
+  revalidatePath("/projects/properties");
 }
 
 export async function deleteUtility(projectId: string, utilityId: string) {
@@ -35,5 +35,5 @@ export async function deleteUtility(projectId: string, utilityId: string) {
   const { error } = await supabase.from("property_utilities").delete().eq("id", utilityId);
   if (error) throw new Error(error.message);
   revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/properties");
+  revalidatePath("/projects/properties");
 }

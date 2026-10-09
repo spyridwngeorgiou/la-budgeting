@@ -16,6 +16,6 @@ export async function markInvoiceReceived(transactionId: string, formData: FormD
     .update({ has_invoice: true, ...(invoiceNumber ? { invoice_number: invoiceNumber } : {}) })
     .eq("id", transactionId);
   if (error) throw new Error(error.message);
-  revalidatePath("/quality");
+  revalidatePath("/reports/quality");
   revalidatePath("/transactions");
 }

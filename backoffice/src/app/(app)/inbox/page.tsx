@@ -4,7 +4,7 @@ import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { Badge } from "@/components/ui";
-import { UploadForm } from "./UploadForm";
+import { UploadChooser } from "./UploadChooser";
 
 const STATUS_TONE = { staged: "amber", committed: "green", undone: "neutral", discarded: "neutral" } as const;
 
@@ -26,12 +26,12 @@ export default async function InboxPage() {
       <div>
         <h1 className="text-xl font-semibold">{el.nav.inbox}</h1>
         <p className="mt-1 text-sm text-ink-muted">
-          Ανεβάστε αντίγραφο κίνησης τράπεζας: οι κινήσεις αντιστοιχίζονται με τις εκκρεμείς, τις ελέγχετε και
-          οριστικοποιείτε — με δυνατότητα αναίρεσης.
+          Ό,τι μπαίνει στην εφαρμογή ξεκινά από εδώ. Ένα αντίγραφο κίνησης τράπεζας αντιστοιχίζεται με τις
+          εκκρεμείς κινήσεις, το ελέγχετε και το οριστικοποιείτε — με δυνατότητα αναίρεσης.
         </p>
       </div>
 
-      <UploadForm accounts={(accounts ?? []).map((a) => ({ id: a.id, label: a.name }))} />
+      <UploadChooser accounts={(accounts ?? []).map((a) => ({ id: a.id, label: a.name }))} />
 
       {(batches ?? []).length === 0 ? (
         <p className="p-6 text-center text-sm text-ink-muted">Δεν έχει ανέβει ακόμα κανένα αρχείο.</p>

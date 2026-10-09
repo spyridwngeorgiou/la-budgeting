@@ -92,6 +92,6 @@ export async function updateTaxRiskSettings(formData: FormData): Promise<ActionR
     const { error } = await supabase.from("orgs").update({ settings: nextSettings }).eq("id", orgId);
     if (error) throw error;
     revalidatePath("/settings");
-    revalidatePath("/quality");
+    revalidatePath("/reports/quality");
   });
 }

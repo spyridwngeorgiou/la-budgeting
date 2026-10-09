@@ -4,12 +4,12 @@ import { unstable_rethrow } from "next/navigation";
 // in production Next replaces a thrown error's message with a generic digest,
 // so «Μη έγκυρο ΑΦΜ» would reach the user as "An error occurred".
 //
-//   export async function saveThing(formData: FormData): Promise<ActionResult> {
+//   export async function saveContact(formData: FormData): Promise<ActionResult> {
 //     return action(async () => {
 //       if (!valid) throw new UserError("Μη έγκυρο ΑΦΜ.");
-//       const { error } = await supabase.from("things").insert(row);
+//       const { error } = await supabase.from("contacts").insert(row);
 //       if (error) throw error; // mapped to Greek by pgErrorToGreek
-//       revalidatePath("/things");
+//       revalidatePath("/contacts");
 //     });
 //   }
 //

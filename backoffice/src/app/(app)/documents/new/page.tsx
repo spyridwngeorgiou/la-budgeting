@@ -3,8 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrg } from "@/lib/supabase/org";
 import { aiEnabled } from "@/lib/ai/client";
 import { EntryTabs } from "./EntryTabs";
+import { el } from "@/lib/i18n/el";
 
-export default async function NewDocumentPage() {
+export default async function NewDocumentPage({ searchParams }: { searchParams: Promise<{ mode?: string }> }) {
+  const { mode } = await searchParams;
   const supabase = await createClient();
   const org = await getCurrentOrg(supabase);
 
@@ -25,6 +27,9 @@ export default async function NewDocumentPage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
+        <Link href="/inbox" className="text-sm text-ink-muted hover:text-ink">
+          ← {el.nav.inbox}
+        </Link>
         <h1 className="text-2xl font-semibold">Νέα κίνηση</h1>
         <p className="mt-1 text-sm text-ink-muted">
           Το AI συμπληρώνει τα στοιχεία — εσείς τα ελέγχετε πριν καταχωρηθούν.
@@ -41,7 +46,7 @@ export default async function NewDocumentPage() {
         </div>
       )}
 
-      <EntryTabs />
+      <EntryTabs initial={mode === "text" ? "text" : "photo"} />
 
       <p className="text-xs text-ink-faint">
         Για αλλαγές σε λογαριασμούς, έργα, επαφές ή δόσεις (π.χ. «άλλαξε το όνομα της επαφής Χ») χρησιμοποιήστε το{" "}
@@ -49,7 +54,7 @@ export default async function NewDocumentPage() {
           Kansha AI
         </Link>
         · κάθε πρόταση περνάει από{" "}
-        <Link href="/changes" className="underline">
+        <Link href="/assistant?panel=changes" className="underline">
           έγκριση
         </Link>
         .

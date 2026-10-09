@@ -161,6 +161,6 @@ export async function approveDraft(draftId: string, queue: string[], formData: F
 export async function discardDraft(draftId: string, queue: string[] = []) {
   const supabase = await createClient();
   await supabase.from("transaction_drafts").update({ status: "discarded" }).eq("id", draftId);
-  revalidatePath("/documents");
+  revalidatePath("/dashboard");
   redirect(nextInQueueOrElse(queue, "/dashboard"));
 }

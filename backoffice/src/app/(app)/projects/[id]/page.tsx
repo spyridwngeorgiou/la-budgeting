@@ -38,8 +38,8 @@ import { saveProjectNote, resolveProjectNote } from "../note-actions";
 import { setScenarioRevenuePlan, saveScenario, saveOpexLine, deleteOpexLine } from "../scenario-actions";
 import { ScenarioFormModal } from "../ScenarioFormModal";
 import { OpexLineFormModal } from "../OpexLineFormModal";
-import { AiCreateForm } from "../../revenue-plans/AiCreateForm";
-import { createRevenuePlan } from "../../revenue-plans/actions";
+import { AiCreateForm } from "../revenue-plans/AiCreateForm";
+import { createRevenuePlan } from "../revenue-plans/actions";
 
 // Σύνοψη Έργου -- the one-pager, modelled on the layout the Q004 workbook
 // already proved works: blocks of label / figure / explanatory note, bold
@@ -635,7 +635,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 {linkedPlans.map((p) => (
                   <Link
                     key={p.id}
-                    href={`/revenue-plans/${p.id}`}
+                    href={`/projects/revenue-plans/${p.id}`}
                     className="flex items-center justify-between rounded-lg border border-line px-3 py-2 text-sm transition-colors hover:border-line-strong hover:bg-bg"
                   >
                     <span>{p.name}</span>
@@ -901,7 +901,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 key={month}
                 label={formatDate(month).slice(3)}
                 amount={amount}
-                href={`/properties?month=${month.slice(0, 7)}`}
+                href={`/projects/properties?month=${month.slice(0, 7)}`}
               />
             ))}
           </OnePagerSection>

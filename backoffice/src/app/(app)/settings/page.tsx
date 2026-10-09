@@ -22,7 +22,7 @@ export default async function SettingsPage() {
 
   // No direct FK between org_members and profiles (both reference
   // auth.users independently) -- PostgREST can't embed across that, so this
-  // is two queries merged in JS, same as the /changes reviewer lookup.
+  // is two queries merged in JS, same as the pending-changes reviewer lookup.
   const { data: memberRows } = await supabase
     .from("org_members")
     .select("user_id, role")

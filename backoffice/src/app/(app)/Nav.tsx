@@ -10,64 +10,39 @@ import type { OrgRole } from "@/lib/domain/enums";
 
 const ROLE_RANK: Record<OrgRole, number> = { viewer: 0, editor: 1, admin: 2, owner: 3 };
 
-// Ordered by actual importance/frequency of use, not demo effect or feature
-// grouping: the screens opened daily to run the ledger lead (dashboard,
-// transactions, projects, analysis, VAT, cashflow), then the reference/admin
-// screens used regularly but not daily (contacts, accounts, installments),
-// then planning tools used occasionally (revenue plans), then the AI
-// accelerators for specific tasks, then settings last.
-// revenue-plans dropped its `ai: true` tag -- only plan *creation* uses AI
-// (natural-language input filling the occupancy/ADR grid); the page itself
-// is otherwise plain deterministic math (room-type totals, actual-vs-plan
-// comparison), same as every other page here. AI is an accelerator for one
-// step, not a reason to badge the whole feature as "an AI thing".
-// minRole hides entries whose every action the role couldn't take anyway
-// (RLS would refuse the writes) -- a viewer has nothing to approve in
-// «Εκκρεμείς Αλλαγές» and nothing to enter through the Operator.
-const NAV_ITEMS: { href: string; label: string; ai?: boolean; minRole?: OrgRole }[] = [
+// The 11 sections. Sub-pages live as tabs inside each (see
+// src/lib/navigation.ts). minRole hides a section whose every action the role
+// couldn't take anyway (RLS would refuse the writes). `also` lists other
+// paths that belong to a section (uploads now start from the inbox).
+const NAV_ITEMS: { href: string; label: string; ai?: boolean; minRole?: OrgRole; also?: string[]; badge?: "pending" }[] = [
   { href: "/dashboard", label: el.nav.dashboard },
   { href: "/transactions", label: el.nav.transactions },
-  { href: "/inbox", label: el.nav.inbox, minRole: "editor" },
+  { href: "/inbox", label: el.nav.inbox, minRole: "editor", also: ["/documents", "/aade"] },
   { href: "/projects", label: el.nav.projects },
-  // ── Planner (0040) ── tasks, timeline and the unified calendar; sits by
-  // projects because every task belongs to one.
   { href: "/planner", label: el.nav.planner },
-  // ── end planner ──
-  { href: "/properties", label: el.nav.properties },
-  { href: "/analysis", label: el.nav.analysis },
-  { href: "/vat", label: el.nav.vat },
-  { href: "/cashflow", label: el.nav.cashflow },
+  { href: "/reports", label: el.nav.reports },
   { href: "/contacts", label: el.nav.contacts },
   { href: "/accounts", label: el.nav.accounts },
-  { href: "/installments", label: el.nav.installments },
-  { href: "/revenue-plans", label: el.nav.revenuePlans },
-  // Shared with external partners -- the one entry that leads out of the
-  // finance shell into the (collab) route group.
+  // Shared with external partners: leads out of the finance shell into (collab).
   { href: "/collab", label: el.collab.navLabel },
-  { href: "/assistant", label: el.nav.assistant, ai: true },
-  { href: "/documents/new", label: el.nav.documents, ai: true, minRole: "editor" },
-  { href: "/changes", label: el.nav.changes, ai: true, minRole: "editor" },
+  { href: "/assistant", label: el.nav.assistant, ai: true, badge: "pending" },
   { href: "/settings", label: el.nav.settings },
 ];
 
-// Quality checks and AADE import, parked back out of the nav at the user's
-// request -- routes still work at /quality and /aade, just not linked.
-// { href: "/quality", label: el.nav.quality },
-// { href: "/aade", label: el.nav.aade },
-// Withholding (Παρακράτηση) parked for phase 2 at the user's request --
-// route still works at /withholding, just hidden from the nav for now.
-// { href: "/withholding", label: el.nav.withholding },
+const owns = (prefix: string, pathname: string) => pathname === prefix || pathname.startsWith(prefix + "/");
 
 export function Nav({
   children,
   orgs,
   currentOrgId,
   role,
+  pendingChanges = 0,
 }: {
   children: React.ReactNode;
   orgs: { id: string; name: string }[];
   currentOrgId: string;
   role: OrgRole;
+  pendingChanges?: number;
 }) {
   const pathname = usePathname();
   const items = NAV_ITEMS.filter((item) => !item.minRole || ROLE_RANK[role] >= ROLE_RANK[item.minRole]);
@@ -88,7 +63,9 @@ export function Nav({
         <OrgSwitcher orgs={orgs} currentOrgId={currentOrgId} />
         <ul className="flex gap-1 overflow-x-auto p-2 text-sm md:flex-col md:overflow-visible">
           {items.map((item) => {
-            const active = pathname === item.href || pathname?.startsWith(item.href + "/");
+            const path = pathname ?? "";
+            const active = owns(item.href, path) || (item.also ?? []).some((p) => owns(p, path));
+            const badge = item.badge === "pending" && pendingChanges > 0 ? pendingChanges : null;
             return (
               <li key={item.href} className="shrink-0">
                 <Link
@@ -105,6 +82,14 @@ export function Nav({
                 >
                   {item.ai && <AiSpark />}
                   {item.label}
+                  {badge !== null && (
+                    <span
+                      className="ml-auto rounded-full bg-ai-ink px-1.5 text-[11px] leading-[18px] font-medium text-white"
+                      aria-label={`${badge} ${el.nav.pending}`}
+                    >
+                      {badge}
+                    </span>
+                  )}
                 </Link>
               </li>
             );
