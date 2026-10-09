@@ -135,7 +135,7 @@ export function ChangeCardView({ initial, canReview }: { initial: ChangeCard; ca
           </Button>
           {card.status === "conflict" ? (
             <Button type="button" variant="danger" disabled={pending} onClick={() => setConfirmForce(true)}>
-              Έγκριση παρ' όλα αυτά
+              Έγκριση παρ’ όλα αυτά
             </Button>
           ) : (
             <Button type="button" variant={isDelete ? "danger" : "primary"} disabled={pending} onClick={() => run("approve")}>

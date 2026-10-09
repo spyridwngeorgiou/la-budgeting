@@ -52,7 +52,7 @@ export function usageOf(usage: {
   output_tokens: number;
   cache_read_input_tokens?: number | null;
   cache_creation_input_tokens?: number | null;
-}): TokenUsage {
+}): Required<TokenUsage> {
   return {
     inputTokens: usage.input_tokens ?? 0,
     outputTokens: usage.output_tokens ?? 0,
