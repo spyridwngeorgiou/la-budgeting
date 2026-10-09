@@ -2,7 +2,7 @@
 // language stays possible later without touching every component.
 export const el = {
   nav: {
-    dashboard: "Κέντρο Ελέγχου",
+    dashboard: "Αρχική",
     transactions: "Κινήσεις",
     inbox: "Εισερχόμενα",
     projects: "Έργα",
@@ -20,9 +20,34 @@ export const el = {
     documents: "Kansha Operator",
     assistant: "Kansha AI",
     changes: "Εκκρεμείς Αλλαγές",
-    revenuePlans: "Εκτιμήσεις Εσόδων",
-    // planner (0040)
+    revenuePlans: "Εκτιμήσεις εσόδων",
     planner: "Πλάνο",
+    reports: "Αναφορές",
+    pending: "Εκκρεμότητες",
+  },
+  // Section tabs (SubNav). Pages keep their own headings.
+  tabs: {
+    transactionsAll: "Όλες",
+    installments: "Δόσεις",
+    analysis: "Ανάλυση",
+    projectsAll: "Έργα",
+    properties: "Ακίνητα",
+    cash: "Ταμείο & Πρόβλεψη",
+    vat: "ΦΠΑ",
+    withholding: "Παρακράτηση",
+    quality: "Ποιότητα δεδομένων",
+  },
+  upload: {
+    title: "Ανέβασμα",
+    hint: "Διαλέξτε τι θέλετε να φέρετε στην εφαρμογή.",
+    bank: "Τραπεζικό αρχείο",
+    bankHint: "Κίνηση λογαριασμού σε Excel/CSV, για αντιστοίχιση με τις κινήσεις.",
+    aade: "Αρχείο ΑΑΔΕ",
+    aadeHint: "Εξαγωγή myDATA (.xlsx) με τα παραστατικά εσόδων/εξόδων.",
+    document: "Παραστατικό ή φωτογραφία",
+    documentHint: "Τιμολόγιο ή απόδειξη· το διαβάζει ο βοηθός και το ελέγχετε πριν καταχωριστεί.",
+    text: "Κείμενο",
+    textHint: "Γράψτε ή υπαγορεύστε μια κίνηση με δικά σας λόγια.",
   },
   common: {
     save: "Αποθήκευση",
@@ -33,6 +58,7 @@ export const el = {
     search: "Αναζήτηση",
     loading: "Φόρτωση…",
     markPaid: "Πληρώθηκε",
+    error: "Σφάλμα",
   },
   transaction: {
     type: "Τύπος",

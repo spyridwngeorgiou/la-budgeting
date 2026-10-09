@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { TX_STATUS, TX_DIRECTION, type TxStatus, type TxDirection, type TxScope } from "@/lib/domain/enums";
 import { toCsv, csvResponseHeaders } from "@/lib/csv";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 
 // Before this route existed, there was no way for the owner to get their
 // own ledger data out of the app independent of this UI -- fully locked
@@ -19,12 +20,14 @@ export async function GET(request: NextRequest) {
   } = await supabase.auth.getSession();
   if (!session?.user) return NextResponse.json({ error: "Μη εξουσιοδοτημένο." }, { status: 401 });
 
+  const orgId = await getCurrentOrgId(supabase);
   const params = request.nextUrl.searchParams;
   let query = supabase
     .from("transactions")
     .select(
       "tx_date, due_date, description, direction, status, scope, gross_amount, net_amount, vat_amount, vat_rate, withholding_amount, has_invoice, invoice_number, contacts(name), projects(display_name), categories(name), accounts(name)",
     )
+    .eq("org_id", orgId)
     .order("tx_date", { ascending: false });
 
   const statusParam = params.get("status");

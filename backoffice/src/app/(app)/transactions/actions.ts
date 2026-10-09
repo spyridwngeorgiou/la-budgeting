@@ -7,6 +7,8 @@ import { deriveFromNet, cashOnly, isIdentityConsistent, splitProportionally, toC
 import type { TxDirection, TxScope, TxStatus } from "@/lib/domain/enums";
 import { el } from "@/lib/i18n/el";
 import { findPossibleDuplicates, transactionWriteError, type WriteResult } from "@/lib/ingest/duplicates";
+import { todayAthens } from "@/lib/dates";
+import { action, UserError, type ActionResult } from "@/lib/actions";
 
 // The one place transaction money fields get computed for the manual-entry
 // path -- gross_amount is a plain stored column (not a DB-generated one), so
@@ -22,7 +24,7 @@ function deriveMoney(formData: FormData) {
     : cashOnly(netAmount);
 
   if (!isIdentityConsistent(breakdown)) {
-    throw new Error("Ασυνέπεια στο ποσό: net + ΦΠΑ - παρακράτηση δεν ισούται με το σύνολο.");
+    throw new UserError("Ασυνέπεια στο ποσό: net + ΦΠΑ - παρακράτηση δεν ισούται με το σύνολο.");
   }
 
   return { ...breakdown, hasInvoice };
@@ -117,65 +119,69 @@ export async function updateTransaction(id: string, formData: FormData): Promise
   return { ok: true };
 }
 
-export async function markPaid(id: string) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("transactions")
-    .update({ status: "paid", paid_on: new Date().toISOString().slice(0, 10) })
-    .eq("id", id);
+export async function markPaid(id: string): Promise<ActionResult> {
+  return action(async () => {
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("transactions")
+      .update({ status: "paid", paid_on: todayAthens() })
+      .eq("id", id);
 
-  if (error) throw new Error(error.message);
-  revalidatePath("/transactions");
+    if (error) throw error;
+    revalidatePath("/transactions");
+  });
 }
 
 // Pay part of a pending one-off commitment: the paid slice becomes its own
 // paid row and the commitment shrinks by exactly that much, atomically, in
 // record_partial_payment (0030). Paying the whole remaining amount is just
 // markPaid -- no child row needed.
-export async function recordPartialPayment(parentId: string, formData: FormData) {
-  const supabase = await createClient();
-  const { data: parent, error: loadError } = await supabase
-    .from("transactions")
-    .select("net_amount, vat_amount, withholding_amount, gross_amount, account_id")
-    .eq("id", parentId)
-    .single();
-  if (loadError) throw new Error(loadError.message);
-
-  const amount = Number(formData.get("amount"));
-  const paidOn = String(formData.get("paid_on") || new Date().toISOString().slice(0, 10));
-  const accountId = formString(formData, "account_id") ?? parent.account_id;
-
-  if (toCents(amount) === toCents(parent.gross_amount)) {
-    const { error } = await supabase
+export async function recordPartialPayment(parentId: string, formData: FormData): Promise<ActionResult> {
+  return action(async () => {
+    const supabase = await createClient();
+    const { data: parent, error: loadError } = await supabase
       .from("transactions")
-      .update({ status: "paid", paid_on: paidOn, account_id: accountId })
-      .eq("id", parentId);
-    if (error) throw new Error(error.message);
-    revalidatePath("/transactions");
-    return;
-  }
+      .select("net_amount, vat_amount, withholding_amount, gross_amount, account_id")
+      .eq("id", parentId)
+      .single();
+    if (loadError) throw loadError;
 
-  const { paid } = splitProportionally(
-    {
-      net: Number(parent.net_amount ?? parent.gross_amount),
-      vat: Number(parent.vat_amount),
-      withholding: Number(parent.withholding_amount),
-      gross: Number(parent.gross_amount),
-    },
-    amount,
-  );
-  const { error } = await supabase.rpc("record_partial_payment", {
-    p_parent: parentId,
-    p_expected_parent_gross: Number(parent.gross_amount),
-    p_paid_on: paidOn,
-    p_account: accountId,
-    p_child_net: paid.net,
-    p_child_vat: paid.vat,
-    p_child_wh: paid.withholding,
-    p_child_gross: paid.gross,
+    const amount = Number(formData.get("amount"));
+    const paidOn = String(formData.get("paid_on") || todayAthens());
+    const accountId = formString(formData, "account_id") ?? parent.account_id;
+
+    if (toCents(amount) === toCents(parent.gross_amount)) {
+      const { error } = await supabase
+        .from("transactions")
+        .update({ status: "paid", paid_on: paidOn, account_id: accountId })
+        .eq("id", parentId);
+      if (error) throw error;
+      revalidatePath("/transactions");
+      return;
+    }
+
+    const { paid } = splitProportionally(
+      {
+        net: Number(parent.net_amount ?? parent.gross_amount),
+        vat: Number(parent.vat_amount),
+        withholding: Number(parent.withholding_amount),
+        gross: Number(parent.gross_amount),
+      },
+      amount,
+    );
+    const { error } = await supabase.rpc("record_partial_payment", {
+      p_parent: parentId,
+      p_expected_parent_gross: Number(parent.gross_amount),
+      p_paid_on: paidOn,
+      p_account: accountId,
+      p_child_net: paid.net,
+      p_child_vat: paid.vat,
+      p_child_wh: paid.withholding,
+      p_child_gross: paid.gross,
+    });
+    if (error) throw error;
+    revalidatePath("/transactions");
   });
-  if (error) throw new Error(error.message);
-  revalidatePath("/transactions");
 }
 
 // Deterministic "learn from history" suggestion for the manual entry form --
@@ -184,9 +190,11 @@ export async function recordPartialPayment(parentId: string, formData: FormData)
 // reused here for the human-typed path instead of the AI-extracted one.
 export async function suggestForContact(contactId: string) {
   const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
   const { data } = await supabase
     .from("transactions")
     .select("project_id, category_id, vat_rate, has_invoice")
+    .eq("org_id", orgId)
     .eq("contact_id", contactId)
     .order("tx_date", { ascending: false })
     .limit(1)
@@ -194,11 +202,13 @@ export async function suggestForContact(contactId: string) {
   return data ?? null;
 }
 
-export async function deleteTransaction(id: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("transactions").delete().eq("id", id);
-  if (error) throw new Error(error.message);
-  revalidatePath("/transactions");
+export async function deleteTransaction(id: string): Promise<ActionResult> {
+  return action(async () => {
+    const supabase = await createClient();
+    const { error } = await supabase.from("transactions").delete().eq("id", id);
+    if (error) throw error;
+    revalidatePath("/transactions");
+  });
 }
 
 // Signed URLs expire fast (5 min, same window used on the draft review

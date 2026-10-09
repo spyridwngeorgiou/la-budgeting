@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { submitNlEntry } from "../actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { Button, AiSpark } from "@/components/ui";
+import { errorOf } from "@/lib/actions";
 
 // Minimal ambient typing for the Web Speech API -- not in lib.dom.d.ts, and
 // only Chromium/Safari implement it (feature-detected below, never assumed).
@@ -71,13 +72,8 @@ export function NlEntryForm() {
     <form
       action={async (formData) => {
         setError(null);
-        try {
-          await submitNlEntry(formData);
-        } catch (e) {
-          if (e instanceof Error && !e.message.includes("NEXT_REDIRECT")) setError(e.message);
-          else if (!(e instanceof Error)) setError("Σφάλμα.");
-          else throw e;
-        }
+        const message = errorOf(await submitNlEntry(formData));
+        if (message) setError(message);
       }}
       className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4"
     >

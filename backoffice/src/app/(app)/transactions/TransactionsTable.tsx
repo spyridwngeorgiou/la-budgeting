@@ -7,6 +7,8 @@ import { AiSpark, Badge, Button, Input, Card } from "@/components/ui";
 import { TransactionFormModal, type TransactionInitial } from "./TransactionFormModal";
 import { PartialPaymentModal } from "./PartialPaymentModal";
 import { createTransaction, updateTransaction, markPaid, deleteTransaction, getSourceDocumentUrl } from "./actions";
+import { todayAthens } from "@/lib/dates";
+import { errorOf } from "@/lib/actions";
 
 const AI_ORIGINS = new Set(["ai_document", "ai_nl"]);
 
@@ -107,7 +109,7 @@ export function TransactionsTable({
     return { income, expense, net: income - expense, count: visibleTransactions.length };
   }, [visibleTransactions]);
 
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = todayAthens();
   const isOverdue = (tx: TxRow) => tx.status !== "paid" && !!tx.due_date && tx.due_date < todayIso;
 
   const initialFor = (tx: TxRow): TransactionInitial => ({
@@ -146,7 +148,8 @@ export function TransactionsTable({
     if (!window.confirm(`Διαγραφή της κίνησης «${label}»; Η ενέργεια δεν αναιρείται.`)) return;
     setDeleting(tx.id);
     try {
-      await deleteTransaction(tx.id);
+      const message = errorOf(await deleteTransaction(tx.id));
+      if (message) window.alert(message);
     } finally {
       setDeleting(null);
     }
@@ -261,7 +264,12 @@ export function TransactionsTable({
                       </Button>
                     )}
                     {tx.status !== "paid" && (
-                      <form action={markPaid.bind(null, tx.id)}>
+                      <form
+                        action={async () => {
+                          const message = errorOf(await markPaid(tx.id));
+                          if (message) window.alert(message);
+                        }}
+                      >
                         <Button type="submit" variant="secondary" className="!px-2 !py-1 text-xs">
                           {el.common.markPaid}
                         </Button>

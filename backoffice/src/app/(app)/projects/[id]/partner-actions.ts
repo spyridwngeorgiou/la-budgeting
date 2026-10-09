@@ -13,6 +13,7 @@ import {
   type PartnerDiscipline,
   type ProjectRole,
 } from "@/lib/domain/enums";
+import { action, UserError, type ActionResult } from "@/lib/actions";
 
 // External partners are invited per project and live only in
 // project_members (0037) -- never org_members. Every action re-derives the
@@ -29,7 +30,7 @@ async function requireProjectAdmin(supabase: ServerClient, projectId: string) {
     .eq("id", projectId)
     .eq("org_id", orgId)
     .maybeSingle();
-  if (!project) throw new Error(el.partner.errors.projectNotFound);
+  if (!project) throw new UserError(el.partner.errors.projectNotFound);
   return orgId;
 }
 
@@ -60,7 +61,7 @@ async function sendSignInLink(email: string) {
     email,
     options: { shouldCreateUser: false, emailRedirectTo: `${await siteOrigin()}/auth/confirm` },
   });
-  if (error) throw new Error(error.message);
+  if (error) throw error;
 }
 
 // Grants `email` access to the project: directly if the login already
@@ -99,7 +100,7 @@ async function grantOrInvite(
       .eq("org_id", orgId)
       .eq("user_id", existing.user_id)
       .maybeSingle();
-    if (internal) throw new Error(el.partner.errors.isInternal);
+    if (internal) throw new UserError(el.partner.errors.isInternal);
 
     // RLS-scoped write: project_members_write requires admin of this org.
     const { error } = await supabase.from("project_members").upsert(
@@ -113,7 +114,7 @@ async function grantOrInvite(
       },
       { onConflict: "project_id,user_id" },
     );
-    if (error) throw new Error(error.message);
+    if (error) throw error;
     await sendSignInLink(invite.email);
     return;
   }
@@ -136,110 +137,122 @@ async function grantOrInvite(
     role: invite.role,
     discipline: invite.discipline,
   });
-  if (inviteError) throw new Error(inviteError.message);
+  if (inviteError) throw inviteError;
 
   const { error: authError } = await admin.auth.admin.inviteUserByEmail(invite.email, {
     redirectTo: `${await siteOrigin()}/auth/confirm`,
   });
   // The invite row stays pending on failure (e.g. SMTP down) and can be
   // re-sent from the panel.
-  if (authError) throw new Error(authError.message);
+  if (authError) throw authError;
 }
 
-export async function invitePartner(projectId: string, formData: FormData) {
-  const supabase = await createClient();
-  const orgId = await requireProjectAdmin(supabase, projectId);
+export async function invitePartner(projectId: string, formData: FormData): Promise<ActionResult> {
+  return action(async () => {
+    const supabase = await createClient();
+    const orgId = await requireProjectAdmin(supabase, projectId);
 
-  const email = (formString(formData, "email") ?? "").trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error(el.partner.errors.invalidEmail);
+    const email = (formString(formData, "email") ?? "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new UserError(el.partner.errors.invalidEmail);
 
-  await grantOrInvite(supabase, orgId, projectId, {
-    email,
-    role: parseRole(formData),
-    discipline: parseDiscipline(formData),
-    fullName: formString(formData, "full_name")?.trim() || null,
-    companyName: formString(formData, "company_name")?.trim() || null,
+    await grantOrInvite(supabase, orgId, projectId, {
+      email,
+      role: parseRole(formData),
+      discipline: parseDiscipline(formData),
+      fullName: formString(formData, "full_name")?.trim() || null,
+      companyName: formString(formData, "company_name")?.trim() || null,
+    });
+    revalidatePath(`/projects/${projectId}`);
   });
-  revalidatePath(`/projects/${projectId}`);
 }
 
-export async function updatePartnerRole(projectId: string, userId: string, formData: FormData) {
-  const supabase = await createClient();
-  await requireProjectAdmin(supabase, projectId);
+export async function updatePartnerRole(projectId: string, userId: string, formData: FormData): Promise<ActionResult> {
+  return action(async () => {
+    const supabase = await createClient();
+    await requireProjectAdmin(supabase, projectId);
 
-  const { error } = await supabase
-    .from("project_members")
-    .update({ role: parseRole(formData), discipline: parseDiscipline(formData) })
-    .eq("project_id", projectId)
-    .eq("user_id", userId);
-  if (error) throw new Error(error.message);
-  revalidatePath(`/projects/${projectId}`);
+    const { error } = await supabase
+      .from("project_members")
+      .update({ role: parseRole(formData), discipline: parseDiscipline(formData) })
+      .eq("project_id", projectId)
+      .eq("user_id", userId);
+    if (error) throw error;
+    revalidatePath(`/projects/${projectId}`);
+  });
 }
 
 // Removes access to this project only. The auth user stays (they may
 // partner on other projects); with no memberships left they simply land on
 // an empty /collab.
-export async function removePartner(projectId: string, userId: string) {
-  const supabase = await createClient();
-  await requireProjectAdmin(supabase, projectId);
+export async function removePartner(projectId: string, userId: string): Promise<ActionResult> {
+  return action(async () => {
+    const supabase = await createClient();
+    await requireProjectAdmin(supabase, projectId);
 
-  const { error } = await supabase.from("project_members").delete().eq("project_id", projectId).eq("user_id", userId);
-  if (error) throw new Error(error.message);
-  revalidatePath(`/projects/${projectId}`);
+    const { error } = await supabase.from("project_members").delete().eq("project_id", projectId).eq("user_id", userId);
+    if (error) throw error;
+    revalidatePath(`/projects/${projectId}`);
+  });
 }
 
 // New sign-in link for an existing partner (lost the email, link expired).
-export async function resendPartnerAccess(projectId: string, userId: string) {
-  const supabase = await createClient();
-  await requireProjectAdmin(supabase, projectId);
+export async function resendPartnerAccess(projectId: string, userId: string): Promise<ActionResult> {
+  return action(async () => {
+    const supabase = await createClient();
+    await requireProjectAdmin(supabase, projectId);
 
-  const { data: member } = await supabase
-    .from("project_members")
-    .select("user_id")
-    .eq("project_id", projectId)
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (!member) throw new Error(el.partner.errors.inviteNotFound);
-  const { data: profile } = await supabase.from("profiles").select("email").eq("user_id", userId).maybeSingle();
-  if (!profile?.email) throw new Error(el.partner.errors.invalidEmail);
+    const { data: member } = await supabase
+      .from("project_members")
+      .select("user_id")
+      .eq("project_id", projectId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!member) throw new UserError(el.partner.errors.inviteNotFound);
+    const { data: profile } = await supabase.from("profiles").select("email").eq("user_id", userId).maybeSingle();
+    if (!profile?.email) throw new UserError(el.partner.errors.invalidEmail);
 
-  await sendSignInLink(profile.email);
+    await sendSignInLink(profile.email);
+  });
 }
 
 // Retry a still-pending invite (its email never went out, or it expired).
-export async function resendPartnerInvite(projectId: string, inviteId: string) {
-  const supabase = await createClient();
-  const orgId = await requireProjectAdmin(supabase, projectId);
+export async function resendPartnerInvite(projectId: string, inviteId: string): Promise<ActionResult> {
+  return action(async () => {
+    const supabase = await createClient();
+    const orgId = await requireProjectAdmin(supabase, projectId);
 
-  const { data: invite } = await supabase
-    .from("project_invites")
-    .select("email, role, discipline, full_name, company_name")
-    .eq("id", inviteId)
-    .eq("project_id", projectId)
-    .is("accepted_at", null)
-    .is("revoked_at", null)
-    .maybeSingle();
-  if (!invite) throw new Error(el.partner.errors.inviteNotFound);
+    const { data: invite } = await supabase
+      .from("project_invites")
+      .select("email, role, discipline, full_name, company_name")
+      .eq("id", inviteId)
+      .eq("project_id", projectId)
+      .is("accepted_at", null)
+      .is("revoked_at", null)
+      .maybeSingle();
+    if (!invite) throw new UserError(el.partner.errors.inviteNotFound);
 
-  await grantOrInvite(supabase, orgId, projectId, {
-    email: invite.email,
-    role: invite.role,
-    discipline: invite.discipline,
-    fullName: invite.full_name,
-    companyName: invite.company_name,
+    await grantOrInvite(supabase, orgId, projectId, {
+      email: invite.email,
+      role: invite.role,
+      discipline: invite.discipline,
+      fullName: invite.full_name,
+      companyName: invite.company_name,
+    });
+    revalidatePath(`/projects/${projectId}`);
   });
-  revalidatePath(`/projects/${projectId}`);
 }
 
-export async function cancelPartnerInvite(projectId: string, inviteId: string) {
-  const supabase = await createClient();
-  await requireProjectAdmin(supabase, projectId);
+export async function cancelPartnerInvite(projectId: string, inviteId: string): Promise<ActionResult> {
+  return action(async () => {
+    const supabase = await createClient();
+    await requireProjectAdmin(supabase, projectId);
 
-  const { error } = await supabase
-    .from("project_invites")
-    .update({ revoked_at: new Date().toISOString() })
-    .eq("id", inviteId)
-    .eq("project_id", projectId);
-  if (error) throw new Error(error.message);
-  revalidatePath(`/projects/${projectId}`);
+    const { error } = await supabase
+      .from("project_invites")
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("id", inviteId)
+      .eq("project_id", projectId);
+    if (error) throw error;
+    revalidatePath(`/projects/${projectId}`);
+  });
 }

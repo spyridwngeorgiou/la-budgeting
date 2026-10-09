@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { addDays, currentMonthKey, firstOfMonth, todayAthens } from "@/lib/dates";
 
 // Seven curated, read-only, parameterized tools -- deliberately NOT a
 // model-written-SQL tool. Greek VAT/withholding logic belongs in one tested
@@ -30,10 +31,10 @@ export function buildAssistantTools(supabase: SupabaseClient, orgId: string) {
     run: async ({ query }) => {
       const like = `%${query}%`;
       const [contacts, projects, categories, accounts] = await Promise.all([
-        supabase.from("contacts").select("id, name, afm").ilike("name", like).limit(10),
-        supabase.from("projects").select("id, display_name, code").ilike("display_name", like).limit(10),
-        supabase.from("categories").select("id, name").ilike("name", like).limit(10),
-        supabase.from("accounts").select("id, name").ilike("name", like).limit(10),
+        supabase.from("contacts").select("id, name, afm").eq("org_id", orgId).ilike("name", like).limit(10),
+        supabase.from("projects").select("id, display_name, code").eq("org_id", orgId).ilike("display_name", like).limit(10),
+        supabase.from("categories").select("id, name").eq("org_id", orgId).ilike("name", like).limit(10),
+        supabase.from("accounts").select("id, name").eq("org_id", orgId).ilike("name", like).limit(10),
       ]);
       return JSON.stringify({
         contacts: contacts.data ?? [],
@@ -66,6 +67,7 @@ export function buildAssistantTools(supabase: SupabaseClient, orgId: string) {
         .select(
           "id, tx_date, description, direction, status, gross_amount, contacts(name), projects(display_name), categories(name)",
         )
+        .eq("org_id", orgId)
         .order("tx_date", { ascending: false })
         .limit(args.limit);
       if (args.from) q = q.gte("tx_date", args.from);
@@ -118,6 +120,7 @@ export function buildAssistantTools(supabase: SupabaseClient, orgId: string) {
         .select(
           "id, tx_date, gross_amount, direction, project_id, projects(display_name), category_id, categories(name), contact_id, contacts(name), account_id, accounts(name)",
         )
+        .eq("org_id", orgId)
         .neq("status", "cancelled");
       if (args.from) q = q.gte("tx_date", args.from);
       if (args.to) q = q.lte("tx_date", args.to);
@@ -209,13 +212,12 @@ export function buildAssistantTools(supabase: SupabaseClient, orgId: string) {
       let q = supabase
         .from("transactions")
         .select("id, tx_date, due_date, description, gross_amount, contacts(name), projects(display_name)")
+        .eq("org_id", orgId)
         .eq("direction", txDirection)
         .in("status", ["pending", "scheduled"])
         .order("due_date", { ascending: true, nullsFirst: false });
       if (horizon_days) {
-        const cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() + horizon_days);
-        q = q.lte("due_date", cutoff.toISOString().slice(0, 10));
+        q = q.lte("due_date", addDays(todayAthens(), horizon_days));
       }
       const { data, error } = await q.limit(100);
       if (error) return JSON.stringify({ error: error.message });
@@ -242,7 +244,7 @@ export function buildAssistantTools(supabase: SupabaseClient, orgId: string) {
     description: "Μηνιαία πρόβλεψη ταμείου (εισροές/εκροές πληρωμένων κινήσεων) για τους επόμενους μήνες.",
     inputSchema: z.object({ months_ahead: z.number().int().min(1).max(24).default(6) }),
     run: async ({ months_ahead }) => {
-      const from = new Date().toISOString().slice(0, 8) + "01";
+      const from = firstOfMonth(currentMonthKey());
       const { data, error } = await supabase
         .from("v_cashflow_monthly")
         .select("*")

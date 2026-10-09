@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentOrg } from "@/lib/supabase/org";
+import { getCurrentOrg, getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { Badge } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { uploadAadeFile } from "./actions";
+import { ActionForm } from "@/components/ActionForm";
 
 const STATUS_LABEL = { draft: "Πρόχειρο", committed: "Ολοκληρώθηκε", discarded: "Απορρίφθηκε" } as const;
 const STATUS_TONE = { draft: "amber", committed: "green", discarded: "neutral" } as const;
@@ -13,16 +14,20 @@ const STATUS_TONE = { draft: "amber", committed: "green", discarded: "neutral" }
 export default async function AadePage() {
   const supabase = await createClient();
 
-  // Independent of each other -- run in parallel rather than one after the
-  // other (org lookup doesn't gate the batches query; RLS scopes both).
+  // Independent of each other -- run in parallel rather than one after the other.
   const [org, { data: batches }] = await Promise.all([
     getCurrentOrg(supabase),
-    supabase.from("aade_import_batches").select("*").order("uploaded_at", { ascending: false }),
+    getCurrentOrgId(supabase).then((orgId) =>
+      supabase.from("aade_import_batches").select("*").eq("org_id", orgId).order("uploaded_at", { ascending: false }),
+    ),
   ]);
 
   return (
     <div className="flex flex-col gap-4">
       <div>
+        <Link href="/inbox" className="text-sm text-ink-muted hover:text-ink">
+          ← {el.nav.inbox}
+        </Link>
         <h1 className="text-xl font-semibold">{el.nav.aade}</h1>
         <p className="mt-1 text-sm text-ink-muted">
           Ανεβάστε το αρχείο εξαγωγής myDATA/AADE για να ελέγξετε και να εισάγετε παραστατικά μαζικά.
@@ -39,10 +44,10 @@ export default async function AadePage() {
         </div>
       )}
 
-      <form action={uploadAadeFile} className="flex items-center gap-2 rounded-lg border border-line p-4">
+      <ActionForm action={uploadAadeFile} className="flex flex-wrap items-center gap-2 rounded-lg border border-line p-4">
         <input type="file" name="file" accept=".xlsx" required className="text-sm" />
         <SubmitButton pendingLabel="Εισαγωγή…">Εισαγωγή Αρχείου myDATA</SubmitButton>
-      </form>
+      </ActionForm>
 
       {(batches ?? []).length === 0 ? (
         <p className="p-6 text-center text-sm text-ink-muted">

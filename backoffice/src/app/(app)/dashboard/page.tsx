@@ -7,7 +7,7 @@ import { aiEnabled } from "@/lib/ai/client";
 import { DashboardSummary } from "./DashboardSummary";
 import { DueDatesCalendar } from "./DueDatesCalendar";
 import { monthGridRange } from "@/lib/planner/calendar";
-import { monthKeyOf } from "@/lib/planner/dates";
+import { monthKeyOf, todayAthens } from "@/lib/dates";
 
 // Κέντρο Ελέγχου: liquidity per account, project portfolio, VAT position,
 // what's due soon -- the same shape as the workbook's Control Center sheet.
@@ -30,7 +30,7 @@ export default async function DashboardPage() {
   // scheduled transaction dated next year would otherwise outrank every
   // real period and show as "current month" with misleading zeros. Pin to
   // the latest period that isn't in the future.
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = todayAthens();
 
   // Full calendar-month grid, not just "next 14 days" -- Monday of the first
   // week through Sunday of the last week of the current month, so overdue
@@ -66,16 +66,17 @@ export default async function DashboardPage() {
     supabase
       .from("transactions")
       .select("id, due_date, direction, gross_amount")
+      .eq("org_id", orgId)
       .in("status", ["pending", "scheduled"])
       .not("due_date", "is", null)
       .gte("due_date", grid.start)
       .lte("due_date", grid.end),
-    // Filing status per period, same source /vat uses -- lets the worklist
+    // Filing status per period, same source /reports/vat uses -- lets the worklist
     // flag a past period nobody has marked as filed yet.
-    supabase.from("vat_periods").select("period_start, status"),
+    supabase.from("vat_periods").select("period_start, status").eq("org_id", orgId),
     supabase.from("v_qc_missing_project_or_account").select("transaction_id", { count: "exact", head: true }).eq("org_id", orgId),
-    supabase.from("transaction_drafts").select("id", { count: "exact" }).eq("status", "pending").order("created_at"),
-    supabase.from("agent_changes").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("transaction_drafts").select("id", { count: "exact" }).eq("org_id", orgId).eq("status", "pending").order("created_at"),
+    supabase.from("agent_changes").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("status", "pending"),
   ]);
 
   const noBudget = new Set((withoutBudget ?? []).map((r) => r.project_id));
@@ -109,7 +110,7 @@ export default async function DashboardPage() {
 
   // A past period with no vat_periods row at all, or one whose status is
   // neither 'filed' nor 'paid', hasn't been dealt with -- same definition
-  // /vat uses for its badge.
+  // /reports/vat uses for its badge.
   const filedPeriods = new Set(
     (vatPeriods ?? []).filter((p) => p.status === "filed" || p.status === "paid").map((p) => p.period_start),
   );
@@ -156,7 +157,7 @@ export default async function DashboardPage() {
     },
     contactlessRows > 0 && {
       label: `${contactlessRows} ${contactlessRows === 1 ? "κίνηση" : "κινήσεις"} με αντισυμβαλλόμενο χωρίς επαφή`,
-      href: "/quality",
+      href: "/reports/quality",
     },
     overdue.length > 0 && {
       label: `${overdue.length} ληξιπρόθεσμ${overdue.length === 1 ? "η υποχρέωση" : "ες υποχρεώσεις"}`,
@@ -176,11 +177,11 @@ export default async function DashboardPage() {
     },
     (pendingChanges ?? 0) > 0 && {
       label: `${pendingChanges} εκκρεμ${pendingChanges === 1 ? "ής πρόταση AI" : "είς προτάσεις AI"}`,
-      href: "/changes",
+      href: "/assistant?panel=changes",
     },
     (missingProjectOrAccount ?? 0) > 0 && {
       label: `${missingProjectOrAccount} ${missingProjectOrAccount === 1 ? "κίνηση" : "κινήσεις"} χωρίς έργο/λογαριασμό`,
-      href: "/quality",
+      href: "/reports/quality",
     },
     overBudgetProjects.length > 0 && {
       label: `${overBudgetProjects.length} έργ${overBudgetProjects.length === 1 ? "ο εκτός" : "α εκτός"} προϋπολογισμού`,
@@ -188,11 +189,11 @@ export default async function DashboardPage() {
     },
     (uninvoiced ?? []).length > 0 && {
       label: `${(uninvoiced ?? []).length} δαπάνες χωρίς παραστατικό — ~${formatMoney(uninvoicedLost)} φόρος & ΦΠΑ που χάνονται`,
-      href: "/quality",
+      href: "/reports/quality",
     },
     unfiledVatPeriods.length > 0 && {
       label: `${unfiledVatPeriods.length} περίοδ${unfiledVatPeriods.length === 1 ? "ος ΦΠΑ" : "οι ΦΠΑ"} χωρίς υποβολή`,
-      href: "/vat",
+      href: "/reports/vat",
     },
   ].filter((x): x is { label: string; href: string } => Boolean(x));
 

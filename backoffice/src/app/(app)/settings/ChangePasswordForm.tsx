@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Input, Label, Field } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { changePassword } from "./actions";
+import { errorOf } from "@/lib/actions";
 
 export function ChangePasswordForm() {
   const [error, setError] = useState<string | null>(null);
@@ -15,7 +16,8 @@ export function ChangePasswordForm() {
         setError(null);
         setSuccess(false);
         try {
-          await changePassword(formData);
+          const message = errorOf(await changePassword(formData));
+          if (message) return setError(message);
           setSuccess(true);
           (document.getElementById("change-password-form") as HTMLFormElement | null)?.reset();
         } catch (e) {

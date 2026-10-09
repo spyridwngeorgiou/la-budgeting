@@ -8,6 +8,7 @@ import { resolveEntities } from "@/lib/ai/resolve";
 import { deriveFromGross, cashOnly } from "@/lib/finance/money";
 import type { Extraction } from "@/lib/ai/schemas";
 import type { Database } from "@/lib/db/types";
+import { todayAthens } from "@/lib/dates";
 
 // Postmark's inbound webhook shape (the fields this route actually reads;
 // Postmark sends more than this). See https://postmarkapp.com/developer/webhooks/inbound-webhook
@@ -258,7 +259,7 @@ async function ingestText(
       issuer_afm: null,
       invoice_number: null,
       mydata_mark: null,
-      issue_date: entry.issue_date ?? new Date().toISOString().slice(0, 10),
+      issue_date: entry.issue_date ?? todayAthens(),
       net: { value: breakdown.net, evidence: entry.amount.evidence },
       vat: { value: breakdown.vat, evidence: entry.amount.evidence },
       gross: { value: breakdown.gross, evidence: entry.amount.evidence },

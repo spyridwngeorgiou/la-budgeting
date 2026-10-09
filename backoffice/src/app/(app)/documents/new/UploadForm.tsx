@@ -5,6 +5,7 @@ import { Camera, FileText, ImageIcon, Upload, X } from "lucide-react";
 import { uploadDocument } from "../actions";
 import { SubmitButton } from "@/components/SubmitButton";
 import { AiSpark } from "@/components/ui";
+import { errorOf } from "@/lib/actions";
 
 // What extractDocument (src/lib/ai/extract.ts) can actually read, and the
 // documents bucket's size limit (supabase/config.toml) -- checked here so a
@@ -68,18 +69,9 @@ export function UploadForm() {
         }
         formData.set("file", file);
         setError(null);
-        try {
-          await uploadDocument(formData);
-        } catch (e) {
-          // redirect() throws internally on success -- only real errors land here
-          if (e instanceof Error && !e.message.includes("NEXT_REDIRECT")) {
-            setError(e.message);
-          } else if (!(e instanceof Error)) {
-            setError("Σφάλμα.");
-          } else {
-            throw e;
-          }
-        }
+        // Success redirects to the review screen; failures come back as { error }.
+        const message = errorOf(await uploadDocument(formData));
+        if (message) setError(message);
       }}
       className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4 shadow-sm"
     >

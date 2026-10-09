@@ -3,6 +3,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { anthropic, AI_MODEL } from "./client";
 import { ExtractionSchema, type Extraction } from "./schemas";
 import { isValidAfm } from "@/lib/finance/money";
+import { UserError } from "@/lib/actions";
 
 const SYSTEM_PROMPT = `Είστε ειδικός στην ανάγνωση ελληνικών αποδείξεων και τιμολογίων. Η δουλειά σας είναι να ΜΕΤΑΓΡΑΨΕΤΕ πιστά ό,τι βλέπετε -- ποτέ μην υπολογίζετε ή διορθώνετε αριθμούς. Για κάθε χρηματικό πεδίο, γράψτε στο "evidence" το ακριβές κείμενο που διαβάσατε. Αν κάτι δεν είναι ευανάγνωστο ή απουσιάζει, βάλτε null -- ποτέ μην το μαντεύετε.`;
 
@@ -37,7 +38,7 @@ export async function extractDocument(
   });
 
   if (!response.parsed_output) {
-    throw new Error("Η ανάλυση του παραστατικού απέτυχε (μη έγκυρη μορφή απάντησης).");
+    throw new UserError("Η ανάλυση του παραστατικού απέτυχε (μη έγκυρη μορφή απάντησης).");
   }
 
   return {

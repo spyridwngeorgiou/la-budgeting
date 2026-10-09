@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { UserError } from "@/lib/actions";
 
 // The org the user last explicitly picked, when they belong to more than
 // one. Only ever written by switchOrg() (a Server Action, the one place
@@ -44,7 +45,7 @@ async function resolveMembership(
     .limit(1)
     .single();
 
-  if (error || !data) throw new Error("Ο χρήστης δεν ανήκει σε κάποιον οργανισμό.");
+  if (error || !data) throw new UserError("Ο χρήστης δεν ανήκει σε κάποιον οργανισμό.");
   return { orgId: data.org_id, role: data.role };
 }
 
@@ -94,7 +95,7 @@ export async function getCurrentOrg(supabase: SupabaseClient) {
 
   const { orgId } = await resolveMembership(supabase, session.user.id);
   const { data, error } = await supabase.from("orgs").select("*").eq("id", orgId).single();
-  if (error || !data) throw new Error("Ο χρήστης δεν ανήκει σε κάποιον οργανισμό.");
+  if (error || !data) throw new UserError("Ο χρήστης δεν ανήκει σε κάποιον οργανισμό.");
   return data;
 }
 
@@ -139,7 +140,7 @@ export async function switchOrg(supabase: SupabaseClient, orgId: string): Promis
     .eq("user_id", session.user.id)
     .eq("org_id", orgId)
     .maybeSingle();
-  if (!data) throw new Error("Δεν ανήκετε σε αυτόν τον οργανισμό.");
+  if (!data) throw new UserError("Δεν ανήκετε σε αυτόν τον οργανισμό.");
 
   const cookieStore = await cookies();
   cookieStore.set(ORG_COOKIE, orgId, {

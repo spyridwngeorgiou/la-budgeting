@@ -1,4 +1,4 @@
-import { addDays, firstOfMonth, lastOfMonth, monthKeyOf, weekdayMonFirst } from "./dates";
+import { addDays, firstOfMonth, lastOfMonth, monthKeyOf, weekdayMonFirst } from "@/lib/dates";
 
 // Month-grid shape shared by the dashboard's due-dates calendar and the
 // planner's unified calendar: Monday-first, whole weeks, each cell knowing

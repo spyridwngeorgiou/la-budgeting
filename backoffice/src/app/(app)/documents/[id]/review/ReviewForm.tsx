@@ -10,6 +10,7 @@ import { el } from "@/lib/i18n/el";
 import type { Extraction } from "@/lib/ai/schemas";
 import type { DuplicateCandidate } from "@/lib/ingest/duplicates";
 import { approveDraft, discardDraft } from "./actions";
+import { todayAthens } from "@/lib/dates";
 
 interface Option {
   id: string;
@@ -49,7 +50,7 @@ export function ReviewForm({
   const [withholding, setWithholding] = useState((extraction.withholding.value ?? 0).toString());
   const [error, setError] = useState<string | null>(null);
   const [duplicates, setDuplicates] = useState<DuplicateCandidate[]>([]);
-  const [txDate, setTxDate] = useState(extraction.issue_date ?? new Date().toISOString().slice(0, 10));
+  const [txDate, setTxDate] = useState(extraction.issue_date ?? todayAthens());
   const [txStatus, setTxStatus] = useState("pending");
   // null = follow the document date until the user picks a payment date.
   const [paidOn, setPaidOn] = useState<string | null>(null);

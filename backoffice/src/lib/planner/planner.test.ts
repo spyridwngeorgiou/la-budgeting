@@ -9,7 +9,7 @@ import {
   parseMonthParam,
   todayAthens,
   weekdayMonFirst,
-} from "./dates";
+} from "@/lib/dates";
 import { keyAtEnd, keyBetween, MIN_GAP, planMove, SORT_STEP } from "./sortKey";
 import { computeTimeline } from "./timeline";
 import {

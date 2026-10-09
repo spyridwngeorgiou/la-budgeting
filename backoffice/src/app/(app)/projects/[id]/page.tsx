@@ -22,6 +22,8 @@ import { saveLoan, deleteLoan } from "../loan-actions";
 import { CapitalSourceFormModal } from "../CapitalSourceFormModal";
 import { saveCapitalSource, deleteCapitalSource } from "../capital-actions";
 import type { CapitalSourceKind } from "@/lib/domain/enums";
+import { addMonths, currentMonthKey, currentYear, firstOfMonth } from "@/lib/dates";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 
 const KIND_FALLBACK_LABEL: Record<CapitalSourceKind, string> = {
   equity: "Ίδια κεφάλαια",
@@ -36,8 +38,8 @@ import { saveProjectNote, resolveProjectNote } from "../note-actions";
 import { setScenarioRevenuePlan, saveScenario, saveOpexLine, deleteOpexLine } from "../scenario-actions";
 import { ScenarioFormModal } from "../ScenarioFormModal";
 import { OpexLineFormModal } from "../OpexLineFormModal";
-import { AiCreateForm } from "../../revenue-plans/AiCreateForm";
-import { createRevenuePlan } from "../../revenue-plans/actions";
+import { AiCreateForm } from "../revenue-plans/AiCreateForm";
+import { createRevenuePlan } from "../revenue-plans/actions";
 
 // Σύνοψη Έργου -- the one-pager, modelled on the layout the Q004 workbook
 // already proved works: blocks of label / figure / explanatory note, bold
@@ -116,7 +118,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         "id, label, principal, interest_rate, term_years, grace_years, first_amortisation_month, state, notes, loan_drawdowns(scheduled_month, amount)",
       )
       .eq("project_id", id),
-    supabase.from("revenue_plans").select("id, name, project_id, start_year, years").order("name"),
+    getCurrentOrgId(supabase).then((orgId) =>
+      supabase.from("revenue_plans").select("id, name, project_id, start_year, years").eq("org_id", orgId).order("name"),
+    ),
     supabase
       .from("project_capital_sources")
       .select("id, kind, contributor, amount, contributed_on, notes")
@@ -135,9 +139,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       .eq("status", "paid"),
   ]);
 
-  const twelveMonthsAgo = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - 11, 1))
-    .toISOString()
-    .slice(0, 10);
+  const twelveMonthsAgo = firstOfMonth(addMonths(currentMonthKey(), -11));
   const [{ data: utilities }, { data: monthlyCostRows }] = await Promise.all([
     supabase.from("property_utilities").select("*").eq("project_id", id).order("kind"),
     supabase
@@ -603,7 +605,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                   <input
                     name="start_year"
                     type="number"
-                    defaultValue={new Date().getFullYear()}
+                    defaultValue={currentYear()}
                     required
                     className="w-28 rounded-md border border-line-strong px-3 py-2 text-sm"
                   />
@@ -633,7 +635,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 {linkedPlans.map((p) => (
                   <Link
                     key={p.id}
-                    href={`/revenue-plans/${p.id}`}
+                    href={`/projects/revenue-plans/${p.id}`}
                     className="flex items-center justify-between rounded-lg border border-line px-3 py-2 text-sm transition-colors hover:border-line-strong hover:bg-bg"
                   >
                     <span>{p.name}</span>
@@ -899,7 +901,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 key={month}
                 label={formatDate(month).slice(3)}
                 amount={amount}
-                href={`/properties?month=${month.slice(0, 7)}`}
+                href={`/projects/properties?month=${month.slice(0, 7)}`}
               />
             ))}
           </OnePagerSection>

@@ -7,7 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // calls propose_change, which validates the table/fields against this
 // allowlist, snapshots the current row, and inserts a row into
 // agent_changes with status='pending' -- a human reviews the before/after
-// diff at /changes and approves or rejects it. Same guarantee as
+// diff in the «Εκκρεμότητες» panel of /assistant and approves or rejects it. Same guarantee as
 // transaction_drafts (0010_ai_documents.sql), generalised to master data.
 
 interface TableSpec {

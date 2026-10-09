@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { el } from "@/lib/i18n/el";
-import { addMonths, parseMonthParam } from "@/lib/planner/dates";
+import { addMonths, parseMonthParam } from "@/lib/dates";
 import {
   CALENDAR_SOURCES,
   FINANCIAL_SOURCES,
@@ -30,9 +30,9 @@ function hrefFor(item: CalendarItem): string | null {
     case "installment":
       return item.ref_id ? `/transactions?ids=${item.ref_id}` : null;
     case "vat":
-      return "/vat";
+      return "/reports/vat";
     case "withholding":
-      return "/withholding";
+      return "/reports/withholding";
     case "lease":
     case "loan":
       return item.project_id ? `/projects/${item.project_id}` : null;

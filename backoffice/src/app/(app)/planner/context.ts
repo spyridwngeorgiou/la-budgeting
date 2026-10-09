@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentMembership } from "@/lib/supabase/org";
 import { plannerCapabilities } from "@/lib/planner/access";
-import { todayAthens } from "@/lib/planner/dates";
+import { todayAthens } from "@/lib/dates";
 import { loadPlannerProjects } from "@/lib/planner/queries";
 
 // What every /planner page needs: the client, the viewer's capabilities,

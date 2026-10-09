@@ -123,7 +123,7 @@ export function ChatPanel({ initialPrompt }: { initialPrompt?: string } = {}) {
                 )}
                 {m.changeIds && m.changeIds.length > 0 && (
                   <div className="mt-2 border-t border-line-strong/30 pt-2">
-                    <Link href="/changes" className="text-xs font-medium underline">
+                    <Link href="/assistant?panel=changes" className="text-xs font-medium underline">
                       {m.changeIds.length === 1
                         ? "Δείτε την πρόταση αλλαγής →"
                         : `Δείτε τις ${m.changeIds.length} προτάσεις αλλαγών →`}
@@ -133,7 +133,7 @@ export function ChatPanel({ initialPrompt }: { initialPrompt?: string } = {}) {
                 {m.revenuePlanIds && m.revenuePlanIds.length > 0 && (
                   <div className="mt-2 flex flex-col gap-1 border-t border-line-strong/30 pt-2">
                     {m.revenuePlanIds.map((id) => (
-                      <Link key={id} href={`/revenue-plans/${id}`} className="text-xs font-medium underline">
+                      <Link key={id} href={`/projects/revenue-plans/${id}`} className="text-xs font-medium underline">
                         Δείτε την ανάλυση εσόδων →
                       </Link>
                     ))}

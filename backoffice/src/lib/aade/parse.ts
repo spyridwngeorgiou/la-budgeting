@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { toIso } from "@/lib/dates";
 
 // Mirrors aade_exports_master.py's cleaning rules exactly -- these are
 // hard-won: a 15-digit ΜΑΡΚ read as a number becomes "4.00008883252876e14"
@@ -66,7 +67,7 @@ function cleanId(value: unknown, padWidth?: number): string | null {
 
 function parseGreekDate(value: unknown): string | null {
   if (value instanceof Date) {
-    return value.toISOString().slice(0, 10);
+    return toIso(value);
   }
   if (typeof value === "string") {
     // DD/MM/YYYY, the format myDATA exports use -- never new Date(string),

@@ -6,6 +6,8 @@ import { AiSpark } from "@/components/ui";
 import { TransactionsTable } from "./TransactionsTable";
 import { TransactionFilters } from "./TransactionFilters";
 import { TX_STATUS, TX_DIRECTION, type TxStatus, type TxDirection } from "@/lib/domain/enums";
+import { loadLookups } from "@/lib/data/lookups";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 
 function parseStatus(value: string | undefined): TxStatus | null {
   return TX_STATUS.includes(value as TxStatus) ? (value as TxStatus) : null;
@@ -47,6 +49,7 @@ export default async function TransactionsPage({
   // transaction that made up this answer" can span several projects/months).
   const ids = params.ids ? params.ids.split(",").filter(Boolean) : null;
   const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
 
   // Drill-down entry points: dashboard/project/analysis KPI cells link here
   // with project_id / account_id / contact_id / category_id / scope / from /
@@ -63,6 +66,7 @@ export default async function TransactionsPage({
       "id, tx_date, due_date, paid_on, plan_id, property_project_id, description, direction, status, scope, gross_amount, net_amount, vat_amount, vat_rate, withholding_amount, has_invoice, invoice_number, contact_id, project_id, category_id, account_id, origin, source_document_id, contacts(name), projects(display_name), categories(name), accounts(name)",
       { count: "exact" },
     )
+    .eq("org_id", orgId)
     .order("tx_date", { ascending: false })
     .limit(ROW_LIMIT);
 
@@ -77,15 +81,12 @@ export default async function TransactionsPage({
   if (to) query = query.lte("tx_date", to);
   if (ids) query = query.in("id", ids);
 
-  const [{ data: transactions, count: totalCount }, { data: contacts }, { data: projects }, { data: categories }, { data: accounts }, { data: accountBalance }] =
+  const [{ data: transactions, count: totalCount }, { contacts, projects, categories, accounts }, { data: accountBalance }] =
     await Promise.all([
       query,
-      supabase.from("contacts").select("id, name").order("name"),
-      supabase.from("projects").select("id, display_name").order("sort_order"),
-      supabase.from("categories").select("id, name").order("sort_order"),
-      supabase.from("accounts").select("id, name").order("sort_order"),
+      loadLookups(supabase, orgId),
       accountId
-        ? supabase.from("v_account_balances").select("*").eq("account_id", accountId).maybeSingle()
+        ? supabase.from("v_account_balances").select("*").eq("org_id", orgId).eq("account_id", accountId).maybeSingle()
         : Promise.resolve({ data: null }),
     ]);
 

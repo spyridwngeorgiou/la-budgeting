@@ -1,4 +1,5 @@
 import { isValidAfm } from "@/lib/finance/money";
+import { toIso } from "@/lib/dates";
 
 // Text helpers shared by every ingest adapter. Pure functions only -- no
 // Node built-ins, so this runs unchanged in a Cloudflare Worker, the browser
@@ -110,7 +111,7 @@ function isoIfValid(y: number, m: number, d: number): string | null {
   if (y < 1900 || y > 2200 || m < 1 || m > 12 || d < 1 || d > 31) return null;
   const date = new Date(Date.UTC(y, m - 1, d));
   if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) return null;
-  return date.toISOString().slice(0, 10);
+  return toIso(date);
 }
 
 // Never new Date(string): it reads 05/03/2026 as May 3rd. A JS Date (from
@@ -119,11 +120,11 @@ function isoIfValid(y: number, m: number, d: number): string | null {
 export function parseDate(input: unknown, format: DateFormat = "dd/MM/yyyy"): string | null {
   if (input === null || input === undefined || input === "") return null;
   if (input instanceof Date) {
-    return Number.isNaN(input.getTime()) ? null : input.toISOString().slice(0, 10);
+    return Number.isNaN(input.getTime()) ? null : toIso(input);
   }
   if (typeof input === "number") {
     if (input < 1 || input > 120000) return null;
-    return new Date(EXCEL_EPOCH_UTC + Math.floor(input) * 86_400_000).toISOString().slice(0, 10);
+    return toIso(new Date(EXCEL_EPOCH_UTC + Math.floor(input) * 86_400_000));
   }
   const s = String(input).trim();
   // A trailing time («05/03/2026 14:22») is common; ignore it.

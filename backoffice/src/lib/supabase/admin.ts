@@ -2,6 +2,7 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db/types";
 import { getCurrentMembership } from "@/lib/supabase/org";
+import { UserError } from "@/lib/actions";
 
 // Gate for every action that goes on to use the service-role client below.
 // That client bypasses RLS entirely, so this check -- made by the app, on the
@@ -13,7 +14,7 @@ export async function requireOrgAdmin(
   message = "Μόνο διαχειριστές μπορούν να διαχειριστούν την ομάδα.",
 ): Promise<string> {
   const { orgId, role } = await getCurrentMembership(supabase);
-  if (role !== "admin" && role !== "owner") throw new Error(message);
+  if (role !== "admin" && role !== "owner") throw new UserError(message);
   return orgId;
 }
 

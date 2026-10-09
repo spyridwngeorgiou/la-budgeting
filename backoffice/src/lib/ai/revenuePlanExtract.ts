@@ -2,6 +2,7 @@ import "server-only";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { anthropic, AI_MODEL } from "./client";
 import { RevenuePlanExtractionSchema, type RevenuePlanExtraction } from "./schemas";
+import { UserError } from "@/lib/actions";
 
 const SYSTEM_PROMPT = `Είστε βοηθός δημιουργίας εκτιμήσεων εσόδων φιλοξενίας/ξενοδοχείου. Ο χρήστης περιγράφει σε ελεύθερο κείμενο τους τύπους δωματίων, τιμές και πληρότητα -- εσείς παράγετε το πλήρες πλέγμα 12 μηνών x αριθμό ετών ανά τύπο δωματίου. Αν ο χρήστης δώσει μία τιμή/πληρότητα "συνολικά" ή "σταθερή", εφαρμόστε την σε όλους τους μήνες. Αν αναφέρει εποχικότητα (π.χ. "το καλοκαίρι πιο ακριβά"), αντικατοπτρίστε το λογικά στο πλέγμα. Αν δεν αναφερθεί αριθμός ετών, χρησιμοποιήστε 3. Αν δεν αναφερθεί έτος έναρξης, χρησιμοποιήστε το τρέχον έτος. ΠΟΤΕ μην υπολογίσετε διανυκτερεύσεις ή έσοδα -- μόνο occupancy_pct (0-1) και adr ανά μήνα. Στο assumptions_note εξηγήστε σύντομα στα Ελληνικά τι υποθέσατε.`;
 
@@ -20,7 +21,7 @@ export async function extractRevenuePlan(text: string, currentYear: number): Pro
   });
 
   if (!response.parsed_output) {
-    throw new Error("Η ανάλυση της περιγραφής απέτυχε (μη έγκυρη μορφή απάντησης).");
+    throw new UserError("Η ανάλυση της περιγραφής απέτυχε (μη έγκυρη μορφή απάντησης).");
   }
 
   return {

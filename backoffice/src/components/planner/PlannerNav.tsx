@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
 import { Select } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
+import { SubNavKeepingParams } from "@/components/SubNav";
+import { SECTION_TABS } from "@/lib/navigation";
 
 // The planner's tabs and filter bar. Filters live in the URL (shareable,
 // back-button friendly, read by the server pages); switching tab keeps the
@@ -14,35 +15,8 @@ import { el } from "@/lib/i18n/el";
 const SHARED_PARAMS = ["project", "assignee"];
 
 export function PlannerTabs({ base }: { base: string }) {
-  const pathname = usePathname();
-  const params = useSearchParams();
-  const keep = new URLSearchParams();
-  for (const k of SHARED_PARAMS) {
-    const v = params.get(k);
-    if (v) keep.set(k, v);
-  }
-  const qs = keep.toString() ? `?${keep.toString()}` : "";
-  const tabs = [
-    { href: base, label: el.planner.tabs.board, active: pathname === base || pathname.startsWith(`${base}/task/`) },
-    { href: `${base}/timeline`, label: el.planner.tabs.timeline, active: pathname.startsWith(`${base}/timeline`) },
-    { href: `${base}/calendar`, label: el.planner.tabs.calendar, active: pathname.startsWith(`${base}/calendar`) },
-  ];
-  return (
-    <nav className="flex gap-1 border-b border-line" aria-label={el.planner.title}>
-      {tabs.map((t) => (
-        <Link
-          key={t.href}
-          href={`${t.href}${qs}`}
-          aria-current={t.active ? "page" : undefined}
-          className={`-mb-px border-b-2 px-3 py-2 text-sm whitespace-nowrap ${
-            t.active ? "border-ink font-medium text-ink" : "border-transparent text-ink-muted hover:text-ink"
-          }`}
-        >
-          {t.label}
-        </Link>
-      ))}
-    </nav>
-  );
+  const tabs = SECTION_TABS.planner.map((t) => ({ ...t, href: base + t.href.slice("/planner".length) }));
+  return <SubNavKeepingParams tabs={tabs} label={el.planner.title} keep={SHARED_PARAMS} />;
 }
 
 export interface FilterOption {

@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ReviewForm } from "./ReviewForm";
 import type { Extraction } from "@/lib/ai/schemas";
+import { loadLookups } from "@/lib/data/lookups";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 
 export default async function DraftReviewPage({
   params,
@@ -21,16 +23,13 @@ export default async function DraftReviewPage({
     .maybeSingle();
   if (!draft) notFound();
 
-  const [{ data: document }, { data: contacts }, { data: projects }, { data: categories }, { data: accounts }] =
-    await Promise.all([
-      draft.document_id
-        ? supabase.from("documents").select("storage_path").eq("id", draft.document_id).maybeSingle()
-        : Promise.resolve({ data: null }),
-      supabase.from("contacts").select("id, name").order("name"),
-      supabase.from("projects").select("id, display_name").order("sort_order"),
-      supabase.from("categories").select("id, name").order("sort_order"),
-      supabase.from("accounts").select("id, name").order("sort_order"),
-    ]);
+  const orgId = await getCurrentOrgId(supabase);
+  const [{ data: document }, { contacts, projects, categories, accounts }] = await Promise.all([
+    draft.document_id
+      ? supabase.from("documents").select("storage_path").eq("id", draft.document_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    loadLookups(supabase, orgId),
+  ]);
 
   let imageUrl: string | null = null;
   if (document?.storage_path) {
