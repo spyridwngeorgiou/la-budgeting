@@ -41,10 +41,18 @@ begin
   end if;
 end $outer$;
 
--- (id, org_id) is already unique (id is the PK); the explicit index lets the
--- planner tables carry a composite FK so a row can never claim one org while
--- pointing at another org's project.
-create unique index if not exists projects_id_org_id_uidx on projects (id, org_id);
+-- (id, org_id) is already unique (id is the PK); the explicit constraint
+-- lets the planner tables carry a composite FK so a row can never claim one
+-- org while pointing at another org's project. Guarded in case a parallel
+-- migration (0037+) added the same key first.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conrelid = 'public.projects'::regclass and conname = 'projects_id_org_id_key'
+  ) then
+    alter table public.projects add constraint projects_id_org_id_key unique (id, org_id);
+  end if;
+end $$;
 
 -- ── Access helpers ─────────────────────────────────────────────────────────
 -- SECURITY DEFINER because partners cannot read `projects` (it carries
@@ -274,22 +282,25 @@ language plpgsql security definer set search_path = public as $$
 declare
   v_org uuid;
 begin
-  if tg_op = 'UPDATE'
-     and new.project_id is not distinct from old.project_id
-     and new.org_id is not distinct from old.org_id then
-    return new;
-  end if;
-
-  if tg_op = 'UPDATE' and auth.uid() is not null and not has_role(old.org_id, 'editor') then
-    raise exception 'only editors may move planner items between projects' using errcode = '42501';
+  -- Nested IFs, not `tg_op = 'UPDATE' and old...`: OLD is null on INSERT
+  -- and plpgsql does not promise to short-circuit.
+  if tg_op = 'UPDATE' then
+    if new.project_id is not distinct from old.project_id and new.org_id is not distinct from old.org_id then
+      return new;
+    end if;
+    if auth.uid() is not null and not has_role(old.org_id, 'editor') then
+      raise exception 'only editors may move planner items between projects' using errcode = '42501';
+    end if;
   end if;
 
   select org_id into v_org from projects where id = new.project_id;
   if v_org is null then
     raise exception 'project % not found', new.project_id using errcode = '23503';
   end if;
-  if tg_op = 'UPDATE' and v_org <> old.org_id then
-    raise exception 'planner items cannot move to another organisation' using errcode = '42501';
+  if tg_op = 'UPDATE' then
+    if v_org <> old.org_id then
+      raise exception 'planner items cannot move to another organisation' using errcode = '42501';
+    end if;
   end if;
   new.org_id := v_org;
   return new;
@@ -313,10 +324,12 @@ create trigger task_comments_guard before insert or update of project_id, org_id
 create function public.tasks_track_completion() returns trigger
 language plpgsql as $$
 begin
-  if new.status = 'done' and (tg_op = 'INSERT' or old.status <> 'done') then
-    new.completed_at := coalesce(new.completed_at, now());
-  elsif new.status <> 'done' then
+  if new.status <> 'done' then
     new.completed_at := null;
+  elsif tg_op = 'INSERT' then
+    new.completed_at := coalesce(new.completed_at, now());
+  elsif old.status <> 'done' then
+    new.completed_at := coalesce(new.completed_at, now());
   end if;
   return new;
 end;
