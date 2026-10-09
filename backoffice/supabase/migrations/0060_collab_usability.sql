@@ -176,6 +176,11 @@ create policy boards_delete on boards for delete using (
 -- ---------------------------------------------------------------------------
 alter table board_files alter column board_id drop not null;
 create unique index board_files_project_file_uq on board_files (project_id, file_id) where board_id is null;
+-- Page bitmaps rendered from a PDF in the browser (so the board can show
+-- it) point at the PDF they came from: hidden from file lists, and removed
+-- together with it.
+alter table board_files add column derived_from uuid references board_files(id) on delete cascade;
+create index board_files_derived_idx on board_files (derived_from) where derived_from is not null;
 
 -- Board files take org/project from their board (as 0038's
 -- collab_child_from_board); project files from their project. Invoker
@@ -184,8 +189,9 @@ create function public.board_files_scope() returns trigger
 language plpgsql set search_path = public as $$
 begin
   if tg_op = 'UPDATE'
-     and (new.board_id is distinct from old.board_id or new.project_id is distinct from old.project_id) then
-    raise exception 'board_id and project_id are immutable' using errcode = '42501';
+     and (new.board_id is distinct from old.board_id or new.project_id is distinct from old.project_id
+          or new.derived_from is distinct from old.derived_from) then
+    raise exception 'board_id, project_id and derived_from are immutable' using errcode = '42501';
   end if;
   if new.board_id is not null then
     select b.org_id, b.project_id into new.org_id, new.project_id from boards b where b.id = new.board_id;
@@ -197,6 +203,11 @@ begin
     if new.org_id is null then
       raise exception 'project % not found', new.project_id using errcode = '42501';
     end if;
+  end if;
+  if tg_op = 'INSERT' and new.derived_from is not null and not exists (
+    select 1 from board_files f where f.id = new.derived_from and f.project_id = new.project_id
+  ) then
+    raise exception 'derived_from is not a file of this project' using errcode = '42501';
   end if;
   return new;
 end;

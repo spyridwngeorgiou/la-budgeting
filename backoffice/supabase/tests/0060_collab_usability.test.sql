@@ -7,7 +7,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(66);
+select plan(69);
 
 create function pg_temp.as_user(uid uuid) returns void language sql as $$
   select set_config('role', 'authenticated', true),
@@ -229,6 +229,19 @@ select throws_ok(
   '42501', null, 'cannot add a file to a project one is not on');
 select ok(collab_path_ok((select org_a from t_ctx)::text || '/00000000-0000-0000-0000-0000000000f1/shared/a.png', true),
   'a contributor may upload project files');
+select throws_ok(
+  $$ insert into board_files (board_id, org_id, project_id, file_id, storage_path, mime_type, size_bytes, derived_from)
+     select '00000000-0000-0000-0000-00000000b003', org_a, '00000000-0000-0000-0000-0000000000f1', 'pg1',
+            org_a::text || '/00000000-0000-0000-0000-0000000000f1/00000000-0000-0000-0000-00000000b003/pg1.jpg',
+            'image/jpeg', 10, '00000000-0000-0000-0000-0000000f0003' from t_ctx $$,
+  '42501', null, 'a PDF page cannot claim to come from another project''s file');
+select lives_ok(
+  $$ insert into board_files (id, board_id, org_id, project_id, file_id, storage_path, mime_type, size_bytes, derived_from)
+     select '00000000-0000-0000-0000-0000000f0005', '00000000-0000-0000-0000-00000000b003', org_a,
+            '00000000-0000-0000-0000-0000000000f1', 'pg2',
+            org_a::text || '/00000000-0000-0000-0000-0000000000f1/00000000-0000-0000-0000-00000000b003/pg2.jpg',
+            'image/jpeg', 10, '00000000-0000-0000-0000-0000000f0004' from t_ctx $$,
+  'a PDF page records the PDF it was rendered from');
 
 select lives_ok(
   $$ insert into project_messages (id, org_id, project_id, body, attachment_ids, board_id)
@@ -267,6 +280,9 @@ select ok(not exists (select 1 from board_comments where id = '00000000-0000-000
 delete from board_files where id = '00000000-0000-0000-0000-0000000f0001';
 select ok(not exists (select 1 from board_files where id = '00000000-0000-0000-0000-0000000f0001'),
   'a lead deletes someone else''s file');
+delete from board_files where id = '00000000-0000-0000-0000-0000000f0004';
+select ok(not exists (select 1 from board_files where id = '00000000-0000-0000-0000-0000000f0005'),
+  'deleting a PDF removes the page images rendered from it');
 delete from collab_ai_threads where id = '00000000-0000-0000-0000-0000000aa001';
 select ok(not exists (select 1 from collab_ai_threads where id = '00000000-0000-0000-0000-0000000aa001'),
   'a lead deletes someone else''s assistant thread');

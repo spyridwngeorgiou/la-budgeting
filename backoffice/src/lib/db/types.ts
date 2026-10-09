@@ -1236,6 +1236,7 @@ export type Database = {
           board_id: string | null
           created_at: string
           created_by: string | null
+          derived_from: string | null
           file_id: string
           id: string
           mime_type: string
@@ -1249,6 +1250,7 @@ export type Database = {
           board_id?: string | null
           created_at?: string
           created_by?: string | null
+          derived_from?: string | null
           file_id: string
           id?: string
           mime_type: string
@@ -1262,6 +1264,7 @@ export type Database = {
           board_id?: string | null
           created_at?: string
           created_by?: string | null
+          derived_from?: string | null
           file_id?: string
           id?: string
           mime_type?: string
@@ -1277,6 +1280,13 @@ export type Database = {
             columns: ["board_id"]
             isOneToOne: false
             referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_files_derived_from_fkey"
+            columns: ["derived_from"]
+            isOneToOne: false
+            referencedRelation: "board_files"
             referencedColumns: ["id"]
           },
           {
