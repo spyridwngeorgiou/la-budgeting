@@ -1,10 +1,16 @@
 name: CI
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "backoffice/**"
+      - ".github/workflows/ci.yml"
   pull_request:
     branches: [main]
     paths:
       - "backoffice/**"
+      - ".github/workflows/ci.yml"
 
 jobs:
   check:
@@ -21,4 +27,21 @@ jobs:
           cache-dependency-path: backoffice/package-lock.json
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run lint
       - run: npm run test
+
+  # Applies every migration to a fresh local Supabase (Docker is available on
+  # GitHub runners) and runs the pgTAP suite in supabase/tests -- the RLS and
+  # org-isolation guarantees partners depend on.
+  db:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backoffice
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase db start
+      - run: supabase test db

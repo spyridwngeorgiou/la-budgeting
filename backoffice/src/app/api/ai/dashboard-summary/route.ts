@@ -32,9 +32,9 @@ export async function POST() {
 
   const [{ data: accounts }, { data: projects }, { data: vat }, { data: thisMonthTx }, { data: lastMonthTx }, { data: pending }] =
     await Promise.all([
-      supabase.from("v_account_balances").select("current_balance"),
-      supabase.from("v_project_rollup").select("display_name, spent, remaining_budget").order("spent", { ascending: false }).limit(1),
-      supabase.from("v_vat_position").select("*").lte("period_start", todayIso).order("period_start", { ascending: false }).limit(1),
+      supabase.from("v_account_balances").select("current_balance").eq("org_id", orgId),
+      supabase.from("v_project_rollup").select("display_name, spent, remaining_budget").eq("org_id", orgId).order("spent", { ascending: false }).limit(1),
+      supabase.from("v_vat_position").select("*").eq("org_id", orgId).lte("period_start", todayIso).order("period_start", { ascending: false }).limit(1),
       supabase.from("transactions").select("gross_amount").eq("direction", "expense").eq("month_key", thisMonthKey).neq("status", "cancelled"),
       supabase.from("transactions").select("gross_amount").eq("direction", "expense").eq("month_key", lastMonthKey).neq("status", "cancelled"),
       supabase.from("transactions").select("gross_amount").eq("status", "pending"),

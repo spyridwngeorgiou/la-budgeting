@@ -1,12 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 
 export default async function WithholdingPage() {
   const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
   const { data: positions } = await supabase
     .from("v_withholding_position")
     .select("*")
+    .eq("org_id", orgId)
     .order("period_start", { ascending: false })
     .limit(24);
 

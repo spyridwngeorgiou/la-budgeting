@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 import { toCsv, csvResponseHeaders } from "@/lib/csv";
 
 export async function GET() {
@@ -9,7 +10,8 @@ export async function GET() {
   } = await supabase.auth.getSession();
   if (!session?.user) return NextResponse.json({ error: "Μη εξουσιοδοτημένο." }, { status: 401 });
 
-  const { data, error } = await supabase.from("v_contact_rollup").select("*").order("name");
+  const orgId = await getCurrentOrgId(supabase);
+  const { data, error } = await supabase.from("v_contact_rollup").select("*").eq("org_id", orgId).order("name");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const header = ["Όνομα", "ΑΦΜ", "Σύνολο Εσόδων", "Σύνολο Εξόδων", "Εκκρεμές", "Καθαρό Υπόλοιπο"];

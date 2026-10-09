@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate, formatMoney } from "@/lib/format";
 import { Badge, Button, Input } from "@/components/ui";
 import { markInvoiceReceived } from "./actions";
@@ -280,12 +281,14 @@ const CHECKS = [
 
 export default async function QualityPage() {
   const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
 
   const results = await Promise.all(
     CHECKS.map(async (check) => {
       const { data, count } = await supabase
         .from(check.view)
         .select("*", { count: "exact" })
+        .eq("org_id", orgId)
         .limit(20);
       return { ...check, rows: data ?? [], count: count ?? 0 };
     }),
@@ -295,7 +298,8 @@ export default async function QualityPage() {
 
   const { data: exposureRows } = await supabase
     .from("v_uninvoiced_exposure")
-    .select("gross_amount, lost_deduction_est, lost_input_vat_est, month");
+    .select("gross_amount, lost_deduction_est, lost_input_vat_est, month")
+    .eq("org_id", orgId);
   const thisYear = String(new Date().getFullYear());
   const exposure = (exposureRows ?? []).reduce(
     (acc, r) => {

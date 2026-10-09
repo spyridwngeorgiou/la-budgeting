@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Λείπουν μηνύματα." }, { status: 400 });
   }
 
-  const { tools: readTools, collectedIds } = buildAssistantTools(supabase);
+  const { tools: readTools, collectedIds } = buildAssistantTools(supabase, orgId);
   const { tools: writeTools, collectedChangeIds } = buildWriteTools(supabase, orgId, session.user.id);
   const { tools: revenuePlanTools, collectedRevenuePlanIds } = buildRevenuePlanTools(supabase, orgId, session.user.id);
   const tools = [...readTools, ...writeTools, ...revenuePlanTools];

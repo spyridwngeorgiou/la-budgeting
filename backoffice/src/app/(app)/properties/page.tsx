@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 
@@ -35,9 +36,10 @@ export default async function PropertiesPage({ searchParams }: { searchParams: P
   const monthEnd = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).toISOString().slice(0, 10);
 
   const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
   const [{ data: projects }, { data: costs }] = await Promise.all([
     supabase.from("projects").select("id, code, display_name").neq("code", "Q000_GENERAL").order("sort_order"),
-    supabase.from("v_property_monthly_cost").select("*").eq("month", monthStart),
+    supabase.from("v_property_monthly_cost").select("*").eq("org_id", orgId).eq("month", monthStart),
   ]);
 
   const cell = (projectId: string, bucket: string) =>

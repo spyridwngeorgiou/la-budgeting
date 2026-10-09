@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentOrg } from "@/lib/supabase/org";
+import { getCurrentOrg, getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney } from "@/lib/format";
 import { Badge, Card } from "@/components/ui";
 import { CashflowChart } from "./CashflowChart";
@@ -27,10 +27,11 @@ const FORWARD_HORIZON_MONTHS = 6;
 
 export default async function CashflowPage() {
   const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
 
   const [{ data: monthly }, { data: accounts }, org] = await Promise.all([
-    supabase.from("v_cashflow_monthly").select("*").order("month"),
-    supabase.from("v_account_balances").select("current_balance"),
+    supabase.from("v_cashflow_monthly").select("*").eq("org_id", orgId).order("month"),
+    supabase.from("v_account_balances").select("current_balance").eq("org_id", orgId),
     getCurrentOrg(supabase),
   ]);
 

@@ -14,7 +14,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 const DIRECTION = z.enum(["income", "expense"]).optional().describe("Παράλειψη = και τα δύο");
 const SCOPE = z.enum(["business", "personal"]).optional().describe("Παράλειψη = και τα δύο");
 
-export function buildAssistantTools(supabase: SupabaseClient) {
+export function buildAssistantTools(supabase: SupabaseClient, orgId: string) {
   // Populated as a side effect of each tool call (never read by the model
   // itself) so the route handler can build one "δείτε τις κινήσεις"
   // drill-down link covering every transaction referenced anywhere in the
@@ -172,7 +172,7 @@ export function buildAssistantTools(supabase: SupabaseClient) {
       period: z.string().optional().describe("Μήνας σε μορφή YYYY-MM. Παράλειψη = πιο πρόσφατος μήνας με δεδομένα."),
     }),
     run: async ({ period }) => {
-      let q = supabase.from("v_vat_position").select("*").order("period_start", { ascending: false });
+      let q = supabase.from("v_vat_position").select("*").eq("org_id", orgId).order("period_start", { ascending: false });
       if (period) q = q.eq("period_start", `${period}-01`);
       const { data, error } = await q.limit(1);
       if (error) return JSON.stringify({ error: error.message });
@@ -246,6 +246,7 @@ export function buildAssistantTools(supabase: SupabaseClient) {
       const { data, error } = await supabase
         .from("v_cashflow_monthly")
         .select("*")
+        .eq("org_id", orgId)
         .gte("month", from)
         .order("month")
         .limit(months_ahead * 3); // *3: one row per owner_scope per month

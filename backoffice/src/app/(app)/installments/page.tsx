@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { Badge, Button } from "@/components/ui";
@@ -7,6 +8,7 @@ import { createInstallmentPlan, regeneratePlan, markInstallmentPaid } from "./ac
 
 export default async function InstallmentsPage() {
   const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
 
   const [
     { data: progress },
@@ -17,7 +19,7 @@ export default async function InstallmentsPage() {
     { data: accounts },
     { data: installments },
   ] = await Promise.all([
-    supabase.from("v_plan_progress").select("*"),
+    supabase.from("v_plan_progress").select("*").eq("org_id", orgId),
     supabase.from("installment_plans").select("id, label"),
     supabase.from("contacts").select("id, name").order("name"),
     supabase.from("projects").select("id, display_name").order("sort_order"),

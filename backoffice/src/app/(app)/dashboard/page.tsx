@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { aiEnabled } from "@/lib/ai/client";
@@ -20,6 +21,7 @@ import { DueDatesCalendar } from "./DueDatesCalendar";
 // through `?? 0` / `?? ""` rather than assuming a value is present.
 export default async function DashboardPage() {
   const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
 
   // v_vat_position only has a row for months with actual transactions, and
   // "most recent row" naively includes FUTURE scheduled months -- a
@@ -51,14 +53,15 @@ export default async function DashboardPage() {
     { data: pendingDraftRows, count: pendingDrafts },
     { count: pendingChanges },
   ] = await Promise.all([
-    supabase.from("v_account_balances").select("*").order("owner_scope"),
-    supabase.from("v_project_rollup").select("*").order("code"),
+    supabase.from("v_account_balances").select("*").eq("org_id", orgId).order("owner_scope"),
+    supabase.from("v_project_rollup").select("*").eq("org_id", orgId).order("code"),
     supabase
       .from("v_vat_position")
       .select("*")
+      .eq("org_id", orgId)
       .lte("period_start", todayIso)
       .order("period_start", { ascending: false }),
-    supabase.from("v_qc_projects_without_budget").select("project_id"),
+    supabase.from("v_qc_projects_without_budget").select("project_id").eq("org_id", orgId),
     // The comment above has promised "what's due soon" since this page's
     // first version -- the data (transactions.due_date on pending/scheduled
     // rows, already populated by loan/installment schedules) was always
@@ -74,7 +77,7 @@ export default async function DashboardPage() {
     // Filing status per period, same source /vat uses -- lets the worklist
     // flag a past period nobody has marked as filed yet.
     supabase.from("vat_periods").select("period_start, status"),
-    supabase.from("v_qc_missing_project_or_account").select("transaction_id", { count: "exact", head: true }),
+    supabase.from("v_qc_missing_project_or_account").select("transaction_id", { count: "exact", head: true }).eq("org_id", orgId),
     supabase.from("transaction_drafts").select("id", { count: "exact" }).eq("status", "pending").order("created_at"),
     supabase.from("agent_changes").select("id", { count: "exact", head: true }).eq("status", "pending"),
   ]);
@@ -126,7 +129,8 @@ export default async function DashboardPage() {
   // lost, not a row count: that's the number that makes someone chase the invoice.
   const { data: uninvoiced } = await supabase
     .from("v_qc_uninvoiced_large_expenses")
-    .select("lost_deduction_est, lost_input_vat_est");
+    .select("lost_deduction_est, lost_input_vat_est")
+    .eq("org_id", orgId);
   const uninvoicedLost = (uninvoiced ?? []).reduce(
     (sum, r) => sum + Number(r.lost_deduction_est ?? 0) + Number(r.lost_input_vat_est ?? 0),
     0,
@@ -136,8 +140,8 @@ export default async function DashboardPage() {
   // never silently "fixed" by editing opening balances -- v_qc_account_drift /
   // v_qc_counterparty_without_contact (0033).
   const [{ data: accountIssues }, { data: contactless }] = await Promise.all([
-    supabase.from("v_qc_account_drift").select("account_name, drift, issue, days_since_count"),
-    supabase.from("v_qc_counterparty_without_contact").select("n"),
+    supabase.from("v_qc_account_drift").select("account_name, drift, issue, days_since_count").eq("org_id", orgId),
+    supabase.from("v_qc_counterparty_without_contact").select("n").eq("org_id", orgId),
   ]);
   const driftItems = (accountIssues ?? [])
     .filter((a) => a.issue === "drift")

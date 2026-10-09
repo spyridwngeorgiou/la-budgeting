@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { AccountFormModal } from "./AccountFormModal";
@@ -8,10 +9,11 @@ import { AccountsTable } from "./AccountsTable";
 
 export default async function AccountsPage() {
   const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
   const [{ data: accounts }, { data: checkRows }] = await Promise.all([
-    supabase.from("v_account_balances").select("*").order("owner_scope").order("name"),
+    supabase.from("v_account_balances").select("*").eq("org_id", orgId).order("owner_scope").order("name"),
     // Newest first per account; each row carries its live period breakdown (0035).
-    supabase.from("v_balance_checks").select("*").order("as_of_date", { ascending: false }),
+    supabase.from("v_balance_checks").select("*").eq("org_id", orgId).order("as_of_date", { ascending: false }),
   ]);
   const checksByAccount = new Map<string, BalanceCheck[]>();
   for (const r of checkRows ?? []) {

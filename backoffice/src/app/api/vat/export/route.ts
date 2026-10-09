@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 import { toCsv, csvResponseHeaders } from "@/lib/csv";
 
 // The thing a λογιστής actually needs every filing period -- VAT position
@@ -11,8 +12,9 @@ export async function GET() {
   } = await supabase.auth.getSession();
   if (!session?.user) return NextResponse.json({ error: "Μη εξουσιοδοτημένο." }, { status: 401 });
 
+  const orgId = await getCurrentOrgId(supabase);
   const [{ data: positions, error }, { data: filings }] = await Promise.all([
-    supabase.from("v_vat_position").select("*").order("period_start", { ascending: true }),
+    supabase.from("v_vat_position").select("*").eq("org_id", orgId).order("period_start", { ascending: true }),
     supabase.from("vat_periods").select("*"),
   ]);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

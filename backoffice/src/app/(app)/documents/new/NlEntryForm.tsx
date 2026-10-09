@@ -38,6 +38,9 @@ export function NlEntryForm() {
     };
     const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
     if (Ctor) {
+      // Browser-only feature detection: must run after hydration, or the
+      // server-rendered (mic hidden) markup would mismatch the client's.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMicSupported(true);
       const recognition = new Ctor();
       recognition.lang = "el-GR";

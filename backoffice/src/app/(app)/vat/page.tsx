@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { Badge, Button } from "@/components/ui";
@@ -12,6 +13,7 @@ function addMonthsIso(iso: string, delta: number): string {
 
 export default async function VatPage() {
   const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
 
   // Anchored to today, not "whatever 24 rows happen to have data" -- the
   // same bug already found and fixed in cashflow/analysis this session: an
@@ -28,6 +30,7 @@ export default async function VatPage() {
     supabase
       .from("v_vat_position")
       .select("*")
+      .eq("org_id", orgId)
       .gte("period_start", windowStart)
       .lte("period_start", windowEnd)
       .order("period_start", { ascending: false }),
