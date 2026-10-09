@@ -12,11 +12,14 @@ export function CommitBar({
   status,
   version,
   pendingCount,
+  undoable = true,
 }: {
   batchId: string;
   status: "staged" | "committed" | "undone" | "discarded";
   version: number;
   pendingCount: number;
+  // false for batches backfilled from the old system (0072/0073): undo_ingest_batch refuses them.
+  undoable?: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [touched, setTouched] = useState<string[] | null>(null);
@@ -50,7 +53,7 @@ export function CommitBar({
             </Button>
           </>
         )}
-        {status === "committed" && !touched && (
+        {status === "committed" && undoable && !touched && (
           <Button type="button" variant="secondary" disabled={pending} onClick={() => run(() => undoIngest(batchId, version, false))}>
             {pending ? "…" : "Αναίρεση"}
           </Button>

@@ -55,8 +55,9 @@ export default async function InboxPage() {
                   <tr key={b.id} className="border-t border-line">
                     <td className="p-2">
                       <Link href={`/inbox/${b.id}`} className="hover:underline">
-                        {b.filename ?? b.source}
+                        {b.filename ?? el.ingest.source[b.source]}
                       </Link>
+                      <div className="text-xs text-ink-muted">{el.ingest.source[b.source]}</div>
                     </td>
                     <td className="hidden p-2 sm:table-cell">{account?.name ?? "—"}</td>
                     <td className="hidden p-2 sm:table-cell">
