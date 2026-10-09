@@ -5,6 +5,8 @@ import { ReviewTable } from "./ReviewTable";
 import { commitBatch } from "../actions";
 import { el } from "@/lib/i18n/el";
 import { ActionForm } from "@/components/ActionForm";
+import { loadLookups } from "@/lib/data/lookups";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 
 export default async function AadeBatchReviewPage({
   params,
@@ -13,8 +15,9 @@ export default async function AadeBatchReviewPage({
 }) {
   const { batchId } = await params;
   const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
 
-  const [{ data: batch }, { data: rows }, { data: projects }, { data: categories }, { data: accounts }] =
+  const [{ data: batch }, { data: rows }, { projects, categories, accounts }] =
     await Promise.all([
       supabase.from("aade_import_batches").select("*").eq("id", batchId).maybeSingle(),
       supabase
@@ -24,9 +27,7 @@ export default async function AadeBatchReviewPage({
         )
         .eq("batch_id", batchId)
         .order("row_no"),
-      supabase.from("projects").select("id, display_name").order("sort_order"),
-      supabase.from("categories").select("id, name").order("sort_order"),
-      supabase.from("accounts").select("id, name").order("sort_order"),
+      loadLookups(supabase, orgId, { include: ["projects", "categories", "accounts"] }),
     ]);
 
   if (!batch) notFound();

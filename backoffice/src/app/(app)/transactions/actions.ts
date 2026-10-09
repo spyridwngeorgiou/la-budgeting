@@ -190,9 +190,11 @@ export async function recordPartialPayment(parentId: string, formData: FormData)
 // reused here for the human-typed path instead of the AI-extracted one.
 export async function suggestForContact(contactId: string) {
   const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
   const { data } = await supabase
     .from("transactions")
     .select("project_id, category_id, vat_rate, has_invoice")
+    .eq("org_id", orgId)
     .eq("contact_id", contactId)
     .order("tx_date", { ascending: false })
     .limit(1)

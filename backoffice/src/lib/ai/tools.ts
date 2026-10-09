@@ -31,10 +31,10 @@ export function buildAssistantTools(supabase: SupabaseClient, orgId: string) {
     run: async ({ query }) => {
       const like = `%${query}%`;
       const [contacts, projects, categories, accounts] = await Promise.all([
-        supabase.from("contacts").select("id, name, afm").ilike("name", like).limit(10),
-        supabase.from("projects").select("id, display_name, code").ilike("display_name", like).limit(10),
-        supabase.from("categories").select("id, name").ilike("name", like).limit(10),
-        supabase.from("accounts").select("id, name").ilike("name", like).limit(10),
+        supabase.from("contacts").select("id, name, afm").eq("org_id", orgId).ilike("name", like).limit(10),
+        supabase.from("projects").select("id, display_name, code").eq("org_id", orgId).ilike("display_name", like).limit(10),
+        supabase.from("categories").select("id, name").eq("org_id", orgId).ilike("name", like).limit(10),
+        supabase.from("accounts").select("id, name").eq("org_id", orgId).ilike("name", like).limit(10),
       ]);
       return JSON.stringify({
         contacts: contacts.data ?? [],
@@ -67,6 +67,7 @@ export function buildAssistantTools(supabase: SupabaseClient, orgId: string) {
         .select(
           "id, tx_date, description, direction, status, gross_amount, contacts(name), projects(display_name), categories(name)",
         )
+        .eq("org_id", orgId)
         .order("tx_date", { ascending: false })
         .limit(args.limit);
       if (args.from) q = q.gte("tx_date", args.from);
@@ -119,6 +120,7 @@ export function buildAssistantTools(supabase: SupabaseClient, orgId: string) {
         .select(
           "id, tx_date, gross_amount, direction, project_id, projects(display_name), category_id, categories(name), contact_id, contacts(name), account_id, accounts(name)",
         )
+        .eq("org_id", orgId)
         .neq("status", "cancelled");
       if (args.from) q = q.gte("tx_date", args.from);
       if (args.to) q = q.lte("tx_date", args.to);
@@ -210,6 +212,7 @@ export function buildAssistantTools(supabase: SupabaseClient, orgId: string) {
       let q = supabase
         .from("transactions")
         .select("id, tx_date, due_date, description, gross_amount, contacts(name), projects(display_name)")
+        .eq("org_id", orgId)
         .eq("direction", txDirection)
         .in("status", ["pending", "scheduled"])
         .order("due_date", { ascending: true, nullsFirst: false });

@@ -29,7 +29,7 @@ export default async function VatPage() {
       .gte("period_start", windowStart)
       .lte("period_start", windowEnd)
       .order("period_start", { ascending: false }),
-    supabase.from("vat_periods").select("*"),
+    supabase.from("vat_periods").select("*").eq("org_id", orgId),
   ]);
 
   const filingByPeriod = new Map((filings ?? []).map((f) => [f.period_start, f]));

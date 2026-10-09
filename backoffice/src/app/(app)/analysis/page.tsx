@@ -4,6 +4,7 @@ import { formatMoney } from "@/lib/format";
 import type { TxDirection, TxScope } from "@/lib/domain/enums";
 import { AiSpark } from "@/components/ui";
 import { addMonths, currentMonthKey, monthRange, monthsBetween, shortMonthYearLabel } from "@/lib/dates";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 
 type GroupBy = "project" | "category" | "contact" | "account";
 
@@ -52,11 +53,13 @@ export default async function AnalysisPage({
   const range: "12m" | "all" = params.range === "all" ? "all" : "12m";
 
   const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
   let query = supabase
     .from("transactions")
     .select(
       "id, tx_date, gross_amount, direction, project_id, projects(display_name), category_id, categories(name), contact_id, contacts(name), account_id, accounts(name)",
     )
+    .eq("org_id", orgId)
     .neq("status", "cancelled")
     .order("tx_date");
 

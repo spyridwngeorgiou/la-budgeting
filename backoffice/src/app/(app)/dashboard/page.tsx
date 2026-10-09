@@ -66,16 +66,17 @@ export default async function DashboardPage() {
     supabase
       .from("transactions")
       .select("id, due_date, direction, gross_amount")
+      .eq("org_id", orgId)
       .in("status", ["pending", "scheduled"])
       .not("due_date", "is", null)
       .gte("due_date", grid.start)
       .lte("due_date", grid.end),
     // Filing status per period, same source /vat uses -- lets the worklist
     // flag a past period nobody has marked as filed yet.
-    supabase.from("vat_periods").select("period_start, status"),
+    supabase.from("vat_periods").select("period_start, status").eq("org_id", orgId),
     supabase.from("v_qc_missing_project_or_account").select("transaction_id", { count: "exact", head: true }).eq("org_id", orgId),
-    supabase.from("transaction_drafts").select("id", { count: "exact" }).eq("status", "pending").order("created_at"),
-    supabase.from("agent_changes").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("transaction_drafts").select("id", { count: "exact" }).eq("org_id", orgId).eq("status", "pending").order("created_at"),
+    supabase.from("agent_changes").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("status", "pending"),
   ]);
 
   const noBudget = new Set((withoutBudget ?? []).map((r) => r.project_id));

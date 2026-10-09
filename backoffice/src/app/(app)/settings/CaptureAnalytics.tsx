@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui";
 import { formatMoney } from "@/lib/format";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 
 const FEATURE_LABELS: Record<string, string> = {
   document_extraction: "Ανάγνωση Παραστατικού (φωτό)",
@@ -27,11 +28,12 @@ function median(values: number[]): number | null {
 // draft_id (migration 0022) were new.
 export async function CaptureAnalytics() {
   const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
 
   const [{ data: usage }, { data: approvedDrafts }, { data: corrections }] = await Promise.all([
-    supabase.from("ai_usage").select("feature, latency_ms, cost_cents").order("created_at", { ascending: false }).limit(5000),
-    supabase.from("transaction_drafts").select("id, source").eq("status", "approved").in("source", ["ai_document", "ai_nl"]),
-    supabase.from("ai_corrections").select("draft_id").not("draft_id", "is", null),
+    supabase.from("ai_usage").select("feature, latency_ms, cost_cents").eq("org_id", orgId).order("created_at", { ascending: false }).limit(5000),
+    supabase.from("transaction_drafts").select("id, source").eq("org_id", orgId).eq("status", "approved").in("source", ["ai_document", "ai_nl"]),
+    supabase.from("ai_corrections").select("draft_id").eq("org_id", orgId).not("draft_id", "is", null),
   ]);
 
   if (!usage || usage.length === 0) {

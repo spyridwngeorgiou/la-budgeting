@@ -23,6 +23,7 @@ import { CapitalSourceFormModal } from "../CapitalSourceFormModal";
 import { saveCapitalSource, deleteCapitalSource } from "../capital-actions";
 import type { CapitalSourceKind } from "@/lib/domain/enums";
 import { addMonths, currentMonthKey, currentYear, firstOfMonth } from "@/lib/dates";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 
 const KIND_FALLBACK_LABEL: Record<CapitalSourceKind, string> = {
   equity: "Ίδια κεφάλαια",
@@ -117,7 +118,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         "id, label, principal, interest_rate, term_years, grace_years, first_amortisation_month, state, notes, loan_drawdowns(scheduled_month, amount)",
       )
       .eq("project_id", id),
-    supabase.from("revenue_plans").select("id, name, project_id, start_year, years").order("name"),
+    getCurrentOrgId(supabase).then((orgId) =>
+      supabase.from("revenue_plans").select("id, name, project_id, start_year, years").eq("org_id", orgId).order("name"),
+    ),
     supabase
       .from("project_capital_sources")
       .select("id, kind, contributor, amount, contributed_on, notes")

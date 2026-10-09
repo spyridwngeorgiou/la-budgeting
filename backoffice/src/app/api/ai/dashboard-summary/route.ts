@@ -35,9 +35,9 @@ export async function POST() {
       supabase.from("v_account_balances").select("current_balance").eq("org_id", orgId),
       supabase.from("v_project_rollup").select("display_name, spent, remaining_budget").eq("org_id", orgId).order("spent", { ascending: false }).limit(1),
       supabase.from("v_vat_position").select("*").eq("org_id", orgId).lte("period_start", todayIso).order("period_start", { ascending: false }).limit(1),
-      supabase.from("transactions").select("gross_amount").eq("direction", "expense").eq("month_key", thisMonthKey).neq("status", "cancelled"),
-      supabase.from("transactions").select("gross_amount").eq("direction", "expense").eq("month_key", lastMonthKey).neq("status", "cancelled"),
-      supabase.from("transactions").select("gross_amount").eq("status", "pending"),
+      supabase.from("transactions").select("gross_amount").eq("org_id", orgId).eq("direction", "expense").eq("month_key", thisMonthKey).neq("status", "cancelled"),
+      supabase.from("transactions").select("gross_amount").eq("org_id", orgId).eq("direction", "expense").eq("month_key", lastMonthKey).neq("status", "cancelled"),
+      supabase.from("transactions").select("gross_amount").eq("org_id", orgId).eq("status", "pending"),
     ]);
 
   const liquidTotal = (accounts ?? []).reduce((s, a) => s + Number(a.current_balance ?? 0), 0);

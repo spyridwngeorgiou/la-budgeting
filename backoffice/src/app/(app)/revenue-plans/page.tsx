@@ -6,12 +6,15 @@ import { AiCreateForm } from "./AiCreateForm";
 import { RevenuePlansGrid, type RevenuePlanRow } from "./RevenuePlansGrid";
 import { aiEnabled } from "@/lib/ai/client";
 import { currentYear } from "@/lib/dates";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 
 export default async function RevenuePlansPage() {
   const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
   const { data: plans } = await supabase
     .from("revenue_plans")
     .select("id, name, start_year, years, projects(display_name), revenue_plan_room_types(id, name, unit_count, revenue_plan_assumptions(year_number, month_number, occupancy_pct, adr))")
+    .eq("org_id", orgId)
     .order("created_at", { ascending: false });
 
   const planRows: RevenuePlanRow[] = (plans ?? []).map((p) => {

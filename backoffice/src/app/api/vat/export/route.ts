@@ -15,7 +15,7 @@ export async function GET() {
   const orgId = await getCurrentOrgId(supabase);
   const [{ data: positions, error }, { data: filings }] = await Promise.all([
     supabase.from("v_vat_position").select("*").eq("org_id", orgId).order("period_start", { ascending: true }),
-    supabase.from("vat_periods").select("*"),
+    supabase.from("vat_periods").select("*").eq("org_id", orgId),
   ]);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

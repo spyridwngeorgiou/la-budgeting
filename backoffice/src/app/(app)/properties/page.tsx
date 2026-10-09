@@ -32,7 +32,7 @@ export default async function PropertiesPage({ searchParams }: { searchParams: P
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
   const [{ data: projects }, { data: costs }] = await Promise.all([
-    supabase.from("projects").select("id, code, display_name").neq("code", "Q000_GENERAL").order("sort_order"),
+    supabase.from("projects").select("id, code, display_name").eq("org_id", orgId).neq("code", "Q000_GENERAL").order("sort_order"),
     supabase.from("v_property_monthly_cost").select("*").eq("org_id", orgId).eq("month", monthStart),
   ]);
 

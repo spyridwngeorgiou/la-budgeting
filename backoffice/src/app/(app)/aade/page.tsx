@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { uploadAadeFile } from "./actions";
 import { ActionForm } from "@/components/ActionForm";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 
 const STATUS_LABEL = { draft: "Πρόχειρο", committed: "Ολοκληρώθηκε", discarded: "Απορρίφθηκε" } as const;
 const STATUS_TONE = { draft: "amber", committed: "green", discarded: "neutral" } as const;
@@ -18,7 +19,9 @@ export default async function AadePage() {
   // other (org lookup doesn't gate the batches query; RLS scopes both).
   const [org, { data: batches }] = await Promise.all([
     getCurrentOrg(supabase),
-    supabase.from("aade_import_batches").select("*").order("uploaded_at", { ascending: false }),
+    getCurrentOrgId(supabase).then((orgId) =>
+      supabase.from("aade_import_batches").select("*").eq("org_id", orgId).order("uploaded_at", { ascending: false }),
+    ),
   ]);
 
   return (

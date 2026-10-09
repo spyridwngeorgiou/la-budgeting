@@ -5,6 +5,7 @@ import { el } from "@/lib/i18n/el";
 import { Badge, Button } from "@/components/ui";
 import { InstallmentPlanFormModal } from "./InstallmentPlanFormModal";
 import { createInstallmentPlan, regeneratePlan, markInstallmentPaid } from "./actions";
+import { loadLookups } from "@/lib/data/lookups";
 
 export default async function InstallmentsPage() {
   const supabase = await createClient();
@@ -13,21 +14,16 @@ export default async function InstallmentsPage() {
   const [
     { data: progress },
     { data: plans },
-    { data: contacts },
-    { data: projects },
-    { data: categories },
-    { data: accounts },
+    { contacts, projects, categories, accounts },
     { data: installments },
   ] = await Promise.all([
     supabase.from("v_plan_progress").select("*").eq("org_id", orgId),
-    supabase.from("installment_plans").select("id, label"),
-    supabase.from("contacts").select("id, name").order("name"),
-    supabase.from("projects").select("id, display_name").order("sort_order"),
-    supabase.from("categories").select("id, name").order("sort_order"),
-    supabase.from("accounts").select("id, name").order("sort_order"),
+    supabase.from("installment_plans").select("id, label").eq("org_id", orgId),
+    loadLookups(supabase, orgId),
     supabase
       .from("transactions")
       .select("id, plan_id, installment_no, tx_date, due_date, status, gross_amount")
+      .eq("org_id", orgId)
       .not("plan_id", "is", null)
       .order("installment_no"),
   ]);
