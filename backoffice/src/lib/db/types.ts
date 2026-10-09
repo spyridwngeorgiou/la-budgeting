@@ -950,6 +950,346 @@ export type Database = {
           },
         ]
       }
+      board_comments: {
+        Row: {
+          author_id: string | null
+          board_id: string
+          body: string
+          created_at: string
+          element_id: string | null
+          id: string
+          org_id: string
+          parent_id: string | null
+          project_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          scene_x: number | null
+          scene_y: number | null
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          board_id: string
+          body: string
+          created_at?: string
+          element_id?: string | null
+          id?: string
+          org_id: string
+          parent_id?: string | null
+          project_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          scene_x?: number | null
+          scene_y?: number | null
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          board_id?: string
+          body?: string
+          created_at?: string
+          element_id?: string | null
+          id?: string
+          org_id?: string
+          parent_id?: string | null
+          project_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          scene_x?: number | null
+          scene_y?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_comments_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_comments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_comments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "board_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "board_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_comments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_comments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "board_comments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      board_elements: {
+        Row: {
+          board_id: string
+          data: Json
+          element_id: string
+          is_deleted: boolean
+          org_id: string
+          project_id: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+          version_nonce: number
+        }
+        Insert: {
+          board_id: string
+          data: Json
+          element_id: string
+          is_deleted?: boolean
+          org_id: string
+          project_id: string
+          updated_at?: string
+          updated_by?: string | null
+          version: number
+          version_nonce: number
+        }
+        Update: {
+          board_id?: string
+          data?: Json
+          element_id?: string
+          is_deleted?: boolean
+          org_id?: string
+          project_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+          version_nonce?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_elements_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_elements_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_elements_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "board_elements_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_elements_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "board_elements_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      board_files: {
+        Row: {
+          board_id: string
+          created_at: string
+          created_by: string | null
+          file_id: string
+          id: string
+          mime_type: string
+          org_id: string
+          original_name: string | null
+          project_id: string
+          size_bytes: number
+          storage_path: string
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          created_by?: string | null
+          file_id: string
+          id?: string
+          mime_type: string
+          org_id: string
+          original_name?: string | null
+          project_id: string
+          size_bytes: number
+          storage_path: string
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          created_by?: string | null
+          file_id?: string
+          id?: string
+          mime_type?: string
+          org_id?: string
+          original_name?: string | null
+          project_id?: string
+          size_bytes?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_files_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_files_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_files_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "board_files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "board_files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      boards: {
+        Row: {
+          app_state: Json
+          archived_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          org_id: string
+          project_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          app_state?: Json
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          org_id: string
+          project_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          app_state?: Json
+          archived_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          org_id?: string
+          project_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boards_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boards_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "boards_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boards_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "boards_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
       budget_lines: {
         Row: {
           amount: number
@@ -2135,21 +2475,106 @@ export type Database = {
       }
       profiles: {
         Row: {
+          company_name: string | null
+          default_discipline: Database["public"]["Enums"]["partner_discipline"] | null
           display_name: string | null
           email: string | null
+          phone: string | null
           user_id: string
         }
         Insert: {
+          company_name?: string | null
+          default_discipline?: Database["public"]["Enums"]["partner_discipline"] | null
           display_name?: string | null
           email?: string | null
+          phone?: string | null
           user_id: string
         }
         Update: {
+          company_name?: string | null
+          default_discipline?: Database["public"]["Enums"]["partner_discipline"] | null
           display_name?: string | null
           email?: string | null
+          phone?: string | null
           user_id?: string
         }
         Relationships: []
+      }
+      project_activity: {
+        Row: {
+          actor_id: string | null
+          board_id: string | null
+          created_at: string
+          id: number
+          kind: string
+          org_id: string
+          project_id: string
+          summary: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          board_id?: string | null
+          created_at?: string
+          id?: number
+          kind: string
+          org_id: string
+          project_id: string
+          summary?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          board_id?: string | null
+          created_at?: string
+          id?: number
+          kind?: string
+          org_id?: string
+          project_id?: string
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_activity_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_activity_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_activity_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "project_activity_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_activity_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_activity_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
+          },
+        ]
       }
       project_budgets: {
         Row: {
@@ -2298,6 +2723,93 @@ export type Database = {
           },
         ]
       }
+      project_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          company_name: string | null
+          created_at: string
+          discipline: Database["public"]["Enums"]["partner_discipline"] | null
+          email: string
+          expires_at: string
+          full_name: string | null
+          id: string
+          invited_by: string | null
+          org_id: string
+          project_id: string
+          revoked_at: string | null
+          role: Database["public"]["Enums"]["project_role"]
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          company_name?: string | null
+          created_at?: string
+          discipline?: Database["public"]["Enums"]["partner_discipline"] | null
+          email: string
+          expires_at?: string
+          full_name?: string | null
+          id?: string
+          invited_by?: string | null
+          org_id: string
+          project_id: string
+          revoked_at?: string | null
+          role?: Database["public"]["Enums"]["project_role"]
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          company_name?: string | null
+          created_at?: string
+          discipline?: Database["public"]["Enums"]["partner_discipline"] | null
+          email?: string
+          expires_at?: string
+          full_name?: string | null
+          id?: string
+          invited_by?: string | null
+          org_id?: string
+          project_id?: string
+          revoked_at?: string | null
+          role?: Database["public"]["Enums"]["project_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_invites_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_invites_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "project_invites_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_invites_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_invites_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
       project_leases: {
         Row: {
           created_at: string
@@ -2390,6 +2902,72 @@ export type Database = {
           },
           {
             foreignKeyName: "project_leases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      project_members: {
+        Row: {
+          created_at: string
+          discipline: Database["public"]["Enums"]["partner_discipline"] | null
+          invited_by: string | null
+          org_id: string
+          project_id: string
+          role: Database["public"]["Enums"]["project_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          discipline?: Database["public"]["Enums"]["partner_discipline"] | null
+          invited_by?: string | null
+          org_id: string
+          project_id: string
+          role?: Database["public"]["Enums"]["project_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          discipline?: Database["public"]["Enums"]["partner_discipline"] | null
+          invited_by?: string | null
+          org_id?: string
+          project_id?: string
+          role?: Database["public"]["Enums"]["project_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_members_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_members_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_members_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "v_qc_projects_without_budget"
@@ -4312,7 +4890,25 @@ export type Database = {
     }
     Functions: {
       account_balance_as_of: { Args: { p_account: string; p_date: string }; Returns: number }
+      can_access_project: { Args: { p_project: string }; Returns: boolean }
+      can_edit_collab: { Args: { p_project: string }; Returns: boolean }
+      collab_path_ok: {
+        Args: { p_name: string; p_write: boolean }
+        Returns: boolean
+      }
+      collab_people: {
+        Args: { p_project: string }
+        Returns: {
+          company_name: string
+          discipline: Database["public"]["Enums"]["partner_discipline"]
+          display_name: string
+          is_internal: boolean
+          project_role: Database["public"]["Enums"]["project_role"]
+          user_id: string
+        }[]
+      }
       ensure_plans_current: { Args: { p_org_id?: string }; Returns: undefined }
+      is_internal_user: { Args: never; Returns: boolean }
       match_property_utility: {
         Args: { p_org: string; p_text: string }
         Returns: {
@@ -4338,8 +4934,26 @@ export type Database = {
         Args: { p_min: Database["public"]["Enums"]["org_role"]; p_org: string }
         Returns: boolean
       }
+      my_collab_projects: {
+        Args: never
+        Returns: {
+          code: string
+          discipline: Database["public"]["Enums"]["partner_discipline"]
+          display_name: string
+          my_role: Database["public"]["Enums"]["project_role"]
+          org_id: string
+          org_name: string
+          phase: string
+          project_id: string
+          status: Database["public"]["Enums"]["project_status"]
+        }[]
+      }
       my_org_ids: { Args: never; Returns: string[] }
       normalize_greek_name: { Args: { p_name: string }; Returns: string }
+      realtime_board_topic_ok: {
+        Args: { p_topic: string; p_write: boolean }
+        Returns: boolean
+      }
       regenerate_plan: {
         Args: { p_plan_id: string }
         Returns: {
@@ -4350,6 +4964,10 @@ export type Database = {
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       unaccent: { Args: { "": string }; Returns: string }
+      upsert_board_elements: {
+        Args: { p_board: string; p_elements: Json }
+        Returns: Json
+      }
       v_due_within: {
         Args: { p_days: number; p_org_id: string }
         Returns: {
@@ -4407,10 +5025,20 @@ export type Database = {
       opex_line_kind: "payroll" | "pct_of_revenue" | "fixed_annual"
       org_role: "owner" | "admin" | "editor" | "viewer"
       owner_scope: "corporate" | "personal"
+      partner_discipline:
+        | "architect"
+        | "interior_designer"
+        | "civil_engineer"
+        | "mechanical_engineer"
+        | "electrical_engineer"
+        | "contractor"
+        | "surveyor"
+        | "other"
       plan_frequency: "monthly" | "quarterly" | "semiannual" | "annual"
       plan_status: "active" | "completed" | "cancelled"
       project_note_kind: "status" | "risk" | "action" | "milestone"
       project_note_severity: "info" | "watch" | "urgent"
+      project_role: "lead" | "contributor" | "guest"
       project_status: "offer" | "active" | "on_hold" | "completed" | "cancelled"
       project_type:
         | "construction"
@@ -4607,10 +5235,21 @@ export const Constants = {
       opex_line_kind: ["payroll", "pct_of_revenue", "fixed_annual"],
       org_role: ["owner", "admin", "editor", "viewer"],
       owner_scope: ["corporate", "personal"],
+      partner_discipline: [
+        "architect",
+        "interior_designer",
+        "civil_engineer",
+        "mechanical_engineer",
+        "electrical_engineer",
+        "contractor",
+        "surveyor",
+        "other",
+      ],
       plan_frequency: ["monthly", "quarterly", "semiannual", "annual"],
       plan_status: ["active", "completed", "cancelled"],
       project_note_kind: ["status", "risk", "action", "milestone"],
       project_note_severity: ["info", "watch", "urgent"],
+      project_role: ["lead", "contributor", "guest"],
       project_status: ["offer", "active", "on_hold", "completed", "cancelled"],
       project_type: [
         "construction",
