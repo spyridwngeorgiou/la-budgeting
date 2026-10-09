@@ -176,7 +176,7 @@ begin
         select c.id into v_contact from contacts c where c.org_id = b.org_id and c.afm = r.counterparty_afm;
         if v_contact is null then
           insert into contacts (org_id, name, afm)
-          values (b.org_id, coalesce(nullif(r.counterparty_name, ''), r.counterparty_afm), r.counterparty_afm)
+          values (b.org_id, coalesce(r.counterparty_name, r.counterparty_afm), r.counterparty_afm)
           returning id into v_contact;
           v_contact_created := true;
         end if;
