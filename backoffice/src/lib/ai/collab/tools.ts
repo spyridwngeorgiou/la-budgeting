@@ -167,6 +167,8 @@ export function createCollabToolRunner(ctx: CollabToolContext) {
       .from("board_files")
       .select("id, original_name, mime_type, size_bytes, created_at")
       .eq("project_id", projectId)
+      // PDF page bitmaps (0060) are previews of a PDF already listed.
+      .is("derived_from", null)
       .order("created_at", { ascending: false })
       .limit(100);
     if (error) return { content: "Τα αρχεία δεν μπόρεσαν να διαβαστούν.", isError: true };

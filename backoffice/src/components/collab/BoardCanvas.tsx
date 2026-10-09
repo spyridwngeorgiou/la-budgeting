@@ -588,6 +588,8 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
   const closePanel = () => {
     setPanel(null);
     setPlacing(false);
+    // A question handed to the assistant is used once.
+    setAiSeed((seed) => (seed.text ? { key: seed.key, text: "" } : seed));
   };
 
   return (
@@ -865,34 +867,44 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
                 ×
               </button>
             </div>
-            {panel === "chat" && chatTab === "ai" && bootstrap.ai ? (
-              <AiPanel
-                key={aiSeed.key}
-                supabase={supabase}
-                boardId={boardId}
-                api={api}
-                rights={bootstrap.ai}
-                onToast={notifyError}
-                meId={me.userId}
-                canManage={canManage}
-                confirm={confirm}
-                initialInput={aiSeed.text}
-              />
-            ) : panel === "chat" ? (
-              <TeamChat
-                chat={chat}
-                projectId={projectId}
-                boardId={boardId}
-                meId={me.userId}
-                people={bootstrap.people}
-                canUpload={canEdit}
-                canManage={canManage}
-                onAskAssistant={bootstrap.ai ? askAssistant : undefined}
-                onToast={notify}
-                confirm={confirm}
-                boardTitles={boardTitles}
-              />
-            ) : (
+            {panel === "chat" && (
+              <>
+                {/* Both tabs stay mounted while the panel is open, so switching
+                    tabs never cuts off an assistant answer mid-stream. */}
+                <div className={chatTab === "team" ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
+                  <TeamChat
+                    chat={chat}
+                    projectId={projectId}
+                    boardId={boardId}
+                    meId={me.userId}
+                    people={bootstrap.people}
+                    canUpload={canEdit}
+                    canManage={canManage}
+                    onAskAssistant={bootstrap.ai ? askAssistant : undefined}
+                    onToast={notify}
+                    confirm={confirm}
+                    boardTitles={boardTitles}
+                  />
+                </div>
+                {bootstrap.ai && (
+                  <div className={chatTab === "ai" ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
+                    <AiPanel
+                      key={aiSeed.key}
+                      supabase={supabase}
+                      boardId={boardId}
+                      api={api}
+                      rights={bootstrap.ai}
+                      onToast={notifyError}
+                      meId={me.userId}
+                      canManage={canManage}
+                      confirm={confirm}
+                      initialInput={aiSeed.text}
+                    />
+                  </div>
+                )}
+              </>
+            )}
+            {panel === "comments" && (
               <CommentsPanel
                 comments={comments}
                 people={bootstrap.people}
