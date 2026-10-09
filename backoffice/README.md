@@ -65,16 +65,17 @@ npx supabase link --project-ref <ref>
 npx supabase db push              # applies supabase/migrations/*.sql in order
 ```
 
-Migrating the existing workbook data:
+Applying migrations without the CLI (Management API, personal access token in
+`backoffice/.env.migrate`, never committed):
 
 ```bash
-py tools/migrate_workbook.py --dry-run     # verify zero unmapped literals first
-py tools/migrate_workbook.py --out backoffice/seed/0100_migrated_data.sql
-psql "$DATABASE_URL" -f backoffice/seed/0100_migrated_data.sql
-py tools/verify_migration.py               # requires DATABASE_URL
+node scripts/migrate-remote.mjs <project-ref> --dry-run
+node scripts/migrate-remote.mjs <project-ref>
 ```
 
-See `tools/MIGRATION_NOTES.md` for what has and hasn't landed yet.
+The one-off workbook migration scripts and the generated seed SQL hold real
+business data, so they live only in the local, git-ignored `archive/` and
+`backoffice/seed/` folders.
 
 ## AI layer
 

@@ -52,7 +52,7 @@ export async function uploadDocument(formData: FormData) {
     .single();
   if (jobError) throw new Error(jobError.message);
 
-  const { data: categories } = await supabase.from("categories").select("name").order("sort_order");
+  const { data: categories } = await supabase.from("categories").select("name").eq("org_id", orgId).order("sort_order");
   const categoryNames = (categories ?? []).map((c) => c.name);
 
   try {
@@ -145,7 +145,7 @@ export async function submitNlEntry(formData: FormData) {
     data: { session },
   } = await supabase.auth.getSession();
 
-  const { data: categories } = await supabase.from("categories").select("name").order("sort_order");
+  const { data: categories } = await supabase.from("categories").select("name").eq("org_id", orgId).order("sort_order");
   const categoryNames = (categories ?? []).map((c) => c.name);
 
   const startedAt = Date.now();

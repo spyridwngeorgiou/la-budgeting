@@ -75,7 +75,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, skipped: "over AI budget" }, { status: 200 });
   }
 
-  const { data: categories } = await admin.from("categories").select("name").order("sort_order");
+  // Service role bypasses RLS: without the org filter every org's category
+  // names would reach this org's extraction prompt.
+  const { data: categories } = await admin
+    .from("categories")
+    .select("name")
+    .eq("org_id", orgId)
+    .order("sort_order");
   const categoryNames = (categories ?? []).map((c) => c.name);
 
   const attachments = (payload.Attachments ?? []).filter((a) => SUPPORTED_ATTACHMENT_MIME_TYPES.has(a.ContentType));

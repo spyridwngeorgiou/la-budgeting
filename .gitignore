@@ -32,3 +32,12 @@ tools/__pycache__/
 
 # Reconciliation / promotion reports (contain financial data)
 tools/out/
+
+# Business data -- never in a (public) repo. Seed SQL generated from the
+# workbook holds real transactions, contacts and AFMs; notes hold balances.
+*.txt
+!backoffice/**/__fixtures__/*.txt
+backoffice/seed/
+
+# One-off workbook migration (done); kept locally, holds business identifiers
+archive/
