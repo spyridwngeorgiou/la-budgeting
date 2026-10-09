@@ -43,4 +43,6 @@ content_path = "./supabase/templates/confirmation.html"
 
 [storage]
 enabled = true
-file_size_limit = "10MiB"
+# Global cap; a bucket's own limit can't exceed it. 25 MiB = the `collab`
+# bucket's limit (0038) for drawings and PDFs from partners.
+file_size_limit = "25MiB"
