@@ -656,6 +656,7 @@ export type Database = {
           field: string
           human_value: Json | null
           id: string
+          ingest_row_id: string | null
           model: string | null
           org_id: string
         }
@@ -667,6 +668,7 @@ export type Database = {
           field: string
           human_value?: Json | null
           id?: string
+          ingest_row_id?: string | null
           model?: string | null
           org_id: string
         }
@@ -678,6 +680,7 @@ export type Database = {
           field?: string
           human_value?: Json | null
           id?: string
+          ingest_row_id?: string | null
           model?: string | null
           org_id?: string
         }
@@ -694,6 +697,13 @@ export type Database = {
             columns: ["draft_id"]
             isOneToOne: false
             referencedRelation: "transaction_drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_corrections_ingest_row_id_fkey"
+            columns: ["ingest_row_id"]
+            isOneToOne: false
+            referencedRelation: "ingest_rows"
             referencedColumns: ["id"]
           },
           {
@@ -2140,6 +2150,7 @@ export type Database = {
           file_sha256: string | null
           filename: string | null
           id: string
+          legacy_ref: string | null
           meta: Json
           mime_type: string | null
           opening_balance: number | null
@@ -2166,6 +2177,7 @@ export type Database = {
           file_sha256?: string | null
           filename?: string | null
           id?: string
+          legacy_ref?: string | null
           meta?: Json
           mime_type?: string | null
           opening_balance?: number | null
@@ -2192,6 +2204,7 @@ export type Database = {
           file_sha256?: string | null
           filename?: string | null
           id?: string
+          legacy_ref?: string | null
           meta?: Json
           mime_type?: string | null
           opening_balance?: number | null
@@ -2292,6 +2305,7 @@ export type Database = {
       }
       ingest_rows: {
         Row: {
+          aade_discrepancy: string | null
           account_id: string | null
           amount: number | null
           applied: Json | null
@@ -2310,14 +2324,19 @@ export type Database = {
           dedup_status: Database["public"]["Enums"]["ingest_dedup_status"]
           description: string | null
           direction: Database["public"]["Enums"]["tx_direction"] | null
+          document_id: string | null
+          document_type: string | null
+          due_date: string | null
           external_key: string | null
           extracted: Json
+          has_invoice: boolean | null
           id: string
           invoice_number: string | null
           meta: Json
           mydata_mark: string | null
           net_amount: number | null
           org_id: string
+          other_taxes: number | null
           paid_on: string | null
           parse_errors: string[]
           project_id: string | null
@@ -2335,6 +2354,7 @@ export type Database = {
           withholding_amount: number | null
         }
         Insert: {
+          aade_discrepancy?: string | null
           account_id?: string | null
           amount?: number | null
           applied?: Json | null
@@ -2353,14 +2373,19 @@ export type Database = {
           dedup_status?: Database["public"]["Enums"]["ingest_dedup_status"]
           description?: string | null
           direction?: Database["public"]["Enums"]["tx_direction"] | null
+          document_id?: string | null
+          document_type?: string | null
+          due_date?: string | null
           external_key?: string | null
           extracted?: Json
+          has_invoice?: boolean | null
           id?: string
           invoice_number?: string | null
           meta?: Json
           mydata_mark?: string | null
           net_amount?: number | null
           org_id: string
+          other_taxes?: number | null
           paid_on?: string | null
           parse_errors?: string[]
           project_id?: string | null
@@ -2378,6 +2403,7 @@ export type Database = {
           withholding_amount?: number | null
         }
         Update: {
+          aade_discrepancy?: string | null
           account_id?: string | null
           amount?: number | null
           applied?: Json | null
@@ -2396,14 +2422,19 @@ export type Database = {
           dedup_status?: Database["public"]["Enums"]["ingest_dedup_status"]
           description?: string | null
           direction?: Database["public"]["Enums"]["tx_direction"] | null
+          document_id?: string | null
+          document_type?: string | null
+          due_date?: string | null
           external_key?: string | null
           extracted?: Json
+          has_invoice?: boolean | null
           id?: string
           invoice_number?: string | null
           meta?: Json
           mydata_mark?: string | null
           net_amount?: number | null
           org_id?: string
+          other_taxes?: number | null
           paid_on?: string | null
           parse_errors?: string[]
           project_id?: string | null
@@ -2454,6 +2485,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingest_rows_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
             referencedColumns: ["id"]
           },
           {
