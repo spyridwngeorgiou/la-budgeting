@@ -27,6 +27,7 @@ const KIND_FALLBACK_LABEL: Record<CapitalSourceKind, string> = {
   co_investor: "Συνεπενδυτής",
 };
 import { ProjectNoteFormModal } from "../ProjectNoteFormModal";
+import { ProjectPlanSection } from "@/components/planner/ProjectPlanSection";
 import { UtilityFormModal, UTILITY_KIND_LABELS } from "../UtilityFormModal";
 import { saveUtility, deleteUtility } from "../utility-actions";
 import { saveProjectNote, resolveProjectNote } from "../note-actions";
@@ -312,6 +313,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           />
           <Link href={`/transactions?project_id=${id}`}>
             <Button variant="secondary">{el.nav.transactions}</Button>
+          </Link>
+          <Link href={`/planner?project=${id}`}>
+            <Button variant="secondary">{el.nav.planner}</Button>
           </Link>
           <Link href={`/projects/${id}/compare`}>
             <Button variant="secondary">Σύγκριση σεναρίων</Button>
@@ -892,6 +896,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             ))}
           </OnePagerSection>
         )}
+
+        {/* ΠΛΑΝΟ ΕΡΓΟΥ -- the planner's view of this project (0040). Dated
+            to-dos and milestones used to be ΚΑΤΑΣΤΑΣΗ notes; they live here
+            now, and ΚΑΤΑΣΤΑΣΗ keeps the status and risk bullets. */}
+        <ProjectPlanSection projectId={id} />
 
         {/* ΚΑΤΑΣΤΑΣΗ -- always rendered now (not gated on notes.length), so
             "+ Σημείωση" is reachable even with zero open notes. Previously

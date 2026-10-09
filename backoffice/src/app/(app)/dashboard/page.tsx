@@ -6,6 +6,8 @@ import { el } from "@/lib/i18n/el";
 import { aiEnabled } from "@/lib/ai/client";
 import { DashboardSummary } from "./DashboardSummary";
 import { DueDatesCalendar } from "./DueDatesCalendar";
+import { monthGridRange } from "@/lib/planner/calendar";
+import { monthKeyOf } from "@/lib/planner/dates";
 
 // Κέντρο Ελέγχου: liquidity per account, project portfolio, VAT position,
 // what's due soon -- the same shape as the workbook's Control Center sheet.
@@ -34,13 +36,7 @@ export default async function DashboardPage() {
   // week through Sunday of the last week of the current month, so overdue
   // days earlier this month and upcoming days later this month both show up
   // as positions on the calendar, not a sorted list.
-  const now = new Date(todayIso + "T00:00:00Z");
-  const firstOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const lastOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
-  const gridStart = new Date(firstOfMonth);
-  gridStart.setUTCDate(gridStart.getUTCDate() - ((firstOfMonth.getUTCDay() + 6) % 7));
-  const gridEnd = new Date(lastOfMonth);
-  gridEnd.setUTCDate(gridEnd.getUTCDate() + (7 - ((lastOfMonth.getUTCDay() + 6) % 7) - 1));
+  const grid = monthGridRange(monthKeyOf(todayIso));
 
   const [
     { data: accounts },
@@ -72,8 +68,8 @@ export default async function DashboardPage() {
       .select("id, due_date, direction, gross_amount")
       .in("status", ["pending", "scheduled"])
       .not("due_date", "is", null)
-      .gte("due_date", gridStart.toISOString().slice(0, 10))
-      .lte("due_date", gridEnd.toISOString().slice(0, 10)),
+      .gte("due_date", grid.start)
+      .lte("due_date", grid.end),
     // Filing status per period, same source /vat uses -- lets the worklist
     // flag a past period nobody has marked as filed yet.
     supabase.from("vat_periods").select("period_start, status"),

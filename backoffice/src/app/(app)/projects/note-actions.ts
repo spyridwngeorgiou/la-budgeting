@@ -3,19 +3,27 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId, formString } from "@/lib/supabase/org";
-import type { ProjectNoteKind, ProjectNoteSeverity } from "@/lib/domain/enums";
+import { PROJECT_NOTE_KIND_ACTIVE, type ProjectNoteKindActive, type ProjectNoteSeverity } from "@/lib/domain/enums";
 
 // project_notes was previously only writable through the Kansha AI chat's
 // propose-and-approve flow (src/lib/ai/writeTools.ts ALLOWLIST) --
 // StatusNotes (src/components/onepager.tsx) only ever displayed them,
 // read-only. Same editable shape as the ALLOWLIST entry.
+// Since 0041 the table CHECKs kind in (status, risk); anything else from the
+// form falls back to status rather than failing on the constraint.
+function noteKind(value: string | null): ProjectNoteKindActive {
+  return (PROJECT_NOTE_KIND_ACTIVE as readonly string[]).includes(value ?? "")
+    ? (value as ProjectNoteKindActive)
+    : "status";
+}
+
 export async function saveProjectNote(projectId: string, noteId: string | null, formData: FormData) {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
 
   const fields = {
     project_id: projectId,
-    kind: (formString(formData, "kind") as ProjectNoteKind) ?? "status",
+    kind: noteKind(formString(formData, "kind")),
     severity: (formString(formData, "severity") as ProjectNoteSeverity) ?? "info",
     body: String(formData.get("body")),
     exposure_amount: formData.get("exposure_amount") ? Number(formData.get("exposure_amount")) : null,

@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { formatMoney } from "@/lib/format";
+import { monthCells } from "@/lib/planner/calendar";
+import { monthKeyOf } from "@/lib/planner/dates";
 
 interface DueTx {
   id: string;
@@ -13,16 +15,12 @@ const WEEKDAY_LABELS = ["Δε", "Τρ", "Τε", "Πε", "Πα", "Σα", "Κυ"];
 // Monday-first grid for the current month, padded with blank leading/
 // trailing cells so weekdays line up -- the calendar shape the user asked
 // for in place of a flat list, since "when is this due" reads faster as a
-// position on a month than as a sorted list of dates.
+// position on a month than as a sorted list of dates. The grid itself is
+// monthCells() (src/lib/planner/calendar.ts), shared with /planner's
+// calendar; days outside the month render blank here.
 export function DueDatesCalendar({ dueDates, todayIso }: { dueDates: DueTx[]; todayIso: string }) {
   const today = new Date(todayIso + "T00:00:00Z");
-  const year = today.getUTCFullYear();
-  const month = today.getUTCMonth();
-
-  const firstOfMonth = new Date(Date.UTC(year, month, 1));
-  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-  // JS getUTCDay(): Sunday=0..Saturday=6 -- shift so Monday=0.
-  const leadingBlanks = (firstOfMonth.getUTCDay() + 6) % 7;
+  const cells = monthCells(monthKeyOf(todayIso));
 
   const byDay = new Map<string, { total: number; ids: string[]; hasOverdueUnpaid: boolean }>();
   for (const tx of dueDates) {
@@ -36,11 +34,6 @@ export function DueDatesCalendar({ dueDates, todayIso }: { dueDates: DueTx[]; to
     byDay.set(key, entry);
   }
 
-  const cells: { day: number; dateIso: string }[] = [];
-  for (let d = 1; d <= daysInMonth; d++) {
-    cells.push({ day: d, dateIso: `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}` });
-  }
-
   const monthLabel = today.toLocaleDateString("el-GR", { month: "long", year: "numeric", timeZone: "UTC" });
 
   return (
@@ -52,10 +45,8 @@ export function DueDatesCalendar({ dueDates, todayIso }: { dueDates: DueTx[]; to
             {w}
           </div>
         ))}
-        {Array.from({ length: leadingBlanks }).map((_, i) => (
-          <div key={`blank-${i}`} />
-        ))}
-        {cells.map(({ day, dateIso }) => {
+        {cells.map(({ day, dateIso, inMonth }) => {
+          if (!inMonth) return <div key={dateIso} />;
           const entry = byDay.get(dateIso);
           const isToday = dateIso === todayIso;
           const content = (

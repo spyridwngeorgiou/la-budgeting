@@ -3,13 +3,19 @@
 import { useState } from "react";
 import { Button, Input, Select, Label, Field } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
-import { PROJECT_NOTE_KIND, PROJECT_NOTE_SEVERITY, type ProjectNoteKind, type ProjectNoteSeverity } from "@/lib/domain/enums";
+import {
+  PROJECT_NOTE_KIND_ACTIVE,
+  PROJECT_NOTE_SEVERITY,
+  type ProjectNoteKind,
+  type ProjectNoteKindActive,
+  type ProjectNoteSeverity,
+} from "@/lib/domain/enums";
 
-const KIND_LABELS: Record<ProjectNoteKind, string> = {
+// Status and risk only since 0041: actions and milestones are planner tasks
+// and project milestones now (the «Πλάνο έργου» section on the same page).
+const KIND_LABELS: Record<ProjectNoteKindActive, string> = {
   status: "Κατάσταση",
   risk: "Ρίσκο",
-  action: "Ενέργεια",
-  milestone: "Ορόσημο",
 };
 const SEVERITY_LABELS: Record<ProjectNoteSeverity, string> = {
   info: "Ενημέρωση",
@@ -59,7 +65,7 @@ export function ProjectNoteFormModal({
             <Field>
               <Label>Τύπος</Label>
               <Select name="kind" defaultValue={initial?.kind ?? "status"}>
-                {PROJECT_NOTE_KIND.map((k) => (
+                {PROJECT_NOTE_KIND_ACTIVE.map((k) => (
                   <option key={k} value={k}>
                     {KIND_LABELS[k]}
                   </option>

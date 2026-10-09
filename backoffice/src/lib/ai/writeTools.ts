@@ -60,8 +60,26 @@ export const ALLOWLIST = {
     searchFields: ["body"],
     // project_id is required (not null, no default) -- must be settable on
     // insert. find_record on "projects" first gives the model a real id.
+    // kind is status|risk only since 0041 (a CHECK); to-dos are tasks below.
     editableFields: ["project_id", "kind", "severity", "body", "exposure_amount", "due_date", "resolved_at"],
   },
+  // ── Planner (0040) ──
+  // org_id on insert is overwritten from project_id by planner_guard, so a
+  // proposal can't land a task in another org's project. assignee_id is left
+  // out: the model has no reliable way to know user ids.
+  tasks: {
+    label: "Εργασία",
+    labelField: "title",
+    searchFields: ["title", "description"],
+    editableFields: ["project_id", "title", "description", "status", "priority", "start_date", "due_date"],
+  },
+  project_milestones: {
+    label: "Ορόσημο Έργου",
+    labelField: "title",
+    searchFields: ["title", "description"],
+    editableFields: ["project_id", "title", "description", "kind", "due_date", "done_at"],
+  },
+  // ── end planner ──
   loans: {
     label: "Δάνειο",
     labelField: "label",
@@ -83,9 +101,9 @@ export function buildWriteTools(supabase: SupabaseClient, orgId: string, userId:
   const find_record = betaZodTool({
     name: "find_record",
     description:
-      "Αναζήτηση μιας συγκεκριμένης εγγραφής (λογαριασμός, έργο, επαφή, πλάνο δόσεων) πριν προτείνετε αλλαγή/διαγραφή -- πάντα καλέστε αυτό πρώτα για να βρείτε το σωστό row_id, ποτέ μην μαντεύετε ή χρησιμοποιείτε id από παλιότερη απάντηση χωρίς επιβεβαίωση.",
+      "Αναζήτηση μιας συγκεκριμένης εγγραφής (λογαριασμός, έργο, επαφή, πλάνο δόσεων, εργασία, ορόσημο) πριν προτείνετε αλλαγή/διαγραφή -- πάντα καλέστε αυτό πρώτα για να βρείτε το σωστό row_id, ποτέ μην μαντεύετε ή χρησιμοποιείτε id από παλιότερη απάντηση χωρίς επιβεβαίωση.",
     inputSchema: z.object({
-      table: TABLE_ENUM.describe("accounts (λογαριασμοί/ταμεία), projects (έργα), contacts (επαφές), installment_plans (δόσεις)"),
+      table: TABLE_ENUM.describe("accounts (λογαριασμοί/ταμεία), projects (έργα), contacts (επαφές), installment_plans (δόσεις), tasks (εργασίες έργου), project_milestones (ορόσημα έργου)"),
       query: z.string().min(1),
     }),
     run: async ({ table, query }) => {
@@ -104,7 +122,7 @@ export function buildWriteTools(supabase: SupabaseClient, orgId: string, userId:
   const propose_change = betaZodTool({
     name: "propose_change",
     description:
-      "Προτείνει μια αλλαγή (ενημέρωση, διαγραφή, ή νέα εγγραφή) σε λογαριασμό/έργο/επαφή/πλάνο δόσεων. ΔΕΝ εφαρμόζει την αλλαγή -- δημιουργεί μια πρόταση προς έγκριση από άνθρωπο. Για update/delete χρειάζεται πραγματικό row_id (από find_record). Πάντα δώστε σύντομη αιτιολογία (reason) στα Ελληνικά.",
+      "Προτείνει μια αλλαγή (ενημέρωση, διαγραφή, ή νέα εγγραφή) σε λογαριασμό/έργο/επαφή/πλάνο δόσεων/εργασία/ορόσημο. ΔΕΝ εφαρμόζει την αλλαγή -- δημιουργεί μια πρόταση προς έγκριση από άνθρωπο. Για update/delete χρειάζεται πραγματικό row_id (από find_record). Πάντα δώστε σύντομη αιτιολογία (reason) στα Ελληνικά.",
     inputSchema: z.object({
       table: TABLE_ENUM,
       operation: z.enum(["insert", "update", "delete"]),

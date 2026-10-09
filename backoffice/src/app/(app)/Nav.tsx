@@ -22,6 +22,10 @@ const NAV_ITEMS: { href: string; label: string; ai?: boolean }[] = [
   { href: "/dashboard", label: el.nav.dashboard },
   { href: "/transactions", label: el.nav.transactions },
   { href: "/projects", label: el.nav.projects },
+  // ── Planner (0040) ── tasks, timeline and the unified calendar; sits by
+  // projects because every task belongs to one.
+  { href: "/planner", label: el.nav.planner },
+  // ── end planner ──
   { href: "/properties", label: el.nav.properties },
   { href: "/analysis", label: el.nav.analysis },
   { href: "/vat", label: el.nav.vat },
