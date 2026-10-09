@@ -368,5 +368,8 @@ begin
 end;
 $$;
 
-revoke execute on function public.commit_ingest_batch(uuid, int) from anon;
-revoke execute on function public.undo_ingest_batch(uuid, int, boolean) from anon;
+-- Signed-in users only (RLS + the editor check do the rest).
+revoke execute on function public.commit_ingest_batch(uuid, int) from public, anon;
+revoke execute on function public.undo_ingest_batch(uuid, int, boolean) from public, anon;
+grant execute on function public.commit_ingest_batch(uuid, int) to authenticated;
+grant execute on function public.undo_ingest_batch(uuid, int, boolean) to authenticated;

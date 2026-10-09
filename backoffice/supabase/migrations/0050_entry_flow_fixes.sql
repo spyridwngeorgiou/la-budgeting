@@ -87,7 +87,8 @@ language sql stable security invoker set search_path = public as $$
            abs(t.tx_date - p_tx_date), t.created_at desc
   limit 5
 $$;
-revoke execute on function public.find_possible_duplicates(uuid, tx_direction, numeric, date, uuid, text, text, uuid, int) from anon;
+revoke execute on function public.find_possible_duplicates(uuid, tx_direction, numeric, date, uuid, text, text, uuid, int) from public, anon;
+grant execute on function public.find_possible_duplicates(uuid, tx_direction, numeric, date, uuid, text, text, uuid, int) to authenticated;
 
 -- Same rule as account_balance_as_of(account, current_date): a paid row
 -- counts from its payment date (falling back to tx_date), so a payment
