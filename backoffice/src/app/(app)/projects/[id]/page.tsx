@@ -11,6 +11,8 @@ import { computeScenarioResult } from "@/lib/finance/scenarioResult";
 import { xirr } from "@/lib/finance/xirr";
 import { aiEnabled } from "@/lib/ai/client";
 import { ProjectHealthCheck } from "./ProjectHealthCheck";
+import { PartnersPanel } from "./PartnersPanel";
+import { getAccessContext } from "@/lib/supabase/access";
 import { BudgetFormModal } from "../BudgetFormModal";
 import { saveProjectBudget } from "../budget-actions";
 import { ProjectFormModal } from "../ProjectFormModal";
@@ -48,6 +50,9 @@ import { createRevenuePlan } from "../../revenue-plans/actions";
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
+  const access = await getAccessContext();
+  const isOrgAdmin =
+    access.kind === "internal" && (access.membership.role === "admin" || access.membership.role === "owner");
 
   const [
     { data: rollup },
@@ -319,6 +324,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </Link>
           <Link href={`/projects/${id}/compare`}>
             <Button variant="secondary">Σύγκριση σεναρίων</Button>
+          </Link>
+          <Link href={`/collab/${id}`}>
+            <Button variant="secondary">{el.collab.navLabel}</Button>
           </Link>
         </div>
       </div>
@@ -937,6 +945,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           />
         </OnePagerSection>
       </div>
+
+      <PartnersPanel projectId={id} isAdmin={isOrgAdmin} />
 
       {leaseSchedule && leaseSchedule.diagnostics.length > 0 && (
         <Card className="border-amber-ink/40 bg-amber-bg">

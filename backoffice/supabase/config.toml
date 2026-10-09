@@ -18,10 +18,31 @@ port = 54323
 [auth]
 enabled = true
 site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://localhost:3000"]
+# Emailed links land on /auth/confirm (verifyOtp). Production needs the same
+# entries for its own origin in the dashboard's Redirect URLs.
+additional_redirect_urls = ["https://localhost:3000", "http://localhost:3000/auth/confirm", "https://localhost:3000/auth/confirm"]
 jwt_expiry = 3600
+# Local dev keeps self-signup on (handle_new_user provisions an org). In
+# production consider turning it off: staff are created by admins, partners
+# by per-project invites, and nothing in the app needs public signup.
 enable_signup = true
+
+# token_hash links to /auth/confirm instead of {{ .ConfirmationURL }}, so a
+# partner can open the invite on a different device than it was sent from.
+[auth.email.template.invite]
+subject = "Πρόσκληση στον χώρο συνεργασίας Kansha"
+content_path = "./supabase/templates/invite.html"
+
+[auth.email.template.magic_link]
+subject = "Σύνδεση στην Kansha"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.confirmation]
+subject = "Επιβεβαίωση email — Kansha"
+content_path = "./supabase/templates/confirmation.html"
 
 [storage]
 enabled = true
-file_size_limit = "10MiB"
+# Global cap; a bucket's own limit can't exceed it. 25 MiB = the `collab`
+# bucket's limit (0038) for drawings and PDFs from partners.
+file_size_limit = "25MiB"

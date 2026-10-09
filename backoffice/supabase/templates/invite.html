@@ -1,0 +1,8 @@
+<!-- Partner invite (auth.admin.inviteUserByEmail). Links to /auth/confirm with
+     a token_hash so the session is created server-side (verifyOtp), on
+     whichever device opens the email. Paste the same body into the hosted
+     project: Dashboard -> Authentication -> Email Templates -> Invite user. -->
+<h2>Πρόσκληση στον χώρο συνεργασίας</h2>
+<p>Σας προσκάλεσαν να συμμετέχετε σε έργο στον χώρο συνεργασίας της Kansha (πίνακες, αρχεία, σχόλια).</p>
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite">Αποδοχή πρόσκλησης</a></p>
+<p>Αν δεν περιμένατε αυτό το μήνυμα, μπορείτε να το αγνοήσετε.</p>

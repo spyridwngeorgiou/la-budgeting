@@ -1,4 +1,4 @@
-// One-off admin script: creates a Supabase Auth user and adds them to the
+// One-off admin script: creates an INTERNAL (staff) login and adds them to the
 // existing org, working around the handle_new_user trigger (migration 0002)
 // which auto-provisions a brand-new, empty org for every new auth.users row.
 // Without the cleanup here, the new user would end up with TWO org_members
@@ -6,13 +6,17 @@
 // supabase/org.ts) could land them on the empty auto-created org instead of
 // the real one.
 //
-// Usage: node --env-file=.env.local scripts/create-partner-user.mjs <email> <password>
+// Not for external project partners (architects, contractors...): those are
+// invited per project from the app and must never be added to org_members
+// (see supabase/migrations/0037_project_members.sql).
+//
+// Usage: node --env-file=.env.local scripts/create-internal-user.mjs <email> <password>
 
 import { createClient } from "@supabase/supabase-js";
 
 const [, , email, password] = process.argv;
 if (!email || !password) {
-  console.error("Usage: node --env-file=.env.local scripts/create-partner-user.mjs <email> <password>");
+  console.error("Usage: node --env-file=.env.local scripts/create-internal-user.mjs <email> <password>");
   process.exit(1);
 }
 
@@ -45,15 +49,15 @@ async function main() {
     email_confirm: true,
   });
   if (createError) throw createError;
-  const partnerId = created.user.id;
-  console.log(`Created auth user ${email} (${partnerId})`);
+  const newUserId = created.user.id;
+  console.log(`Created auth user ${email} (${newUserId})`);
 
   // The trigger already ran synchronously as part of the insert above --
   // find and remove the empty org it auto-provisioned for this user.
   const { data: autoMemberships, error: autoError } = await supabase
     .from("org_members")
     .select("org_id")
-    .eq("user_id", partnerId);
+    .eq("user_id", newUserId);
   if (autoError) throw autoError;
 
   for (const { org_id } of autoMemberships ?? []) {
@@ -65,14 +69,14 @@ async function main() {
 
   const { error: memberError } = await supabase
     .from("org_members")
-    .upsert({ org_id: realOrgId, user_id: partnerId, role: "owner" }, { onConflict: "org_id,user_id" });
+    .upsert({ org_id: realOrgId, user_id: newUserId, role: "owner" }, { onConflict: "org_id,user_id" });
   if (memberError) throw memberError;
   console.log(`Added ${email} to ${existingOrgs[0].name} as owner`);
 
   const { data: finalMemberships, error: finalError } = await supabase
     .from("org_members")
     .select("org_id, role")
-    .eq("user_id", partnerId);
+    .eq("user_id", newUserId);
   if (finalError) throw finalError;
   console.log("Final org_members rows for this user:", finalMemberships);
 }

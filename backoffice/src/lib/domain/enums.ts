@@ -101,6 +101,24 @@ export type MilestoneKind = (typeof MILESTONE_KIND)[number];
 
 export const PHASE_STATUS = ["planned", "active", "on_hold", "done"] as const;
 export type PhaseStatus = (typeof PHASE_STATUS)[number];
+// -- Partners & collaboration (0037) ------------------------------------------
+// Roles *inside one project* for external partners -- deliberately a
+// separate enum from ORG_ROLE, since partners never hold an org role.
+export const PROJECT_ROLE = ["lead", "contributor", "guest"] as const;
+export type ProjectRole = (typeof PROJECT_ROLE)[number];
+
+export const PARTNER_DISCIPLINE = [
+  "architect",
+  "interior_designer",
+  "civil_engineer",
+  "mechanical_engineer",
+  "electrical_engineer",
+  "contractor",
+  "surveyor",
+  "other",
+] as const;
+export type PartnerDiscipline = (typeof PARTNER_DISCIPLINE)[number];
+// -- end partners & collaboration ----------------------------------------------
 
 export const VAT_RATES = [0, 0.06, 0.13, 0.24] as const;
 export type VatRate = (typeof VAT_RATES)[number];

@@ -1,0 +1,6 @@
+<!-- Sent instead of the magic link when the account's email isn't confirmed
+     yet (e.g. a partner re-requesting access before ever accepting).
+     Dashboard -> Authentication -> Email Templates -> Confirm signup. -->
+<h2>Επιβεβαίωση email</h2>
+<p>Πατήστε τον παρακάτω σύνδεσμο για να επιβεβαιώσετε το email σας και να συνδεθείτε.</p>
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">Επιβεβαίωση</a></p>

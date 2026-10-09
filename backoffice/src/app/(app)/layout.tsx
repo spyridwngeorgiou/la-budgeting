@@ -1,13 +1,22 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentOrgId, listMyOrgs } from "@/lib/supabase/org";
+import { listMyOrgs } from "@/lib/supabase/org";
+import { getAccessContext } from "@/lib/supabase/access";
 import { Nav } from "./Nav";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  // The proxy already bounces partners off finance paths; this is the
+  // second line, so a partner never reaches getCurrentOrgId() (which throws
+  // for anyone without an org) and never renders the finance shell.
+  const access = await getAccessContext();
+  if (access.kind === "anonymous") redirect("/login");
+  if (access.kind === "partner") redirect("/collab");
+
   const supabase = await createClient();
-  const [currentOrgId, orgs] = await Promise.all([getCurrentOrgId(supabase), listMyOrgs(supabase)]);
+  const orgs = await listMyOrgs(supabase);
 
   return (
-    <Nav orgs={orgs} currentOrgId={currentOrgId}>
+    <Nav orgs={orgs} currentOrgId={access.membership.orgId} role={access.membership.role}>
       {children}
     </Nav>
   );

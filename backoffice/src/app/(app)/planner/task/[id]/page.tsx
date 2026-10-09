@@ -158,7 +158,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
                 created_at: c.created_at,
                 mine: c.author_id === ctx.userId,
               }))}
-              canWrite={caps.canWriteTasks}
+              canWrite={caps.canComment}
               addAction={addComment.bind(null, id)}
               deleteAction={deleteComment}
             />

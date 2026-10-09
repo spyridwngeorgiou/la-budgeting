@@ -63,18 +63,11 @@ language sql stable security definer set search_path = public as $$
   select coalesce(can_access_project(p_project), false)
 $$;
 
--- Editors of the owning org, or someone with project access who is not an
--- org member at all (a partner). Org viewers are members, so they fall
--- through to false: viewer stays read-only even though they can read.
--- 0037's project_members.role (lead/contributor/guest) can narrow the
--- partner branch here without touching any policy.
+-- Same rule as the board (0037 can_edit_collab): org editors, or partners
+-- invited as lead/contributor. Org viewers and partner guests read only.
 create function public.planner_can_write(p_project uuid) returns boolean
 language sql stable security definer set search_path = public as $$
-  select coalesce((
-    select has_role(p.org_id, 'editor')
-        or (not has_role(p.org_id, 'viewer') and can_access_project(p.id))
-    from projects p where p.id = p_project
-  ), false)
+  select coalesce(can_edit_collab(p_project), false)
 $$;
 
 -- The projects a caller may plan against, with the non-financial columns
@@ -375,13 +368,14 @@ create policy task_checklist_items_update on task_checklist_items for update
   using (planner_can_write(project_id)) with check (planner_can_write(project_id));
 create policy task_checklist_items_delete on task_checklist_items for delete using (planner_can_write(project_id));
 
--- Comments: anyone who can write the task may comment as themselves; only
+-- Comments: anyone who can see the task may comment as themselves -- read-
+-- only viewers and partner guests included, as on the board (0038); only
 -- the author edits; the author or an org editor removes.
 create policy task_comments_select on task_comments for select using (planner_can_read(project_id));
 create policy task_comments_insert on task_comments for insert
-  with check (planner_can_write(project_id) and author_id = auth.uid());
+  with check (planner_can_read(project_id) and author_id = auth.uid());
 create policy task_comments_update on task_comments for update
-  using (author_id = auth.uid() and planner_can_write(project_id))
-  with check (author_id = auth.uid() and planner_can_write(project_id));
+  using (author_id = auth.uid() and planner_can_read(project_id))
+  with check (author_id = auth.uid() and planner_can_read(project_id));
 create policy task_comments_delete on task_comments for delete
   using (author_id = auth.uid() or has_role(org_id, 'editor'));

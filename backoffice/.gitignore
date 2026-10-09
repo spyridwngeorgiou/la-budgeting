@@ -10,3 +10,6 @@ next-env.d.ts
 .wrangler/
 .dev.vars
 cloudflare-env.d.ts
+
+# Copied from node_modules by scripts/copy-excalidraw-assets.mjs
+public/excalidraw-assets/

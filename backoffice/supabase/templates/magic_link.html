@@ -1,0 +1,6 @@
+<!-- Magic-link sign in (login page option, and "Επαναποστολή" for partners).
+     Dashboard -> Authentication -> Email Templates -> Magic Link. -->
+<h2>Σύνδεση στην Kansha</h2>
+<p>Πατήστε τον παρακάτω σύνδεσμο για να συνδεθείτε. Ισχύει για περιορισμένο χρόνο και για μία χρήση.</p>
+<p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">Σύνδεση</a></p>
+<p>Αν δεν ζητήσατε σύνδεση, αγνοήστε αυτό το μήνυμα.</p>

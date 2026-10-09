@@ -294,18 +294,28 @@ describe("plannerCapabilities", () => {
   it("mirrors the RLS matrix", () => {
     expect(plannerCapabilities({ kind: "member", role: "viewer" })).toEqual({
       canWriteTasks: false,
+      canComment: true,
       canEditSchedule: false,
       canDelete: false,
       canSeeFinancial: true,
     });
     expect(plannerCapabilities({ kind: "member", role: "editor" })).toEqual({
       canWriteTasks: true,
+      canComment: true,
       canEditSchedule: true,
       canDelete: true,
       canSeeFinancial: true,
     });
-    expect(plannerCapabilities({ kind: "partner" })).toEqual({
+    expect(plannerCapabilities({ kind: "partner", projectRole: "contributor" })).toEqual({
       canWriteTasks: true,
+      canComment: true,
+      canEditSchedule: false,
+      canDelete: false,
+      canSeeFinancial: false,
+    });
+    expect(plannerCapabilities({ kind: "partner", projectRole: "guest" })).toEqual({
+      canWriteTasks: false,
+      canComment: true,
       canEditSchedule: false,
       canDelete: false,
       canSeeFinancial: false,
