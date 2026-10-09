@@ -8,6 +8,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { parseAadeWorkbook } from "@/lib/aade/parse";
 import { stageBatch } from "@/lib/aade/dedup";
+import {
+  aadeMissingAssignmentMessage,
+  aadeRowsMissingAssignment,
+  legacyAadeTransaction,
+  toAadeStagingRow,
+} from "@/lib/aade/commitRules";
 import { transactionWriteError } from "@/lib/ingest/duplicates";
 import { action, UserError, type ActionResult } from "@/lib/actions";
 
@@ -73,39 +79,7 @@ export async function uploadAadeFile(formData: FormData): Promise<ActionResult> 
 
     const staged = await stageBatch(supabase, orgId, org.own_afm, parsedRows);
 
-    const stagingRows = staged.map((row) => ({
-      org_id: orgId,
-      batch_id: batch.id,
-      row_no: row.rowNo,
-      // Round-trip through JSON so Date/etc. values from ExcelJS become
-      // plain JSON-safe data before going into a jsonb column.
-      raw: JSON.parse(JSON.stringify(row.raw)),
-      issue_date: row.issueDate,
-      mydata_mark: row.mydataMark,
-      invoice_number: row.invoiceNumber,
-      document_type: row.documentType,
-      issuer_afm: row.issuerAfm,
-      receiver_afm: row.receiverAfm,
-      counterparty_afm: row.counterpartyAfm,
-      counterparty_name: row.counterpartyName,
-      kad_code: row.kadCode,
-      kad_description: row.kadDescription,
-      net_amount: row.netAmount,
-      gross_amount: row.grossAmount,
-      vat_amount: row.vatAmount,
-      withholding_amount: row.withholdingAmount,
-      digital_fee: row.digitalFee,
-      fees: row.fees,
-      other_taxes: row.otherTaxes,
-      deductions: row.deductions,
-      discrepancy: row.discrepancy,
-      direction: row.direction,
-      fingerprint: row.fingerprint,
-      dedup_status: row.dedupStatus,
-      matched_transaction_id: row.matchedTransactionId,
-      decision: (row.dedupStatus === "new" ? "import" : "skip") as "import" | "skip",
-      parse_errors: row.parseErrors,
-    }));
+    const stagingRows = staged.map((row) => ({ org_id: orgId, batch_id: batch.id, ...toAadeStagingRow(row) }));
 
     const { error: rowsError } = await supabase.from("aade_staging_rows").insert(stagingRows);
     if (rowsError) throw rowsError;
@@ -191,10 +165,8 @@ export async function commitBatch(batchId: string): Promise<ActionResult> {
       .order("row_no");
     if (error) throw error;
 
-    const missingAssignment = (rows ?? []).filter((r) => !r.project_id || !r.account_id);
-    if (missingAssignment.length > 0) {
-      throw new UserError(`${missingAssignment.length} γραμμή/ες δεν έχουν έργο ή λογαριασμό. Συμπληρώστε πριν την οριστικοποίηση.`);
-    }
+    const missingAssignment = aadeRowsMissingAssignment(rows ?? []);
+    if (missingAssignment > 0) throw new UserError(aadeMissingAssignmentMessage(missingAssignment));
 
     // A failing row no longer vanishes silently: its reason is stored on the
     // row (commit_error, 0050), the batch stays a draft, and the page lists
@@ -223,38 +195,11 @@ export async function commitBatch(batchId: string): Promise<ActionResult> {
         continue;
       }
 
-      const netAmount = row.net_amount ?? 0;
-      const vatAmount = row.vat_amount ?? 0;
-      const withholdingAmount = row.withholding_amount ?? 0;
-      const grossAmount = row.gross_amount ?? netAmount + vatAmount - withholdingAmount;
-
+      // The mapping (rules R9-R15 in lib/aade/commitRules.ts) is shared with
+      // the parity test against commit_ingest_batch.
       const { data: tx, error: txError } = await supabase
         .from("transactions")
-        .insert({
-          org_id: orgId,
-          tx_date: row.issue_date, // narrowed non-null by the guard above
-          contact_id: contactId,
-          counterparty_afm: row.counterparty_afm,
-          counterparty_name: row.counterparty_name,
-          project_id: row.project_id,
-          category_id: row.category_id,
-          account_id: row.account_id,
-          direction: row.direction,
-          scope: row.scope ?? "business",
-          status: row.status ?? "paid",
-          origin: "aade",
-          gross_amount: grossAmount,
-          net_amount: netAmount,
-          vat_amount: vatAmount,
-          withholding_amount: withholdingAmount,
-          other_taxes: row.other_taxes ?? 0,
-          has_invoice: vatAmount > 0 || withholdingAmount > 0,
-          invoice_number: row.invoice_number,
-          mydata_mark: row.mydata_mark,
-          document_type: row.document_type,
-          aade_discrepancy: row.discrepancy,
-          aade_staging_row_id: row.id,
-        })
+        .insert(legacyAadeTransaction(orgId, { ...row, issue_date: row.issue_date, direction: row.direction }, contactId))
         .select("id")
         .single();
 
