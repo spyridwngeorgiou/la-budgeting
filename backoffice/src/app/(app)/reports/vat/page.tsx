@@ -4,7 +4,8 @@ import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { Badge, Button } from "@/components/ui";
 import { toggleVatFiled } from "./actions";
-import { addMonths, currentMonthKey, firstOfMonth } from "@/lib/dates";
+import { ActionForm } from "@/components/ActionForm";
+import { addMonths, currentMonthKey, firstOfMonth, monthKeyOf, quarterOf } from "@/lib/dates";
 
 export default async function VatPage() {
   const supabase = await createClient();
@@ -41,8 +42,8 @@ export default async function VatPage() {
           <h1 className="text-xl font-semibold">{el.nav.vat}</h1>
           <p className="mt-1 text-sm text-ink-muted">
             Υπολογίζεται με βάση την ημερομηνία τιμολογίου (accrual), με μεταφορά πιστωτικού
-            υπολοίπου μήνα προς μήνα. Δείχνονται οι περίοδοι από 6 μήνες πριν έως 6 μήνες μετά τον
-            τρέχοντα μήνα.
+            υπολοίπου από περίοδο σε περίοδο. Δείχνονται οι περίοδοι από 6 μήνες πριν έως 6 μήνες μετά τον
+            τρέχοντα μήνα. {el.reports.vatLockHint}
           </p>
         </div>
         <a href="/api/vat/export">
@@ -73,12 +74,17 @@ export default async function VatPage() {
             {(positions ?? []).map((p) => {
               const filing = filingByPeriod.get(p.period_start!);
               const filed = filing?.status === "filed" || filing?.status === "paid";
-              const isCurrent = p.period_start === todayMonth;
+              const startMonth = monthKeyOf(p.period_start!);
+              const isCurrent =
+                todayMonth >= startMonth && todayMonth <= addMonths(startMonth, Number(p.period_months ?? 1) - 1);
               return (
                 <tr key={p.period_start} className={`border-t border-line ${isCurrent ? "bg-sage/40" : ""}`}>
                   <td className="p-2">
-                    {formatDate(p.period_start)}
-                    {isCurrent && <span className="ml-1.5 text-xs text-sage-ink">τρέχων μήνας</span>}
+                    {Number(p.period_months ?? 1) === 3
+                      ? `${el.reports.quarter} ${quarterOf(p.period_start!)}/${p.period_start!.slice(0, 4)}`
+                      : formatDate(p.period_start)}
+                    {p.is_locked && <span className="ml-1.5 text-xs text-ink-faint">{el.reports.vatLocked}</span>}
+                    {isCurrent && <span className="ml-1.5 text-xs text-sage-ink">τρέχουσα περίοδος</span>}
                   </td>
                   <td className="hidden p-2 text-right font-mono sm:table-cell">{formatMoney(p.vat_income)}</td>
                   <td className="hidden p-2 text-right font-mono sm:table-cell">{formatMoney(p.vat_expense)}</td>
@@ -95,11 +101,11 @@ export default async function VatPage() {
                     </Badge>
                   </td>
                   <td className="p-2">
-                    <form action={toggleVatFiled.bind(null, p.period_start!, filed)}>
+                    <ActionForm action={toggleVatFiled.bind(null, p.period_start!, filed)}>
                       <button type="submit" className="text-xs text-ink-muted underline">
                         {filed ? "Αναίρεση" : "Σήμανση ως υποβλήθηκε"}
                       </button>
-                    </form>
+                    </ActionForm>
                   </td>
                 </tr>
               );

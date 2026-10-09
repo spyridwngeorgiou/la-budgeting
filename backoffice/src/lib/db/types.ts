@@ -1410,6 +1410,89 @@ export type Database = {
           },
         ]
       }
+      brokerage_deals: {
+        Row: {
+          client_contact_id: string | null
+          closed_on: string | null
+          commission_amount: number | null
+          commission_pct: number
+          created_at: string
+          expected_close_date: string | null
+          id: string
+          notes: string | null
+          org_id: string
+          price: number
+          project_id: string | null
+          property_label: string
+          stage: Database["public"]["Enums"]["deal_stage"]
+          transaction_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_contact_id?: string | null
+          closed_on?: string | null
+          commission_amount?: number | null
+          commission_pct?: number
+          created_at?: string
+          expected_close_date?: string | null
+          id?: string
+          notes?: string | null
+          org_id: string
+          price: number
+          project_id?: string | null
+          property_label: string
+          stage?: Database["public"]["Enums"]["deal_stage"]
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_contact_id?: string | null
+          closed_on?: string | null
+          commission_amount?: number | null
+          commission_pct?: number
+          created_at?: string
+          expected_close_date?: string | null
+          id?: string
+          notes?: string | null
+          org_id?: string
+          price?: number
+          project_id?: string | null
+          property_label?: string
+          stage?: Database["public"]["Enums"]["deal_stage"]
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brokerage_deals_client_contact_id_fkey"
+            columns: ["client_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brokerage_deals_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brokerage_deals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brokerage_deals_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_lines: {
         Row: {
           amount: number
@@ -2030,44 +2113,62 @@ export type Database = {
       expected_income: {
         Row: {
           amount: number
+          business_line: Database["public"]["Enums"]["business_line"] | null
           certainty: Database["public"]["Enums"]["certainty"]
           contact_id: string | null
           created_at: string
           creates_liability: boolean
+          direction: Database["public"]["Enums"]["tx_direction"]
           expected_month: string | null
           id: string
           notes: string | null
           org_id: string
+          owner_scope: Database["public"]["Enums"]["owner_scope"]
+          probability: number | null
           project_id: string | null
+          scenario_id: string | null
           source: string
+          status: Database["public"]["Enums"]["expected_status"]
           updated_at: string
         }
         Insert: {
           amount: number
+          business_line?: Database["public"]["Enums"]["business_line"] | null
           certainty?: Database["public"]["Enums"]["certainty"]
           contact_id?: string | null
           created_at?: string
           creates_liability?: boolean
+          direction?: Database["public"]["Enums"]["tx_direction"]
           expected_month?: string | null
           id?: string
           notes?: string | null
           org_id: string
+          owner_scope?: Database["public"]["Enums"]["owner_scope"]
+          probability?: number | null
           project_id?: string | null
+          scenario_id?: string | null
           source: string
+          status?: Database["public"]["Enums"]["expected_status"]
           updated_at?: string
         }
         Update: {
           amount?: number
+          business_line?: Database["public"]["Enums"]["business_line"] | null
           certainty?: Database["public"]["Enums"]["certainty"]
           contact_id?: string | null
           created_at?: string
           creates_liability?: boolean
+          direction?: Database["public"]["Enums"]["tx_direction"]
           expected_month?: string | null
           id?: string
           notes?: string | null
           org_id?: string
+          owner_scope?: Database["public"]["Enums"]["owner_scope"]
+          probability?: number | null
           project_id?: string | null
+          scenario_id?: string | null
           source?: string
+          status?: Database["public"]["Enums"]["expected_status"]
           updated_at?: string
         }
         Relationships: [
@@ -2916,6 +3017,7 @@ export type Database = {
           org_id: string
           principal: number
           project_id: string | null
+          schedule_synced_at: string | null
           state: Database["public"]["Enums"]["liability_state"]
           term_years: number
           updated_at: string
@@ -2931,6 +3033,7 @@ export type Database = {
           org_id: string
           principal: number
           project_id?: string | null
+          schedule_synced_at?: string | null
           state?: Database["public"]["Enums"]["liability_state"]
           term_years: number
           updated_at?: string
@@ -2946,6 +3049,7 @@ export type Database = {
           org_id?: string
           principal?: number
           project_id?: string | null
+          schedule_synced_at?: string | null
           state?: Database["public"]["Enums"]["liability_state"]
           term_years?: number
           updated_at?: string
@@ -3497,6 +3601,7 @@ export type Database = {
           notes: string | null
           org_id: string
           project_id: string
+          schedule_synced_at: string | null
           term_years: number
           updated_at: string
         }
@@ -3510,6 +3615,7 @@ export type Database = {
           notes?: string | null
           org_id: string
           project_id: string
+          schedule_synced_at?: string | null
           term_years: number
           updated_at?: string
         }
@@ -3523,6 +3629,7 @@ export type Database = {
           notes?: string | null
           org_id?: string
           project_id?: string
+          schedule_synced_at?: string | null
           term_years?: number
           updated_at?: string
         }
@@ -4238,6 +4345,7 @@ export type Database = {
       projects: {
         Row: {
           aliases: string[]
+          business_line: Database["public"]["Enums"]["business_line"]
           business_model: Database["public"]["Enums"]["business_model"] | null
           code: string
           collateral_value: number | null
@@ -4262,6 +4370,7 @@ export type Database = {
         }
         Insert: {
           aliases?: string[]
+          business_line?: Database["public"]["Enums"]["business_line"]
           business_model?: Database["public"]["Enums"]["business_model"] | null
           code: string
           collateral_value?: number | null
@@ -4286,6 +4395,7 @@ export type Database = {
         }
         Update: {
           aliases?: string[]
+          business_line?: Database["public"]["Enums"]["business_line"]
           business_model?: Database["public"]["Enums"]["business_model"] | null
           code?: string
           collateral_value?: number | null
@@ -4979,8 +5089,11 @@ export type Database = {
           id: string
           ingest_row_id: string | null
           installment_no: number | null
+          interest_amount: number | null
           invoice_number: string | null
+          lease_id: string | null
           legacy_excel_id: string | null
+          loan_id: string | null
           month_key: string | null
           mydata_mark: string | null
           net_amount: number | null
@@ -4993,6 +5106,7 @@ export type Database = {
           plan_id: string | null
           project_id: string | null
           property_project_id: string | null
+          schedule_seq: number | null
           scope: Database["public"]["Enums"]["tx_scope"]
           signed_amount: number | null
           source_document_id: string | null
@@ -5027,8 +5141,11 @@ export type Database = {
           id?: string
           ingest_row_id?: string | null
           installment_no?: number | null
+          interest_amount?: number | null
           invoice_number?: string | null
+          lease_id?: string | null
           legacy_excel_id?: string | null
+          loan_id?: string | null
           month_key?: string | null
           mydata_mark?: string | null
           net_amount?: number | null
@@ -5041,6 +5158,7 @@ export type Database = {
           plan_id?: string | null
           project_id?: string | null
           property_project_id?: string | null
+          schedule_seq?: number | null
           scope?: Database["public"]["Enums"]["tx_scope"]
           signed_amount?: number | null
           source_document_id?: string | null
@@ -5075,8 +5193,11 @@ export type Database = {
           id?: string
           ingest_row_id?: string | null
           installment_no?: number | null
+          interest_amount?: number | null
           invoice_number?: string | null
+          lease_id?: string | null
           legacy_excel_id?: string | null
+          loan_id?: string | null
           month_key?: string | null
           mydata_mark?: string | null
           net_amount?: number | null
@@ -5089,6 +5210,7 @@ export type Database = {
           plan_id?: string | null
           project_id?: string | null
           property_project_id?: string | null
+          schedule_seq?: number | null
           scope?: Database["public"]["Enums"]["tx_scope"]
           signed_amount?: number | null
           source_document_id?: string | null
@@ -5421,6 +5543,25 @@ export type Database = {
         }
         Relationships: []
       }
+      v_cash_forecast_items: {
+        Row: {
+          amount: number | null
+          business_line: Database["public"]["Enums"]["business_line"] | null
+          direction: Database["public"]["Enums"]["tx_direction"] | null
+          due_date: string | null
+          is_overdue: boolean | null
+          item_key: string | null
+          label: string | null
+          month: string | null
+          org_id: string | null
+          owner_scope: Database["public"]["Enums"]["owner_scope"] | null
+          probability: number | null
+          project_id: string | null
+          ref_id: string | null
+          source: string | null
+        }
+        Relationships: []
+      }
       v_cash_since_last_count: {
         Row: {
           account_id: string | null
@@ -5435,32 +5576,6 @@ export type Database = {
           personal_since: number | null
         }
         Relationships: []
-      }
-      v_cashflow_monthly: {
-        Row: {
-          inflow: number | null
-          month: string | null
-          org_id: string | null
-          outflow: number | null
-          owner_scope: Database["public"]["Enums"]["owner_scope"] | null
-          weighted_expected_inflow: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "transactions_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "orgs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "transactions_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "v_net_worth"
-            referencedColumns: ["org_id"]
-          },
-        ]
       }
       v_contact_rollup: {
         Row: {
@@ -5487,6 +5602,23 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_net_worth"
             referencedColumns: ["org_id"]
+          },
+        ]
+      }
+      v_liquidity: {
+        Row: {
+          account_count: number | null
+          balance: number | null
+          org_id: string | null
+          owner_scope: Database["public"]["Enums"]["owner_scope"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -5896,6 +6028,18 @@ export type Database = {
           },
         ]
       }
+      v_qc_forecast_stale: {
+        Row: {
+          amount: number | null
+          direction: Database["public"]["Enums"]["tx_direction"] | null
+          due_date: string | null
+          label: string | null
+          org_id: string | null
+          ref_id: string | null
+          source: string | null
+        }
+        Relationships: []
+      }
       v_qc_future_dated: {
         Row: {
           contact_name: string | null
@@ -6012,6 +6156,18 @@ export type Database = {
             referencedColumns: ["org_id"]
           },
         ]
+      }
+      v_qc_schedule_stale: {
+        Row: {
+          kind: string | null
+          label: string | null
+          org_id: string | null
+          project_id: string | null
+          schedule_synced_at: string | null
+          source_id: string | null
+          updated_at: string | null
+        }
+        Relationships: []
       }
       v_qc_spend_without_treatment: {
         Row: {
@@ -6151,9 +6307,11 @@ export type Database = {
         Row: {
           credit_balance: number | null
           filing_deadline: string | null
+          is_locked: boolean | null
           net_position: number | null
           org_id: string | null
           payable_after_credit: number | null
+          period_months: number | null
           period_start: string | null
           vat_expense: number | null
           vat_income: number | null
@@ -6205,9 +6363,54 @@ export type Database = {
         Args: { p_indexes?: number[]; p_proposal: string }
         Returns: Json
       }
+      athens_today: { Args: never; Returns: string }
       can_access_project: { Args: { p_project: string }; Returns: boolean }
       can_edit_collab: { Args: { p_project: string }; Returns: boolean }
       can_manage_collab: { Args: { p_project: string }; Returns: boolean }
+      cash_forecast: {
+        Args: {
+          p_months?: number
+          p_org: string
+          p_scenario?: string
+          p_scope?: Database["public"]["Enums"]["owner_scope"]
+        }
+        Returns: {
+          below_buffer: boolean
+          closing_balance: number
+          inflow: number
+          min_buffer: number
+          month: string
+          net: number
+          opening_balance: number
+          outflow: number
+          uncertain_inflow: number
+        }[]
+      }
+      cash_forecast_items: {
+        Args: {
+          p_month?: string
+          p_org: string
+          p_scenario?: string
+          p_scope?: Database["public"]["Enums"]["owner_scope"]
+        }
+        Returns: {
+          amount: number
+          business_line: Database["public"]["Enums"]["business_line"]
+          direction: Database["public"]["Enums"]["tx_direction"]
+          due_date: string
+          is_overdue: boolean
+          item_key: string
+          label: string
+          month: string
+          owner_scope: Database["public"]["Enums"]["owner_scope"]
+          probability: number
+          project_id: string
+          ref_id: string
+          source: string
+          weight: number
+          weighted_amount: number
+        }[]
+      }
       collab_ai_budget_check: {
         Args: {
           p_default_monthly_cents: number
@@ -6241,6 +6444,17 @@ export type Database = {
         Args: { p_batch: string; p_expected_version: number }
         Returns: Json
       }
+      deal_stage_probability: {
+        Args: { p_stage: Database["public"]["Enums"]["deal_stage"] }
+        Returns: number
+      }
+      derive_business_line: {
+        Args: {
+          p_model: Database["public"]["Enums"]["business_model"]
+          p_type: Database["public"]["Enums"]["project_type"]
+        }
+        Returns: Database["public"]["Enums"]["business_line"]
+      }
       ensure_plans_current: { Args: { p_org_id?: string }; Returns: undefined }
       find_possible_duplicates: {
         Args: {
@@ -6265,6 +6479,14 @@ export type Database = {
           status: Database["public"]["Enums"]["tx_status"]
           tx_date: string
         }[]
+      }
+      forecast_weight: {
+        Args: {
+          p_direction: Database["public"]["Enums"]["tx_direction"]
+          p_probability: number
+          p_scenario: string
+        }
+        Returns: number
       }
       has_role: {
         Args: { p_min: Database["public"]["Enums"]["org_role"]; p_org: string }
@@ -6359,6 +6581,14 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      sync_schedule_rows: {
+        Args: { p_kind: string; p_rows: Json; p_source_id: string }
+        Returns: {
+          protected: number
+          removed: number
+          upserted: number
+        }[]
+      }
       unaccent: { Args: { "": string }; Returns: string }
       undo_ingest_batch: {
         Args: { p_batch: string; p_expected_version: number; p_force?: boolean }
@@ -6368,13 +6598,10 @@ export type Database = {
         Args: { p_board: string; p_elements: Json }
         Returns: Json
       }
-      v_due_within: {
-        Args: { p_days: number; p_org_id: string }
-        Returns: {
-          total_amount: number
-        }[]
-      }
-      vat_filing_deadline: { Args: { p_period_start: string }; Returns: string }
+      vat_filing_deadline:
+        | { Args: { p_period_start: string }; Returns: string }
+        | { Args: { p_period_months: number; p_period_start: string }; Returns: string }
+      vat_period_months: { Args: { p_org: string }; Returns: number }
       withholding_filing_deadline: {
         Args: { p_period_start: string }
         Returns: string
@@ -6404,6 +6631,12 @@ export type Database = {
         | "studies_permits_legal"
         | "construction_equipment"
         | "other"
+      business_line:
+        | "hospitality"
+        | "construction"
+        | "brokerage"
+        | "investments"
+        | "general"
       business_model:
         | "own_development"
         | "client_project"
@@ -6421,6 +6654,10 @@ export type Database = {
         | "vat"
         | "pass_through"
         | "income"
+        | "principal"
+        | "equity"
+      deal_stage: "lead" | "offer" | "preliminary" | "closed" | "lost"
+      expected_status: "expected" | "received" | "cancelled"
       filing_status: "pending" | "filed" | "paid" | "cancelled"
       ingest_batch_status:
         | "staged"
@@ -6666,6 +6903,13 @@ export const Constants = {
         "construction_equipment",
         "other",
       ],
+      business_line: [
+        "hospitality",
+        "construction",
+        "brokerage",
+        "investments",
+        "general",
+      ],
       business_model: [
         "own_development",
         "client_project",
@@ -6684,7 +6928,11 @@ export const Constants = {
         "vat",
         "pass_through",
         "income",
+        "principal",
+        "equity",
       ],
+      deal_stage: ["lead", "offer", "preliminary", "closed", "lost"],
+      expected_status: ["expected", "received", "cancelled"],
       filing_status: ["pending", "filed", "paid", "cancelled"],
       ingest_batch_status: [
         "staged",
