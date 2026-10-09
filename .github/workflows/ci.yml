@@ -44,4 +44,13 @@ jobs:
         with:
           version: latest
       - run: supabase db start
-      - run: supabase test db
+      # Failing assertions are also raised as annotations so they show on
+      # the run summary without opening the full log.
+      - name: supabase test db
+        run: |
+          set -o pipefail
+          supabase test db 2>&1 | tee pgtap.log || {
+            grep -E "^(not ok|#|[^ ]+\.sql \.\.)|Failed|ERROR|psql:" pgtap.log \
+              | head -40 | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          }
