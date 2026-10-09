@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { legacyInboxHref } from "@/lib/ingest/legacy";
 import { createClient } from "@/lib/supabase/server";
 import { ReviewForm } from "./ReviewForm";
 import type { Extraction } from "@/lib/ai/schemas";
@@ -15,6 +16,8 @@ export default async function DraftReviewPage({
   const { id } = await params;
   const { queue } = await searchParams;
   const supabase = await createClient();
+  const inbox = await legacyInboxHref(supabase, `draft:${id}`);
+  if (inbox) redirect(inbox);
 
   const { data: draft } = await supabase
     .from("transaction_drafts")

@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { legacyInboxHref } from "@/lib/ingest/legacy";
 import { createClient } from "@/lib/supabase/server";
 import { Badge, Button } from "@/components/ui";
 import { ReviewTable } from "./ReviewTable";
@@ -15,6 +16,8 @@ export default async function AadeBatchReviewPage({
 }) {
   const { batchId } = await params;
   const supabase = await createClient();
+  const inbox = await legacyInboxHref(supabase, `aade:${batchId}`);
+  if (inbox) redirect(inbox);
   const orgId = await getCurrentOrgId(supabase);
 
   const [{ data: batch }, { data: rows }, { projects, categories, accounts }] =

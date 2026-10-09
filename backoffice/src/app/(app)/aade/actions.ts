@@ -7,7 +7,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { parseAadeWorkbook } from "@/lib/aade/parse";
-import { stageBatch } from "@/lib/aade/dedup";
+import { classifyAadeRows, loadAadeLedgerMatches, stageBatch as stageAadeBatch } from "@/lib/aade/dedup";
+import { ingestUnified } from "@/lib/ingest/flag";
+import { skipCommittedKeys, stageBatch } from "@/lib/ingest/stage";
+import { aadeFileMeta, aadeStagedToStageRows } from "@/lib/ingest/adapters/aadeFile";
 import {
   aadeMissingAssignmentMessage,
   aadeRowsMissingAssignment,
@@ -33,6 +36,8 @@ export async function uploadAadeFile(formData: FormData): Promise<ActionResult> 
 
     const buffer = await file.arrayBuffer();
     const sha256 = createHash("sha256").update(Buffer.from(buffer)).digest("hex");
+
+    if (ingestUnified()) return stageAadeIntoInbox(supabase, orgId, org.own_afm, file, buffer, sha256);
 
     const { data: existingBatch } = await supabase
       .from("aade_import_batches")
@@ -77,7 +82,7 @@ export async function uploadAadeFile(formData: FormData): Promise<ActionResult> 
       .single();
     if (batchError) throw batchError;
 
-    const staged = await stageBatch(supabase, orgId, org.own_afm, parsedRows);
+    const staged = await stageAadeBatch(supabase, orgId, org.own_afm, parsedRows);
 
     const stagingRows = staged.map((row) => ({ org_id: orgId, batch_id: batch.id, ...toAadeStagingRow(row) }));
 
@@ -93,6 +98,59 @@ export async function uploadAadeFile(formData: FormData): Promise<ActionResult> 
     revalidatePath("/aade");
     redirect(`/aade/${batch.id}`);
   });
+}
+
+// INGEST_UNIFIED: the same parse + dedup (lib/aade), staged as an ingest
+// batch and reviewed/committed in the inbox; commit_ingest_batch applies the
+// old commitBatch rules (lib/aade/commitRules.ts).
+async function stageAadeIntoInbox(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orgId: string,
+  ownAfm: string,
+  file: File,
+  buffer: ArrayBuffer,
+  sha256: string,
+): Promise<never> {
+  // R6, against both systems while the old tables still exist.
+  const [{ data: inIngest }, { data: inAade }] = await Promise.all([
+    supabase
+      .from("ingest_batches")
+      .select("filename")
+      .eq("org_id", orgId)
+      .eq("file_sha256", sha256)
+      .in("status", ["staged", "committed"])
+      .maybeSingle(),
+    supabase.from("aade_import_batches").select("filename").eq("org_id", orgId).eq("file_sha256", sha256).maybeSingle(),
+  ]);
+  const existing = inIngest ?? inAade;
+  if (existing) throw new UserError(`Αυτό το αρχείο έχει ήδη εισαχθεί (${existing.filename}).`);
+
+  const parsed = await parseAadeWorkbook(buffer);
+  const ledger = await loadAadeLedgerMatches(supabase, orgId, ownAfm, parsed);
+  const rows = await skipCommittedKeys(supabase, orgId, aadeStagedToStageRows(classifyAadeRows(parsed, ownAfm, ledger)));
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const storagePath = `${orgId}/${Date.now()}-${file.name}`;
+  const { error: uploadError } = await supabase.storage
+    .from("aade-imports")
+    .upload(storagePath, buffer, { contentType: file.type });
+  if (uploadError) throw uploadError;
+
+  const { batchId } = await stageBatch(supabase, {
+    orgId,
+    source: "aade",
+    rows,
+    filename: file.name,
+    fileSha256: sha256,
+    storagePath,
+    mimeType: file.type || null,
+    createdBy: session?.user.id ?? null,
+    meta: { ...aadeFileMeta(file.name), storage_bucket: "aade-imports" },
+  });
+  revalidatePath("/inbox");
+  redirect(`/inbox/${batchId}`);
 }
 
 // A single-field updater, not a generic FormData patch: each RowSelect

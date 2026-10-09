@@ -88,6 +88,24 @@ export function toIngestRowFields(row: StageRow): Omit<IngestRowInsert, "org_id"
   };
 }
 
+// A line whose external_key (bank fingerprint, ΜΑΡΚ) is already on a
+// committed row is skipped at staging, like stageMovements does for bank
+// lines -- commit_ingest_batch would refuse the whole batch otherwise.
+export async function skipCommittedKeys(supabase: Client, orgId: string, rows: StageRow[]): Promise<StageRow[]> {
+  const keys = rows.map((r) => r.externalKey).filter((k): k is string => !!k);
+  if (keys.length === 0) return rows;
+  const { data } = await supabase
+    .from("ingest_rows")
+    .select("external_key")
+    .eq("org_id", orgId)
+    .in("external_key", keys)
+    .not("committed_at", "is", null);
+  const seen = new Set((data ?? []).map((r) => r.external_key));
+  return rows.map((r) =>
+    r.externalKey && seen.has(r.externalKey) ? { ...r, decision: "skip", dedupStatus: "dup_external_key" } : r,
+  );
+}
+
 export interface StageBatchInput {
   orgId: string;
   source: IngestSource;

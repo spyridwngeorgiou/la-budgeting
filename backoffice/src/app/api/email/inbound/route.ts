@@ -9,6 +9,8 @@ import { deriveFromGross, cashOnly } from "@/lib/finance/money";
 import type { Extraction } from "@/lib/ai/schemas";
 import type { Database } from "@/lib/db/types";
 import { todayAthens } from "@/lib/dates";
+import { ingestUnified } from "@/lib/ingest/flag";
+import { stageInboundEmail } from "@/lib/ingest/adapters/aiEmail";
 
 // Postmark's inbound webhook shape (the fields this route actually reads;
 // Postmark sends more than this). See https://postmarkapp.com/developer/webhooks/inbound-webhook
@@ -74,6 +76,18 @@ export async function POST(req: NextRequest) {
     await assertWithinAiBudget(admin, orgId);
   } catch {
     return NextResponse.json({ ok: true, skipped: "over AI budget" }, { status: 200 });
+  }
+
+  // Unified: the same adapters as /documents/new stage ingest batches (org_id
+  // explicit on every write -- this client has no RLS); the inbox reviews them.
+  if (ingestUnified()) {
+    await stageInboundEmail(admin, orgId, {
+      from: payload.From ?? null,
+      subject: payload.Subject ?? null,
+      text: payload.TextBody ?? null,
+      attachments: (payload.Attachments ?? []).map((a) => ({ name: a.Name, mimeType: a.ContentType, base64: a.Content })),
+    });
+    return NextResponse.json({ ok: true });
   }
 
   // Service role bypasses RLS: without the org filter every org's category
