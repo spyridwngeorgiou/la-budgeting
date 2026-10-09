@@ -8,6 +8,14 @@ on:
 jobs:
   ping:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Public workers.dev URLs (not secrets) -- each /api/health query
+        # touches that environment's own Supabase project.
+        url:
+          - https://kansha-back-office.spyridwngeorgiou.workers.dev
+          - https://kansha-back-office-staging.spyridwngeorgiou.workers.dev
     steps:
       - name: Hit /api/health
-        run: curl -fsS "${{ secrets.APP_URL }}/api/health"
+        run: curl -fsS --retry 3 --retry-delay 20 "${{ matrix.url }}/api/health"
