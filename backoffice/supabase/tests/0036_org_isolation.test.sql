@@ -67,9 +67,10 @@ select is(
     where n.nspname = 'public' and p.prosecdef order by p.proname::text collate "C"
   ),
   array[
-    'broadcast_board_comment', 'can_access_project', 'can_edit_collab', 'collab_path_ok',
-    'collab_people', 'ensure_plans_current', 'handle_new_user', 'has_role',
-    'is_internal_user', 'log_project_activity', 'log_transaction_history', 'my_collab_projects',
+    'broadcast_board_comment', 'can_access_project', 'can_edit_collab', 'collab_ai_budget_check',
+    'collab_path_ok', 'collab_people', 'ensure_plans_current', 'handle_new_user', 'has_role',
+    'is_internal_user', 'log_collab_ai_usage', 'log_project_activity', 'log_transaction_history',
+    'my_collab_projects',
     'my_org_ids', 'planner_can_read', 'planner_can_write', 'planner_guard',
     'planner_people', 'planner_projects', 'realtime_board_topic_ok', 'regenerate_plan',
     'regenerate_plan_unchecked'
