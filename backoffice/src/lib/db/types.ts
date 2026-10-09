@@ -1233,9 +1233,10 @@ export type Database = {
       }
       board_files: {
         Row: {
-          board_id: string
+          board_id: string | null
           created_at: string
           created_by: string | null
+          derived_from: string | null
           file_id: string
           id: string
           mime_type: string
@@ -1246,9 +1247,10 @@ export type Database = {
           storage_path: string
         }
         Insert: {
-          board_id: string
+          board_id?: string | null
           created_at?: string
           created_by?: string | null
+          derived_from?: string | null
           file_id: string
           id?: string
           mime_type: string
@@ -1259,9 +1261,10 @@ export type Database = {
           storage_path: string
         }
         Update: {
-          board_id?: string
+          board_id?: string | null
           created_at?: string
           created_by?: string | null
+          derived_from?: string | null
           file_id?: string
           id?: string
           mime_type?: string
@@ -1277,6 +1280,13 @@ export type Database = {
             columns: ["board_id"]
             isOneToOne: false
             referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "board_files_derived_from_fkey"
+            columns: ["derived_from"]
+            isOneToOne: false
+            referencedRelation: "board_files"
             referencedColumns: ["id"]
           },
           {
@@ -1322,9 +1332,13 @@ export type Database = {
           archived_at: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           org_id: string
           project_id: string
+          template: string | null
+          thumbnail_path: string | null
           title: string
           updated_at: string
         }
@@ -1333,9 +1347,13 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           org_id: string
           project_id: string
+          template?: string | null
+          thumbnail_path?: string | null
           title: string
           updated_at?: string
         }
@@ -1344,9 +1362,13 @@ export type Database = {
           archived_at?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           org_id?: string
           project_id?: string
+          template?: string | null
+          thumbnail_path?: string | null
           title?: string
           updated_at?: string
         }
@@ -3622,6 +3644,85 @@ export type Database = {
           },
           {
             foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      project_messages: {
+        Row: {
+          attachment_ids: string[]
+          author_id: string | null
+          board_id: string | null
+          body: string
+          created_at: string
+          edited_at: string | null
+          id: string
+          org_id: string
+          project_id: string
+        }
+        Insert: {
+          attachment_ids?: string[]
+          author_id?: string | null
+          board_id?: string | null
+          body?: string
+          created_at?: string
+          edited_at?: string | null
+          id?: string
+          org_id: string
+          project_id: string
+        }
+        Update: {
+          attachment_ids?: string[]
+          author_id?: string | null
+          board_id?: string | null
+          body?: string
+          created_at?: string
+          edited_at?: string | null
+          id?: string
+          org_id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_messages_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_messages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_messages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "project_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "project_messages_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "v_qc_projects_without_budget"
@@ -6106,6 +6207,7 @@ export type Database = {
       }
       can_access_project: { Args: { p_project: string }; Returns: boolean }
       can_edit_collab: { Args: { p_project: string }; Returns: boolean }
+      can_manage_collab: { Args: { p_project: string }; Returns: boolean }
       collab_ai_budget_check: {
         Args: {
           p_default_monthly_cents: number
@@ -6114,6 +6216,7 @@ export type Database = {
         }
         Returns: string
       }
+      collab_path_manage_ok: { Args: { p_name: string }; Returns: boolean }
       collab_path_ok: {
         Args: { p_name: string; p_write: boolean }
         Returns: boolean
@@ -6128,6 +6231,11 @@ export type Database = {
           project_role: Database["public"]["Enums"]["project_role"]
           user_id: string
         }[]
+      }
+      collab_project_org: { Args: { p_project: string }; Returns: string }
+      collab_project_org_for_write: {
+        Args: { p_project: string }
+        Returns: string
       }
       commit_ingest_batch: {
         Args: { p_batch: string; p_expected_version: number }
@@ -6228,6 +6336,7 @@ export type Database = {
         Args: { p_topic: string; p_write: boolean }
         Returns: boolean
       }
+      realtime_project_topic_ok: { Args: { p_topic: string }; Returns: boolean }
       record_partial_payment: {
         Args: {
           p_account: string | null

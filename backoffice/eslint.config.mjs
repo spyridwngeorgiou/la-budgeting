@@ -14,5 +14,8 @@ export default defineConfig([
     "next-env.d.ts",
     "cloudflare-env.d.ts",
     "src/lib/db/types.ts",
+    // Copied from node_modules by scripts/copy-excalidraw-assets.mjs.
+    "public/pdfjs/**",
+    "public/excalidraw-assets/**",
   ]),
 ]);

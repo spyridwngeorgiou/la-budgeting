@@ -95,7 +95,7 @@ export async function POST(request: Request) {
     .from("boards")
     .select("id, title, org_id, project_id")
     .eq("id", boardId)
-    .is("archived_at", null)
+    .is("deleted_at", null)
     .maybeSingle();
   if (!board) return jsonError(t.notFound, 404);
   const projectId = board.project_id;

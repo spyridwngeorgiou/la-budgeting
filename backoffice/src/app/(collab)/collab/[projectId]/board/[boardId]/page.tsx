@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/supabase/access";
@@ -8,9 +7,11 @@ import { BoardLoader } from "@/components/collab/BoardLoader";
 import { COMMENT_COLUMNS, type BoardBootstrap } from "@/components/collab/types";
 
 // The canvas page. Server side it only gathers the initial scene and the
-// caller's rights; all live behaviour is in BoardCanvas (client-only).
-// Tombstoned elements aren't sent: the server is the authority on merges,
-// and any stale copy a client still holds loses in upsert_board_elements.
+// caller's rights; all live behaviour (including the header with the
+// «Συζήτηση» button) is in BoardCanvas (client-only). Tombstoned elements
+// aren't sent: the server is the authority on merges, and any stale copy a
+// client still holds loses in upsert_board_elements. Boards in the trash
+// (0060) are not openable.
 export default async function BoardPage({ params }: { params: Promise<{ projectId: string; boardId: string }> }) {
   const { projectId, boardId } = await params;
   const supabase = await createClient();
@@ -19,15 +20,23 @@ export default async function BoardPage({ params }: { params: Promise<{ projectI
 
   const { data: board } = await supabase
     .from("boards")
-    .select("id, title, org_id, project_id")
+    .select("id, title, org_id, project_id, created_by, template, thumbnail_path")
     .eq("id", boardId)
     .eq("project_id", projectId)
-    .is("archived_at", null)
+    .is("deleted_at", null)
     .maybeSingle();
   if (!board) notFound();
 
-  const [{ data: canEdit }, { data: elements }, { data: comments }, { data: people }, { data: myMembership }] = await Promise.all([
+  const [
+    { data: canEdit },
+    { data: canManage },
+    { data: elements },
+    { data: comments },
+    { data: people },
+    { data: myMembership },
+  ] = await Promise.all([
     supabase.rpc("can_edit_collab", { p_project: projectId }),
+    supabase.rpc("can_manage_collab", { p_project: projectId }),
     supabase.from("board_elements").select("data").eq("board_id", boardId).eq("is_deleted", false),
     supabase.from("board_comments").select(COMMENT_COLUMNS).eq("board_id", boardId).order("created_at"),
     supabase.rpc("collab_people", { p_project: projectId }),
@@ -50,6 +59,7 @@ export default async function BoardPage({ params }: { params: Promise<{ projectI
   // Shown to peers via presence: a profile name or nothing -- never derived
   // from the email address.
   const myName = peopleMap[access.userId] ?? el.collab.unknownUser;
+  const sceneElements = (elements ?? []).map((e) => e.data);
 
   const bootstrap: BoardBootstrap = {
     boardId,
@@ -57,8 +67,11 @@ export default async function BoardPage({ params }: { params: Promise<{ projectI
     orgId: board.org_id,
     title: board.title,
     canEdit: canEdit === true,
+    canManage: canManage === true,
+    template: board.template && board.created_by === access.userId && sceneElements.length === 0 ? board.template : null,
+    hasThumbnail: board.thumbnail_path !== null,
     me: { userId: access.userId, name: myName },
-    elements: (elements ?? []).map((e) => e.data),
+    elements: sceneElements,
     comments: comments ?? [],
     people: { ...peopleMap, [access.userId]: myName },
     backHref: `/collab/${projectId}`,
@@ -69,15 +82,7 @@ export default async function BoardPage({ params }: { params: Promise<{ projectI
 
   return (
     <div className="flex h-[calc(100dvh-3.5rem)] min-h-0 flex-col">
-      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line bg-surface px-3 text-sm">
-        <Link href={bootstrap.backHref} className="shrink-0 text-ink-muted hover:text-ink">
-          ← {el.collab.board.back}
-        </Link>
-        <span className="truncate font-medium">{board.title}</span>
-      </div>
-      <div className="min-h-0 flex-1">
-        <BoardLoader bootstrap={bootstrap} />
-      </div>
+      <BoardLoader bootstrap={bootstrap} />
     </div>
   );
 }

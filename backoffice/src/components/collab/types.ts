@@ -21,6 +21,13 @@ export interface BoardBootstrap {
   orgId: string;
   title: string;
   canEdit: boolean;
+  // Project lead or org editor (0060 can_manage_collab): may delete anyone's
+  // comments, files and assistant threads. UI hint only.
+  canManage: boolean;
+  // Template to build on first open (only sent to the creator, only while
+  // the board is still empty); see lib/collab/templates.ts.
+  template: string | null;
+  hasThumbnail: boolean;
   me: { userId: string; name: string };
   // Excalidraw elements exactly as stored in board_elements.data.
   elements: unknown[];

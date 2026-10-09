@@ -34,6 +34,7 @@ interface ThreadRow {
   id: string;
   title: string | null;
   updated_at: string;
+  created_by: string | null;
 }
 
 export interface AiPanelRights {
@@ -48,18 +49,29 @@ export function AiPanel({
   api,
   rights,
   onToast,
+  meId,
+  canManage,
+  confirm,
+  initialInput = "",
 }: {
   supabase: SupabaseClient<Database>;
   boardId: string;
   api: ExcalidrawImperativeAPI | null;
   rights: AiPanelRights;
   onToast: (message: string) => void;
+  meId: string;
+  // Project lead or org editor: may delete anyone's conversation (0060).
+  canManage: boolean;
+  confirm: (req: { message: string }) => Promise<boolean>;
+  // Prefilled question, e.g. from the selection toolbar or "@βοηθός" in
+  // team chat. The parent remounts the panel (key) to apply a new one.
+  initialInput?: string;
 }) {
   const [threads, setThreads] = useState<ThreadRow[]>([]);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [proposals, setProposals] = useState<ProposalView[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialInput);
   const [busy, setBusy] = useState(false);
   const [activity, setActivity] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -70,7 +82,7 @@ export function AiPanel({
       (
         await supabase
           .from("collab_ai_threads")
-          .select("id, title, updated_at")
+          .select("id, title, updated_at, created_by")
           .eq("board_id", boardId)
           .order("updated_at", { ascending: false })
           .limit(30)
@@ -241,6 +253,21 @@ export function AiPanel({
   }
 
   const quick = [t.quick.summary, t.quick.decisions, t.quick.questions];
+  const current = threads.find((th) => th.id === threadId);
+  const canDeleteThread = !!current && (canManage || current.created_by === meId);
+
+  async function deleteThread() {
+    if (!threadId || !(await confirm({ message: t.confirmDeleteThread }))) return;
+    const { data, error } = await supabase.from("collab_ai_threads").delete().eq("id", threadId).select("id");
+    if (error || !data || data.length === 0) {
+      onToast(t.error.saveFailed);
+      return;
+    }
+    setThreads((list) => list.filter((th) => th.id !== threadId));
+    setThreadId(null);
+    setMessages([]);
+    setProposals([]);
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -277,6 +304,17 @@ export function AiPanel({
         >
           + {t.newThread}
         </button>
+        {threadId && canDeleteThread && (
+          <button
+            type="button"
+            className="shrink-0 rounded px-2 py-1 text-red-ink hover:bg-red-bg disabled:opacity-50"
+            disabled={busy}
+            onClick={() => void deleteThread()}
+            title={t.deleteThread}
+          >
+            {t.deleteThread}
+          </button>
+        )}
       </div>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 text-sm">
