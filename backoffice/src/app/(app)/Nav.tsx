@@ -27,6 +27,7 @@ const ROLE_RANK: Record<OrgRole, number> = { viewer: 0, editor: 1, admin: 2, own
 const NAV_ITEMS: { href: string; label: string; ai?: boolean; minRole?: OrgRole }[] = [
   { href: "/dashboard", label: el.nav.dashboard },
   { href: "/transactions", label: el.nav.transactions },
+  { href: "/inbox", label: el.nav.inbox, minRole: "editor" },
   { href: "/projects", label: el.nav.projects },
   // ── Planner (0040) ── tasks, timeline and the unified calendar; sits by
   // projects because every task belongs to one.

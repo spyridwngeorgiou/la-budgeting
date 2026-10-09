@@ -65,9 +65,10 @@ select results_eq($$
 $$, $$ values
   ('broadcast_board_comment'), ('can_access_project'), ('can_edit_collab'), ('collab_path_ok'),
   ('collab_people'), ('ensure_plans_current'), ('handle_new_user'), ('has_role'),
-  ('is_internal_user'), ('log_project_activity'), ('my_collab_projects'), ('my_org_ids'),
-  ('planner_can_read'), ('planner_can_write'), ('planner_guard'), ('planner_people'),
-  ('planner_projects'), ('realtime_board_topic_ok'), ('regenerate_plan'), ('regenerate_plan_unchecked')
+  ('is_internal_user'), ('log_project_activity'), ('log_transaction_history'), ('my_collab_projects'),
+  ('my_org_ids'), ('planner_can_read'), ('planner_can_write'), ('planner_guard'),
+  ('planner_people'), ('planner_projects'), ('realtime_board_topic_ok'), ('regenerate_plan'),
+  ('regenerate_plan_unchecked')
 $$, 'SECURITY DEFINER functions match the reviewed allowlist');
 
 select ok(not has_function_privilege('authenticated', 'public.ensure_plans_current(uuid)', 'execute'),

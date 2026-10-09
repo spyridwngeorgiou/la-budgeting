@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Badge, Button } from "@/components/ui";
 import { ReviewTable } from "./ReviewTable";
 import { commitBatch } from "../actions";
+import { el } from "@/lib/i18n/el";
 
 export default async function AadeBatchReviewPage({
   params,
@@ -18,7 +19,7 @@ export default async function AadeBatchReviewPage({
       supabase
         .from("aade_staging_rows")
         .select(
-          "id, row_no, issue_date, counterparty_name, counterparty_afm, gross_amount, direction, dedup_status, decision, project_id, category_id, account_id, matched_transaction_id",
+          "id, row_no, issue_date, counterparty_name, counterparty_afm, gross_amount, direction, dedup_status, decision, project_id, category_id, account_id, matched_transaction_id, committed_transaction_id, commit_error",
         )
         .eq("batch_id", batchId)
         .order("row_no"),
@@ -30,6 +31,8 @@ export default async function AadeBatchReviewPage({
   if (!batch) notFound();
 
   const newCount = (rows ?? []).filter((r) => r.dedup_status === "new").length;
+  // Set by commitBatch when a row could not be written; cleared once it is.
+  const failedRows = (rows ?? []).filter((r) => r.commit_error && !r.committed_transaction_id);
   const dupCount = (rows?.length ?? 0) - newCount;
 
   return (
@@ -49,6 +52,22 @@ export default async function AadeBatchReviewPage({
           </form>
         )}
       </div>
+
+      {failedRows.length > 0 && (
+        <div role="alert" className="rounded-lg border border-red-ink/40 bg-red-bg p-3 text-sm text-red-ink">
+          <p className="font-semibold">
+            {failedRows.length} {el.ingest.commitFailedRows}
+          </p>
+          <ul className="mt-1 list-disc pl-5">
+            {failedRows.map((r) => (
+              <li key={r.id}>
+                {el.ingest.row} {r.row_no}
+                {r.counterparty_name ? ` (${r.counterparty_name})` : ""}: {r.commit_error}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <ReviewTable
         batchId={batchId}

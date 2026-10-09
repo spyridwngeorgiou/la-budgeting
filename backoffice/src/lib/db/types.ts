@@ -110,6 +110,7 @@ export type Database = {
           account_id: string | null
           batch_id: string
           category_id: string | null
+          commit_error: string | null
           committed_transaction_id: string | null
           counterparty_afm: string | null
           counterparty_name: string | null
@@ -148,6 +149,7 @@ export type Database = {
           account_id?: string | null
           batch_id: string
           category_id?: string | null
+          commit_error?: string | null
           committed_transaction_id?: string | null
           counterparty_afm?: string | null
           counterparty_name?: string | null
@@ -186,6 +188,7 @@ export type Database = {
           account_id?: string | null
           batch_id?: string
           category_id?: string | null
+          commit_error?: string | null
           committed_transaction_id?: string | null
           counterparty_afm?: string | null
           counterparty_name?: string | null
@@ -947,6 +950,77 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_qc_withholding_on_income"
             referencedColumns: ["transaction_id"]
+          },
+        ]
+      }
+      bank_import_profiles: {
+        Row: {
+          bank_code: string
+          column_map: Json
+          created_at: string
+          created_by: string | null
+          date_format: string
+          debit_markers: string[]
+          decimal_separator: string
+          delimiter: string | null
+          encoding: string
+          file_kind: string
+          footer_pattern: string | null
+          header_signature: string[]
+          id: string
+          name: string
+          org_id: string | null
+          sign_mode: Database["public"]["Enums"]["bank_sign_mode"]
+          updated_at: string
+          verified: boolean
+        }
+        Insert: {
+          bank_code: string
+          column_map: Json
+          created_at?: string
+          created_by?: string | null
+          date_format?: string
+          debit_markers?: string[]
+          decimal_separator?: string
+          delimiter?: string | null
+          encoding?: string
+          file_kind?: string
+          footer_pattern?: string | null
+          header_signature?: string[]
+          id?: string
+          name: string
+          org_id?: string | null
+          sign_mode?: Database["public"]["Enums"]["bank_sign_mode"]
+          updated_at?: string
+          verified?: boolean
+        }
+        Update: {
+          bank_code?: string
+          column_map?: Json
+          created_at?: string
+          created_by?: string | null
+          date_format?: string
+          debit_markers?: string[]
+          decimal_separator?: string
+          delimiter?: string | null
+          encoding?: string
+          file_kind?: string
+          footer_pattern?: string | null
+          header_signature?: string[]
+          id?: string
+          name?: string
+          org_id?: string | null
+          sign_mode?: Database["public"]["Enums"]["bank_sign_mode"]
+          updated_at?: string
+          verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_import_profiles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1736,6 +1810,349 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_qc_projects_without_budget"
             referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      ingest_batches: {
+        Row: {
+          account_id: string | null
+          closing_balance: number | null
+          committed_at: string | null
+          committed_by: string | null
+          created_at: string
+          created_by: string | null
+          file_sha256: string | null
+          filename: string | null
+          id: string
+          meta: Json
+          mime_type: string | null
+          opening_balance: number | null
+          org_id: string
+          period_end: string | null
+          period_start: string | null
+          profile_id: string | null
+          row_count: number
+          source: Database["public"]["Enums"]["ingest_source"]
+          status: Database["public"]["Enums"]["ingest_batch_status"]
+          storage_path: string | null
+          undone_at: string | null
+          undone_by: string | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          account_id?: string | null
+          closing_balance?: number | null
+          committed_at?: string | null
+          committed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_sha256?: string | null
+          filename?: string | null
+          id?: string
+          meta?: Json
+          mime_type?: string | null
+          opening_balance?: number | null
+          org_id: string
+          period_end?: string | null
+          period_start?: string | null
+          profile_id?: string | null
+          row_count?: number
+          source: Database["public"]["Enums"]["ingest_source"]
+          status?: Database["public"]["Enums"]["ingest_batch_status"]
+          storage_path?: string | null
+          undone_at?: string | null
+          undone_by?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          account_id?: string | null
+          closing_balance?: number | null
+          committed_at?: string | null
+          committed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_sha256?: string | null
+          filename?: string | null
+          id?: string
+          meta?: Json
+          mime_type?: string | null
+          opening_balance?: number | null
+          org_id?: string
+          period_end?: string | null
+          period_start?: string | null
+          profile_id?: string | null
+          row_count?: number
+          source?: Database["public"]["Enums"]["ingest_source"]
+          status?: Database["public"]["Enums"]["ingest_batch_status"]
+          storage_path?: string | null
+          undone_at?: string | null
+          undone_by?: string | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingest_batches_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingest_batches_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "v_account_balances"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "ingest_batches_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingest_batches_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "bank_import_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ingest_row_matches: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          org_id: string
+          rank: number
+          reasons: Json
+          row_id: string
+          score: number
+          transaction_ids: string[]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          org_id: string
+          rank: number
+          reasons?: Json
+          row_id: string
+          score: number
+          transaction_ids: string[]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          org_id?: string
+          rank?: number
+          reasons?: Json
+          row_id?: string
+          score?: number
+          transaction_ids?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingest_row_matches_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingest_row_matches_row_id_fkey"
+            columns: ["row_id"]
+            isOneToOne: false
+            referencedRelation: "ingest_rows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ingest_rows: {
+        Row: {
+          account_id: string | null
+          amount: number | null
+          applied: Json | null
+          balance_after: number | null
+          batch_id: string
+          category_id: string | null
+          committed_at: string | null
+          committed_transaction_id: string | null
+          contact_id: string | null
+          counterparty_afm: string | null
+          counterparty_iban: string | null
+          counterparty_name: string | null
+          created_at: string
+          decision: Database["public"]["Enums"]["ingest_decision"]
+          decision_targets: string[]
+          dedup_status: Database["public"]["Enums"]["ingest_dedup_status"]
+          description: string | null
+          direction: Database["public"]["Enums"]["tx_direction"] | null
+          external_key: string | null
+          extracted: Json
+          id: string
+          invoice_number: string | null
+          meta: Json
+          mydata_mark: string | null
+          net_amount: number | null
+          org_id: string
+          paid_on: string | null
+          parse_errors: string[]
+          project_id: string | null
+          raw: Json
+          reference: string | null
+          row_kind: Database["public"]["Enums"]["ingest_row_kind"]
+          row_no: number
+          scope: Database["public"]["Enums"]["tx_scope"]
+          status: Database["public"]["Enums"]["tx_status"] | null
+          tx_date: string | null
+          updated_at: string
+          value_date: string | null
+          vat_amount: number | null
+          vat_rate: number | null
+          withholding_amount: number | null
+        }
+        Insert: {
+          account_id?: string | null
+          amount?: number | null
+          applied?: Json | null
+          balance_after?: number | null
+          batch_id: string
+          category_id?: string | null
+          committed_at?: string | null
+          committed_transaction_id?: string | null
+          contact_id?: string | null
+          counterparty_afm?: string | null
+          counterparty_iban?: string | null
+          counterparty_name?: string | null
+          created_at?: string
+          decision?: Database["public"]["Enums"]["ingest_decision"]
+          decision_targets?: string[]
+          dedup_status?: Database["public"]["Enums"]["ingest_dedup_status"]
+          description?: string | null
+          direction?: Database["public"]["Enums"]["tx_direction"] | null
+          external_key?: string | null
+          extracted?: Json
+          id?: string
+          invoice_number?: string | null
+          meta?: Json
+          mydata_mark?: string | null
+          net_amount?: number | null
+          org_id: string
+          paid_on?: string | null
+          parse_errors?: string[]
+          project_id?: string | null
+          raw: Json
+          reference?: string | null
+          row_kind: Database["public"]["Enums"]["ingest_row_kind"]
+          row_no: number
+          scope?: Database["public"]["Enums"]["tx_scope"]
+          status?: Database["public"]["Enums"]["tx_status"] | null
+          tx_date?: string | null
+          updated_at?: string
+          value_date?: string | null
+          vat_amount?: number | null
+          vat_rate?: number | null
+          withholding_amount?: number | null
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number | null
+          applied?: Json | null
+          balance_after?: number | null
+          batch_id?: string
+          category_id?: string | null
+          committed_at?: string | null
+          committed_transaction_id?: string | null
+          contact_id?: string | null
+          counterparty_afm?: string | null
+          counterparty_iban?: string | null
+          counterparty_name?: string | null
+          created_at?: string
+          decision?: Database["public"]["Enums"]["ingest_decision"]
+          decision_targets?: string[]
+          dedup_status?: Database["public"]["Enums"]["ingest_dedup_status"]
+          description?: string | null
+          direction?: Database["public"]["Enums"]["tx_direction"] | null
+          external_key?: string | null
+          extracted?: Json
+          id?: string
+          invoice_number?: string | null
+          meta?: Json
+          mydata_mark?: string | null
+          net_amount?: number | null
+          org_id?: string
+          paid_on?: string | null
+          parse_errors?: string[]
+          project_id?: string | null
+          raw?: Json
+          reference?: string | null
+          row_kind?: Database["public"]["Enums"]["ingest_row_kind"]
+          row_no?: number
+          scope?: Database["public"]["Enums"]["tx_scope"]
+          status?: Database["public"]["Enums"]["tx_status"] | null
+          tx_date?: string | null
+          updated_at?: string
+          value_date?: string | null
+          vat_amount?: number | null
+          vat_rate?: number | null
+          withholding_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingest_rows_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingest_rows_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "ingest_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingest_rows_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingest_rows_committed_transaction_id_fkey"
+            columns: ["committed_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingest_rows_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingest_rows_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingest_rows_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -4092,12 +4509,63 @@ export type Database = {
           },
         ]
       }
+      transaction_history: {
+        Row: {
+          actor: string | null
+          at: string
+          changed_fields: string[] | null
+          id: number
+          ingest_batch_id: string | null
+          new_row: Json | null
+          old_row: Json | null
+          op: string
+          org_id: string
+          source: string
+          transaction_id: string
+        }
+        Insert: {
+          actor?: string | null
+          at?: string
+          changed_fields?: string[] | null
+          id?: number
+          ingest_batch_id?: string | null
+          new_row?: Json | null
+          old_row?: Json | null
+          op: string
+          org_id: string
+          source: string
+          transaction_id: string
+        }
+        Update: {
+          actor?: string | null
+          at?: string
+          changed_fields?: string[] | null
+          id?: number
+          ingest_batch_id?: string | null
+          new_row?: Json | null
+          old_row?: Json | null
+          op?: string
+          org_id?: string
+          source?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_history_ingest_batch_id_fkey"
+            columns: ["ingest_batch_id"]
+            isOneToOne: false
+            referencedRelation: "ingest_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           aade_discrepancy: string | null
           aade_staging_row_id: string | null
           account_id: string | null
           ai_confidence: Json | null
+          bank_reference: string | null
           category_id: string | null
           collection_probability: number | null
           contact_id: string | null
@@ -4114,6 +4582,7 @@ export type Database = {
           gross_amount: number
           has_invoice: boolean
           id: string
+          ingest_row_id: string | null
           installment_no: number | null
           invoice_number: string | null
           legacy_excel_id: string | null
@@ -4144,6 +4613,7 @@ export type Database = {
           aade_staging_row_id?: string | null
           account_id?: string | null
           ai_confidence?: Json | null
+          bank_reference?: string | null
           category_id?: string | null
           collection_probability?: number | null
           contact_id?: string | null
@@ -4160,6 +4630,7 @@ export type Database = {
           gross_amount: number
           has_invoice?: boolean
           id?: string
+          ingest_row_id?: string | null
           installment_no?: number | null
           invoice_number?: string | null
           legacy_excel_id?: string | null
@@ -4190,6 +4661,7 @@ export type Database = {
           aade_staging_row_id?: string | null
           account_id?: string | null
           ai_confidence?: Json | null
+          bank_reference?: string | null
           category_id?: string | null
           collection_probability?: number | null
           contact_id?: string | null
@@ -4206,6 +4678,7 @@ export type Database = {
           gross_amount?: number
           has_invoice?: boolean
           id?: string
+          ingest_row_id?: string | null
           installment_no?: number | null
           invoice_number?: string | null
           legacy_excel_id?: string | null
@@ -4232,6 +4705,13 @@ export type Database = {
           withholding_amount?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "transactions_ingest_row_id_fkey"
+            columns: ["ingest_row_id"]
+            isOneToOne: false
+            referencedRelation: "ingest_rows"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "transactions_aade_staging_row_id_fkey"
             columns: ["aade_staging_row_id"]
@@ -4487,6 +4967,7 @@ export type Database = {
           opening_balance_date: string | null
           org_id: string | null
           owner_scope: Database["public"]["Enums"]["owner_scope"] | null
+          projected_balance: number | null
         }
         Relationships: [
           {
@@ -5342,7 +5823,35 @@ export type Database = {
           user_id: string
         }[]
       }
+      commit_ingest_batch: {
+        Args: { p_batch: string; p_expected_version: number }
+        Returns: Json
+      }
       ensure_plans_current: { Args: { p_org_id?: string }; Returns: undefined }
+      find_possible_duplicates: {
+        Args: {
+          p_contact?: string
+          p_counterparty_afm?: string
+          p_days?: number
+          p_direction: Database["public"]["Enums"]["tx_direction"]
+          p_exclude?: string
+          p_gross: number
+          p_invoice_number?: string
+          p_org: string
+          p_tx_date: string
+        }
+        Returns: {
+          contact_name: string
+          counterparty_name: string
+          description: string
+          gross_amount: number
+          id: string
+          invoice_number: string
+          reason: string
+          status: Database["public"]["Enums"]["tx_status"]
+          tx_date: string
+        }[]
+      }
       has_role: {
         Args: { p_min: Database["public"]["Enums"]["org_role"]; p_org: string }
         Returns: boolean
@@ -5423,6 +5932,10 @@ export type Database = {
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       unaccent: { Args: { "": string }; Returns: string }
+      undo_ingest_batch: {
+        Args: { p_batch: string; p_expected_version: number; p_force?: boolean }
+        Returns: Json
+      }
       upsert_board_elements: {
         Args: { p_board: string; p_elements: Json }
         Returns: Json
@@ -5453,6 +5966,11 @@ export type Database = {
       agent_change_op: "insert" | "update" | "delete"
       agent_change_status: "pending" | "approved" | "rejected"
       asset_state: "held" | "pending_inheritance"
+      bank_sign_mode:
+        | "signed"
+        | "trailing_minus"
+        | "debit_credit"
+        | "direction_column"
       budget_line_code:
         | "acquisition"
         | "studies_permits_legal"
@@ -5476,6 +5994,37 @@ export type Database = {
         | "pass_through"
         | "income"
       filing_status: "pending" | "filed" | "paid" | "cancelled"
+      ingest_batch_status:
+        | "staged"
+        | "committed"
+        | "undone"
+        | "discarded"
+      ingest_decision:
+        | "pending"
+        | "create"
+        | "settle"
+        | "settle_partial"
+        | "settle_many"
+        | "link_existing"
+        | "skip"
+      ingest_dedup_status:
+        | "new"
+        | "dup_external_key"
+        | "dup_in_file"
+        | "already_recorded"
+      ingest_row_kind:
+        | "document"
+        | "movement"
+      ingest_source:
+        | "bank_file"
+        | "bank_pdf"
+        | "aade"
+        | "ai_document"
+        | "ai_nl"
+        | "ai_email"
+        | "manual"
+        | "manual_cash"
+        | "psd2"
       lease_kind: "indexed_rent" | "settlement_service" | "fixed_rent" | "none"
       liability_kind: "private" | "bank"
       liability_state: "in_application" | "approved" | "disbursed" | "repaid"
@@ -5520,7 +6069,16 @@ export type Database = {
       task_priority: "low" | "normal" | "high" | "urgent"
       task_status: "todo" | "in_progress" | "waiting" | "review" | "done"
       tx_direction: "income" | "expense"
-      tx_origin: "aade" | "manual" | "bank_file" | "ai_document" | "ai_nl" | "ai_email"
+      tx_origin:
+        | "aade"
+        | "manual"
+        | "bank_file"
+        | "ai_document"
+        | "ai_nl"
+        | "ai_email"
+        | "bank_pdf"
+        | "manual_cash"
+        | "psd2"
       tx_scope: "business" | "personal"
       tx_status: "paid" | "pending" | "scheduled" | "cancelled"
       utility_kind: "electricity" | "water" | "internet" | "phone" | "other"
@@ -5668,6 +6226,12 @@ export const Constants = {
       agent_change_op: ["insert", "update", "delete"],
       agent_change_status: ["pending", "approved", "rejected"],
       asset_state: ["held", "pending_inheritance"],
+      bank_sign_mode: [
+        "signed",
+        "trailing_minus",
+        "debit_credit",
+        "direction_column",
+      ],
       budget_line_code: [
         "acquisition",
         "studies_permits_legal",
@@ -5694,6 +6258,42 @@ export const Constants = {
         "income",
       ],
       filing_status: ["pending", "filed", "paid", "cancelled"],
+      ingest_batch_status: [
+        "staged",
+        "committed",
+        "undone",
+        "discarded",
+      ],
+      ingest_decision: [
+        "pending",
+        "create",
+        "settle",
+        "settle_partial",
+        "settle_many",
+        "link_existing",
+        "skip",
+      ],
+      ingest_dedup_status: [
+        "new",
+        "dup_external_key",
+        "dup_in_file",
+        "already_recorded",
+      ],
+      ingest_row_kind: [
+        "document",
+        "movement",
+      ],
+      ingest_source: [
+        "bank_file",
+        "bank_pdf",
+        "aade",
+        "ai_document",
+        "ai_nl",
+        "ai_email",
+        "manual",
+        "manual_cash",
+        "psd2",
+      ],
       lease_kind: ["indexed_rent", "settlement_service", "fixed_rent", "none"],
       liability_kind: ["private", "bank"],
       liability_state: ["in_application", "approved", "disbursed", "repaid"],
@@ -5736,7 +6336,17 @@ export const Constants = {
       task_priority: ["low", "normal", "high", "urgent"],
       task_status: ["todo", "in_progress", "waiting", "review", "done"],
       tx_direction: ["income", "expense"],
-      tx_origin: ["aade", "manual", "bank_file", "ai_document", "ai_nl", "ai_email"],
+      tx_origin: [
+        "aade",
+        "manual",
+        "bank_file",
+        "ai_document",
+        "ai_nl",
+        "ai_email",
+        "bank_pdf",
+        "manual_cash",
+        "psd2",
+      ],
       tx_scope: ["business", "personal"],
       tx_status: ["paid", "pending", "scheduled", "cancelled"],
       utility_kind: ["electricity", "water", "internet", "phone", "other"],

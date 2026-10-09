@@ -5,6 +5,14 @@ import type { NextConfig } from "next";
 // a plain VPS is a config change, not a rewrite.
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  experimental: {
+    serverActions: {
+      // Default is 1 MB, below what the document upload (10 MB, phone
+      // photos) and bank-statement upload accept. Matches the proxy's
+      // default 10 MB request buffer, so the two limits agree.
+      bodySizeLimit: "10mb",
+    },
+  },
 };
 
 export default nextConfig;

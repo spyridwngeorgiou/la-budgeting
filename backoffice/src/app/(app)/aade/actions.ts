@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { parseAadeWorkbook } from "@/lib/aade/parse";
 import { stageBatch } from "@/lib/aade/dedup";
+import { transactionWriteError } from "@/lib/ingest/duplicates";
 
 export async function uploadAadeFile(formData: FormData) {
   const file = formData.get("file");
@@ -175,11 +176,15 @@ export async function commitBatch(batchId: string) {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
 
+  // Rows already committed by an earlier attempt are left alone, so pressing
+  // «Οριστικοποίηση» again after fixing the failures only retries those.
   const { data: rows, error } = await supabase
     .from("aade_staging_rows")
     .select("*")
     .eq("batch_id", batchId)
-    .eq("decision", "import");
+    .eq("decision", "import")
+    .is("committed_transaction_id", null)
+    .order("row_no");
   if (error) throw new Error(error.message);
 
   const missingAssignment = (rows ?? []).filter((r) => !r.project_id || !r.account_id);
@@ -189,14 +194,32 @@ export async function commitBatch(batchId: string) {
     );
   }
 
+  // A failing row no longer vanishes silently: its reason is stored on the
+  // row (commit_error, 0050), the batch stays a draft, and the page lists
+  // the failures. The rows that did go in keep their transaction, and a
+  // retry skips them (filter above).
+  let failed = 0;
+  const fail = async (rowId: string, message: string) => {
+    failed++;
+    await supabase.from("aade_staging_rows").update({ commit_error: message }).eq("id", rowId);
+  };
+
   for (const row of rows ?? []) {
     // Every staged row got a direction and an issue_date at parse time
-    // (stageBatch always sets one; unparseable dates are excluded before
-    // staging). A row missing either here indicates corrupted staging data,
-    // not a normal review state -- skip rather than insert a broken row.
-    if (!row.direction || !row.issue_date) continue;
+    // (stageBatch always sets one). A row missing either here indicates
+    // corrupted staging data -- never insert a broken row, but say so.
+    if (!row.direction || !row.issue_date) {
+      await fail(row.id, !row.issue_date ? "Λείπει η ημερομηνία έκδοσης." : "Λείπει η κατεύθυνση (έσοδο/έξοδο).");
+      continue;
+    }
 
-    const contactId = await resolveOrCreateContact(supabase, orgId, row.counterparty_afm, row.counterparty_name);
+    let contactId: string | null;
+    try {
+      contactId = await resolveOrCreateContact(supabase, orgId, row.counterparty_afm, row.counterparty_name);
+    } catch (e) {
+      await fail(row.id, `Επαφή: ${e instanceof Error ? e.message : String(e)}`);
+      continue;
+    }
 
     const netAmount = row.net_amount ?? 0;
     const vatAmount = row.vat_amount ?? 0;
@@ -233,20 +256,26 @@ export async function commitBatch(batchId: string) {
       .select("id")
       .single();
 
-    // A concurrent import or a mark collision within this batch: skip, not
-    // fail the whole commit -- the unique index is the final guard.
-    if (txError) continue;
+    // A concurrent import or a ΜΑΡΚ collision within this batch: the unique
+    // index is the final guard. Record it on the row instead of dropping it.
+    if (txError) {
+      await fail(row.id, transactionWriteError(txError));
+      continue;
+    }
 
     await supabase
       .from("aade_staging_rows")
-      .update({ committed_transaction_id: tx.id })
+      .update({ committed_transaction_id: tx.id, commit_error: null })
       .eq("id", row.id);
   }
 
-  await supabase
-    .from("aade_import_batches")
-    .update({ status: "committed", committed_at: new Date().toISOString() })
-    .eq("id", batchId);
+  // Only a batch with every row in the ledger is «Ολοκληρώθηκε».
+  if (failed === 0) {
+    await supabase
+      .from("aade_import_batches")
+      .update({ status: "committed", committed_at: new Date().toISOString() })
+      .eq("id", batchId);
+  }
 
   revalidatePath("/aade");
   revalidatePath(`/aade/${batchId}`);

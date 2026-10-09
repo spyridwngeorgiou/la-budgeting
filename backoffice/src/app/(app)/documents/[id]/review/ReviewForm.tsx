@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { Button, Input, Select, Label, Field, Badge } from "@/components/ui";
-import { SubmitButton } from "@/components/SubmitButton";
+import { DuplicateWarning } from "@/components/DuplicateWarning";
 import { formatMoney } from "@/lib/format";
 import { deriveFromNet, cashOnly } from "@/lib/finance/money";
 import { VAT_RATES } from "@/lib/domain/enums";
+import { el } from "@/lib/i18n/el";
 import type { Extraction } from "@/lib/ai/schemas";
+import type { DuplicateCandidate } from "@/lib/ingest/duplicates";
 import { approveDraft, discardDraft } from "./actions";
 
 interface Option {
@@ -46,6 +48,32 @@ export function ReviewForm({
   const [vatRate, setVatRate] = useState((extraction.vat_rate ?? 0.24).toString());
   const [withholding, setWithholding] = useState((extraction.withholding.value ?? 0).toString());
   const [error, setError] = useState<string | null>(null);
+  const [duplicates, setDuplicates] = useState<DuplicateCandidate[]>([]);
+  const [txDate, setTxDate] = useState(extraction.issue_date ?? new Date().toISOString().slice(0, 10));
+  const [txStatus, setTxStatus] = useState("pending");
+  // null = follow the document date until the user picks a payment date.
+  const [paidOn, setPaidOn] = useState<string | null>(null);
+  // The submission the duplicate warning is about, resent as-is on confirm.
+  const pendingRef = useRef<FormData | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function submit(formData: FormData) {
+    setError(null);
+    setDuplicates([]);
+    startTransition(async () => {
+      try {
+        const result = await approveDraft(draftId, queueIds, formData);
+        if (result && "error" in result) setError(result.error);
+        else if (result && "duplicates" in result) {
+          pendingRef.current = formData;
+          setDuplicates(result.duplicates);
+        }
+      } catch (e) {
+        if (e instanceof Error && !e.message.includes("NEXT_REDIRECT")) setError(e.message);
+        else throw e;
+      }
+    });
+  }
   const [touched, setTouched] = useState<Set<string>>(new Set());
 
   const preview = useMemo(() => {
@@ -103,15 +131,13 @@ export function ReviewForm({
           <p className="text-xs text-ink-muted">Σημείωση AI: {extraction.notes_for_human}</p>
         )}
 
+        {/* onSubmit, not action={...}: React resets an action form's
+            uncontrolled fields when the action returns, which would wipe the
+            reviewer's edits while the duplicate warning is still open. */}
         <form
-          action={async (formData) => {
-            setError(null);
-            try {
-              await approveDraft(draftId, queueIds, formData);
-            } catch (e) {
-              if (e instanceof Error && !e.message.includes("NEXT_REDIRECT")) setError(e.message);
-              else if (e instanceof Error) throw e;
-            }
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit(new FormData(e.currentTarget));
           }}
           className="flex flex-col gap-3"
         >
@@ -129,10 +155,32 @@ export function ReviewForm({
             ))}
           </div>
 
-          <Field>
-            <Label>Ημερομηνία</Label>
-            <Input type="date" name="tx_date" defaultValue={extraction.issue_date ?? new Date().toISOString().slice(0, 10)} required />
-          </Field>
+          
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field>
+              <Label>Ημερομηνία</Label>
+              <Input type="date" name="tx_date" value={txDate} onChange={(e) => setTxDate(e.target.value)} required />
+            </Field>
+            <Field>
+              <Label>{el.transaction.dueDate}</Label>
+              <Input type="date" name="due_date" defaultValue="" />
+            </Field>
+          </div>
+
+          {/* What the document itself says about the other party -- kept on
+              the transaction (counterparty_afm/name, 0004) even when no
+              contact record matches yet, exactly as the AADE import does. */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field>
+              <Label>{el.ingest.counterpartyName}</Label>
+              <Input name="counterparty_name" defaultValue={extraction.issuer_name ?? ""} />
+            </Field>
+            <Field>
+              <Label>{el.ingest.counterpartyAfm}</Label>
+              <Input name="counterparty_afm" inputMode="numeric" defaultValue={extraction.issuer_afm ?? ""} />
+            </Field>
+          </div>
 
           <Field>
             <Label className="flex items-center gap-2">
@@ -238,29 +286,66 @@ export function ReviewForm({
             </div>
           </div>
 
-          <Field>
-            <Label>Κατάσταση</Label>
-            <Select name="status" defaultValue="pending">
-              <option value="paid">Πληρωμένο</option>
-              <option value="pending">Εκκρεμεί</option>
-              <option value="scheduled">Προγραμματισμένο</option>
-            </Select>
-          </Field>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field>
+              <Label>Κατάσταση</Label>
+              <Select name="status" value={txStatus} onChange={(e) => setTxStatus(e.target.value)}>
+                <option value="paid">Πληρωμένο</option>
+                <option value="pending">Εκκρεμεί</option>
+                <option value="scheduled">Προγραμματισμένο</option>
+              </Select>
+            </Field>
+            <Field>
+              <Label>{el.ingest.scope}</Label>
+              <Select name="scope" defaultValue="business">
+                <option value="business">{el.ingest.scopeValues.business}</option>
+                <option value="personal">{el.ingest.scopeValues.personal}</option>
+              </Select>
+            </Field>
+          </div>
 
-          <Field>
-            <Label>Αρ. Παραστατικού</Label>
-            <Input name="invoice_number" defaultValue={extraction.invoice_number ?? ""} />
-          </Field>
+          {/* A paid row must carry its payment date (tx_paid_needs_date);
+              without this field «Πληρωμένο» could never be approved. */}
+          {txStatus === "paid" && (
+            <Field>
+              <Label>{el.ingest.paidOn}</Label>
+              <Input type="date" name="paid_on" value={paidOn ?? txDate} onChange={(e) => setPaidOn(e.target.value)} required />
+            </Field>
+          )}
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field>
+              <Label>Αρ. Παραστατικού</Label>
+              <Input name="invoice_number" defaultValue={extraction.invoice_number ?? ""} />
+            </Field>
+            <Field>
+              <Label>{el.ingest.mydataMark}</Label>
+              <Input name="mydata_mark" inputMode="numeric" defaultValue={extraction.mydata_mark ?? ""} />
+            </Field>
+          </div>
 
           {error && <p className="text-sm text-red-ink">{error}</p>}
+
+          {duplicates.length > 0 && (
+            <DuplicateWarning
+              duplicates={duplicates}
+              onCancel={() => setDuplicates([])}
+              onConfirm={() => {
+                const confirmed = pendingRef.current;
+                if (!confirmed) return;
+                confirmed.set("confirm_duplicate", "1");
+                submit(confirmed);
+              }}
+            />
+          )}
 
           <div className="mt-2 flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => discardDraft(draftId, queueIds)}>
               Απόρριψη
             </Button>
-            <SubmitButton disabled={!allTouched} pendingLabel="Καταχώρηση…">
-              Καταχώρηση
-            </SubmitButton>
+            <Button type="submit" disabled={!allTouched || pending}>
+              {pending ? "Καταχώρηση…" : "Καταχώρηση"}
+            </Button>
           </div>
           {!allTouched && (
             <p className="text-right text-xs text-amber-700">
