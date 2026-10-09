@@ -12,7 +12,7 @@ import {
   monthlyBudgetCents,
 } from "@/lib/ai/client";
 import { collabToolDefinitions, createCollabToolRunner } from "@/lib/ai/collab/tools";
-import { COLLAB_SYSTEM_PROMPT, collabContextBlock } from "@/lib/ai/collab/prompt";
+import { COLLAB_SYSTEM_PROMPT, collabContextBlock, withChatHistory } from "@/lib/ai/collab/prompt";
 import type { ProposalView } from "@/lib/ai/collab/proposals";
 import { el } from "@/lib/i18n/el";
 
@@ -152,7 +152,6 @@ export async function POST(request: Request) {
     .order("created_at", { ascending: false })
     .limit(HISTORY_LIMIT);
   const history = (historyDesc ?? []).reverse();
-  while (history.length > 0 && history[0].role !== "user") history.shift();
 
   const { error: userMsgError } = await supabase.from("collab_ai_messages").insert({
     thread_id: threadId,
@@ -166,10 +165,7 @@ export async function POST(request: Request) {
   });
   if (userMsgError) return jsonError(t.saveFailed, 500);
 
-  const messages: Anthropic.MessageParam[] = [
-    ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
-    { role: "user", content: message },
-  ];
+  const messages: Anthropic.MessageParam[] = [{ role: "user", content: withChatHistory(history, message) }];
 
   const tools = collabToolDefinitions(canEdit);
   const runTool = createCollabToolRunner({
