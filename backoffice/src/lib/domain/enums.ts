@@ -75,6 +75,10 @@ export type AssetState = (typeof ASSET_STATE)[number];
 
 export const PROJECT_NOTE_KIND = ["status", "risk", "action", "milestone"] as const;
 export type ProjectNoteKind = (typeof PROJECT_NOTE_KIND)[number];
+// The enum keeps all four values, but since 0041 a CHECK allows only these
+// two -- actions and milestones are planner tasks / project_milestones.
+export const PROJECT_NOTE_KIND_ACTIVE = ["status", "risk"] as const satisfies readonly ProjectNoteKind[];
+export type ProjectNoteKindActive = (typeof PROJECT_NOTE_KIND_ACTIVE)[number];
 
 export const OPEX_LINE_KIND = ["payroll", "pct_of_revenue", "fixed_annual"] as const;
 export type OpexLineKind = (typeof OPEX_LINE_KIND)[number];
@@ -84,6 +88,19 @@ export type ProjectNoteSeverity = (typeof PROJECT_NOTE_SEVERITY)[number];
 
 export const ORG_ROLE = ["viewer", "editor", "admin", "owner"] as const;
 export type OrgRole = (typeof ORG_ROLE)[number];
+
+// ── Planner (0040) ─────────────────────────────────────────────────────────
+export const TASK_STATUS = ["todo", "in_progress", "waiting", "review", "done"] as const;
+export type TaskStatus = (typeof TASK_STATUS)[number];
+
+export const TASK_PRIORITY = ["low", "normal", "high", "urgent"] as const;
+export type TaskPriority = (typeof TASK_PRIORITY)[number];
+
+export const MILESTONE_KIND = ["general", "permit", "inspection", "handover", "deadline"] as const;
+export type MilestoneKind = (typeof MILESTONE_KIND)[number];
+
+export const PHASE_STATUS = ["planned", "active", "on_hold", "done"] as const;
+export type PhaseStatus = (typeof PHASE_STATUS)[number];
 
 export const VAT_RATES = [0, 0.06, 0.13, 0.24] as const;
 export type VatRate = (typeof VAT_RATES)[number];

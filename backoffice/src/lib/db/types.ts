@@ -2397,6 +2397,86 @@ export type Database = {
           },
         ]
       }
+      project_milestones: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          done_at: string | null
+          due_date: string
+          id: string
+          kind: Database["public"]["Enums"]["milestone_kind"]
+          org_id: string
+          phase_id: string | null
+          project_id: string
+          sort_order: number
+          source_note_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          done_at?: string | null
+          due_date: string
+          id?: string
+          kind?: Database["public"]["Enums"]["milestone_kind"]
+          org_id: string
+          phase_id?: string | null
+          project_id: string
+          sort_order?: number
+          source_note_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          done_at?: string | null
+          due_date?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["milestone_kind"]
+          org_id?: string
+          phase_id?: string | null
+          project_id?: string
+          sort_order?: number
+          source_note_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_milestones_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_milestones_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "project_milestones_phase_id_project_id_fkey"
+            columns: ["phase_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "project_phases"
+            referencedColumns: ["id", "project_id"]
+          },
+          {
+            foreignKeyName: "project_milestones_project_id_org_id_fkey"
+            columns: ["project_id", "org_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "org_id"]
+          },
+        ]
+      }
       project_model_inputs: {
         Row: {
           key: string
@@ -2535,6 +2615,127 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_qc_projects_without_budget"
             referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      project_notes_premigration_0041: {
+        Row: {
+          body: string | null
+          created_at: string | null
+          created_by: string | null
+          due_date: string | null
+          exposure_amount: number | null
+          id: string
+          kind: Database["public"]["Enums"]["project_note_kind"] | null
+          org_id: string | null
+          project_id: string | null
+          resolved_at: string | null
+          severity: Database["public"]["Enums"]["project_note_severity"] | null
+          snapshot_at: string | null
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          due_date?: string | null
+          exposure_amount?: number | null
+          id: string
+          kind?: Database["public"]["Enums"]["project_note_kind"] | null
+          org_id?: string | null
+          project_id?: string | null
+          resolved_at?: string | null
+          severity?: Database["public"]["Enums"]["project_note_severity"] | null
+          snapshot_at?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          due_date?: string | null
+          exposure_amount?: number | null
+          id?: string
+          kind?: Database["public"]["Enums"]["project_note_kind"] | null
+          org_id?: string | null
+          project_id?: string | null
+          resolved_at?: string | null
+          severity?: Database["public"]["Enums"]["project_note_severity"] | null
+          snapshot_at?: string | null
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      project_phases: {
+        Row: {
+          actual_end: string | null
+          actual_start: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          org_id: string
+          planned_end: string | null
+          planned_start: string | null
+          project_id: string
+          sort_order: number
+          status: Database["public"]["Enums"]["phase_status"]
+          updated_at: string
+        }
+        Insert: {
+          actual_end?: string | null
+          actual_start?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          org_id: string
+          planned_end?: string | null
+          planned_start?: string | null
+          project_id: string
+          sort_order?: number
+          status?: Database["public"]["Enums"]["phase_status"]
+          updated_at?: string
+        }
+        Update: {
+          actual_end?: string | null
+          actual_start?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+          planned_end?: string | null
+          planned_start?: string | null
+          project_id?: string
+          sort_order?: number
+          status?: Database["public"]["Enums"]["phase_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_phases_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_phases_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "project_phases_project_id_org_id_fkey"
+            columns: ["project_id", "org_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "org_id"]
           },
         ]
       }
@@ -2964,6 +3165,221 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_qc_projects_without_budget"
             referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      task_checklist_items: {
+        Row: {
+          body: string
+          created_at: string
+          done: boolean
+          id: string
+          org_id: string
+          project_id: string
+          sort_order: number
+          task_id: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          org_id: string
+          project_id: string
+          sort_order?: number
+          task_id: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          org_id?: string
+          project_id?: string
+          sort_order?: number
+          task_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_checklist_items_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_checklist_items_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "task_checklist_items_task_id_project_id_fkey"
+            columns: ["task_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id", "project_id"]
+          },
+        ]
+      }
+      task_comments: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          org_id: string
+          project_id: string
+          task_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string
+          body: string
+          created_at?: string
+          id?: string
+          org_id: string
+          project_id: string
+          task_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          org_id?: string
+          project_id?: string
+          task_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_comments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "task_comments_task_id_project_id_fkey"
+            columns: ["task_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id", "project_id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          archived_at: string | null
+          assignee_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          milestone_id: string | null
+          org_id: string
+          phase_id: string | null
+          priority: Database["public"]["Enums"]["task_priority"]
+          project_id: string
+          sort_key: number
+          source_note_id: string | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          assignee_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          milestone_id?: string | null
+          org_id: string
+          phase_id?: string | null
+          priority?: Database["public"]["Enums"]["task_priority"]
+          project_id: string
+          sort_key?: number
+          source_note_id?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          assignee_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          milestone_id?: string | null
+          org_id?: string
+          phase_id?: string | null
+          priority?: Database["public"]["Enums"]["task_priority"]
+          project_id?: string
+          sort_key?: number
+          source_note_id?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_milestone_id_project_id_fkey"
+            columns: ["milestone_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "project_milestones"
+            referencedColumns: ["id", "project_id"]
+          },
+          {
+            foreignKeyName: "tasks_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "tasks_phase_id_project_id_fkey"
+            columns: ["phase_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "project_phases"
+            referencedColumns: ["id", "project_id"]
+          },
+          {
+            foreignKeyName: "tasks_project_id_org_id_fkey"
+            columns: ["project_id", "org_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "org_id"]
           },
         ]
       }
@@ -3615,6 +4031,25 @@ export type Database = {
             referencedColumns: ["org_id"]
           },
         ]
+      }
+      v_calendar_items: {
+        Row: {
+          amount: number | null
+          direction: string | null
+          ends_on: string | null
+          is_done: boolean | null
+          is_financial: boolean | null
+          item_key: string | null
+          org_id: string | null
+          project_id: string | null
+          ref_id: string | null
+          source: string | null
+          starts_on: string | null
+          status: string | null
+          subkind: string | null
+          title: string | null
+        }
+        Relationships: []
       }
       v_cashflow_monthly: {
         Row: {
@@ -4312,6 +4747,7 @@ export type Database = {
     }
     Functions: {
       account_balance_as_of: { Args: { p_account: string; p_date: string }; Returns: number }
+      can_access_project: { Args: { p_project: string }; Returns: boolean }
       ensure_plans_current: { Args: { p_org_id?: string }; Returns: undefined }
       match_property_utility: {
         Args: { p_org: string; p_text: string }
@@ -4340,6 +4776,30 @@ export type Database = {
       }
       my_org_ids: { Args: never; Returns: string[] }
       normalize_greek_name: { Args: { p_name: string }; Returns: string }
+      planner_can_read: { Args: { p_project: string }; Returns: boolean }
+      planner_can_write: { Args: { p_project: string }; Returns: boolean }
+      planner_people: {
+        Args: { p_project?: string }
+        Returns: {
+          display_name: string
+          email: string
+          user_id: string
+        }[]
+      }
+      planner_projects: {
+        Args: never
+        Returns: {
+          code: string
+          construction_end_date: string
+          display_name: string
+          id: string
+          is_active: boolean
+          opening_date: string
+          org_id: string
+          start_date: string
+          status: Database["public"]["Enums"]["project_status"]
+        }[]
+      }
       regenerate_plan: {
         Args: { p_plan_id: string }
         Returns: {
@@ -4350,11 +4810,16 @@ export type Database = {
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       unaccent: { Args: { "": string }; Returns: string }
+      vat_filing_deadline: { Args: { p_period_start: string }; Returns: string }
       v_due_within: {
         Args: { p_days: number; p_org_id: string }
         Returns: {
           total_amount: number
         }[]
+      }
+      withholding_filing_deadline: {
+        Args: { p_period_start: string }
+        Returns: string
       }
     }
     Enums: {
@@ -4397,6 +4862,12 @@ export type Database = {
       lease_kind: "indexed_rent" | "settlement_service" | "fixed_rent" | "none"
       liability_kind: "private" | "bank"
       liability_state: "in_application" | "approved" | "disbursed" | "repaid"
+      milestone_kind:
+        | "general"
+        | "permit"
+        | "inspection"
+        | "handover"
+        | "deadline"
       obligation_kind:
         | "rent"
         | "third_party_tax_settlement"
@@ -4407,6 +4878,7 @@ export type Database = {
       opex_line_kind: "payroll" | "pct_of_revenue" | "fixed_annual"
       org_role: "owner" | "admin" | "editor" | "viewer"
       owner_scope: "corporate" | "personal"
+      phase_status: "planned" | "active" | "on_hold" | "done"
       plan_frequency: "monthly" | "quarterly" | "semiannual" | "annual"
       plan_status: "active" | "completed" | "cancelled"
       project_note_kind: "status" | "risk" | "action" | "milestone"
@@ -4418,6 +4890,8 @@ export type Database = {
         | "renovation"
         | "hospitality"
         | "general"
+      task_priority: "low" | "normal" | "high" | "urgent"
+      task_status: "todo" | "in_progress" | "waiting" | "review" | "done"
       tx_direction: "income" | "expense"
       tx_origin: "aade" | "manual" | "bank_file" | "ai_document" | "ai_nl" | "ai_email"
       utility_kind: "electricity" | "water" | "internet" | "phone" | "other"
@@ -4596,6 +5070,7 @@ export const Constants = {
       lease_kind: ["indexed_rent", "settlement_service", "fixed_rent", "none"],
       liability_kind: ["private", "bank"],
       liability_state: ["in_application", "approved", "disbursed", "repaid"],
+      milestone_kind: ["general", "permit", "inspection", "handover", "deadline"],
       obligation_kind: [
         "rent",
         "third_party_tax_settlement",
@@ -4607,6 +5082,7 @@ export const Constants = {
       opex_line_kind: ["payroll", "pct_of_revenue", "fixed_annual"],
       org_role: ["owner", "admin", "editor", "viewer"],
       owner_scope: ["corporate", "personal"],
+      phase_status: ["planned", "active", "on_hold", "done"],
       plan_frequency: ["monthly", "quarterly", "semiannual", "annual"],
       plan_status: ["active", "completed", "cancelled"],
       project_note_kind: ["status", "risk", "action", "milestone"],
@@ -4619,6 +5095,8 @@ export const Constants = {
         "hospitality",
         "general",
       ],
+      task_priority: ["low", "normal", "high", "urgent"],
+      task_status: ["todo", "in_progress", "waiting", "review", "done"],
       tx_direction: ["income", "expense"],
       tx_origin: ["aade", "manual", "bank_file", "ai_document", "ai_nl", "ai_email"],
       utility_kind: ["electricity", "water", "internet", "phone", "other"],
