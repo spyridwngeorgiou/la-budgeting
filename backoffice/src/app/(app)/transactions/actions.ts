@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId, formString } from "@/lib/supabase/org";
 import { deriveFromNet, cashOnly, isIdentityConsistent, splitProportionally, toCents } from "@/lib/finance/money";
 import type { TxDirection, TxScope, TxStatus } from "@/lib/domain/enums";
+import { el } from "@/lib/i18n/el";
+import { findPossibleDuplicates, transactionWriteError, type WriteResult } from "@/lib/ingest/duplicates";
 
 // The one place transaction money fields get computed for the manual-entry
 // path -- gross_amount is a plain stored column (not a DB-generated one), so
@@ -56,31 +58,63 @@ function fieldsFromForm(formData: FormData) {
   };
 }
 
-export async function createTransaction(formData: FormData) {
+// Returns rather than throws for what the user must read (a thrown Server
+// Action's message is hidden in production): validation errors, and the
+// «Πιθανό διπλότυπο» candidates, which the form shows before resubmitting
+// with confirm_duplicate=1.
+export async function createTransaction(formData: FormData): Promise<WriteResult> {
   const supabase = await createClient();
   const [orgId, {
     data: { session },
   }] = await Promise.all([getCurrentOrgId(supabase), supabase.auth.getSession()]);
 
+  let fields: ReturnType<typeof fieldsFromForm>;
+  try {
+    fields = fieldsFromForm(formData);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+  if (fields.status === "paid" && !fields.paid_on) return { error: el.ingest.paidOnRequired };
+
+  if (formData.get("confirm_duplicate") !== "1") {
+    const duplicates = await findPossibleDuplicates(supabase, {
+      orgId,
+      direction: fields.direction,
+      gross: fields.gross_amount,
+      txDate: fields.tx_date,
+      contactId: fields.contact_id,
+      invoiceNumber: fields.invoice_number,
+    });
+    if (duplicates.length > 0) return { duplicates };
+  }
+
   const { error } = await supabase.from("transactions").insert({
-    ...fieldsFromForm(formData),
+    ...fields,
     org_id: orgId,
     created_by: session?.user.id,
   });
 
-  if (error) throw new Error(error.message);
+  if (error) return { error: transactionWriteError(error) };
   revalidatePath("/transactions");
+  return { ok: true };
 }
 
-export async function updateTransaction(id: string, formData: FormData) {
+export async function updateTransaction(id: string, formData: FormData): Promise<WriteResult> {
   const supabase = await createClient();
+  let fields: ReturnType<typeof fieldsFromForm>;
+  try {
+    fields = fieldsFromForm(formData);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
   const { error } = await supabase
     .from("transactions")
-    .update(fieldsFromForm(formData))
+    .update(fields)
     .eq("id", id);
 
-  if (error) throw new Error(error.message);
+  if (error) return { error: transactionWriteError(error) };
   revalidatePath("/transactions");
+  return { ok: true };
 }
 
 export async function markPaid(id: string) {

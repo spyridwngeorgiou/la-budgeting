@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId, formString } from "@/lib/supabase/org";
 import { deriveFromNet, cashOnly, isIdentityConsistent } from "@/lib/finance/money";
+import { findPossibleDuplicates, transactionWriteError, type WriteResult } from "@/lib/ingest/duplicates";
+import { el } from "@/lib/i18n/el";
 
 // The only path from an AI draft into the real ledger. Re-runs every
 // validator server-side -- the client cannot be trusted to have enforced
@@ -21,7 +23,17 @@ function nextInQueueOrElse(queue: string[], fallback: string) {
   return `/documents/${next}/review${rest.length > 0 ? `?queue=${rest.join(",")}` : ""}`;
 }
 
-export async function approveDraft(draftId: string, queue: string[], formData: FormData) {
+// Digits only, like the AADE importer's cleanId: a ΜΑΡΚ typed or read with
+// spaces must still collide with the same ΜΑΡΚ on tx_mark_uq.
+function cleanMark(value: string | null): string | null {
+  const digits = value?.replace(/\D/g, "") ?? "";
+  return digits || null;
+}
+
+// Returns instead of throwing for anything the user must read (a thrown
+// Server Action's message is hidden in production builds): a validation
+// error, or possible duplicates to confirm. Redirects on success.
+export async function approveDraft(draftId: string, queue: string[], formData: FormData): Promise<WriteResult> {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
 
@@ -30,7 +42,7 @@ export async function approveDraft(draftId: string, queue: string[], formData: F
     .select("id, document_id, extracted, source")
     .eq("id", draftId)
     .single();
-  if (draftError || !draft) throw new Error("Το πρόχειρο δεν βρέθηκε.");
+  if (draftError || !draft) return { error: "Το πρόχειρο δεν βρέθηκε." };
 
   const hasInvoice = formData.get("has_invoice") === "on";
   const netAmount = Number(formData.get("net_amount"));
@@ -39,21 +51,53 @@ export async function approveDraft(draftId: string, queue: string[], formData: F
   const breakdown = hasInvoice ? deriveFromNet(netAmount, vatRate, withholding) : cashOnly(netAmount);
 
   if (!isIdentityConsistent(breakdown)) {
-    throw new Error("Ασυνέπεια στο ποσό: net + ΦΠΑ − παρακράτηση δεν ισούται με το σύνολο.");
+    return { error: "Ασυνέπεια στο ποσό: net + ΦΠΑ − παρακράτηση δεν ισούται με το σύνολο." };
+  }
+
+  const txDate = String(formData.get("tx_date"));
+  const status = (formString(formData, "status") as "paid" | "pending" | "scheduled" | null) ?? "pending";
+  // tx_paid_needs_date (0004) rejects a paid row without a payment date.
+  // The form defaults it to the document date, but the client is not trusted.
+  const paidOn = status === "paid" ? formString(formData, "paid_on") : null;
+  if (status === "paid" && !paidOn) return { error: el.ingest.paidOnRequired };
+
+  const direction = String(formData.get("direction")) as "income" | "expense";
+  const contactId = formString(formData, "contact_id");
+  const counterpartyAfm = formString(formData, "counterparty_afm")?.replace(/\D/g, "") || null;
+  const invoiceNumber = formString(formData, "invoice_number");
+  const mydataMark = cleanMark(formString(formData, "mydata_mark"));
+
+  // A photo of a bill that was already typed in by hand is the classic
+  // double entry; the reviewer confirms with confirm_duplicate=1.
+  if (formData.get("confirm_duplicate") !== "1") {
+    const duplicates = await findPossibleDuplicates(supabase, {
+      orgId,
+      direction,
+      gross: breakdown.gross,
+      txDate,
+      contactId,
+      counterpartyAfm,
+      invoiceNumber,
+    });
+    if (duplicates.length > 0) return { duplicates };
   }
 
   const { data: tx, error: txError } = await supabase
     .from("transactions")
     .insert({
       org_id: orgId,
-      tx_date: String(formData.get("tx_date")),
-      contact_id: formString(formData, "contact_id"),
+      tx_date: txDate,
+      due_date: formString(formData, "due_date"),
+      paid_on: paidOn,
+      contact_id: contactId,
+      counterparty_afm: counterpartyAfm,
+      counterparty_name: formString(formData, "counterparty_name"),
       project_id: formString(formData, "project_id"),
       category_id: formString(formData, "category_id"),
       account_id: formString(formData, "account_id"),
-      direction: String(formData.get("direction")) as "income" | "expense",
+      direction,
       scope: (formString(formData, "scope") as "business" | "personal") ?? "business",
-      status: (formString(formData, "status") as "paid" | "pending" | "scheduled") ?? "pending",
+      status,
       origin: draft.source,
       net_amount: breakdown.net,
       vat_amount: breakdown.vat,
@@ -61,13 +105,14 @@ export async function approveDraft(draftId: string, queue: string[], formData: F
       withholding_amount: breakdown.withholding,
       gross_amount: breakdown.gross,
       has_invoice: hasInvoice,
-      invoice_number: formString(formData, "invoice_number"),
+      invoice_number: invoiceNumber,
+      mydata_mark: mydataMark,
       description: formString(formData, "description"),
       source_document_id: draft.document_id,
     })
     .select("id")
     .single();
-  if (txError) throw new Error(txError.message);
+  if (txError) return { error: transactionWriteError(txError) };
 
   // Diff draft vs submitted for the learning-loop table -- nearly free, and
   // building it from the first version means no signal is lost retrofitting
@@ -83,7 +128,9 @@ export async function approveDraft(draftId: string, queue: string[], formData: F
   const vatField = extracted.vat as { value: number | null } | undefined;
   compareField("net_amount", netField?.value, breakdown.net);
   compareField("vat_amount", vatField?.value, breakdown.vat);
-  compareField("issue_date", extracted.issue_date as string | null, String(formData.get("tx_date")));
+  compareField("issue_date", extracted.issue_date as string | null, txDate);
+  compareField("mydata_mark", cleanMark(extracted.mydata_mark as string | null), mydataMark);
+  compareField("issuer_afm", extracted.issuer_afm as string | null, counterpartyAfm);
 
   if (corrections.length > 0) {
     await supabase.from("ai_corrections").insert(

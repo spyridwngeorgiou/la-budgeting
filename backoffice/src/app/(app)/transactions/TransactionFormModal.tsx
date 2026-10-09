@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useTransition } from "react";
 import { Button, Input, Select, Label, Field, Badge } from "@/components/ui";
-import { SubmitButton } from "@/components/SubmitButton";
+import { DuplicateWarning } from "@/components/DuplicateWarning";
 import { el } from "@/lib/i18n/el";
 import { deriveFromNet, cashOnly } from "@/lib/finance/money";
 import { formatMoney } from "@/lib/format";
 import { VAT_RATES } from "@/lib/domain/enums";
+import type { DuplicateCandidate, WriteResult } from "@/lib/ingest/duplicates";
 import { suggestForContact } from "./actions";
 
 interface Option {
@@ -35,7 +36,7 @@ export interface TransactionInitial {
 }
 
 interface Props {
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<WriteResult>;
   contacts: Option[];
   projects: Option[];
   categories: Option[];
@@ -69,6 +70,24 @@ export function TransactionFormModal({
   const [suggested, setSuggested] = useState(false);
   const [status, setStatus] = useState(initial?.status ?? "pending");
   const [scope, setScope] = useState(initial?.scope ?? "business");
+  const [error, setError] = useState<string | null>(null);
+  const [duplicates, setDuplicates] = useState<DuplicateCandidate[]>([]);
+  const [pending, startTransition] = useTransition();
+  // The submission the duplicate warning is about, resent as-is on confirm.
+  const pendingRef = useRef<FormData | null>(null);
+
+  function submit(formData: FormData) {
+    setError(null);
+    setDuplicates([]);
+    startTransition(async () => {
+      const result = await action(formData);
+      if ("error" in result) setError(result.error);
+      else if ("duplicates" in result) {
+        pendingRef.current = formData;
+        setDuplicates(result.duplicates);
+      } else onClose();
+    });
+  }
 
   // "Learn from history": picking a contact on a brand-new transaction (never
   // on an edit -- initial is only set when editing, and an existing row's
@@ -102,10 +121,13 @@ export function TransactionFormModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded bg-white p-5">
+        {/* onSubmit, not action={...}: React resets an action form's
+            uncontrolled fields when the action returns, which would wipe
+            what was typed while the duplicate warning is open. */}
         <form
-          action={async (formData) => {
-            await action(formData);
-            onClose();
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit(new FormData(e.currentTarget));
           }}
           className="flex flex-col gap-3"
         >
@@ -332,11 +354,28 @@ export function TransactionFormModal({
             <Input name="invoice_number" defaultValue={initial?.invoice_number ?? ""} />
           </Field>
 
+          {error && <p className="text-sm text-red-ink">{error}</p>}
+
+          {duplicates.length > 0 && (
+            <DuplicateWarning
+              duplicates={duplicates}
+              onCancel={() => setDuplicates([])}
+              onConfirm={() => {
+                const confirmed = pendingRef.current;
+                if (!confirmed) return;
+                confirmed.set("confirm_duplicate", "1");
+                submit(confirmed);
+              }}
+            />
+          )}
+
           <div className="mt-2 flex justify-end gap-2">
             <Button type="button" variant="secondary" onClick={onClose}>
               {el.common.cancel}
             </Button>
-            <SubmitButton>{el.common.save}</SubmitButton>
+            <Button type="submit" disabled={pending}>
+              {pending ? "…" : el.common.save}
+            </Button>
           </div>
         </form>
       </div>

@@ -110,6 +110,7 @@ export type Database = {
           account_id: string | null
           batch_id: string
           category_id: string | null
+          commit_error: string | null
           committed_transaction_id: string | null
           counterparty_afm: string | null
           counterparty_name: string | null
@@ -148,6 +149,7 @@ export type Database = {
           account_id?: string | null
           batch_id: string
           category_id?: string | null
+          commit_error?: string | null
           committed_transaction_id?: string | null
           counterparty_afm?: string | null
           counterparty_name?: string | null
@@ -186,6 +188,7 @@ export type Database = {
           account_id?: string | null
           batch_id?: string
           category_id?: string | null
+          commit_error?: string | null
           committed_transaction_id?: string | null
           counterparty_afm?: string | null
           counterparty_name?: string | null
@@ -3598,6 +3601,7 @@ export type Database = {
           opening_balance_date: string | null
           org_id: string | null
           owner_scope: Database["public"]["Enums"]["owner_scope"] | null
+          projected_balance: number | null
         }
         Relationships: [
           {
@@ -4313,6 +4317,30 @@ export type Database = {
     Functions: {
       account_balance_as_of: { Args: { p_account: string; p_date: string }; Returns: number }
       ensure_plans_current: { Args: { p_org_id?: string }; Returns: undefined }
+      find_possible_duplicates: {
+        Args: {
+          p_contact?: string
+          p_counterparty_afm?: string
+          p_days?: number
+          p_direction: Database["public"]["Enums"]["tx_direction"]
+          p_exclude?: string
+          p_gross: number
+          p_invoice_number?: string
+          p_org: string
+          p_tx_date: string
+        }
+        Returns: {
+          contact_name: string
+          counterparty_name: string
+          description: string
+          gross_amount: number
+          id: string
+          invoice_number: string
+          reason: string
+          status: Database["public"]["Enums"]["tx_status"]
+          tx_date: string
+        }[]
+      }
       match_property_utility: {
         Args: { p_org: string; p_text: string }
         Returns: {
