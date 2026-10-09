@@ -4,6 +4,7 @@ import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate, formatMoney } from "@/lib/format";
 import { Badge, Button, Input } from "@/components/ui";
 import { markInvoiceReceived } from "./actions";
+import { currentYear } from "@/lib/dates";
 
 // Business-language framing for each check: not "amount_identity_mismatch"
 // but why it matters and what to do about it. Ported from the workbook's
@@ -300,7 +301,7 @@ export default async function QualityPage() {
     .from("v_uninvoiced_exposure")
     .select("gross_amount, lost_deduction_est, lost_input_vat_est, month")
     .eq("org_id", orgId);
-  const thisYear = String(new Date().getFullYear());
+  const thisYear = String(currentYear());
   const exposure = (exposureRows ?? []).reduce(
     (acc, r) => {
       const lost = Number(r.lost_deduction_est ?? 0) + Number(r.lost_input_vat_est ?? 0);

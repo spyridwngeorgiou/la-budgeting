@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { el } from "@/lib/i18n/el";
 import { formatMoney } from "@/lib/format";
-import { dayMonthLabel, firstOfMonth, lastOfMonth, monthLabel } from "@/lib/planner/dates";
+import { dayMonthLabel, firstOfMonth, lastOfMonth, monthLabel } from "@/lib/dates";
 import { agendaDays, groupByDay, monthCells, monthGridRange, type CalendarItem } from "@/lib/planner/calendar";
 import { SOURCE_PILL, calendarItemLabel } from "./labels";
 

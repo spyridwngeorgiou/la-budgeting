@@ -5,6 +5,7 @@ import { createRevenuePlan } from "./actions";
 import { AiCreateForm } from "./AiCreateForm";
 import { RevenuePlansGrid, type RevenuePlanRow } from "./RevenuePlansGrid";
 import { aiEnabled } from "@/lib/ai/client";
+import { currentYear } from "@/lib/dates";
 
 export default async function RevenuePlansPage() {
   const supabase = await createClient();
@@ -78,7 +79,7 @@ export default async function RevenuePlansPage() {
               <input
                 name="start_year"
                 type="number"
-                defaultValue={new Date().getFullYear()}
+                defaultValue={currentYear()}
                 required
                 className="w-28 rounded-md border border-line-strong px-3 py-2 text-sm"
               />

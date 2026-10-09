@@ -5,6 +5,7 @@ import { Card, Button } from "@/components/ui";
 import { computeRevenuePlan, type RoomType, type Assumption } from "@/lib/finance/revenuePlan";
 import { addRoomType, deleteRoomType, deleteRevenuePlan } from "../actions";
 import { YearTable } from "./YearTable";
+import { todayAthens } from "@/lib/dates";
 
 export default async function RevenuePlanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -49,7 +50,7 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
   // exact (calendarYear = start_year + yearNumber - 1, month_number is a
   // real calendar month), same math computeRevenuePlan already uses, so no
   // separate date logic is needed here.
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = todayAthens();
   const todayMonthKey = todayIso.slice(0, 7);
   let actualComparison: { monthKey: string; label: string; planned: number; actual: number }[] = [];
 

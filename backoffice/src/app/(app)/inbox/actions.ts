@@ -12,6 +12,7 @@ import { PROFILE_FIELDS, type BankProfile, type ColumnMap, type SignMode } from 
 import type { DateFormat } from "@/lib/ingest/text";
 import { INGEST_DECISION, type IngestDecision, type StatementSummary } from "@/lib/ingest/types";
 import { loadProfiles, stageMovements } from "./stage";
+import { athensMinuteLabel } from "@/lib/dates";
 
 // Bank statement upload -> stage -> review -> commit/undo. Every step
 // returns { error } instead of throwing where the user must read the
@@ -246,7 +247,7 @@ export async function saveMappingAndStage(batchId: string, formData: FormData): 
   if (profileError?.code === "23505") {
     ({ data: saved, error: profileError } = await supabase
       .from("bank_import_profiles")
-      .insert(profileRow(`${profile.name} (${new Date().toISOString().slice(0, 16).replace("T", " ")})`))
+      .insert(profileRow(`${profile.name} (${athensMinuteLabel()})`))
       .select("id")
       .single());
   }

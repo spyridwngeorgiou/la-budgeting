@@ -8,13 +8,12 @@ import { Badge } from "@/components/ui";
 import type { StatementSummary } from "@/lib/ingest/types";
 import { CommitBar } from "./CommitBar";
 import { RowDecision, decisionForKind, type MatchOption } from "./RowDecision";
+import { addDays } from "@/lib/dates";
 
 const STATUS_TONE = { staged: "amber", committed: "green", undone: "neutral", discarded: "neutral" } as const;
 
 function dayBefore(iso: string): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().slice(0, 10);
+  return addDays(iso, -1);
 }
 
 export default async function InboxBatchPage({ params }: { params: Promise<{ batchId: string }> }) {

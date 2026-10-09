@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { el } from "@/lib/i18n/el";
-import { addMonths, parseMonthParam } from "@/lib/planner/dates";
+import { addMonths, parseMonthParam } from "@/lib/dates";
 import {
   CALENDAR_SOURCES,
   FINANCIAL_SOURCES,

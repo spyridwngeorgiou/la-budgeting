@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
+import { addMonths, currentMonthKey, isMonthKey, monthRange } from "@/lib/dates";
 
 // The workbook's Πληρωμές «Κόστος ανά ακίνητο — τρέχων μήνας», minus its two
 // bugs (rent summed with no month filter; Internet/Λοιπά never filled in).
@@ -18,12 +19,6 @@ const BUCKETS = [
 
 const MONTHS_EL = ["Ιαν", "Φεβ", "Μαρ", "Απρ", "Μάι", "Ιούν", "Ιούλ", "Αύγ", "Σεπ", "Οκτ", "Νοέ", "Δεκ"];
 
-function shiftMonth(month: string, delta: number): string {
-  const [y, m] = month.split("-").map(Number);
-  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
-  return d.toISOString().slice(0, 7);
-}
-
 function monthLabel(month: string): string {
   const [y, m] = month.split("-").map(Number);
   return `${MONTHS_EL[m - 1]} ${y}`;
@@ -31,9 +26,8 @@ function monthLabel(month: string): string {
 
 export default async function PropertiesPage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
   const { month: requested } = await searchParams;
-  const month = requested && /^\d{4}-\d{2}$/.test(requested) ? requested : new Date().toISOString().slice(0, 7);
-  const monthStart = `${month}-01`;
-  const monthEnd = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).toISOString().slice(0, 10);
+  const month = isMonthKey(requested) ? requested : currentMonthKey();
+  const { start: monthStart, end: monthEnd } = monthRange(month);
 
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
@@ -64,11 +58,11 @@ export default async function PropertiesPage({ searchParams }: { searchParams: P
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <Link href={`/properties?month=${shiftMonth(month, -1)}`} className="rounded-md border border-line px-2 py-1 hover:bg-bg">
+          <Link href={`/properties?month=${addMonths(month, -1)}`} className="rounded-md border border-line px-2 py-1 hover:bg-bg">
             ←
           </Link>
           <span className="min-w-24 text-center font-medium">{monthLabel(month)}</span>
-          <Link href={`/properties?month=${shiftMonth(month, 1)}`} className="rounded-md border border-line px-2 py-1 hover:bg-bg">
+          <Link href={`/properties?month=${addMonths(month, 1)}`} className="rounded-md border border-line px-2 py-1 hover:bg-bg">
             →
           </Link>
         </div>

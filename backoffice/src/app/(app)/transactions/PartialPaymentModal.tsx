@@ -6,6 +6,7 @@ import { SubmitButton } from "@/components/SubmitButton";
 import { el } from "@/lib/i18n/el";
 import { formatMoney } from "@/lib/format";
 import { recordPartialPayment } from "./actions";
+import { todayAthens } from "@/lib/dates";
 
 interface Props {
   transactionId: string;
@@ -61,7 +62,7 @@ export function PartialPaymentModal({ transactionId, label, remaining, accountId
             </Field>
             <Field>
               <Label>Ημ/νία πληρωμής</Label>
-              <Input type="date" name="paid_on" defaultValue={new Date().toISOString().slice(0, 10)} required />
+              <Input type="date" name="paid_on" defaultValue={todayAthens()} required />
             </Field>
           </div>
           <Field>

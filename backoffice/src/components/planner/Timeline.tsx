@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { el } from "@/lib/i18n/el";
 import { formatDate } from "@/lib/format";
-import { shortMonthLabel } from "@/lib/planner/dates";
+import { shortMonthLabel } from "@/lib/dates";
 import { computeTimeline, type TimelineBar } from "@/lib/planner/timeline";
 import type { TimelineMilestone, TimelinePhase, TimelineTask } from "@/lib/planner/queries";
 import { STATUS_BAR } from "./labels";

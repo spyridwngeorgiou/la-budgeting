@@ -7,6 +7,7 @@ import { AiSpark, Badge, Button, Input, Card } from "@/components/ui";
 import { TransactionFormModal, type TransactionInitial } from "./TransactionFormModal";
 import { PartialPaymentModal } from "./PartialPaymentModal";
 import { createTransaction, updateTransaction, markPaid, deleteTransaction, getSourceDocumentUrl } from "./actions";
+import { todayAthens } from "@/lib/dates";
 
 const AI_ORIGINS = new Set(["ai_document", "ai_nl"]);
 
@@ -107,7 +108,7 @@ export function TransactionsTable({
     return { income, expense, net: income - expense, count: visibleTransactions.length };
   }, [visibleTransactions]);
 
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = todayAthens();
   const isOverdue = (tx: TxRow) => tx.status !== "paid" && !!tx.due_date && tx.due_date < todayIso;
 
   const initialFor = (tx: TxRow): TransactionInitial => ({

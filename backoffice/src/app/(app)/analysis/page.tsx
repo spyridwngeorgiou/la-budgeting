@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/format";
 import type { TxDirection, TxScope } from "@/lib/domain/enums";
 import { AiSpark } from "@/components/ui";
+import { addMonths, currentMonthKey, monthRange, monthsBetween, shortMonthYearLabel } from "@/lib/dates";
 
 type GroupBy = "project" | "category" | "contact" | "account";
 
@@ -21,38 +22,6 @@ interface SearchParams {
   direction?: string;
   scope?: string;
   range?: string;
-}
-
-function addMonths(monthKey: string, delta: number): string {
-  const [y, m] = monthKey.split("-").map(Number);
-  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
-function monthLabel(monthKey: string) {
-  const [y, m] = monthKey.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("el-GR", {
-    month: "short",
-    year: "2-digit",
-    timeZone: "UTC",
-  });
-}
-
-function monthRange(from: string, to: string): string[] {
-  const months: string[] = [];
-  const [fy, fm] = from.split("-").map(Number);
-  const [ty, tm] = to.split("-").map(Number);
-  let y = fy;
-  let m = fm;
-  while (y < ty || (y === ty && m <= tm)) {
-    months.push(`${y}-${String(m).padStart(2, "0")}`);
-    m++;
-    if (m > 12) {
-      m = 1;
-      y++;
-    }
-  }
-  return months;
 }
 
 // Ανάλυση Κινήσεων: a real cross-tab, not a static report -- pivot by any
@@ -153,7 +122,7 @@ export default async function AnalysisPage({
   // an honest, empty column waiting to be filled in. Real future-dated
   // (scheduled) months beyond today still extend the table further, same as
   // before -- this only raises the floor, never lowers a genuine ceiling.
-  const todayMonth = new Date().toISOString().slice(0, 7);
+  const todayMonth = currentMonthKey();
   let effectiveMin = minMonth && minMonth < todayMonth ? minMonth : todayMonth;
   let effectiveMax = maxMonth && maxMonth > todayMonth ? maxMonth : todayMonth;
   if (range === "12m") {
@@ -167,7 +136,7 @@ export default async function AnalysisPage({
     const floor = addMonths(todayMonth, -11);
     if (effectiveMin < floor) effectiveMin = floor;
   }
-  const months = monthRange(effectiveMin, effectiveMax);
+  const months = monthsBetween(effectiveMin, effectiveMax);
   const rows = [...buckets.values()].sort((a, b) => b.total - a.total);
   const columnTotals = months.map((m) =>
     rows.reduce((sum, r) => sum + (r.byMonth.get(m) ?? 0), 0),
@@ -194,10 +163,9 @@ export default async function AnalysisPage({
   function cellHref(rowId: string | null, month: string) {
     const p = new URLSearchParams(baseParams);
     if (rowId) p.set(dim.filterParam, rowId);
-    const [y, m] = month.split("-");
-    const lastDay = new Date(Number(y), Number(m), 0).getDate();
-    p.set("from", `${month}-01`);
-    p.set("to", `${month}-${String(lastDay).padStart(2, "0")}`);
+    const { start, end } = monthRange(month);
+    p.set("from", start);
+    p.set("to", end);
     return `/transactions?${p.toString()}`;
   }
   function rowHref(rowId: string | null) {
@@ -207,10 +175,9 @@ export default async function AnalysisPage({
   }
   function columnHref(month: string) {
     const p = new URLSearchParams(baseParams);
-    const [y, m] = month.split("-");
-    const lastDay = new Date(Number(y), Number(m), 0).getDate();
-    p.set("from", `${month}-01`);
-    p.set("to", `${month}-${String(lastDay).padStart(2, "0")}`);
+    const { start, end } = monthRange(month);
+    p.set("from", start);
+    p.set("to", end);
     return `/transactions?${p.toString()}`;
   }
 
@@ -282,7 +249,7 @@ export default async function AnalysisPage({
                     className={`p-2 text-right whitespace-nowrap ${m === todayMonth ? "bg-sage text-sage-ink" : ""}`}
                   >
                     <Link href={columnHref(m)} className="hover:underline">
-                      {monthLabel(m)}
+                      {shortMonthYearLabel(m)}
                     </Link>
                     {m === todayMonth && <div className="text-[10px] font-normal">σήμερα</div>}
                   </th>

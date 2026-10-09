@@ -7,6 +7,7 @@ import { deriveFromNet, cashOnly, isIdentityConsistent, splitProportionally, toC
 import type { TxDirection, TxScope, TxStatus } from "@/lib/domain/enums";
 import { el } from "@/lib/i18n/el";
 import { findPossibleDuplicates, transactionWriteError, type WriteResult } from "@/lib/ingest/duplicates";
+import { todayAthens } from "@/lib/dates";
 
 // The one place transaction money fields get computed for the manual-entry
 // path -- gross_amount is a plain stored column (not a DB-generated one), so
@@ -121,7 +122,7 @@ export async function markPaid(id: string) {
   const supabase = await createClient();
   const { error } = await supabase
     .from("transactions")
-    .update({ status: "paid", paid_on: new Date().toISOString().slice(0, 10) })
+    .update({ status: "paid", paid_on: todayAthens() })
     .eq("id", id);
 
   if (error) throw new Error(error.message);
@@ -142,7 +143,7 @@ export async function recordPartialPayment(parentId: string, formData: FormData)
   if (loadError) throw new Error(loadError.message);
 
   const amount = Number(formData.get("amount"));
-  const paidOn = String(formData.get("paid_on") || new Date().toISOString().slice(0, 10));
+  const paidOn = String(formData.get("paid_on") || todayAthens());
   const accountId = formString(formData, "account_id") ?? parent.account_id;
 
   if (toCents(amount) === toCents(parent.gross_amount)) {

@@ -7,7 +7,7 @@ import { aiEnabled } from "@/lib/ai/client";
 import { DashboardSummary } from "./DashboardSummary";
 import { DueDatesCalendar } from "./DueDatesCalendar";
 import { monthGridRange } from "@/lib/planner/calendar";
-import { monthKeyOf } from "@/lib/planner/dates";
+import { monthKeyOf, todayAthens } from "@/lib/dates";
 
 // Κέντρο Ελέγχου: liquidity per account, project portfolio, VAT position,
 // what's due soon -- the same shape as the workbook's Control Center sheet.
@@ -30,7 +30,7 @@ export default async function DashboardPage() {
   // scheduled transaction dated next year would otherwise outrank every
   // real period and show as "current month" with misleading zeros. Pin to
   // the latest period that isn't in the future.
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = todayAthens();
 
   // Full calendar-month grid, not just "next 14 days" -- Monday of the first
   // week through Sunday of the last week of the current month, so overdue

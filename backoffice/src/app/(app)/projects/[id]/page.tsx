@@ -22,6 +22,7 @@ import { saveLoan, deleteLoan } from "../loan-actions";
 import { CapitalSourceFormModal } from "../CapitalSourceFormModal";
 import { saveCapitalSource, deleteCapitalSource } from "../capital-actions";
 import type { CapitalSourceKind } from "@/lib/domain/enums";
+import { addMonths, currentMonthKey, currentYear, firstOfMonth } from "@/lib/dates";
 
 const KIND_FALLBACK_LABEL: Record<CapitalSourceKind, string> = {
   equity: "Ίδια κεφάλαια",
@@ -135,9 +136,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       .eq("status", "paid"),
   ]);
 
-  const twelveMonthsAgo = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() - 11, 1))
-    .toISOString()
-    .slice(0, 10);
+  const twelveMonthsAgo = firstOfMonth(addMonths(currentMonthKey(), -11));
   const [{ data: utilities }, { data: monthlyCostRows }] = await Promise.all([
     supabase.from("property_utilities").select("*").eq("project_id", id).order("kind"),
     supabase
@@ -603,7 +602,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                   <input
                     name="start_year"
                     type="number"
-                    defaultValue={new Date().getFullYear()}
+                    defaultValue={currentYear()}
                     required
                     className="w-28 rounded-md border border-line-strong px-3 py-2 text-sm"
                   />

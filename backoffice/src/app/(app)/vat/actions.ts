@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId, formString } from "@/lib/supabase/org";
+import { lastOfMonth, monthKeyOf, todayAthens } from "@/lib/dates";
 
 // vat_periods stores only human facts (filed?, when, how much) -- the
 // figures themselves come from v_vat_position, computed from the ledger.
@@ -10,18 +11,16 @@ export async function toggleVatFiled(periodStart: string, currentlyFiled: boolea
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
 
-  const periodEnd = new Date(periodStart);
-  periodEnd.setMonth(periodEnd.getMonth() + 1);
-  periodEnd.setDate(0);
+  const periodEnd = lastOfMonth(monthKeyOf(periodStart));
 
   const nowFiled = !currentlyFiled;
   const { error } = await supabase.from("vat_periods").upsert(
     {
       org_id: orgId,
       period_start: periodStart,
-      period_end: periodEnd.toISOString().slice(0, 10),
+      period_end: periodEnd,
       status: nowFiled ? "filed" : "pending",
-      filed_on: nowFiled ? new Date().toISOString().slice(0, 10) : null,
+      filed_on: nowFiled ? todayAthens() : null,
     },
     { onConflict: "org_id,period_start" },
   );
@@ -35,17 +34,15 @@ export async function upsertVatPeriodFiling(periodStart: string, formData: FormD
   const orgId = await getCurrentOrgId(supabase);
 
   const filed = formData.get("filed") === "on";
-  const periodEnd = new Date(periodStart);
-  periodEnd.setMonth(periodEnd.getMonth() + 1);
-  periodEnd.setDate(0);
+  const periodEnd = lastOfMonth(monthKeyOf(periodStart));
 
   const { error } = await supabase.from("vat_periods").upsert(
     {
       org_id: orgId,
       period_start: periodStart,
-      period_end: periodEnd.toISOString().slice(0, 10),
+      period_end: periodEnd,
       status: filed ? "filed" : "pending",
-      filed_on: filed ? new Date().toISOString().slice(0, 10) : null,
+      filed_on: filed ? todayAthens() : null,
       amount_paid: formString(formData, "amount_paid") ? Number(formData.get("amount_paid")) : null,
       paid_on: formString(formData, "paid_on"),
       reference: formString(formData, "reference"),

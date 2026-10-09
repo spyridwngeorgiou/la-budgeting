@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId, formString } from "@/lib/supabase/org";
 import type { TxDirection, TxScope, PlanFrequency, VatRate } from "@/lib/domain/enums";
+import { todayAthens } from "@/lib/dates";
 
 export async function createInstallmentPlan(formData: FormData) {
   const supabase = await createClient();
@@ -56,7 +57,7 @@ export async function markInstallmentPaid(transactionId: string) {
   const supabase = await createClient();
   const { error } = await supabase
     .from("transactions")
-    .update({ status: "paid", paid_on: new Date().toISOString().slice(0, 10) })
+    .update({ status: "paid", paid_on: todayAthens() })
     .eq("id", transactionId);
 
   if (error) throw new Error(error.message);

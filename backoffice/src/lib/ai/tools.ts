@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { addDays, currentMonthKey, firstOfMonth, todayAthens } from "@/lib/dates";
 
 // Seven curated, read-only, parameterized tools -- deliberately NOT a
 // model-written-SQL tool. Greek VAT/withholding logic belongs in one tested
@@ -213,9 +214,7 @@ export function buildAssistantTools(supabase: SupabaseClient, orgId: string) {
         .in("status", ["pending", "scheduled"])
         .order("due_date", { ascending: true, nullsFirst: false });
       if (horizon_days) {
-        const cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() + horizon_days);
-        q = q.lte("due_date", cutoff.toISOString().slice(0, 10));
+        q = q.lte("due_date", addDays(todayAthens(), horizon_days));
       }
       const { data, error } = await q.limit(100);
       if (error) return JSON.stringify({ error: error.message });
@@ -242,7 +241,7 @@ export function buildAssistantTools(supabase: SupabaseClient, orgId: string) {
     description: "Μηνιαία πρόβλεψη ταμείου (εισροές/εκροές πληρωμένων κινήσεων) για τους επόμενους μήνες.",
     inputSchema: z.object({ months_ahead: z.number().int().min(1).max(24).default(6) }),
     run: async ({ months_ahead }) => {
-      const from = new Date().toISOString().slice(0, 8) + "01";
+      const from = firstOfMonth(currentMonthKey());
       const { data, error } = await supabase
         .from("v_cashflow_monthly")
         .select("*")

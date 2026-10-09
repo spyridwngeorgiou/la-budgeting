@@ -9,6 +9,7 @@ import { extractFromText, validateNlExtraction } from "@/lib/ai/nl";
 import { resolveEntities } from "@/lib/ai/resolve";
 import { deriveFromGross, cashOnly } from "@/lib/finance/money";
 import type { Extraction } from "@/lib/ai/schemas";
+import { todayAthens } from "@/lib/dates";
 
 // Synchronous end-to-end for v1: upload, extract, resolve, and stage a draft
 // all within one request. No queue/worker -- the dataset and document sizes
@@ -183,7 +184,7 @@ export async function submitNlEntry(formData: FormData) {
       issuer_afm: null,
       invoice_number: null,
       mydata_mark: null,
-      issue_date: entry.issue_date ?? new Date().toISOString().slice(0, 10),
+      issue_date: entry.issue_date ?? todayAthens(),
       net: { value: breakdown.net, evidence: entry.amount.evidence },
       vat: { value: breakdown.vat, evidence: entry.amount.evidence },
       gross: { value: breakdown.gross, evidence: entry.amount.evidence },

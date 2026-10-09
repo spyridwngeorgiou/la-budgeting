@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button, Field, Input, Label } from "@/components/ui";
 import { formatMoney } from "@/lib/format";
 import { assertAccountBalance } from "./actions";
+import { todayAthens } from "@/lib/dates";
 
 // Data entry, split out from the read-only breakdown (BalanceAssertion) so
 // reviewing accounts and entering a new check are two differently-sized
@@ -22,7 +23,7 @@ export function NewCheckModal({
   hasChecks: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayAthens();
 
   if (!open) {
     return (

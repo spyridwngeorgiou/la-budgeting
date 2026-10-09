@@ -4,6 +4,7 @@ import { extractRefs, normalizeGreek, parseDate, parseGreekNumber } from "../tex
 import type { CanonicalRow, StatementSummary } from "../types";
 import { cellText, normalizedRow } from "./detect";
 import type { BankProfile, Cell, ColumnRef, Grid, ProfileField } from "./types";
+import { toIso } from "@/lib/dates";
 
 // Grid + profile -> canonical movements. Never throws on a bad line: the
 // line is kept with parseErrors so the review screen shows it, instead of a
@@ -168,7 +169,7 @@ export function applyProfile(grid: Grid, profile: BankProfile, headerRow: number
     const raw: Record<string, unknown> = {};
     headerNames.forEach((name, i) => {
       const c = row[i];
-      raw[name] = c instanceof Date ? c.toISOString().slice(0, 10) : (c ?? null);
+      raw[name] = c instanceof Date ? toIso(c) : (c ?? null);
     });
 
     rows.push({

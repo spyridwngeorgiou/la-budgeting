@@ -5,6 +5,7 @@ import { Button, Input, Select, Label, Field } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { el } from "@/lib/i18n/el";
 import { VAT_RATES } from "@/lib/domain/enums";
+import { todayAthens } from "@/lib/dates";
 
 interface Option {
   id: string;
@@ -141,7 +142,7 @@ export function InstallmentPlanFormModal({ action, contacts, projects, categorie
               <Input
                 type="date"
                 name="first_due_date"
-                defaultValue={new Date().toISOString().slice(0, 10)}
+                defaultValue={todayAthens()}
                 required
               />
             </Field>

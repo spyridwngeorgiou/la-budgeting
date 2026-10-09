@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { formatMoney } from "@/lib/format";
 import { monthCells } from "@/lib/planner/calendar";
-import { monthKeyOf } from "@/lib/planner/dates";
+import { monthKeyOf } from "@/lib/dates";
 
 interface DueTx {
   id: string;

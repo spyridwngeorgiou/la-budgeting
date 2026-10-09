@@ -1,3 +1,4 @@
+import { todayAthens } from "@/lib/dates";
 function csvEscape(value: string | number | null | undefined): string {
   const s = value == null ? "" : String(value);
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -13,6 +14,6 @@ export function toCsv(header: string[], rows: (string | number | null | undefine
 export function csvResponseHeaders(filenamePrefix: string): HeadersInit {
   return {
     "Content-Type": "text/csv; charset=utf-8",
-    "Content-Disposition": `attachment; filename="${filenamePrefix}-${new Date().toISOString().slice(0, 10)}.csv"`,
+    "Content-Disposition": `attachment; filename="${filenamePrefix}-${todayAthens()}.csv"`,
   };
 }

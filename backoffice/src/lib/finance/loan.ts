@@ -9,6 +9,7 @@
 // month forced to absorb whatever residual remains from rounding.
 
 import { toCents, fromCents } from "./money";
+import { addMonths, firstOfMonth, monthKeyOf } from "@/lib/dates";
 
 export interface LoanTranche {
   id: string;
@@ -65,14 +66,6 @@ export interface LoanScheduleResult {
   };
 }
 
-function addMonths(monthStr: string, n: number): string {
-  const [y, m] = monthStr.split("-").map(Number);
-  const total = (y * 12 + (m - 1)) + n;
-  const ny = Math.floor(total / 12);
-  const nm = (total % 12) + 1;
-  return `${ny}-${String(nm).padStart(2, "0")}-01`;
-}
-
 // Standard annuity payment, in cents: P * r / (1 - (1+r)^-n)
 function pmtCents(balanceCents: number, monthlyRate: number, months: number): number {
   if (months <= 0 || balanceCents <= 0) return 0;
@@ -127,7 +120,7 @@ export function computeLoanSchedule(
     let pmtCentsFrozen: number | null = null;
 
     for (let k = 1; k <= termMonths; k++) {
-      const month = addMonths(opts.firstMonth, k - 1);
+      const month = firstOfMonth(addMonths(monthKeyOf(opts.firstMonth), k - 1));
       const drawdown = drawdownByTrancheMonth.get(`${tranche.id}:${month}`) ?? 0;
       const opening = balance;
       const openingWithDrawdown = opening + drawdown;

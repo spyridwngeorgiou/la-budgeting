@@ -1,5 +1,6 @@
 import { normalizeGreek } from "../text";
 import type { BankProfile, Cell, ColumnMap, Grid, ProfileField } from "./types";
+import { toIso } from "@/lib/dates";
 
 // Which profile fits an uploaded statement, and on which row its header sits.
 // Exports typically open with a few lines of account details (holder, IBAN,
@@ -10,7 +11,7 @@ const HEADER_SCAN_ROWS = 40;
 
 export function cellText(cell: Cell): string {
   if (cell === null || cell === undefined) return "";
-  if (cell instanceof Date) return cell.toISOString().slice(0, 10);
+  if (cell instanceof Date) return toIso(cell);
   return String(cell);
 }
 

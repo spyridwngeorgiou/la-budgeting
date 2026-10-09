@@ -5,6 +5,7 @@ import { Button, Input, Select, Label, Field } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { el } from "@/lib/i18n/el";
 import { ACCOUNT_KIND, OWNER_SCOPE } from "@/lib/domain/enums";
+import { todayAthens } from "@/lib/dates";
 
 export function AccountFormModal({ action }: { action: (formData: FormData) => Promise<void> }) {
   const [open, setOpen] = useState(false);
@@ -60,7 +61,7 @@ export function AccountFormModal({ action }: { action: (formData: FormData) => P
             <Input
               type="date"
               name="opening_balance_date"
-              defaultValue={new Date().toISOString().slice(0, 10)}
+              defaultValue={todayAthens()}
               required
             />
           </Field>

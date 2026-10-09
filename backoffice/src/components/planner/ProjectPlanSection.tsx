@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { el } from "@/lib/i18n/el";
 import { formatDate } from "@/lib/format";
 import { TASK_STATUS } from "@/lib/domain/enums";
-import { todayAthens } from "@/lib/planner/dates";
+import { todayAthens } from "@/lib/dates";
 import { OnePagerSection } from "@/components/onepager";
 import { STATUS_DOT } from "./labels";
 

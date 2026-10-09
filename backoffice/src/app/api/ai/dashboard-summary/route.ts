@@ -4,6 +4,7 @@ import { getCurrentOrgId } from "@/lib/supabase/org";
 import { aiEnabled, assertWithinAiBudget, logAiUsage } from "@/lib/ai/client";
 import { phraseInsight } from "@/lib/ai/insights";
 import { formatMoney } from "@/lib/format";
+import { addMonths, monthKeyOf, todayAthens } from "@/lib/dates";
 
 const SYSTEM_PROMPT = `Είστε οικονομικός βοηθός back office μιας ελληνικής επιχείρησης ακινήτων/κατασκευών. Σας δίνονται ήδη υπολογισμένα γεγονότα (bullet points) για την τρέχουσα οικονομική κατάσταση. Γράψτε 2-3 σύντομες προτάσεις στα Ελληνικά που συνοψίζουν τι ξεχωρίζει -- ΜΗΝ προσθέσετε αριθμούς που δεν σας δόθηκαν, ΜΗΝ κάνετε υπολογισμούς, μόνο διατυπώστε τα γεγονότα σε φυσική γλώσσα. Αν κάτι δείχνει ρίσκο (π.χ. μεγάλη αύξηση εξόδων, χαμηλή ρευστότητα), αναφέρετέ το ευθέως αλλά χωρίς δραματοποίηση.`;
 
@@ -25,10 +26,9 @@ export async function POST() {
     return NextResponse.json({ error: message }, { status: 429 });
   }
 
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const thisMonthKey = todayIso.slice(0, 7);
-  const d = new Date(todayIso);
-  const lastMonthKey = new Date(d.getFullYear(), d.getMonth() - 1, 1).toISOString().slice(0, 7);
+  const todayIso = todayAthens();
+  const thisMonthKey = monthKeyOf(todayIso);
+  const lastMonthKey = addMonths(thisMonthKey, -1);
 
   const [{ data: accounts }, { data: projects }, { data: vat }, { data: thisMonthTx }, { data: lastMonthTx }, { data: pending }] =
     await Promise.all([

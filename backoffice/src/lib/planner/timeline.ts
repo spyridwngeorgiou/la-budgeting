@@ -1,4 +1,4 @@
-import { addMonths, diffDays, firstOfMonth, lastOfMonth, monthKeyOf } from "./dates";
+import { addMonths, diffDays, firstOfMonth, lastOfMonth, monthKeyOf } from "@/lib/dates";
 
 // The Gantt's layout, as plain numbers: every bar is a left offset and a
 // width in percent of the visible range, so the component is just absolutely

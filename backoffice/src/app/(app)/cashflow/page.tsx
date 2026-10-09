@@ -3,21 +3,7 @@ import { getCurrentOrg, getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney } from "@/lib/format";
 import { Badge, Card } from "@/components/ui";
 import { CashflowChart } from "./CashflowChart";
-
-function monthLabel(monthKey: string) {
-  const [y, m] = monthKey.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("el-GR", {
-    month: "short",
-    year: "2-digit",
-    timeZone: "UTC",
-  });
-}
-
-function addMonths(monthKey: string, delta: number): string {
-  const [y, m] = monthKey.split("-").map(Number);
-  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-}
+import { addMonths, currentMonthKey, shortMonthYearLabel } from "@/lib/dates";
 
 // How far ahead the runway always reaches from today, regardless of whether
 // any transaction is dated out there yet -- otherwise the page's horizon
@@ -52,7 +38,7 @@ export default async function CashflowPage() {
     byMonth.set(key, existing);
   }
 
-  const todayMonth = new Date().toISOString().slice(0, 7);
+  const todayMonth = currentMonthKey();
   // The runway always reaches from today to today+FORWARD_HORIZON_MONTHS,
   // computed fresh on every request -- so the page keeps pace with "now" on
   // its own, without ever needing a manual date bump.
@@ -85,7 +71,7 @@ export default async function CashflowPage() {
     const m = byMonth.get(month)!;
     return {
       month,
-      label: monthLabel(month),
+      label: shortMonthYearLabel(month),
       inflow: m.inflow,
       outflow: m.outflow,
       weighted: m.weighted,

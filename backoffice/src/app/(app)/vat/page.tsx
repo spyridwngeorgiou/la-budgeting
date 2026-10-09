@@ -4,12 +4,7 @@ import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { Badge, Button } from "@/components/ui";
 import { toggleVatFiled } from "./actions";
-
-function addMonthsIso(iso: string, delta: number): string {
-  const [y, m] = iso.split("-").map(Number);
-  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
-}
+import { addMonths, currentMonthKey, firstOfMonth } from "@/lib/dates";
 
 export default async function VatPage() {
   const supabase = await createClient();
@@ -22,9 +17,9 @@ export default async function VatPage() {
   // stretch push relevant history off the end. A fixed window around today
   // (6 months back, 6 forward) is what "δυναμικό" actually means here --
   // computed fresh on every request, not a static date range.
-  const todayMonth = new Date().toISOString().slice(0, 7) + "-01";
-  const windowStart = addMonthsIso(todayMonth, -6);
-  const windowEnd = addMonthsIso(todayMonth, 6);
+  const todayMonth = currentMonthKey();
+  const windowStart = firstOfMonth(addMonths(todayMonth, -6));
+  const windowEnd = firstOfMonth(addMonths(todayMonth, 6));
 
   const [{ data: positions }, { data: filings }] = await Promise.all([
     supabase

@@ -27,7 +27,7 @@ import { ListChecks, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { TASK_STATUS, type TaskStatus } from "@/lib/domain/enums";
-import { dayMonthLabel } from "@/lib/planner/dates";
+import { dayMonthLabel } from "@/lib/dates";
 import { keyAtEnd, planMove, type Keyed } from "@/lib/planner/sortKey";
 import type { BoardTask, PlannerPerson } from "@/lib/planner/queries";
 import { PRIORITY_TONE, STATUS_DOT, initials } from "./labels";

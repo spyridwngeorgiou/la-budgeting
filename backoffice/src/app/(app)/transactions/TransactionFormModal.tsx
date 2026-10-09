@@ -9,6 +9,7 @@ import { formatMoney } from "@/lib/format";
 import { VAT_RATES } from "@/lib/domain/enums";
 import type { DuplicateCandidate, WriteResult } from "@/lib/ingest/duplicates";
 import { suggestForContact } from "./actions";
+import { todayAthens } from "@/lib/dates";
 
 interface Option {
   id: string;
@@ -158,7 +159,7 @@ export function TransactionFormModal({
               <Input
                 type="date"
                 name="tx_date"
-                defaultValue={initial?.tx_date ?? new Date().toISOString().slice(0, 10)}
+                defaultValue={initial?.tx_date ?? todayAthens()}
                 required
               />
             </Field>
@@ -324,7 +325,7 @@ export function TransactionFormModal({
               <Input
                 type="date"
                 name="paid_on"
-                defaultValue={initial?.paid_on ?? new Date().toISOString().slice(0, 10)}
+                defaultValue={initial?.paid_on ?? todayAthens()}
                 required
               />
             </Field>

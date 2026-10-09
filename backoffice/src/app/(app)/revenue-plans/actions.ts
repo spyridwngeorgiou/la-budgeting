@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId, formString } from "@/lib/supabase/org";
 import { aiEnabled, assertWithinAiBudget, logAiUsage } from "@/lib/ai/client";
 import { extractRevenuePlan } from "@/lib/ai/revenuePlanExtract";
+import { currentYear } from "@/lib/dates";
 
 export async function createRevenuePlan(formData: FormData) {
   const supabase = await createClient();
@@ -51,7 +52,7 @@ export async function createRevenuePlanFromText(formData: FormData) {
   await assertWithinAiBudget(supabase, orgId);
 
   const startedAt = Date.now();
-  const { extraction, usage } = await extractRevenuePlan(text, new Date().getFullYear());
+  const { extraction, usage } = await extractRevenuePlan(text, currentYear());
   const latencyMs = Date.now() - startedAt;
 
   const years = Math.max(1, ...extraction.room_types.flatMap((rt) => rt.assumptions.map((a) => a.year_number)));
