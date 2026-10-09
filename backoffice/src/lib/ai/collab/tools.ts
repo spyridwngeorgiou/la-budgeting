@@ -47,7 +47,9 @@ export interface CollabToolOutcome {
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_PDF_BYTES = 10 * 1024 * 1024;
 const MAX_FILE_READS = 4;
-const MAX_TOTAL_FILE_BYTES = 20 * 1024 * 1024;
+// Base64 inflates by 4/3 and the API caps a request at 32 MB, which must
+// also hold the rest of the conversation.
+const MAX_TOTAL_FILE_BYTES = 16 * 1024 * 1024;
 
 function jsonSchema(schema: z.ZodType): Anthropic.Tool.InputSchema {
   const out = z.toJSONSchema(schema, { io: "input" }) as Record<string, unknown>;
