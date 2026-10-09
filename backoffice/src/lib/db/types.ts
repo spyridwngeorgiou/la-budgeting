@@ -724,6 +724,7 @@ export type Database = {
           model: string
           org_id: string
           output_tokens: number | null
+          project_id: string | null
           request_id: string | null
           user_id: string | null
         }
@@ -738,6 +739,7 @@ export type Database = {
           model: string
           org_id: string
           output_tokens?: number | null
+          project_id?: string | null
           request_id?: string | null
           user_id?: string | null
         }
@@ -752,6 +754,7 @@ export type Database = {
           model?: string
           org_id?: string
           output_tokens?: number | null
+          project_id?: string | null
           request_id?: string | null
           user_id?: string | null
         }
@@ -769,6 +772,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_net_worth"
             referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "ai_usage_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_usage_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "ai_usage_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
           },
         ]
       }
@@ -1483,6 +1507,276 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "categories"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      collab_ai_messages: {
+        Row: {
+          board_id: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          org_id: string
+          project_id: string
+          role: string
+          thread_id: string
+        }
+        Insert: {
+          board_id: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          org_id: string
+          project_id: string
+          role: string
+          thread_id: string
+        }
+        Update: {
+          board_id?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          org_id?: string
+          project_id?: string
+          role?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collab_ai_messages_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collab_ai_messages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collab_ai_messages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "collab_ai_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collab_ai_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "collab_ai_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "collab_ai_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "collab_ai_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collab_ai_proposals: {
+        Row: {
+          board_id: string
+          created_at: string
+          created_by: string | null
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          kind: string
+          message_id: string | null
+          org_id: string
+          payload: Json
+          project_id: string
+          result: Json | null
+          status: string
+          thread_id: string | null
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          created_by?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          kind: string
+          message_id?: string | null
+          org_id: string
+          payload: Json
+          project_id: string
+          result?: Json | null
+          status?: string
+          thread_id?: string | null
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          created_by?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          kind?: string
+          message_id?: string | null
+          org_id?: string
+          payload?: Json
+          project_id?: string
+          result?: Json | null
+          status?: string
+          thread_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collab_ai_proposals_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collab_ai_proposals_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "collab_ai_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collab_ai_proposals_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collab_ai_proposals_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "collab_ai_proposals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collab_ai_proposals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "collab_ai_proposals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "collab_ai_proposals_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "collab_ai_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collab_ai_threads: {
+        Row: {
+          board_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          org_id: string
+          project_id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          org_id: string
+          project_id: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          org_id?: string
+          project_id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collab_ai_threads_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collab_ai_threads_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "orgs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collab_ai_threads_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "v_net_worth"
+            referencedColumns: ["org_id"]
+          },
+          {
+            foreignKeyName: "collab_ai_threads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collab_ai_threads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_project_rollup"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "collab_ai_threads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "v_qc_projects_without_budget"
+            referencedColumns: ["project_id"]
           },
         ]
       }
@@ -5806,8 +6100,20 @@ export type Database = {
     }
     Functions: {
       account_balance_as_of: { Args: { p_account: string; p_date: string }; Returns: number }
+      approve_collab_proposal: {
+        Args: { p_indexes?: number[]; p_proposal: string }
+        Returns: Json
+      }
       can_access_project: { Args: { p_project: string }; Returns: boolean }
       can_edit_collab: { Args: { p_project: string }; Returns: boolean }
+      collab_ai_budget_check: {
+        Args: {
+          p_default_monthly_cents: number
+          p_project: string
+          p_user_daily_cents: number
+        }
+        Returns: string
+      }
       collab_path_ok: {
         Args: { p_name: string; p_write: boolean }
         Returns: boolean
@@ -5857,6 +6163,19 @@ export type Database = {
         Returns: boolean
       }
       is_internal_user: { Args: never; Returns: boolean }
+      log_collab_ai_usage: {
+        Args: {
+          p_cache_read_tokens: number
+          p_cost_cents: number
+          p_input_tokens: number
+          p_latency_ms?: number
+          p_model: string
+          p_output_tokens: number
+          p_project: string
+          p_request_id?: string
+        }
+        Returns: undefined
+      }
       match_property_utility: {
         Args: { p_org: string; p_text: string }
         Returns: {
