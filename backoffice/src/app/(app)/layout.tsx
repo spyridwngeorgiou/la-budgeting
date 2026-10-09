@@ -16,7 +16,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const supabase = await createClient();
   const [orgs, pendingChanges] = await Promise.all([
     listMyOrgs(supabase),
-    countPendingChanges(access.membership.orgId),
+    // Viewers cannot approve, so no badge for them (the panel is hidden too).
+    access.membership.role === "viewer" ? 0 : countPendingChanges(access.membership.orgId),
   ]);
 
   return (
