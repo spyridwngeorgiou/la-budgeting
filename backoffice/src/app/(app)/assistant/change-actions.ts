@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ALLOWLIST, type WritableTable } from "@/lib/ai/writeTools";
 import { action, UserError, type ActionResult } from "@/lib/actions";
+import { syncLoanSchedule } from "@/lib/finance/scheduleSync";
 
 function pick(obj: Record<string, unknown>, keys: string[]) {
   return Object.fromEntries(keys.filter((k) => k in obj).map((k) => [k, obj[k]]));
@@ -32,17 +33,32 @@ export async function approveChange(id: string): Promise<ActionResult> {
     // columns on vetted tables ever reach a write); these `as never` casts
     // just satisfy Supabase's per-table generated types, which can't express
     // "one of several known tables chosen at runtime".
+    let writtenId: string | null = null;
     if (change.operation === "insert") {
       const payload = pick(change.after as Record<string, unknown>, spec.editableFields);
-      const { error: insErr } = await supabase.from(table).insert({ ...payload, org_id: change.org_id } as never);
+      const { data: inserted, error: insErr } = await supabase
+        .from(table)
+        .insert({ ...payload, org_id: change.org_id } as never)
+        .select("id")
+        .single();
       if (insErr) throw insErr;
+      writtenId = (inserted as { id: string } | null)?.id ?? null;
     } else if (change.operation === "update") {
       const payload = pick(change.after as Record<string, unknown>, spec.editableFields);
       const { error: updErr } = await supabase.from(table).update(payload as never).eq("id", change.row_id as string);
       if (updErr) throw updErr;
+      writtenId = change.row_id as string;
     } else {
       const { error: delErr } = await supabase.from(table).delete().eq("id", change.row_id as string);
       if (delErr) throw delErr;
+    }
+
+    // A loan's terms drive its scheduled instalments in the ledger: rewrite
+    // them now, exactly as saveLoan does, so the forecast is never stale.
+    // A failure here must not leave the applied change looking pending (it
+    // would invite a second approval); v_qc_schedule_stale flags the loan.
+    if (table === "loans" && writtenId) {
+      await syncLoanSchedule(supabase, writtenId).catch((e) => console.error("[approveChange] schedule sync", e));
     }
 
     await supabase

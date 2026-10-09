@@ -18,6 +18,7 @@ export const SECTION_TABS = {
   projects: [
     { href: "/projects", label: el.tabs.projectsAll },
     { href: "/projects/properties", label: el.tabs.properties },
+    { href: "/projects/deals", label: el.tabs.deals },
   ],
   reports: [
     { href: "/reports/cash", label: el.tabs.cash },

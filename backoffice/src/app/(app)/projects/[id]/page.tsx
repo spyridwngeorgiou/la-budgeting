@@ -6,7 +6,9 @@ import { el } from "@/lib/i18n/el";
 import { Badge, Card, Button, Select, AiSpark, Term } from "@/components/ui";
 import { OnePagerSection, OnePagerRow, StatusNotes, type ProjectNote } from "@/components/onepager";
 import { computeLeaseSchedule } from "@/lib/finance/lease";
-import { computeLoanSchedule } from "@/lib/finance/loan";
+import { computeLoansSchedule } from "@/lib/finance/loan";
+import { loanInputFromRow } from "@/lib/finance/scheduleRows";
+import { ActionForm } from "@/components/ActionForm";
 import { computeScenarioResult } from "@/lib/finance/scenarioResult";
 import { xirr } from "@/lib/finance/xirr";
 import { aiEnabled } from "@/lib/ai/client";
@@ -115,7 +117,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     supabase
       .from("loans")
       .select(
-        "id, label, principal, interest_rate, term_years, grace_years, first_amortisation_month, state, notes, loan_drawdowns(scheduled_month, amount)",
+        "id, label, principal, interest_rate, term_years, grace_years, first_amortisation_month, state, notes, loan_drawdowns(scheduled_month, amount, actual_date, actual_amount)",
       )
       .eq("project_id", id),
     getCurrentOrgId(supabase).then((orgId) =>
@@ -187,13 +189,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const firstYearRent = leaseSchedule?.rows[0];
   const opexLines = scenario?.opex_lines ?? [];
 
-  // ΔΑΝΕΙΟ: drawdowns are stored per tranche (loan_drawdowns.loan_id), but
-  // the engine takes one programme-level schedule and splits it pro-rata by
-  // tranche principal itself. Summing them back to programme level and
-  // letting it re-split is simpler than bypassing that logic, and is exact
-  // here because both tranches carry equal principal (so an even split
-  // reproduces exactly what was stored). Computed before the cash flow below
-  // so it can feed straight into it.
+  // ΔΑΝΕΙΟ: each loan runs on its own term, grace and drawdowns
+  // (computeLoansSchedule); the section below shows their sum. The same
+  // per-loan schedules are what saveLoan writes into the ledger.
   // ΚΕΦΑΛΑΙΟ: who actually funded this project, and what has it returned so
   // far. IRR here is deliberately capital-vs-revenue only (contributions
   // out, paid income transactions in) -- NOT the project's full net cash
@@ -217,32 +215,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       : null;
 
   const loanRows = loans ?? [];
-  const programmeDrawdowns = new Map<string, number>();
-  for (const l of loanRows) {
-    for (const d of l.loan_drawdowns ?? []) {
-      const month = `${String(d.scheduled_month).slice(0, 7)}-01`;
-      programmeDrawdowns.set(month, (programmeDrawdowns.get(month) ?? 0) + Number(d.amount));
-    }
-  }
-  const drawdownMonths = [...programmeDrawdowns.keys()].sort();
-  const loanSchedule =
-    loanRows.length > 0 && drawdownMonths.length > 0
-      ? computeLoanSchedule(
-          loanRows.map((l) => ({
-            id: l.id,
-            label: l.label,
-            principal: Number(l.principal),
-            interestRate: Number(l.interest_rate),
-          })),
-          drawdownMonths.map((month) => ({ month, amount: programmeDrawdowns.get(month)! })),
-          {
-            firstMonth: drawdownMonths[0],
-            termYears: Number(loanRows[0].term_years),
-            graceYears: Number(loanRows[0].grace_years),
-            openingMonth: project?.opening_date ? `${String(project.opening_date).slice(0, 7)}-01` : undefined,
-          },
-        )
-      : null;
+  const loanSchedule = computeLoansSchedule(loanRows.map(loanInputFromRow), {
+    openingMonth: project?.opening_date ? `${String(project.opening_date).slice(0, 7)}-01` : undefined,
+  });
 
   // Projects with a room-type revenue grid (Q003) source ΛΕΙΤΟΥΡΓΙΑ and
   // ΤΑΜΕΙΑΚΗ ΡΟΗ from the same computeProjectCashflow run, so every figure on
@@ -478,13 +453,18 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                       first_amortisation_month: l.first_amortisation_month,
                       state: l.state,
                       notes: l.notes,
+                      drawdowns: (l.loan_drawdowns ?? []).map((d) => ({
+                        scheduled_month: d.scheduled_month,
+                        amount: Number(d.actual_amount ?? d.amount),
+                        done: d.actual_date != null,
+                      })),
                     }}
                   />
-                  <form action={deleteLoan.bind(null, id, l.id)}>
+                  <ActionForm action={deleteLoan.bind(null, id, l.id)}>
                     <Button type="submit" variant="danger" className="!px-2 !py-1 text-xs">
                       Διαγραφή
                     </Button>
-                  </form>
+                  </ActionForm>
                 </div>
               </div>
             ))}

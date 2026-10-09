@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/format";
 import { Badge, Button } from "@/components/ui";
 import { computeLeaseSchedule } from "@/lib/finance/lease";
-import { computeLoanSchedule } from "@/lib/finance/loan";
+import { computeLoansSchedule } from "@/lib/finance/loan";
+import { loanInputFromRow } from "@/lib/finance/scheduleRows";
 import { computeScenarioResult } from "@/lib/finance/scenarioResult";
 
 // Side-by-side view of every scenario a project has, sharing the exact same
@@ -29,7 +30,9 @@ export default async function ProjectComparePage({ params }: { params: Promise<{
       .maybeSingle(),
     supabase
       .from("loans")
-      .select("id, label, principal, interest_rate, term_years, grace_years, loan_drawdowns(scheduled_month, amount)")
+      .select(
+        "id, label, principal, interest_rate, term_years, grace_years, first_amortisation_month, state, loan_drawdowns(scheduled_month, amount, actual_date, actual_amount)",
+      )
       .eq("project_id", id),
     supabase
       .from("project_scenarios")
@@ -65,28 +68,10 @@ export default async function ProjectComparePage({ params }: { params: Promise<{
         )
       : null;
 
-  const loanRows = loans ?? [];
-  const programmeDrawdowns = new Map<string, number>();
-  for (const l of loanRows) {
-    for (const d of l.loan_drawdowns ?? []) {
-      const month = `${String(d.scheduled_month).slice(0, 7)}-01`;
-      programmeDrawdowns.set(month, (programmeDrawdowns.get(month) ?? 0) + Number(d.amount));
-    }
-  }
-  const drawdownMonths = [...programmeDrawdowns.keys()].sort();
-  const loanSchedule =
-    loanRows.length > 0 && drawdownMonths.length > 0
-      ? computeLoanSchedule(
-          loanRows.map((l) => ({ id: l.id, label: l.label, principal: Number(l.principal), interestRate: Number(l.interest_rate) })),
-          drawdownMonths.map((month) => ({ month, amount: programmeDrawdowns.get(month)! })),
-          {
-            firstMonth: drawdownMonths[0],
-            termYears: Number(loanRows[0].term_years),
-            graceYears: Number(loanRows[0].grace_years),
-            openingMonth: project.opening_date ? `${String(project.opening_date).slice(0, 7)}-01` : undefined,
-          },
-        )
-      : null;
+  // Each loan on its own terms and drawdowns (loan.ts computeLoansSchedule).
+  const loanSchedule = computeLoansSchedule((loans ?? []).map(loanInputFromRow), {
+    openingMonth: project.opening_date ? `${String(project.opening_date).slice(0, 7)}-01` : undefined,
+  });
 
   const ctx = {
     leaseSchedule,

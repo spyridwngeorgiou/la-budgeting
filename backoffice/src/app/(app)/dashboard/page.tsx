@@ -7,7 +7,7 @@ import { aiEnabled } from "@/lib/ai/client";
 import { DashboardSummary } from "./DashboardSummary";
 import { DueDatesCalendar } from "./DueDatesCalendar";
 import { monthGridRange } from "@/lib/planner/calendar";
-import { monthKeyOf, todayAthens } from "@/lib/dates";
+import { monthKeyOf, monthLabel, todayAthens } from "@/lib/dates";
 
 // Κέντρο Ελέγχου: liquidity per account, project portfolio, VAT position,
 // what's due soon -- the same shape as the workbook's Control Center sheet.
@@ -48,6 +48,8 @@ export default async function DashboardPage() {
     { count: missingProjectOrAccount },
     { data: pendingDraftRows, count: pendingDrafts },
     { count: pendingChanges },
+    { data: liquidity },
+    { data: forecast },
   ] = await Promise.all([
     supabase.from("v_account_balances").select("*").eq("org_id", orgId).order("owner_scope"),
     supabase.from("v_project_rollup").select("*").eq("org_id", orgId).order("code"),
@@ -77,14 +79,17 @@ export default async function DashboardPage() {
     supabase.from("v_qc_missing_project_or_account").select("transaction_id", { count: "exact", head: true }).eq("org_id", orgId),
     supabase.from("transaction_drafts").select("id", { count: "exact" }).eq("org_id", orgId).eq("status", "pending").order("created_at"),
     supabase.from("agent_changes").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("status", "pending"),
+    // Liquid cash (v_liquidity, 0066) and the six-month runway from the same
+    // cash_forecast() /reports/cash shows -- never re-derived here.
+    supabase.from("v_liquidity").select("owner_scope, balance").eq("org_id", orgId),
+    supabase.rpc("cash_forecast", { p_org: orgId, p_months: 6 }),
   ]);
 
   const noBudget = new Set((withoutBudget ?? []).map((r) => r.project_id));
 
-  const liquidTotal = (accounts ?? []).reduce(
-    (sum, a) => sum + Number(a.current_balance ?? 0),
-    0,
-  );
+  const liquidTotal = (liquidity ?? []).reduce((sum, l) => sum + Number(l.balance ?? 0), 0);
+  const forecastEnd = forecast?.[forecast.length - 1];
+  const forecastBelow = (forecast ?? []).find((m) => m.below_buffer);
   // "Πληρωτέο"/"Πιστωτικό" only make sense as of the latest period (the
   // running balance already carries every prior period forward -- that IS
   // the current owed/credit total, summing it across periods would double
@@ -191,6 +196,10 @@ export default async function DashboardPage() {
       label: `${(uninvoiced ?? []).length} δαπάνες χωρίς παραστατικό — ~${formatMoney(uninvoicedLost)} φόρος & ΦΠΑ που χάνονται`,
       href: "/reports/quality",
     },
+    forecastBelow && {
+      label: `Η πρόβλεψη ταμείου πέφτει κάτω από το απόθεμα ασφαλείας ${monthLabel(monthKeyOf(forecastBelow.month))}`,
+      href: "/reports/cash",
+    },
     unfiledVatPeriods.length > 0 && {
       label: `${unfiledVatPeriods.length} περίοδ${unfiledVatPeriods.length === 1 ? "ος ΦΠΑ" : "οι ΦΠΑ"} χωρίς υποβολή`,
       href: "/reports/vat",
@@ -248,7 +257,21 @@ export default async function DashboardPage() {
             <div className="text-xs text-white/70">Σύνολο Ρευστών</div>
             <div className="font-mono text-lg">{formatMoney(liquidTotal)}</div>
           </div>
+          {forecastEnd && (
+            <Link
+              href="/reports/cash?months=6"
+              className="rounded-lg border border-line p-3 transition-colors hover:border-line-strong hover:bg-surface"
+            >
+              <div className="text-xs text-ink-muted">Πρόβλεψη σε 6 μήνες ({monthLabel(monthKeyOf(forecastEnd.month))})</div>
+              <div className={`font-mono text-lg ${forecastEnd.below_buffer ? "text-red-ink" : ""}`}>
+                {formatMoney(forecastEnd.closing_balance)}
+              </div>
+            </Link>
+          )}
         </div>
+        <p className="mt-1 text-xs text-ink-faint">
+          Το σύνολο μετρά μόνο ρευστούς λογαριασμούς· χρυσός και crypto εμφανίζονται στην Καθαρή θέση.
+        </p>
       </section>
 
       {dueDates && dueDates.length > 0 && (

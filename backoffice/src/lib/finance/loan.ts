@@ -129,11 +129,15 @@ export function computeLoanSchedule(
 
       let principal = 0;
       if (phase === "amortisation") {
-        if (pmtCentsFrozen === null) {
+        if (pmtCentsFrozen === null || drawdown > 0) {
           // Frozen once, on the balance as it stands at the end of grace
           // (i.e. including this first amortisation month's own drawdown,
           // matching the workbook's INDEX(...,grace*12+1) reference point).
-          pmtCentsFrozen = pmtCents(openingWithDrawdown, monthlyRate, termMonths - graceMonths);
+          // A drawdown that arrives after amortisation has started
+          // re-annuitises the new balance over the months left; before, the
+          // old instalment kept running and the whole late drawdown was
+          // dumped into the final month as "rounding residual".
+          pmtCentsFrozen = pmtCents(openingWithDrawdown, monthlyRate, termMonths - k + 1);
           pmtByTranche[tranche.id] = fromCents(pmtCentsFrozen);
         }
         principal = Math.min(openingWithDrawdown, Math.max(0, pmtCentsFrozen - interest));
@@ -218,4 +222,112 @@ export function computeLoanSchedule(
       residualAtMaturity: Math.round(residualAtMaturity * 100) / 100,
     },
   };
+}
+
+// ── Several loans, each on its own terms ─────────────────────────────────────
+// computeLoanSchedule() models ONE programme: tranches share the term, the
+// grace period and the drawdown calendar, and every drawdown is split across
+// them pro-rata. Right for one facility drawn in parts; wrong for a project
+// carrying separate loans -- the project page used to feed it every loan's
+// drawdowns summed together plus the FIRST loan's term and grace, so a
+// 10-year loan next to a 15-year one was amortised over 15, and each loan
+// received a share of the other's drawdowns. This runs each loan on its own
+// drawdowns and terms, then sums by calendar month.
+
+export interface LoanInput {
+  id: string;
+  label: string;
+  principal: number;
+  interestRate: number;
+  termYears: number;
+  graceYears: number;
+  // When set, amortisation starts this month; grace is the months before it.
+  firstAmortisationMonth?: string | null;
+  drawdowns: LoanDrawdown[];
+}
+
+export interface LoansScheduleResult extends LoanScheduleResult {
+  byLoan: Record<string, LoanScheduleResult>;
+}
+
+function monthIndexOf(month: string): number {
+  const [y, m] = month.split("-").map(Number);
+  return y * 12 + (m - 1);
+}
+
+// One loan's schedule, starting at its first drawdown; null when nothing is
+// (planned to be) drawn yet.
+export function computeSingleLoanSchedule(loan: LoanInput, openingMonth?: string): LoanScheduleResult | null {
+  const drawdowns = loan.drawdowns
+    .filter((d) => d.amount > 0)
+    .map((d) => ({ month: firstOfMonth(monthKeyOf(d.month)), amount: d.amount }));
+  if (drawdowns.length === 0 || loan.termYears <= 0) return null;
+  const firstMonth = drawdowns.map((d) => d.month).sort()[0];
+  let graceYears = loan.graceYears;
+  if (loan.firstAmortisationMonth) {
+    const graceMonths = Math.max(0, monthIndexOf(loan.firstAmortisationMonth) - monthIndexOf(firstMonth));
+    graceYears = graceMonths / 12;
+  }
+  return computeLoanSchedule(
+    [{ id: loan.id, label: loan.label, principal: loan.principal, interestRate: loan.interestRate }],
+    drawdowns,
+    { firstMonth, termYears: loan.termYears, graceYears, openingMonth },
+  );
+}
+
+export function computeLoansSchedule(
+  loans: LoanInput[],
+  opts: { openingMonth?: string } = {},
+): LoansScheduleResult | null {
+  const byLoan: Record<string, LoanScheduleResult> = {};
+  for (const loan of loans) {
+    const schedule = computeSingleLoanSchedule(loan, opts.openingMonth);
+    if (schedule) byLoan[loan.id] = schedule;
+  }
+  const schedules = Object.values(byLoan);
+  if (schedules.length === 0) return null;
+
+  const rows = schedules.flatMap((s) => s.rows);
+  const firstIdx = Math.min(...rows.map((r) => monthIndexOf(r.month)));
+  const combinedMap = new Map<string, CombinedMonthRow>();
+  for (const s of schedules) {
+    for (const r of s.combined) {
+      const existing = combinedMap.get(r.month);
+      if (existing) {
+        existing.interest = round2(existing.interest + r.interest);
+        existing.principal = round2(existing.principal + r.principal);
+        existing.payment = round2(existing.payment + r.payment);
+        existing.closingBalance = round2(existing.closingBalance + r.closingBalance);
+        if (r.phase === "amortisation") existing.phase = "amortisation";
+      } else {
+        combinedMap.set(r.month, { ...r, monthIndex: monthIndexOf(r.month) - firstIdx + 1 });
+      }
+    }
+  }
+  const combined = [...combinedMap.values()].sort((a, b) => a.monthIndex - b.monthIndex);
+
+  const sum = (pick: (t: LoanScheduleResult["totals"]) => number) =>
+    round2(schedules.reduce((acc, s) => acc + pick(s.totals), 0));
+  return {
+    rows,
+    combined,
+    pmtByTranche: Object.assign({}, ...schedules.map((s) => s.pmtByTranche)),
+    byLoan,
+    totals: {
+      totalDrawn: sum((t) => t.totalDrawn),
+      totalInterest: sum((t) => t.totalInterest),
+      totalPrincipal: sum((t) => t.totalPrincipal),
+      totalCost: sum((t) => t.totalCost),
+      graceInterest: sum((t) => t.graceInterest),
+      graceInterestPreOpening: sum((t) => t.graceInterestPreOpening),
+      graceInterestPostOpening: sum((t) => t.graceInterestPostOpening),
+      monthlyInstalment: sum((t) => t.monthlyInstalment),
+      annualDebtService: sum((t) => t.annualDebtService),
+      residualAtMaturity: sum((t) => t.residualAtMaturity),
+    },
+  };
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
 }

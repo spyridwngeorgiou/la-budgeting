@@ -4,7 +4,7 @@ import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, currentMonthKey, firstOfMonth, todayAthens } from "@/lib/dates";
 
-// Seven curated, read-only, parameterized tools -- deliberately NOT a
+// Curated, read-only, parameterized tools -- deliberately NOT a
 // model-written-SQL tool. Greek VAT/withholding logic belongs in one tested
 // place (the SQL views), and every tool here executes through the caller's
 // RLS-scoped client, so authorization is a database property, not a prompt
@@ -239,21 +239,55 @@ export function buildAssistantTools(supabase: SupabaseClient, orgId: string) {
     },
   });
 
+  // Both read only cash_forecast() / cash_forecast_items() (0066): the same
+  // numbers /reports/cash shows, never re-computed here.
+  const SCENARIO = z
+    .enum(["base", "optimistic", "pessimistic"])
+    .default("base")
+    .describe("base = σταθμισμένα με πιθανότητα, optimistic = όλα τα αναμενόμενα έσοδα, pessimistic = μόνο βέβαια έσοδα");
+  const OWNER_SCOPE = z.enum(["corporate", "personal"]).optional().describe("Παράλειψη = εταιρικά και προσωπικά");
+
   const cashflow_forecast = betaZodTool({
     name: "cashflow_forecast",
-    description: "Μηνιαία πρόβλεψη ταμείου (εισροές/εκροές πληρωμένων κινήσεων) για τους επόμενους μήνες.",
-    inputSchema: z.object({ months_ahead: z.number().int().min(1).max(24).default(6) }),
-    run: async ({ months_ahead }) => {
-      const from = firstOfMonth(currentMonthKey());
-      const { data, error } = await supabase
-        .from("v_cashflow_monthly")
-        .select("*")
-        .eq("org_id", orgId)
-        .gte("month", from)
-        .order("month")
-        .limit(months_ahead * 3); // *3: one row per owner_scope per month
+    description:
+      "Πρόβλεψη ταμείου ανά μήνα από τον τρέχοντα: υπόλοιπο ανοίγματος/κλεισίματος, εισροές, εκροές, και αν πέφτει κάτω από το απόθεμα ασφαλείας. Περιλαμβάνει εκκρεμείς/προγραμματισμένες κινήσεις, δόσεις, δάνεια, μισθώματα, ΦΠΑ, αναμενόμενα έσοδα και μεσιτικές συμφωνίες. Σύνδεσμος για τον χρήστη: /reports/cash",
+    inputSchema: z.object({
+      months_ahead: z.number().int().min(1).max(36).default(6),
+      scenario: SCENARIO,
+      scope: OWNER_SCOPE,
+    }),
+    run: async ({ months_ahead, scenario, scope }) => {
+      const { data, error } = await supabase.rpc("cash_forecast", {
+        p_org: orgId,
+        p_months: months_ahead,
+        p_scenario: scenario,
+        p_scope: scope,
+      });
       if (error) return JSON.stringify({ error: error.message });
-      return JSON.stringify({ months: data ?? [] });
+      return JSON.stringify({ scenario, scope: scope ?? "all", link: "/reports/cash", months: data ?? [] });
+    },
+  });
+
+  const cash_forecast_items = betaZodTool({
+    name: "cash_forecast_items",
+    description:
+      "Από τι αποτελείται η πρόβλεψη ταμείου ενός μήνα: κάθε αναμενόμενη εισροή/εκροή με πηγή (open, installment, loan, lease, drawdown, liability, expected, deal, vat), ποσό, πιθανότητα και σταθμισμένο ποσό. Χρησιμοποιήστε το μετά το cashflow_forecast για να εξηγήσετε έναν μήνα.",
+    inputSchema: z.object({
+      month: z.string().regex(/^\d{4}-\d{2}$/).optional().describe("YYYY-MM· παράλειψη = τρέχων μήνας"),
+      scenario: SCENARIO,
+      scope: OWNER_SCOPE,
+    }),
+    run: async ({ month, scenario, scope }) => {
+      const { data, error } = await supabase.rpc("cash_forecast_items", {
+        p_org: orgId,
+        p_month: firstOfMonth(month ?? currentMonthKey()),
+        p_scenario: scenario,
+        p_scope: scope,
+      });
+      if (error) return JSON.stringify({ error: error.message });
+      const items = (data ?? []) as { item_key: string; ref_id: string }[];
+      collect(items.filter((i) => i.item_key.startsWith("tx:")).map((i) => i.ref_id));
+      return JSON.stringify({ month: month ?? currentMonthKey(), scenario, items });
     },
   });
 
@@ -266,6 +300,7 @@ export function buildAssistantTools(supabase: SupabaseClient, orgId: string) {
       project_pnl,
       outstanding,
       cashflow_forecast,
+      cash_forecast_items,
     ],
     collectedIds,
   };
