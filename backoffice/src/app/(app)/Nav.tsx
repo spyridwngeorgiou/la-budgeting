@@ -21,6 +21,7 @@ import { OrgSwitcher } from "./OrgSwitcher";
 const NAV_ITEMS: { href: string; label: string; ai?: boolean }[] = [
   { href: "/dashboard", label: el.nav.dashboard },
   { href: "/transactions", label: el.nav.transactions },
+  { href: "/inbox", label: el.nav.inbox },
   { href: "/projects", label: el.nav.projects },
   { href: "/properties", label: el.nav.properties },
   { href: "/analysis", label: el.nav.analysis },

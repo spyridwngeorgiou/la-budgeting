@@ -4,6 +4,7 @@ export const el = {
   nav: {
     dashboard: "Κέντρο Ελέγχου",
     transactions: "Κινήσεις",
+    inbox: "Εισερχόμενα",
     projects: "Έργα",
     properties: "Ακίνητα",
     contacts: "Επαφές",
@@ -129,7 +130,6 @@ export const el = {
     scopeValues: { business: "Επιχειρηματικό", personal: "Προσωπικό" },
     commitFailedRows: "γραμμή/ές δεν καταχωρήθηκαν — διορθώστε και ξαναπατήστε «Οριστικοποίηση»:",
     row: "Γραμμή",
-    inbox: "Εισερχόμενα",
     decision: {
       pending: "Χωρίς απόφαση",
       create: "Νέα κίνηση",
