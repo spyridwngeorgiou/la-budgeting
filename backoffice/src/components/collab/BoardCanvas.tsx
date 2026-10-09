@@ -289,7 +289,7 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
   );
 
   // ---- sync -------------------------------------------------------------
-  const { status, peers, handleChange, handlePointer } = useBoardSync({
+  const { status, peers, peerPointer, handleChange, handlePointer } = useBoardSync({
     boardId,
     canEdit,
     me,
@@ -622,12 +622,13 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
                 className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-surface text-xs font-semibold text-white"
                 style={{ background: p.color }}
                 onClick={() => {
-                  if (!api || !p.pointer) return;
+                  const pointer = peerPointer(p.userId);
+                  if (!api || !pointer) return;
                   const s = api.getAppState();
                   api.updateScene({
                     appState: {
-                      scrollX: s.width / 2 / s.zoom.value - p.pointer.x,
-                      scrollY: s.height / 2 / s.zoom.value - p.pointer.y,
+                      scrollX: s.width / 2 / s.zoom.value - pointer.x,
+                      scrollY: s.height / 2 / s.zoom.value - pointer.y,
                     },
                   });
                 }}

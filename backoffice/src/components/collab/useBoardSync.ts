@@ -29,11 +29,13 @@ import type { Json } from "@/lib/db/types";
 export type SyncStatus = "connecting" | "live" | "saving" | "saved" | "offline" | "error";
 
 // Someone else on the board right now, for «Πού είναι οι άλλοι».
+// Pointers move many times a second, so they are kept out of React state
+// (peerPointer() reads the latest); `peers` only changes when someone
+// arrives or leaves.
 export interface Peer {
   userId: string;
   name: string;
   color: string;
-  pointer?: { x: number; y: number };
 }
 
 export type CommentEvent = {
@@ -108,6 +110,8 @@ export function useBoardSync({
   const [status, setStatus] = useState<SyncStatus>("connecting");
   const [peers, setPeers] = useState<Peer[]>([]);
   const peerCount = peers.length;
+  const pointersRef = useRef(new Map<string, { x: number; y: number }>());
+  const peerPointer = useCallback((userId: string) => pointersRef.current.get(userId) ?? null, []);
 
   // Last version we know the rest of the room has (from the initial load,
   // a remote delta, or our own broadcast). An element whose version is
@@ -286,14 +290,12 @@ export function useBoardSync({
       const byUser = new Map<string, Peer>();
       for (const c of collaborators.values()) {
         if (!c.id) continue;
-        byUser.set(c.id, {
-          userId: c.id,
-          name: c.username ?? "",
-          color: c.color?.stroke ?? "#868e96",
-          pointer: c.pointer ? { x: c.pointer.x, y: c.pointer.y } : undefined,
-        });
+        byUser.set(c.id, { userId: c.id, name: c.username ?? "", color: c.color?.stroke ?? "#868e96" });
+        if (c.pointer) pointersRef.current.set(c.id, { x: c.pointer.x, y: c.pointer.y });
       }
-      setPeers([...byUser.values()]);
+      const next = [...byUser.values()];
+      const signature = (list: Peer[]) => list.map((p) => `${p.userId}:${p.name}`).join("|");
+      setPeers((prev) => (signature(prev) === signature(next) ? prev : next));
       a.updateScene({ collaborators });
     };
 
@@ -366,5 +368,5 @@ export function useBoardSync({
     };
   }, [supabase, boardId, presenceKey, pending, applyRemote, trackPresence, reloadFromDatabase, save]);
 
-  return { status, peerCount, peers, handleChange, handlePointer, colorFor };
+  return { status, peerCount, peers, peerPointer, handleChange, handlePointer, colorFor };
 }

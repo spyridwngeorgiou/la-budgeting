@@ -186,7 +186,6 @@ export const el = {
       milestones: "Ορόσημα",
       tasks: "Εργασίες",
       undated: "Χωρίς ημερομηνίες",
-      today: "Σήμερα",
       empty: "Δεν υπάρχουν ακόμα φάσεις, ορόσημα ή εργασίες με ημερομηνίες.",
     },
     calendar: {
@@ -438,12 +437,8 @@ export const el = {
       delete: "Διαγραφή",
       confirmDelete: "Να διαγραφεί το μήνυμα; Δεν αναιρείται.",
       askAssistant: "Ρώτα τον βοηθό",
-      handedToAssistant: "Η ερώτηση στάλθηκε στον βοηθό.",
-      assistantOnBoard: "Ο βοηθός απαντά μέσα σε έναν πίνακα. Ανοίξτε έναν πίνακα και πατήστε «Συζήτηση → Βοηθός».",
       fromBoard: "από τον πίνακα",
       sendFailed: "Το μήνυμα δεν στάλθηκε. Δοκιμάστε ξανά.",
-      today: "Σήμερα",
-      loadOlder: "Παλαιότερα μηνύματα",
     },
     // Quick-add bar and canvas helpers.
     quick: {
@@ -522,9 +517,7 @@ export const el = {
     },
     presence: {
       online: "Σε σύνδεση τώρα",
-      follow: "Ακολούθησε",
       goTo: "Πήγαινε εκεί που βλέπει",
-      nobody: "Κανείς άλλος αυτή τη στιγμή",
     },
   },
   // Board assistant (Stage 2b): AI inside the shared space, scoped to one
