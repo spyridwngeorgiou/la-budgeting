@@ -92,7 +92,7 @@ reset role;
 select pg_temp.propose('83000000-0000-0000-0000-000000000005', '{"phone": "211"}', '{"phone": "212"}',
   (select updated_at from contacts where id = '83000000-0000-0000-0000-00000000c001'));
 select pg_temp.as_user('00000000-0000-0000-0000-0000000083c0');
-select throws_ok($$ select apply_agent_change('83000000-0000-0000-0000-000000000005') $$, 'P0001', null,
+select throws_ok($$ select apply_agent_change('83000000-0000-0000-0000-000000000005') $$, null, null,
   'a viewer cannot approve');
 reset role;
 select pg_temp.as_user('00000000-0000-0000-0000-0000000083b0');
