@@ -23,3 +23,6 @@ supabase/.temp/
 # Extraction eval inputs and report (real receipts -- never committed)
 eval-receipts/*
 !eval-receipts/README.md
+
+# JSON backups from scripts/backup-json.mjs (real financial data)
+backups/

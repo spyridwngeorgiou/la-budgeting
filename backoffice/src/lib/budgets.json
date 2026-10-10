@@ -1,0 +1,13 @@
+{
+  "$comment": "Size budgets checked by budgets.test.ts. appPagesMax may only go DOWN (each phase deletes the old pages it replaces; the plan ends at 19). It is 35 = the 34 pages before the redesign + /design. destinationLoc: lines of code under src/features/<destination>/.",
+  "navMax": 5,
+  "appPagesMax": 35,
+  "appPagesTarget": 19,
+  "destinationLoc": {
+    "home": 600,
+    "inbox": 1500,
+    "money": 2200,
+    "projects": 2500,
+    "ask": 700
+  }
+}

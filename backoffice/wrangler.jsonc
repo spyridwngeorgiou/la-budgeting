@@ -10,7 +10,9 @@
   },
   "vars": {
     "AI_ENABLED": "true",
-    "INGEST_UNIFIED": "false"
+    "INGEST_UNIFIED": "false",
+    "UI_DEFAULT": "v1",
+    "COLLAB_UI_DEFAULT": "v1"
   },
   "observability": {
     "enabled": true
@@ -20,7 +22,9 @@
       "name": "kansha-back-office-staging",
       "vars": {
         "AI_ENABLED": "true",
-        "INGEST_UNIFIED": "true"
+        "INGEST_UNIFIED": "true",
+        "UI_DEFAULT": "v1",
+        "COLLAB_UI_DEFAULT": "v1"
       },
       "observability": {
         "enabled": true

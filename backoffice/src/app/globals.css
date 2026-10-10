@@ -1,49 +1,213 @@
 @import "tailwindcss";
 
 /*
- * Kansha brand tokens, taken directly from the company's own deck
- * (655d2fb7-...pdf): a sage-green cover accent (#D4DDC3), black wordmark,
- * and content pages in a cool off-white (#F0F2F2) with a muted slate rule
- * (#858C8E). Sage is used sparingly here -- as an accent for active/selected
- * states and positive badges -- not as a wall-to-wall background; the deck
- * itself only uses it as a hero moment on the cover, and reserves plain
- * black-on-light for everything functional.
+ * Kansha design tokens -- the P15 Residences «Light Blue» system
+ * (la_proposals/template: styles/base.css, themes/light-blue.json).
+ *
+ *   One canvas (#eef2f5), no cards, no shadows, square corners everywhere
+ *   (circles only for status dots and avatars), 1px hairlines, one navy
+ *   rule under each page title. Navy is the only solid fill: the glance
+ *   panel, the primary button, the active chip, the toast. Inter only;
+ *   headings 400, big numbers Light 300 tabular, eyebrows 12/500 uppercase.
+ *
+ * The same values live in src/components/ui/tokens.ts (for SVG charts and
+ * the contrast test); tokens.test.ts fails if the two drift apart.
+ *
+ * `static`: every variable is emitted on :root even when no utility uses
+ * it, so plain CSS (and the legacy aliases below) can always var() them.
  */
-@theme {
-  --color-bg: #f0f2f2;
-  --color-surface: #ffffff;
-  --color-ink: #16181a;
-  --color-ink-muted: #5b6265;
-  --color-ink-faint: #8a9092;
-  --color-line: #dcdfde;
-  --color-line-strong: #c3c8c7;
-  --color-sage: #d4ddc3;
-  --color-sage-strong: #b9c79e;
-  --color-sage-ink: #3a4430;
-  --color-amber-bg: #fdf1de;
-  --color-amber-ink: #92600a;
-  --color-red-bg: #fbe7e5;
-  --color-red-ink: #a5341f;
-  /* A single, consistent accent for every AI-powered element (chat, Kansha
-     Entry, AI-generated summaries/suggestions) -- violet reads as "AI" in
-     most apps today and, unlike sage (already "positive/financial") or
-     amber (already "needs review"), it doesn't collide with an existing
-     meaning elsewhere in this app. Used sparingly, the same way sage is. */
-  --color-ai-bg: #f2effb;
-  --color-ai-border: #c9bdf0;
-  --color-ai-ink: #5b3fa6;
-  --color-ai-strong: #7c5cd6;
+@theme static {
+  /* Surfaces */
+  --color-canvas: #eef2f5;
+  --color-raised: #f7f9fb;
+  --color-field: #ffffff;
+  --color-hover: #e6ecf1;
+  --color-frame: #dfe6ec;
+
+  /* Text */
+  --color-ink: #1c2b3a;
+  --color-text: #34465a;
+  --color-muted: #566a7e;
+
+  /* Lines */
+  --color-hairline: #c9d4de;
+  --color-chip-border: #9fb2c4;
+  --color-field-border: #6e8196; /* 3:1 against field and canvas */
+  --color-rule: #274c6e;
+
+  /* Brand */
+  --color-navy: #274c6e;
+  --color-navy-strong: #1f3d59;
+  --color-accent: #6d8aa6; /* graphics and figures >= 24px only */
+  --color-accent-ink: #4f6d8a;
+
+  /* The navy panel, and what sits on it */
+  --color-panel: #274c6e;
+  --color-panel-ink: #f2f5f8;
+  --color-panel-muted: #c6d3df;
+  --color-panel-hairline: rgba(242, 245, 248, 0.24);
+
+  /* Semantic -- colour only for exceptions */
+  --color-positive: #2f6650;
+  --color-positive-tint: #e3eee8;
+  --color-negative: #9b3a32;
+  --color-negative-tint: #f6e5e3;
+  --color-warning: #7a5a16;
+  --color-warning-tint: #f5ecd9;
+  --color-ai: #55508a; /* symbol and label only */
+  --color-ai-tint: #ebeaf3;
+
+  /*
+   * Legacy aliases -- the names every existing page uses, pointed at the new
+   * palette so the old pages get the new look today. Removed in Phase 7.
+   * ink-faint failed contrast and now means muted.
+   */
+  --color-bg: #eef2f5;          /* canvas */
+  --color-surface: #f7f9fb;     /* raised */
+  --color-ink-muted: #566a7e;   /* muted */
+  --color-ink-faint: #566a7e;   /* muted (contrast fix) */
+  --color-line: #c9d4de;        /* hairline */
+  --color-line-strong: #9fb2c4; /* chip-border */
+  --color-sage: #e6ecf1;        /* hover */
+  --color-sage-strong: #274c6e; /* navy */
+  --color-sage-ink: #2f6650;    /* positive */
+  --color-amber-bg: #f5ecd9;    /* warning-tint */
+  --color-amber-ink: #7a5a16;   /* warning */
+  --color-red-bg: #f6e5e3;      /* negative-tint */
+  --color-red-ink: #9b3a32;     /* negative */
+  --color-ai-bg: #ebeaf3;       /* ai-tint */
+  --color-ai-border: #c9c6dd;
+  --color-ai-ink: #55508a;      /* ai */
+  --color-ai-strong: #55508a;   /* ai */
+
+  /* Inter only */
+  --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Type scale (size / line-height / weight) */
+  --text-display: 2.5rem;
+  --text-display--line-height: 1.15;
+  --text-display--font-weight: 400;
+  --text-figure: 2.25rem;
+  --text-figure--line-height: 1.1;
+  --text-figure--font-weight: 300;
+  --text-figure-sm: 1.5rem;
+  --text-figure-sm--line-height: 1.2;
+  --text-figure-sm--font-weight: 300;
+  --text-numeral: 1.75rem;
+  --text-numeral--line-height: 1;
+  --text-numeral--font-weight: 300;
+  --text-title: 1.875rem;
+  --text-title--line-height: 1.2;
+  --text-title--font-weight: 400;
+  --text-section: 1.25rem;
+  --text-section--line-height: 1.3;
+  --text-section--font-weight: 400;
+  --text-lead: 1.0625rem;
+  --text-lead--line-height: 1.5;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.5;
+  --text-small: 0.8125rem;
+  --text-small--line-height: 1.45;
+  --text-eyebrow: 0.75rem;
+  --text-eyebrow--line-height: 1.3;
+  --text-eyebrow--font-weight: 500;
+
+  /* Square corners everywhere (rounded-full stays a circle: dots, avatars) */
+  --radius: 0;
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+  --radius-4xl: 0;
+
+  /* No shadows */
+  --shadow: 0 0 #0000;
+  --shadow-2xs: 0 0 #0000;
+  --shadow-xs: 0 0 #0000;
+  --shadow-sm: 0 0 #0000;
+  --shadow-md: 0 0 #0000;
+  --shadow-lg: 0 0 #0000;
+  --shadow-xl: 0 0 #0000;
+  --shadow-2xl: 0 0 #0000;
+  --shadow-inner: 0 0 #0000;
+  --inset-shadow-2xs: 0 0 #0000;
+  --inset-shadow-xs: 0 0 #0000;
+  --inset-shadow-sm: 0 0 #0000;
+  --drop-shadow: 0 0 #0000;
+  --drop-shadow-xs: 0 0 #0000;
+  --drop-shadow-sm: 0 0 #0000;
+  --drop-shadow-md: 0 0 #0000;
+  --drop-shadow-lg: 0 0 #0000;
+  --drop-shadow-xl: 0 0 #0000;
+  --drop-shadow-2xl: 0 0 #0000;
+
+  /* Layout (w-rail, h-topbar, pb-bottombar, w-glance, max-w-drawer ...) */
+  --spacing-rail: 15rem;
+  --spacing-rail-collapsed: 4.5rem;
+  --spacing-topbar: 3.5rem;
+  --spacing-bottombar: 4rem;
+  --spacing-glance: 20rem;
+  --spacing-drawer: 36rem;
 }
 
 :root {
-  --background: var(--color-bg);
+  --background: var(--color-canvas);
   --foreground: var(--color-ink);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
+@layer base {
+  body {
+    background: var(--background);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--color-ink);
+  }
+
+  /* One focus style for everything: a navy outline, square. */
+  :focus-visible {
+    outline: 2px solid var(--color-navy);
+    outline-offset: 2px;
+  }
+
+  dialog::backdrop {
+    background: rgb(28 43 58 / 0.4);
+  }
+}
+
+/* 12px / 500 / uppercase / 0.14em -- section labels, table heads, stat labels. */
+@utility eyebrow {
+  font-size: var(--text-eyebrow);
+  line-height: var(--text-eyebrow--line-height);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Tabular figures for every amount, so columns of numbers line up. */
+@utility num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /*

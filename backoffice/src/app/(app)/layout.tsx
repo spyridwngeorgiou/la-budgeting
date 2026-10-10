@@ -4,6 +4,9 @@ import { listMyOrgs } from "@/lib/supabase/org";
 import { getAccessContext } from "@/lib/supabase/access";
 import { Nav } from "./Nav";
 import { countPendingChanges } from "@/lib/data/pendingChanges";
+import { loadPendingCaptures } from "@/lib/ingest/pendingCaptures";
+import { getUiVersion } from "@/lib/ui/version";
+import { AppShell } from "@/components/shell/AppShell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // The proxy already bounces partners off finance paths; this is the
@@ -14,19 +17,34 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (access.kind === "partner") redirect("/collab");
 
   const supabase = await createClient();
-  const [orgs, pendingChanges] = await Promise.all([
+  const { orgId, role } = access.membership;
+  const version = await getUiVersion("app");
+  // Viewers cannot approve, so no badge for them (the panel is hidden too).
+  const canApprove = role !== "viewer";
+  const [orgs, pendingChanges, pendingCaptures] = await Promise.all([
     listMyOrgs(supabase),
-    // Viewers cannot approve, so no badge for them (the panel is hidden too).
-    access.membership.role === "viewer" ? 0 : countPendingChanges(access.membership.orgId),
+    canApprove ? countPendingChanges(orgId) : 0,
+    // The v2 «Εκκρεμότητες» count also includes AI captures waiting for
+    // review (Phase 2 replaces both with one count from v_approvals).
+    canApprove && version === "v2" ? loadPendingCaptures(supabase, orgId).then((p) => p.count) : 0,
   ]);
 
+  if (version === "v2") {
+    return (
+      <AppShell
+        role={role}
+        orgs={orgs}
+        currentOrgId={orgId}
+        email={access.email}
+        pendingCount={pendingChanges + pendingCaptures}
+      >
+        {children}
+      </AppShell>
+    );
+  }
+
   return (
-    <Nav
-      orgs={orgs}
-      currentOrgId={access.membership.orgId}
-      role={access.membership.role}
-      pendingChanges={pendingChanges}
-    >
+    <Nav orgs={orgs} currentOrgId={orgId} role={role} pendingChanges={pendingChanges}>
       {children}
     </Nav>
   );
