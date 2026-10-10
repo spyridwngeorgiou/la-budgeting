@@ -221,7 +221,6 @@ export const projects = {
   collab: {
     people: "Άτομα",
     activity: "Πρόσφατη δραστηριότητα",
-    partners: "Συνεργάτες",
     noAccess: "Δεν έχετε πρόσβαση στον χώρο συνεργασίας αυτού του έργου.",
   },
   portfolio: {

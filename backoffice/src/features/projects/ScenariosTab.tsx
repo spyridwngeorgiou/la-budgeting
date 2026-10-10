@@ -111,7 +111,9 @@ export async function ScenariosTab({ id, searchParams }: { id: string; searchPar
             rowActions={
               canEdit
                 ? (r) =>
-                    r.scenario.is_base ? null : (
+                    r.scenario.is_base ? (
+                      <p className="max-w-60 px-3 py-2 text-small text-muted">{t.cannotDeleteBase}</p>
+                    ) : (
                       <div className="flex flex-col items-stretch p-1">
                         <ActionButton action={setBaseScenario.bind(null, id, r.scenario.id)}>{t.makeBase}</ActionButton>
                         <ActionButton action={deleteScenario.bind(null, id, r.scenario.id)} variant="danger" confirm={`${projects.finance.delete}: ${r.scenario.name};`}>
