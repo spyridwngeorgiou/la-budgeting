@@ -75,7 +75,7 @@ export interface Destination {
 }
 
 export const NAV_V2: Destination[] = [
-  { key: "today", href: "/dashboard", label: shell.nav.today, mobile: true },
+  { key: "today", href: "/", label: shell.nav.today, also: ["/dashboard"], mobile: true },
   {
     key: "inbox",
     href: "/inbox",

@@ -73,7 +73,9 @@ export default async function DashboardPage() {
       .eq("org_id", orgId)
       .in("status", ["pending", "scheduled"])
       .not("due_date", "is", null)
-      .gte("due_date", grid.start)
+      // No lower bound: a bill overdue since an earlier month must still
+      // count in «ληξιπρόθεσμες» below (the calendar just leaves out days
+      // outside this month). See dueWindow() in src/features/home/model.ts.
       .lte("due_date", grid.end),
     // Filing status per period, same source /reports/vat uses -- lets the worklist
     // flag a past period nobody has marked as filed yet.

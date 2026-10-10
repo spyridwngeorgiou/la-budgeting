@@ -3425,6 +3425,7 @@ export type Database = {
       }
       orgs: {
         Row: {
+          cash_buffer: number | null
           created_at: string
           id: string
           legal_name: string | null
@@ -3434,6 +3435,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cash_buffer?: number | null
           created_at?: string
           id?: string
           legal_name?: string | null
@@ -3443,6 +3445,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cash_buffer?: number | null
           created_at?: string
           id?: string
           legal_name?: string | null
@@ -6707,6 +6710,18 @@ export type Database = {
           },
         ]
       }
+      v_worklist: {
+        Row: {
+          amount: number | null
+          code: string | null
+          count: number | null
+          href: string | null
+          label_key: string | null
+          org_id: string | null
+          tier: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       account_balance_as_of: { Args: { p_account: string; p_date: string }; Returns: number }
@@ -6924,6 +6939,7 @@ export type Database = {
       }
       my_org_ids: { Args: never; Returns: string[] }
       normalize_greek_name: { Args: { p_name: string }; Returns: string }
+      org_cash_buffer: { Args: { p_org: string }; Returns: number }
       planner_can_read: { Args: { p_project: string }; Returns: boolean }
       planner_can_write: { Args: { p_project: string }; Returns: boolean }
       planner_people: {
