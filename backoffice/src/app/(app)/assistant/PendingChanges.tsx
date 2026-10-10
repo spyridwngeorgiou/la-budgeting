@@ -1,33 +1,32 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate } from "@/lib/format";
-import { Badge, Card, Button, AiSpark } from "@/components/ui";
-import { ALLOWLIST, type WritableTable } from "@/lib/ai/writeTools";
-import { approveChange, rejectChange } from "./change-actions";
+import { Badge, AiSpark } from "@/components/ui";
+import { OP_LABEL, STATUS_LABEL, tableLabel, toChangeCard, type ChangeOperation, type ChangeStatus } from "@/lib/ai/changeCards";
 import { el } from "@/lib/i18n/el";
-import { ActionForm } from "@/components/ActionForm";
+import { ChangeCardView } from "./ChangeCardView";
 
-const OP_LABEL: Record<string, string> = {
-  insert: "Νέα εγγραφή",
-  update: "Ενημέρωση",
-  delete: "Διαγραφή",
-};
+const CHANGE_COLUMNS =
+  "id, status, operation, table_name, action, reason, before, after, changed_fields, conflict, untrusted_context, error, result, created_at";
 
-// «Εκκρεμότητες» panel of /assistant (was the /changes page): the AI's
-// proposed writes waiting for a human, plus the recent decisions.
+// «Εκκρεμότητες» panel of /assistant: the AI's proposed writes waiting for
+// a human (pending, or in conflict with a later edit), plus the recent
+// decisions. The same cards also appear inline in the chat.
 export async function PendingChanges() {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
   const [{ data: changes }, { data: history }] = await Promise.all([
-    supabase.from("agent_changes").select("*").eq("org_id", orgId).eq("status", "pending").order("created_at", { ascending: false }),
-    // Audit trail: reviewed_by/reviewed_at already existed in the schema but
-    // were never surfaced anywhere -- once a change was approved/rejected it
-    // simply vanished, with no way to answer "who approved this and when".
     supabase
       .from("agent_changes")
-      .select("id, table_name, operation, status, reviewed_by, reviewed_at")
+      .select(CHANGE_COLUMNS)
       .eq("org_id", orgId)
-      .in("status", ["approved", "rejected"])
+      .in("status", ["pending", "conflict"])
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("agent_changes")
+      .select("id, table_name, action, operation, status, reviewed_by, reviewed_at")
+      .eq("org_id", orgId)
+      .in("status", ["approved", "rejected", "failed"])
       .order("reviewed_at", { ascending: false })
       .limit(20),
   ]);
@@ -48,87 +47,17 @@ export async function PendingChanges() {
         <h2 className="text-base font-semibold">{el.nav.changes}</h2>
       </div>
       <p className="text-sm text-ink-muted">
-        Προτάσεις αλλαγών από το Kansha Operator σε λογαριασμούς, έργα, επαφές και πλάνα δόσεων.
-        Καμία δεν έχει εφαρμοστεί ακόμα -- ελέγξτε το πριν/μετά και εγκρίνετε ή απορρίψτε.
+        Προτάσεις αλλαγών από το Kansha Operator. Καμία δεν έχει εφαρμοστεί ακόμα -- ελέγξτε το πριν/μετά και
+        εγκρίνετε ή απορρίψτε.
       </p>
 
       {(changes ?? []).length === 0 ? (
         <p className="text-sm text-ink-faint">Καμία εκκρεμής πρόταση αυτή τη στιγμή.</p>
       ) : (
         <div className="flex flex-col gap-3">
-          {(changes ?? []).map((c) => {
-            const spec = ALLOWLIST[c.table_name as WritableTable];
-            const before = (c.before as Record<string, unknown> | null) ?? {};
-            const after = (c.after as Record<string, unknown>) ?? {};
-            const fields =
-              c.operation === "delete"
-                ? Object.keys(before)
-                : c.operation === "insert"
-                  ? Object.keys(after)
-                  : [...new Set([...Object.keys(before), ...Object.keys(after)])].filter(
-                      (k) => spec?.editableFields.includes(k) && before[k] !== after[k],
-                    );
-
-            return (
-              <Card key={c.id} className="border-ai-border">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <Badge tone={c.operation === "delete" ? "red" : "ai"}>
-                    {OP_LABEL[c.operation] ?? c.operation}
-                  </Badge>
-                  <span className="text-sm font-medium">{spec?.label ?? c.table_name}</span>
-                  <span className="text-xs text-ink-faint">{formatDate(c.created_at)}</span>
-                </div>
-
-                {c.reason && <p className="mb-2 text-sm text-ink-muted">{c.reason}</p>}
-
-                <div className="mb-3 overflow-x-auto rounded-lg border border-line">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-bg text-ink-muted">
-                      <tr>
-                        <th className="p-1.5">Πεδίο</th>
-                        {c.operation !== "insert" && <th className="p-1.5">Πριν</th>}
-                        {c.operation !== "delete" && <th className="p-1.5">Μετά</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {fields.length === 0 ? (
-                        <tr>
-                          <td className="p-1.5 text-ink-faint" colSpan={3}>
-                            Καμία διαφορά σε επιτρεπτά πεδία.
-                          </td>
-                        </tr>
-                      ) : (
-                        fields.map((f) => (
-                          <tr key={f} className="border-t border-line">
-                            <td className="p-1.5 font-medium">{f}</td>
-                            {c.operation !== "insert" && (
-                              <td className="p-1.5 font-mono text-red-ink">{String(before[f] ?? "—")}</td>
-                            )}
-                            {c.operation !== "delete" && (
-                              <td className="p-1.5 font-mono text-sage-ink">{String(after[f] ?? "—")}</td>
-                            )}
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <ActionForm action={rejectChange.bind(null, c.id)}>
-                    <Button type="submit" variant="secondary">
-                      Απόρριψη
-                    </Button>
-                  </ActionForm>
-                  <ActionForm action={approveChange.bind(null, c.id)}>
-                    <Button type="submit" variant={c.operation === "delete" ? "danger" : "primary"}>
-                      Έγκριση
-                    </Button>
-                  </ActionForm>
-                </div>
-              </Card>
-            );
-          })}
+          {(changes ?? []).map((c) => (
+            <ChangeCardView key={c.id} initial={toChangeCard(c)} canReview />
+          ))}
         </div>
       )}
 
@@ -149,11 +78,11 @@ export async function PendingChanges() {
               <tbody>
                 {history.map((h) => (
                   <tr key={h.id} className="border-t border-line">
-                    <td className="p-1.5">{ALLOWLIST[h.table_name as WritableTable]?.label ?? h.table_name}</td>
-                    <td className="p-1.5">{OP_LABEL[h.operation] ?? h.operation}</td>
+                    <td className="p-1.5">{tableLabel(h.table_name, h.action)}</td>
+                    <td className="p-1.5">{OP_LABEL[h.operation as ChangeOperation] ?? h.operation}</td>
                     <td className="p-1.5">
                       <Badge tone={h.status === "approved" ? "green" : "red"}>
-                        {h.status === "approved" ? "Εγκρίθηκε" : "Απορρίφθηκε"}
+                        {STATUS_LABEL[h.status as ChangeStatus] ?? h.status}
                       </Badge>
                     </td>
                     <td className="p-1.5">{reviewerName(h.reviewed_by)}</td>

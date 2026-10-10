@@ -10,6 +10,6 @@ export const countPendingChanges = cache(async (orgId: string): Promise<number> 
     .from("agent_changes")
     .select("id", { count: "exact", head: true })
     .eq("org_id", orgId)
-    .eq("status", "pending");
+    .in("status", ["pending", "conflict"]);
   return count ?? 0;
 });

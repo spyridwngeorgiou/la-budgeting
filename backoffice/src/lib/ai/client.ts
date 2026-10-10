@@ -1,22 +1,31 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { UserError } from "@/lib/actions";
+import { estimateCostCents as estimateUsageCents, type TokenUsage } from "./usage";
+
+export { usageOf } from "./usage";
 
 // Importing "server-only" makes any accidental client-side import of this
 // module a build error, not a leaked API key at runtime.
 export const anthropic = new Anthropic({ maxRetries: 3, timeout: 120_000 });
 
-// Model choice: the claude-api skill's standing instruction is to always use
-// claude-opus-5 unless the user names a different model. The user asked for
-// a hard ~$10 test budget but did not name a cheaper model, so every call
-// here defaults to Opus 5 -- keep an eye on ai_usage and Anthropic Console's
-// own monthly limit (set there, not enforceable from application code) if
-// that's tighter than you'd like once testing starts.
+// Model choice (claude-api skill):
+// - The back-office assistant chat runs on the current flagship,
+//   claude-opus-5-5, with an explicit effort (its default is medium) and
+//   claude-sonnet-5-5 as the fallback if the id is ever retired/renamed.
+//   Refusals are handled server-side with `fallbacks: "default"`.
+// - AI_MODEL stays on claude-opus-5 for document/revenue-plan extraction and
+//   the board assistant until those paths are migrated and re-checked
+//   (Opus 5.5 rejects forced tool_choice and disabled thinking).
+// - Insights and NL tiebreaks are phrasing tasks: the small Haiku model.
+export const CHAT_MODEL = "claude-opus-5-5";
+export const CHAT_MODEL_FALLBACK = "claude-sonnet-5-5";
+export const CHAT_EFFORT = "medium" as const;
 export const AI_MODEL = "claude-opus-5";
-export const AI_MODEL_FAST = "claude-haiku-4-5"; // only where explicitly cheaper is fine: NL entity tiebreaks
+export const AI_MODEL_FAST = "claude-haiku-4-5";
 // If AI_MODEL itself is ever retired/renamed, every call site would 404
 // with no fallback -- this is the one model callers can retry against on a
-// "model not found"-shaped error from the highest-traffic path (chat).
+// "model not found"-shaped error.
 export const AI_MODEL_FALLBACK = "claude-sonnet-5";
 
 export function aiEnabled(): boolean {
@@ -39,34 +48,24 @@ interface UsageLogInput {
   model: string;
   inputTokens: number;
   cacheReadTokens: number;
+  cacheWriteTokens?: number;
   outputTokens: number;
   requestId: string | null;
-  // Wall-clock time for the whole AI call (request to parsed response) --
-  // the capture loop has never run in production, so this is the number
-  // that answers "does this take 8 seconds or 80" once it does.
+  conversationId?: string | null;
+  // Wall-clock time for the AI call (request to parsed response).
   latencyMs?: number;
 }
 
-// Anthropic's own list prices, cents per token -- used only to populate
-// ai_usage.cost_cents for the in-app spend dashboard. Not authoritative
-// billing (that's Anthropic Console); good enough to catch a runaway loop.
-const PRICE_CENTS_PER_MTOK: Record<string, { input: number; output: number }> = {
-  "claude-opus-5": { input: 500, output: 2500 },
-  "claude-haiku-4-5": { input: 100, output: 500 },
-};
-
-export function estimateCostCents(model: string, inputTokens: number, outputTokens: number): number {
-  const price = PRICE_CENTS_PER_MTOK[model] ?? PRICE_CENTS_PER_MTOK["claude-opus-5"];
-  return (inputTokens * price.input + outputTokens * price.output) / 1_000_000;
+// Kept for callers that only know input/output (board assistant).
+export function estimateCostCents(model: string, inputTokens: number | TokenUsage, outputTokens = 0): number {
+  return typeof inputTokens === "number"
+    ? estimateUsageCents(model, { inputTokens, outputTokens })
+    : estimateUsageCents(model, inputTokens);
 }
 
-// Monthly spend ceiling per org, in cents. Previously the only cap was
-// whatever limit was set in the Anthropic Console (account-wide, not
-// per-org, and not enforceable from application code) -- a runaway loop
-// (e.g. the assistant's tool-calling agent hitting its max_iterations
-// repeatedly) could run up real spend before anyone noticed the ai_usage
-// dashboard number. This is a real, in-app guard: checked before every AI
-// call, using the same cost estimate already computed for ai_usage.
+// Monthly spend ceiling per org, in cents. Checked before every AI call;
+// the sum runs in SQL (ai_budget_check, 0084) -- summing rows in JS was cut
+// off at PostgREST's 1000-row page and under-counted busy months.
 const DEFAULT_MONTHLY_BUDGET_CENTS = 10_000; // €100/mo
 
 export function monthlyBudgetCents(orgSettingsValue?: unknown): number {
@@ -76,40 +75,61 @@ export function monthlyBudgetCents(orgSettingsValue?: unknown): number {
   return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : DEFAULT_MONTHLY_BUDGET_CENTS;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function assertWithinAiBudget(supabase: any, orgId: string): Promise<void> {
-  const monthStart = new Date();
-  monthStart.setUTCDate(1);
-  monthStart.setUTCHours(0, 0, 0, 0);
-
-  const [{ data, error }, { data: org }] = await Promise.all([
-    supabase.from("ai_usage").select("cost_cents").eq("org_id", orgId).gte("created_at", monthStart.toISOString()),
-    supabase.from("orgs").select("settings").eq("id", orgId).maybeSingle(),
-  ]);
-  if (error) return; // fail open on a query error -- a budget check must never be the reason AI is unavailable
-
-  const spentCents = (data ?? []).reduce((sum: number, row: { cost_cents: number | null }) => sum + Number(row.cost_cents ?? 0), 0);
-  const capCents = monthlyBudgetCents((org?.settings as Record<string, unknown> | null)?.ai_monthly_budget_cents);
-  if (spentCents >= capCents) {
-    throw new UserError(
-      `Το μηνιαίο όριο δαπάνης AI (${(capCents / 100).toFixed(2)} €) έχει εξαντληθεί. ` +
-        `Δαπανήθηκαν ${(spentCents / 100).toFixed(2)} € αυτόν τον μήνα. Το όριο ρυθμίζεται με τη μεταβλητή περιβάλλοντος AI_MONTHLY_BUDGET_CENTS.`,
-    );
-  }
+export function budgetExceededMessage(capCents: number, spentCents: number): string {
+  return (
+    `Το μηνιαίο όριο δαπάνης AI (${(capCents / 100).toFixed(2)} €) έχει εξαντληθεί. ` +
+    `Δαπανήθηκαν ${(spentCents / 100).toFixed(2)} € αυτόν τον μήνα. Το όριο ρυθμίζεται με τη μεταβλητή περιβάλλοντος AI_MONTHLY_BUDGET_CENTS.`
+  );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function logAiUsage(supabase: any, input: UsageLogInput) {
-  await supabase.from("ai_usage").insert({
-    org_id: input.orgId,
-    feature: input.feature,
-    model: input.model,
-    input_tokens: input.inputTokens,
-    cache_read_tokens: input.cacheReadTokens,
-    output_tokens: input.outputTokens,
-    cost_cents: estimateCostCents(input.model, input.inputTokens, input.outputTokens),
-    user_id: input.userId,
-    request_id: input.requestId,
-    latency_ms: input.latencyMs ?? null,
+export async function aiBudget(supabase: any, orgId: string): Promise<{ spentCents: number; capCents: number } | null> {
+  const { data, error } = await supabase.rpc("ai_budget_check", {
+    p_org: orgId,
+    p_default_monthly_cents: monthlyBudgetCents(),
   });
+  if (error || !data) return null;
+  const d = data as { spent_cents?: unknown; cap_cents?: unknown };
+  return { spentCents: Number(d.spent_cents ?? 0), capCents: Number(d.cap_cents ?? 0) };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function assertWithinAiBudget(supabase: any, orgId: string): Promise<void> {
+  const budget = await aiBudget(supabase, orgId);
+  // Fail open on a query error -- a budget check must never be the reason
+  // AI is unavailable.
+  if (!budget) return;
+  if (budget.capCents > 0 && budget.spentCents >= budget.capCents) {
+    throw new UserError(budgetExceededMessage(budget.capCents, budget.spentCents));
+  }
+}
+
+// One row per model call. Never throws: losing a usage row must not fail
+// the user's request.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function logAiUsage(supabase: any, input: UsageLogInput) {
+  const usage: TokenUsage = {
+    inputTokens: input.inputTokens,
+    outputTokens: input.outputTokens,
+    cacheReadTokens: input.cacheReadTokens,
+    cacheWriteTokens: input.cacheWriteTokens ?? 0,
+  };
+  try {
+    await supabase.from("ai_usage").insert({
+      org_id: input.orgId,
+      feature: input.feature,
+      model: input.model,
+      input_tokens: input.inputTokens,
+      cache_read_tokens: input.cacheReadTokens,
+      cache_write_tokens: input.cacheWriteTokens ?? 0,
+      output_tokens: input.outputTokens,
+      cost_cents: estimateUsageCents(input.model, usage),
+      user_id: input.userId,
+      request_id: input.requestId,
+      conversation_id: input.conversationId ?? null,
+      latency_ms: input.latencyMs ?? null,
+    });
+  } catch (error) {
+    console.error("[ai_usage]", error);
+  }
 }
