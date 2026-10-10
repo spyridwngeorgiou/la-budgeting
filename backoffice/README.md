@@ -49,6 +49,64 @@ business's scale.
 3. **`orgs.own_afm`** — the real company ΑΦΜ, needed before any AADE import
    can determine transaction direction (currently a placeholder).
 
+## Ingest cutover (`INGEST_UNIFIED`, plan Φάση 7)
+
+AADE files, AI photo/text/voice captures and inbound email all stage into
+`ingest_batches`/`ingest_rows` and are reviewed in `/inbox/[batchId]` once
+`INGEST_UNIFIED` is `"true"` (wrangler.jsonc `vars`, per environment; it is
+`"false"` in both until this checklist is done). Migrations 0072/0073 copy
+the old `transaction_drafts` and `aade_*` history in (`legacy_ref`,
+`meta.legacy = true`, never undoable); 0074 keeps a read-only view of it.
+Nothing old is dropped before Phase 8 (0077).
+
+Per environment, staging first, then production:
+
+1. **Backup** (production): JSON export of the database.
+2. **Migrate**: `node scripts/migrate-remote.mjs <ref> --dry-run`, then
+   without `--dry-run`. 0072/0073 run the backfill as part of the migration.
+3. **Check the backfill** (SQL editor) -- every query should return 0:
+
+   ```sql
+   -- drafts / AADE imports without a copy
+   select count(*) from transaction_drafts d where not exists
+     (select 1 from ingest_batches b where b.org_id = d.org_id and b.legacy_ref = 'draft:' || d.id);
+   select count(*) from aade_import_batches a where not exists
+     (select 1 from ingest_batches b where b.org_id = a.org_id and b.legacy_ref = 'aade:' || a.id);
+   -- AADE rows: the copy has every row
+   select count(*) from aade_staging_rows s where not exists
+     (select 1 from ingest_rows r where r.meta->>'aade_staging_row_id' = s.id::text);
+   -- ledger links
+   select count(*) from transactions where aade_staging_row_id is not null and ingest_row_id is null;
+   select count(*) from transaction_drafts d join transactions t on t.id = d.approved_transaction_id
+     where d.status = 'approved' and t.ingest_row_id is null;
+   -- learning loop (CaptureAnalytics)
+   select count(*) from ai_corrections where draft_id is not null and ingest_row_id is null;
+   ```
+
+4. **Flip the flag**: `INGEST_UNIFIED: "true"` in that environment's `vars`,
+   then `npm run cf:deploy:staging` / `npm run cf:deploy`.
+5. **Catch-up backfill**, right after the deploy (anything captured the old
+   way between step 2 and 4; also re-syncs copies decided the old way):
+   `select ingest_backfill_drafts(); select ingest_backfill_aade();`
+   (SQL editor / service role only). Re-run step 3.
+6. **Smoke test** (logged in):
+   - upload an AADE export -> one inbox batch, R8 refuses a row without
+     project/account, commit, undo, commit again;
+   - photo and text capture -> inbox row with the document preview -> commit
+     -> Settings «Ανάλυση Καταγραφής AI» counts it (and a corrected field);
+   - inbound email -> inbox batch;
+   - an old `/aade/<id>` and `/documents/<id>/review` URL redirects to its
+     inbox batch; a legacy batch shows «Μεταφέρθηκε από το παλιό σύστημα» and no undo;
+   - the dashboard's pending-captures count matches the inbox.
+7. **Rollback** if needed: set the flag back to `"false"` and redeploy. The
+   old screens still work: drafts and AADE imports finished in the inbox were
+   also marked done in the old tables. Captures staged natively while the flag
+   was on exist only in the inbox -- finish them there first, or note them.
+8. **Phase 8 (0077)**, one release later: drop `aade_*`,
+   `transaction_drafts`, `transactions.aade_staging_row_id`,
+   `ai_corrections.draft_id`, the old pages and `aade/actions.ts
+   commitBatch`; the 0074 views keep the history readable.
+
 ## Getting started
 
 ```bash
