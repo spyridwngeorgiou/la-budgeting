@@ -24,13 +24,21 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ListChecks, MessageSquare } from "lucide-react";
-import { Badge } from "@/components/ui";
+import { Badge, Select, cn } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { TASK_STATUS, type TaskStatus } from "@/lib/domain/enums";
 import { dayMonthLabel } from "@/lib/dates";
 import { keyAtEnd, planMove, type Keyed } from "@/lib/planner/sortKey";
 import type { BoardTask, PlannerPerson } from "@/lib/planner/queries";
 import { PRIORITY_TONE, STATUS_DOT, initials } from "./labels";
+
+// High and urgent cards carry the severity as a 2px left bar.
+const PRIORITY_BAR: Record<BoardTask["priority"], string> = {
+  low: "border-l-hairline",
+  normal: "border-l-hairline",
+  high: "border-l-warning",
+  urgent: "border-l-negative",
+};
 
 type MoveResult = { ok: true } | { ok: false; error: string };
 
@@ -156,13 +164,13 @@ export function TaskBoard({
   return (
     <div className="flex flex-col gap-3">
       {error && (
-        <div role="alert" className="rounded-md border border-red-ink/30 bg-red-bg px-3 py-2 text-sm text-red-ink">
+        <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
           {error}
-        </div>
+        </p>
       )}
 
       {/* Phones: pick the column, one at a time. */}
-      <div className="flex gap-1 overflow-x-auto md:hidden" role="tablist">
+      <div className="flex overflow-x-auto md:hidden" role="tablist">
         {TASK_STATUS.map((s) => (
           <button
             key={s}
@@ -170,13 +178,14 @@ export function TaskBoard({
             role="tab"
             aria-selected={mobileStatus === s}
             onClick={() => setMobileStatus(s)}
-            className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm whitespace-nowrap ${
-              mobileStatus === s ? "bg-sage font-medium text-sage-ink" : "border border-line bg-surface text-ink-muted"
-            }`}
+            className={cn(
+              "-ml-px flex min-h-11 shrink-0 items-center gap-1.5 border px-3 text-sm whitespace-nowrap first:ml-0",
+              mobileStatus === s ? "relative border-navy bg-navy text-panel-ink" : "border-chip-border text-text",
+            )}
           >
             <span className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT[s]}`} />
             {el.planner.status[s]}
-            <span className="text-xs text-ink-faint">{columns[s].length}</span>
+            <span className={cn("num text-xs", mobileStatus === s ? "text-panel-muted" : "text-muted")}>{columns[s].length}</span>
           </button>
         ))}
       </div>
@@ -189,7 +198,7 @@ export function TaskBoard({
         onDragEnd={handleDragEnd}
         onDragCancel={() => setActiveId(null)}
       >
-        <div className="md:grid md:grid-cols-[repeat(5,minmax(13rem,1fr))] md:gap-3 md:overflow-x-auto md:pb-2">
+        <div className="md:grid md:grid-cols-[repeat(5,minmax(13rem,1fr))] md:gap-4 md:overflow-x-auto md:pb-2">
           {TASK_STATUS.map((status) => (
             <Column
               key={status}
@@ -207,13 +216,13 @@ export function TaskBoard({
                     href={`${taskHref}/${task.id}`}
                     moveSelect={
                       canWrite ? (
-                        <select
+                        <Select
                           aria-label={el.planner.moveTo}
                           value=""
                           onChange={(e) => moveViaSelect(task, e.target.value as TaskStatus)}
                           onKeyDown={(e) => e.stopPropagation()}
                           onPointerDown={(e) => e.stopPropagation()}
-                          className="mt-1 w-full rounded-md border border-line bg-surface px-2 py-1 text-xs text-ink-muted md:hidden"
+                          className="mt-2 min-h-11 w-full text-small text-text md:hidden"
                         >
                           <option value="" disabled>
                             {el.planner.moveTo}
@@ -223,7 +232,7 @@ export function TaskBoard({
                               {el.planner.status[s]}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       ) : null
                     }
                   />
@@ -234,7 +243,7 @@ export function TaskBoard({
         </div>
         <DragOverlay>
           {activeTask ? (
-            <div className="rotate-1 rounded-md border border-line-strong bg-surface p-2.5 shadow-lg">
+            <div className="border border-navy bg-field p-3">
               <CardBody
                 task={activeTask}
                 assignee={activeTask.assignee_id ? peopleById.get(activeTask.assignee_id) : undefined}
@@ -266,21 +275,23 @@ function Column({
     <section
       ref={setNodeRef}
       aria-label={el.planner.status[status]}
-      className={`${hiddenOnMobile ? "hidden" : "flex"} min-h-40 flex-col gap-2 rounded-lg border p-2 md:flex ${
-        isOver ? "border-sage-strong bg-sage/30" : "border-line bg-bg"
-      }`}
+      className={cn(
+        hiddenOnMobile ? "hidden" : "flex",
+        "min-h-40 flex-col gap-2 pb-2 md:flex",
+        isOver && "bg-hover outline outline-1 -outline-offset-1 outline-navy",
+      )}
     >
-      <header className="hidden items-center justify-between px-1 md:flex">
-        <span className="flex items-center gap-1.5 text-sm font-medium text-ink">
+      <header className="hidden items-center justify-between border-b border-hairline pb-2 md:flex">
+        <span className="eyebrow flex items-center gap-1.5 text-muted">
           <span className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT[status]}`} />
           {el.planner.status[status]}
         </span>
-        <span className="text-xs text-ink-faint">{tasks.length}</span>
+        <span className="num text-xs text-muted">{tasks.length}</span>
       </header>
       <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <ul className="flex flex-col gap-2">{children}</ul>
       </SortableContext>
-      {tasks.length === 0 && <p className="px-1 py-4 text-center text-xs text-ink-faint">{el.planner.emptyColumn}</p>}
+      {tasks.length === 0 && <p className="py-4 text-small text-muted">{el.planner.emptyColumn}</p>}
     </section>
   );
 }
@@ -294,9 +305,12 @@ function SortableCard({ task, disabled, children }: { task: BoardTask; disabled:
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`rounded-md border border-line bg-surface p-2.5 ${
-        disabled ? "" : "cursor-grab touch-manipulation active:cursor-grabbing"
-      } ${isDragging ? "opacity-40" : ""}`}
+      className={cn(
+        "border border-l-2 border-hairline bg-field p-3 hover:border-chip-border",
+        PRIORITY_BAR[task.priority],
+        !disabled && "cursor-grab touch-manipulation active:cursor-grabbing",
+        isDragging && "opacity-40",
+      )}
       {...attributes}
       {...listeners}
     >
@@ -324,25 +338,25 @@ function CardBody({
   const tone = PRIORITY_TONE[task.priority];
   return (
     <div className="flex flex-col gap-1.5">
-      {projectLabel && <span className="truncate text-[11px] text-ink-faint">{projectLabel}</span>}
+      {projectLabel && <span className="eyebrow truncate text-muted">{projectLabel}</span>}
       {/* Keys pressed on the link or select must not reach the card's
           keyboard-drag listener (Enter/Space would start a drag). */}
       <Link
         href={href}
         onKeyDown={(e) => e.stopPropagation()}
-        className="text-sm leading-snug text-ink hover:underline"
+        className="text-sm leading-snug text-ink hover:underline max-md:py-1"
       >
         {task.title}
       </Link>
-      <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
         {tone && <Badge tone={tone}>{el.planner.priority[task.priority]}</Badge>}
         {task.due_date && (
-          <span className={overdue ? "font-medium text-red-ink" : ""} title={overdue ? el.planner.task.overdue : undefined}>
+          <span className={cn("num", overdue && "font-medium text-negative")} title={overdue ? el.planner.task.overdue : undefined}>
             {dayMonthLabel(task.due_date)}
           </span>
         )}
         {task.checklist_total > 0 && (
-          <span className={task.checklist_done === task.checklist_total ? "text-sage-ink" : ""}>
+          <span className={cn("num", task.checklist_done === task.checklist_total && "text-positive")}>
             <ListChecks className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
             {task.checklist_done}/{task.checklist_total}
           </span>
@@ -356,7 +370,7 @@ function CardBody({
         {assignee && (
           <span
             title={assignee}
-            className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-sage px-1 text-[10px] font-medium text-sage-ink"
+            className="ml-auto inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-hover px-1 text-xs font-medium text-navy"
           >
             {initials(assignee)}
           </span>

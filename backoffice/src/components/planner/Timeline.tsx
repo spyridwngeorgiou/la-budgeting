@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { EmptyState } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { formatDate } from "@/lib/format";
 import { shortMonthLabel } from "@/lib/dates";
@@ -44,32 +45,30 @@ export function Timeline({
 
   if (!hasAnything) {
     return (
-      <p className="rounded-lg border border-line bg-surface p-6 text-center text-sm text-ink-faint">
-        {el.planner.timeline.empty}
-      </p>
+      <EmptyState title={el.planner.timeline.empty} />
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-line bg-surface">
+    <div className="overflow-x-auto border-y border-hairline bg-field">
       <div className="relative min-w-[760px]">
         {/* Month rules and today, drawn once over every row. */}
         <div className="pointer-events-none absolute inset-y-0 right-0 left-56" aria-hidden>
           {tl.months.map((m) => (
-            <div key={m.key} className="absolute inset-y-0 border-l border-line/70" style={{ left: `${m.leftPct}%` }} />
+            <div key={m.key} className="absolute inset-y-0 border-l border-hairline" style={{ left: `${m.leftPct}%` }} />
           ))}
           {tl.todayPct != null && (
-            <div className="absolute inset-y-0 w-px bg-red-ink/60" style={{ left: `${tl.todayPct}%` }} />
+            <div className="absolute inset-y-0 w-px bg-negative" style={{ left: `${tl.todayPct}%` }} />
           )}
         </div>
 
-        <div className="sticky top-0 grid grid-cols-[14rem_1fr] border-b border-line bg-surface text-xs text-ink-muted">
+        <div className="sticky top-0 grid grid-cols-[14rem_1fr] border-b border-rule bg-field text-muted">
           <div className="px-3 py-2" />
-          <div className="relative h-8">
+          <div className="relative h-9">
             {tl.months.map((m) => (
               <span
                 key={m.key}
-                className="absolute top-2 truncate pl-1.5 capitalize"
+                className="eyebrow absolute top-2.5 truncate pl-1.5"
                 style={{ left: `${m.leftPct}%`, width: `${m.widthPct}%` }}
               >
                 {shortMonthLabel(m.key)}
@@ -80,9 +79,9 @@ export function Timeline({
         </div>
 
         {groups.map((g) => (
-          <div key={g.project.id} className="border-b border-line last:border-b-0">
+          <div key={g.project.id} className="border-b border-hairline last:border-b-0">
             {groups.length > 1 && (
-              <div className="bg-bg/60 px-3 py-1.5 text-xs font-medium text-ink">{g.project.label}</div>
+              <div className="eyebrow bg-raised px-3 py-2 text-muted">{g.project.label}</div>
             )}
             {g.phases.map((p) => (
               <Row
@@ -91,14 +90,14 @@ export function Timeline({
                 meta={el.planner.phaseStatus[p.status]}
                 actions={renderPhaseActions?.(p)}
               >
-                <Bar bar={tl.bars[`pp:${p.id}`]} className="border border-sage-strong bg-sage/40" />
-                <Bar bar={tl.bars[`pa:${p.id}`]} className="bg-sage-ink/70" thin />
+                <Bar bar={tl.bars[`pp:${p.id}`]} className="border border-navy bg-hover" />
+                <Bar bar={tl.bars[`pa:${p.id}`]} className="bg-navy" thin />
               </Row>
             ))}
             {g.milestones.map((m) => (
               <Row
                 key={m.id}
-                label={<span className={m.done_at ? "text-ink-faint line-through" : ""}>{m.title}</span>}
+                label={<span className={m.done_at ? "text-muted line-through" : ""}>{m.title}</span>}
                 meta={`${el.planner.milestoneKind[m.kind]} · ${formatDate(m.due_date)}`}
                 actions={renderMilestoneActions?.(m)}
               >
@@ -141,11 +140,11 @@ function Row({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[14rem_1fr] border-t border-line/50 first:border-t-0">
-      <div className="flex min-w-0 items-center gap-2 px-3 py-1.5">
+    <div className="grid grid-cols-[14rem_1fr] border-t border-hairline first:border-t-0">
+      <div className="flex min-w-0 items-center gap-2 px-3 py-2">
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm text-ink">{label}</div>
-          {meta && <div className="truncate text-[11px] text-ink-faint">{meta}</div>}
+          {meta && <div className="truncate text-xs text-muted">{meta}</div>}
         </div>
         {actions && <div className="flex shrink-0 items-center gap-1">{actions}</div>}
       </div>
@@ -158,9 +157,7 @@ function Bar({ bar, className, thin }: { bar?: TimelineBar; className: string; t
   if (!bar) return null;
   return (
     <div
-      className={`absolute rounded-sm ${thin ? "top-[45%] h-1.5" : "top-1/2 h-4 -translate-y-1/2"} ${
-        bar.startsBefore ? "rounded-l-none" : ""
-      } ${bar.endsAfter ? "rounded-r-none" : ""} ${className}`}
+      className={`absolute ${thin ? "top-[45%] h-1.5" : "top-1/2 h-4 -translate-y-1/2"} ${className}`}
       style={{ left: `${bar.leftPct}%`, width: `max(${bar.widthPct}%, 3px)` }}
     />
   );
@@ -171,7 +168,7 @@ function Diamond({ bar, done, small }: { bar?: TimelineBar; done: boolean; small
   return (
     <div
       className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rotate-45 ${small ? "h-2.5 w-2.5" : "h-3.5 w-3.5"} ${
-        done ? "bg-sage-ink" : "border-2 border-sage-ink bg-surface"
+        done ? "bg-navy" : "border-2 border-navy bg-field"
       }`}
       style={{ left: `${bar.leftPct + bar.widthPct / 2}%` }}
     />

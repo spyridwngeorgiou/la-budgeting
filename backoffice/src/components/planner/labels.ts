@@ -5,40 +5,44 @@ import type { CalendarItem, CalendarSource } from "@/lib/planner/calendar";
 // Shared look of planner entities, so the board, the timeline and the
 // calendar colour the same thing the same way.
 
+// Status as a dot (one of the two places circles are allowed).
 export const STATUS_DOT: Record<TaskStatus, string> = {
-  todo: "bg-line-strong",
-  in_progress: "bg-amber-ink",
-  waiting: "bg-ai-strong",
-  review: "bg-sage-strong",
-  done: "bg-sage-ink",
+  todo: "bg-chip-border",
+  in_progress: "bg-warning",
+  waiting: "bg-accent-ink",
+  review: "bg-navy",
+  done: "bg-positive",
 };
 
+// Timeline bars: flat token fills, lighter while not yet done.
 export const STATUS_BAR: Record<TaskStatus, string> = {
-  todo: "bg-line-strong",
-  in_progress: "bg-amber-ink/70",
-  waiting: "bg-ai-strong/60",
-  review: "bg-sage-strong",
-  done: "bg-sage-ink/60",
+  todo: "bg-chip-border",
+  in_progress: "bg-warning/70",
+  waiting: "bg-accent-ink/60",
+  review: "bg-navy",
+  done: "bg-positive/60",
 };
 
-export const PRIORITY_TONE: Record<TaskPriority, "neutral" | "amber" | "red" | null> = {
+export const PRIORITY_TONE: Record<TaskPriority, "warning" | "negative" | null> = {
   low: null,
   normal: null,
-  high: "amber",
-  urgent: "red",
+  high: "warning",
+  urgent: "negative",
 };
 
+// Calendar entries: plain text on the field colour with a 2px left bar
+// naming the family (the design system's severity bar, never a fill).
 export const SOURCE_PILL: Record<CalendarSource, string> = {
-  task: "border-line-strong bg-surface text-ink",
-  milestone: "border-sage-strong bg-sage text-sage-ink",
-  phase: "border-sage-strong bg-surface text-sage-ink",
-  project: "border-line bg-bg text-ink-muted",
-  payment: "border-amber-ink/30 bg-amber-bg text-amber-ink",
-  installment: "border-amber-ink/30 bg-amber-bg text-amber-ink",
-  vat: "border-red-ink/30 bg-red-bg text-red-ink",
-  withholding: "border-red-ink/30 bg-red-bg text-red-ink",
-  lease: "border-line bg-bg text-ink-muted",
-  loan: "border-amber-ink/30 bg-amber-bg text-amber-ink",
+  task: "border-chip-border text-ink",
+  milestone: "border-navy text-ink",
+  phase: "border-accent-ink text-ink",
+  project: "border-hairline text-muted",
+  payment: "border-warning text-ink",
+  installment: "border-warning text-ink",
+  vat: "border-negative text-ink",
+  withholding: "border-negative text-ink",
+  lease: "border-hairline text-muted",
+  loan: "border-warning text-ink",
 };
 
 // «ΦΠΑ 09/2026», «Άνοιγμα · Έργο A», or just the task title.
