@@ -5,12 +5,10 @@ import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { Badge, Card, Button, Select, AiSpark, Term } from "@/components/ui";
 import { OnePagerSection, OnePagerRow, StatusNotes, type ProjectNote } from "@/components/onepager";
-import { computeLeaseSchedule } from "@/lib/finance/lease";
-import { computeLoansSchedule } from "@/lib/finance/loan";
-import { loanInputFromRow } from "@/lib/finance/scheduleRows";
 import { ActionForm } from "@/components/ActionForm";
-import { computeScenarioResult } from "@/lib/finance/scenarioResult";
-import { xirr } from "@/lib/finance/xirr";
+import { computeScenarioFromInputs, loadProjectFlows, loadScenarioInputs } from "@/lib/finance/projectModel";
+import { computeDevelopmentResult } from "@/lib/finance/development";
+import { BudgetLineRows, DevelopmentSection, LeaseSyncButton, ProjectIrrRow, SendToCashSection } from "./FinanceSections";
 import { aiEnabled } from "@/lib/ai/client";
 import { ProjectHealthCheck } from "./ProjectHealthCheck";
 import { PartnersPanel } from "./PartnersPanel";
@@ -24,7 +22,7 @@ import { saveLoan, deleteLoan } from "../loan-actions";
 import { CapitalSourceFormModal } from "../CapitalSourceFormModal";
 import { saveCapitalSource, deleteCapitalSource } from "../capital-actions";
 import type { CapitalSourceKind } from "@/lib/domain/enums";
-import { addMonths, currentMonthKey, currentYear, firstOfMonth } from "@/lib/dates";
+import { addMonths, currentMonthKey, currentYear, firstOfMonth, todayAthens } from "@/lib/dates";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 
 const KIND_FALLBACK_LABEL: Record<CapitalSourceKind, string> = {
@@ -62,12 +60,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     { data: rollup },
     { data: project },
     { data: budget },
-    { data: lease },
-    { data: scenario },
+    inputs,
     { data: notes },
     { data: settlementPlans },
     { data: noBudgetRow },
-    { data: loans },
+    { data: budgetLines },
     { data: revenuePlanOptions },
     { data: capitalSources },
     { data: projectIncomeTx },
@@ -86,21 +83,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       .eq("project_id", id)
       .eq("is_current", true)
       .maybeSingle(),
-    supabase
-      .from("project_leases")
-      .select(
-        "kind, term_years, lease_start_month, notes, lease_indexed_terms!lease_indexed_terms_lease_id_fkey(base_monthly_amount, stamp_duty_pct, stamp_duty_surcharge_pct, escalation_pct, escalation_first_year, stepups_escalate, stepups_stampable, lease_step_ups(from_lease_year, monthly_amount))",
-      )
-      .eq("project_id", id)
-      .maybeSingle(),
-    supabase
-      .from("project_scenarios")
-      .select(
-        "id, name, flat_annual_revenue, revenue_plan_id, revenue_growth_pct, opex_growth_pct, growth_starts_after_operating_year, discount_rate_pct, dscr_covenant_min, notes, opex_lines(id, kind, label, annual_amount, from_operating_year, to_operating_year, note, headcount, monthly_wage, salaries_per_year, employer_contribution_pct, premium_pct, months_active, pct_of_revenue)",
-      )
-      .eq("project_id", id)
-      .eq("is_base", true)
-      .maybeSingle(),
+    // Lease, loans, the base scenario and its revenue plan: one loader shared
+    // with the comparison page and «Στείλε στο ταμείο» (projectModel.ts).
+    loadScenarioInputs(supabase, id, { baseOnly: true }),
     supabase
       .from("project_notes")
       .select("id, kind, severity, body, exposure_amount, due_date")
@@ -115,10 +100,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       .order("amount_per_installment", { ascending: false }),
     supabase.from("v_qc_projects_without_budget").select("project_id").eq("project_id", id).maybeSingle(),
     supabase
-      .from("loans")
-      .select(
-        "id, label, principal, interest_rate, term_years, grace_years, first_amortisation_month, state, notes, loan_drawdowns(scheduled_month, amount, actual_date, actual_amount)",
-      )
+      .from("v_project_budget_lines")
+      .select("line_code, label, budget, paid, committed, remaining")
       .eq("project_id", id),
     getCurrentOrgId(supabase).then((orgId) =>
       supabase.from("revenue_plans").select("id, name, project_id, start_year, years").eq("org_id", orgId).order("name"),
@@ -128,11 +111,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       .select("id, kind, contributor, amount, contributed_on, notes")
       .eq("project_id", id)
       .order("contributed_on"),
-    // Only the income side, paid -- capital-vs-revenue is the return
-    // question this answers; capex/opex outflows are excluded on purpose so
-    // debt-funded spend (which is not a capital contribution) never gets
-    // conflated with the capital that was actually put in. See the note by
-    // projectIrr below.
+    // Paid income: «Τιμολογημένα» and «Έσοδα έργου μέχρι σήμερα».
     supabase
       .from("transactions")
       .select("tx_date, gross_amount")
@@ -142,13 +121,23 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   ]);
 
   const twelveMonthsAgo = firstOfMonth(addMonths(currentMonthKey(), -11));
-  const [{ data: utilities }, { data: monthlyCostRows }] = await Promise.all([
+  const today = todayAthens();
+  const baseScenarioId = inputs?.scenarios[0]?.id ?? null;
+  const [{ data: utilities }, { data: monthlyCostRows }, projectFlows, { count: sentToCash }] = await Promise.all([
     supabase.from("property_utilities").select("*").eq("project_id", id).order("kind"),
     supabase
       .from("v_property_monthly_cost")
       .select("month, paid_amount")
       .eq("project_id", id)
       .gte("month", twelveMonthsAgo),
+    loadProjectFlows(supabase, id, today),
+    baseScenarioId
+      ? supabase
+          .from("expected_income")
+          .select("id", { count: "exact", head: true })
+          .eq("scenario_id", baseScenarioId)
+          .eq("status", "expected")
+      : Promise.resolve({ count: 0 }),
   ]);
   const monthlyCost = new Map<string, number>();
   for (const r of monthlyCostRows ?? []) {
@@ -162,43 +151,21 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const lines = budget?.budget_lines ?? [];
   const budgetTotal = lines.reduce((s, l) => s + Number(l.amount ?? 0), 0);
 
-  // Λειτουργία: revenue − opex − rent, exactly as the workbook composes it.
-  const indexedTerms = Array.isArray(lease?.lease_indexed_terms)
-    ? lease?.lease_indexed_terms[0]
-    : lease?.lease_indexed_terms;
-
-  const leaseSchedule =
-    lease && indexedTerms
-      ? computeLeaseSchedule(
-          {
-            baseMonthlyAmount: Number(indexedTerms.base_monthly_amount ?? 0),
-            stampDutyPct: Number(indexedTerms.stamp_duty_pct ?? 0),
-            stampDutySurchargePct: Number(indexedTerms.stamp_duty_surcharge_pct ?? 0),
-            escalationPct: Number(indexedTerms.escalation_pct ?? 0),
-            escalationFirstYear: Number(indexedTerms.escalation_first_year ?? 2),
-            termYears: Number(lease.term_years ?? 1),
-            stepUpsEscalate: Boolean(indexedTerms.stepups_escalate),
-            stepUpsStampable: Boolean(indexedTerms.stepups_stampable),
-          },
-          ((indexedTerms.lease_step_ups ?? []) as { from_lease_year: number; monthly_amount: number }[]).map(
-            (s) => ({ fromLeaseYear: Number(s.from_lease_year), monthlyAmount: Number(s.monthly_amount) }),
-          ),
-        )
-      : null;
-
+  // Lease, loans and the base scenario (projectModel.ts): the ΛΕΙΤΟΥΡΓΙΑ
+  // and ΤΑΜΕΙΑΚΗ ΡΟΗ blocks below come from one computeScenarioFromInputs()
+  // run -- the same one the comparison page and «Στείλε στο ταμείο» use.
+  const lease = inputs?.lease ?? null;
+  const leaseSchedule = inputs?.leaseSchedule ?? null;
+  const loanRows = inputs?.loans ?? [];
+  const loanSchedule = inputs?.loanSchedule ?? null;
+  const scenario = inputs?.scenarios[0] ?? null;
+  const scenarioResult = inputs && scenario ? computeScenarioFromInputs(inputs, scenario) : null;
   const firstYearRent = leaseSchedule?.rows[0];
   const opexLines = scenario?.opex_lines ?? [];
 
-  // ΔΑΝΕΙΟ: each loan runs on its own term, grace and drawdowns
-  // (computeLoansSchedule); the section below shows their sum. The same
-  // per-loan schedules are what saveLoan writes into the ledger.
-  // ΚΕΦΑΛΑΙΟ: who actually funded this project, and what has it returned so
-  // far. IRR here is deliberately capital-vs-revenue only (contributions
-  // out, paid income transactions in) -- NOT the project's full net cash
-  // flow, so debt-funded capex/opex (which is not capital anyone
-  // contributed) never gets conflated with the return on capital that was.
-  // A running/unrealized figure, not a final one, since most projects here
-  // haven't exited.
+  // ΚΕΦΑΛΑΙΟ: who funded the project. Its return is «IRR έργου (χωρίς
+  // ΦΠΑ)»: every project flow net of VAT and before financing -- paid, still
+  // open and expected -- plus the budget not yet committed (development.ts).
   const capitalRows = capitalSources ?? [];
   const capitalTotal = capitalRows.reduce((s, c) => s + Number(c.amount), 0);
   const capitalByKind = capitalRows.reduce<Record<string, number>>((acc, c) => {
@@ -206,34 +173,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     return acc;
   }, {});
   const revenueToDate = (projectIncomeTx ?? []).reduce((s, t) => s + Number(t.gross_amount ?? 0), 0);
-  const projectIrr =
-    capitalRows.length > 0
-      ? xirr([
-          ...capitalRows.map((c) => ({ date: c.contributed_on, amount: -Number(c.amount) })),
-          ...(projectIncomeTx ?? []).map((t) => ({ date: t.tx_date, amount: Number(t.gross_amount ?? 0) })),
-        ])
-      : null;
-
-  const loanRows = loans ?? [];
-  const loanSchedule = computeLoansSchedule(loanRows.map(loanInputFromRow), {
-    openingMonth: project?.opening_date ? `${String(project.opening_date).slice(0, 7)}-01` : undefined,
+  const development = computeDevelopmentResult(projectFlows.flows, {
+    today,
+    remainingBudget: hasBudget ? Math.max(0, Number(rollup.remaining_budget ?? 0)) : 0,
   });
-
-  // Projects with a room-type revenue grid (Q003) source ΛΕΙΤΟΥΡΓΙΑ and
-  // ΤΑΜΕΙΑΚΗ ΡΟΗ from the same computeProjectCashflow run, so every figure on
-  // the page is internally consistent. Projects with a single flat annual
-  // figure (Q004) keep the simpler direct computation -- there is no
-  // multi-year grid or loan to assemble a cash flow from. Shared with the
-  // scenario comparison view (compare/page.tsx) so the two can't disagree.
-  const scenarioResult = scenario
-    ? await computeScenarioResult(supabase, scenario, {
-        leaseSchedule,
-        leaseStartMonth: lease?.lease_start_month ?? null,
-        leaseTermYears: lease?.term_years ?? null,
-        loanSchedule,
-        openingDate: project?.opening_date ?? null,
-      })
-    : null;
+  const projectIrr = development.irr;
 
   const revenue = scenarioResult?.revenue ?? 0;
   const opexTotal = scenarioResult?.opexTotal ?? 0;
@@ -299,6 +243,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <Link href={`/planner?project=${id}`}>
             <Button variant="secondary">{el.nav.planner}</Button>
           </Link>
+          {lease?.kind === "indexed_rent" && <LeaseSyncButton leaseId={lease.id} />}
           <Link href={`/projects/${id}/compare`}>
             <Button variant="secondary">Σύγκριση σεναρίων</Button>
           </Link>
@@ -354,6 +299,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               emphasis
             />
           )}
+          {hasBudget && <BudgetLineRows rows={budgetLines ?? []} />}
           {Number(rollup.occupancy_cost ?? 0) > 0 && (
             <OnePagerRow
               label="Κόστος χρήσης ακινήτου"
@@ -376,6 +322,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             />
           )}
         </OnePagerSection>
+
+        {rollup.business_model === "own_development" && (
+          <DevelopmentSection result={development} truncated={projectFlows.truncated} />
+        )}
 
         {/* ΣΥΜΒΑΣΗ ΠΕΛΑΤΗ — the revenue baseline client_project work never
             had: the agreed contract value, billed to date (paid income
@@ -495,16 +445,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 amount={revenueToDate}
                 href={`/transactions?project_id=${id}&direction=income&status=paid`}
               />
-              <div className="flex items-center justify-between border-t border-line/60 pt-1.5 text-sm">
-                <span className="flex items-center gap-1">
-                  <Term title="Ετησιοποιημένη απόδοση: κεφάλαιο εισφέρθηκε (έξοδος) έναντι εσόδων που εισπράχθηκαν (είσοδος), σταθμισμένη στον χρόνο. Τρέχουσα, όχι τελική — το έργο δεν έχει (απαραίτητα) ολοκληρωθεί.">
-                    IRR κεφαλαίου
-                  </Term>
-                </span>
-                <span className={`font-mono font-medium ${projectIrr != null && projectIrr < 0 ? "text-red-ink" : "text-sage-ink"}`}>
-                  {projectIrr != null ? `${(projectIrr * 100).toFixed(1)}%` : "—"}
-                </span>
-              </div>
+              <ProjectIrrRow irr={projectIrr} />
             </>
           ) : (
             <div className="flex flex-col gap-2 py-2">
@@ -692,6 +633,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                       growth_starts_after_operating_year: scenario.growth_starts_after_operating_year,
                       discount_rate_pct: Number(scenario.discount_rate_pct),
                       dscr_covenant_min: Number(scenario.dscr_covenant_min),
+                      adr_multiplier: Number(scenario.adr_multiplier ?? 1),
                       notes: scenario.notes,
                     }}
                   />
@@ -746,16 +688,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
         {/* ΛΕΙΤΟΥΡΓΙΑ — the stabilised operating year */}
         {hasOperation && (
-          <OnePagerSection title="ΛΕΙΤΟΥΡΓΙΑ" subtitle={scenario?.name ?? undefined}>
+          <OnePagerSection
+            title="ΛΕΙΤΟΥΡΓΙΑ"
+            subtitle={[scenario?.name, scenarioResult?.referenceCalendarYear ? `έτος αναφοράς ${scenarioResult.referenceCalendarYear}` : null]
+              .filter(Boolean)
+              .join(" · ")}
+          >
             <OnePagerRow label="Ετήσιος τζίρος" amount={revenue} />
-            {opexLines.map((l, i) => (
-              <OnePagerRow
-                key={i}
-                label={l.label}
-                amount={Number(l.annual_amount ?? 0)}
-                negative
-                note={l.note}
-              />
+            {(scenarioResult?.opexLines ?? []).map((l, i) => (
+              <OnePagerRow key={i} label={l.label} amount={l.amount} negative note={l.note} />
             ))}
             {annualRent > 0 && (
               <OnePagerRow
@@ -813,6 +754,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 negative
               />
             )}
+            {scenario && <SendToCashSection projectId={id} scenarioId={scenario.id} sentCount={sentToCash ?? 0} />}
           </OnePagerSection>
         )}
 

@@ -19,6 +19,7 @@ import { computeLoansSchedule, type LoansScheduleResult } from "./loan";
 import { indexedTermsOf, leaseTermsFromRow, loanInputFromRow, type LeaseRowLike, type LoanRowLike } from "./scheduleRows";
 import { opexForYear, opexSchedule, type OpexLineInput } from "./opex";
 import { flowFromExpected, flowFromTransaction, type DatedFlow } from "./development";
+import type { BusinessLine, LiabilityState, OpexLineKind } from "@/lib/domain/enums";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -28,9 +29,20 @@ export const DEFAULT_HORIZON_YEARS = 20;
 
 // ── Inputs ────────────────────────────────────────────────────────────────────
 
+// Row shapes as the database returns them (numeric -> number), so pages
+// can pass them straight to their forms.
 export interface OpexLineRow extends OpexLineInput {
   id: string;
+  kind: OpexLineKind;
   sort_order?: number | null;
+  annual_amount?: number | null;
+  headcount?: number | null;
+  monthly_wage?: number | null;
+  salaries_per_year?: number | null;
+  employer_contribution_pct?: number | null;
+  premium_pct?: number | null;
+  months_active?: number | null;
+  pct_of_revenue?: number | null;
 }
 
 export interface ScenarioRow {
@@ -38,14 +50,14 @@ export interface ScenarioRow {
   name: string;
   is_base: boolean;
   sort_order: number;
-  flat_annual_revenue: number | string | null;
+  flat_annual_revenue: number | null;
   revenue_plan_id: string | null;
-  adr_multiplier: number | string | null;
-  revenue_growth_pct: number | string | null;
-  opex_growth_pct: number | string | null;
-  growth_starts_after_operating_year: number | null;
-  discount_rate_pct: number | string | null;
-  dscr_covenant_min: number | string | null;
+  adr_multiplier: number;
+  revenue_growth_pct: number;
+  opex_growth_pct: number;
+  growth_starts_after_operating_year: number;
+  discount_rate_pct: number;
+  dscr_covenant_min: number;
   notes: string | null;
   opex_lines: OpexLineRow[] | null;
 }
@@ -63,11 +75,14 @@ export interface LeaseRow extends LeaseRowLike {
 }
 
 export interface LoanRow extends LoanRowLike {
+  principal: number;
+  interest_rate: number;
+  state: LiabilityState;
   notes: string | null;
 }
 
 export interface ScenarioInputs {
-  project: { id: string; opening_date: string | null; business_model: string | null; business_line: string | null };
+  project: { id: string; opening_date: string | null; business_model: string | null; business_line: BusinessLine | null };
   lease: LeaseRow | null;
   leaseSchedule: LeaseSchedule | null;
   loans: LoanRow[];
