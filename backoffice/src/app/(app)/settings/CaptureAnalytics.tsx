@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui";
 import { formatMoney } from "@/lib/format";
 import { getCurrentOrgId } from "@/lib/supabase/org";
+import { ingestUnified } from "@/lib/ingest/flag";
 
 const FEATURE_LABELS: Record<string, string> = {
   document_extraction: "Ανάγνωση Παραστατικού (φωτό)",
@@ -11,6 +12,43 @@ const FEATURE_LABELS: Record<string, string> = {
   project_health: "Έλεγχος Υγείας Έργου",
   revenue_plan_creation: "Δημιουργία Εκτίμησης Εσόδων",
 };
+
+type Client = Awaited<ReturnType<typeof createClient>>;
+
+// Approved AI captures and which of them a human corrected. Old path:
+// approved transaction_drafts + ai_corrections.draft_id. INGEST_UNIFIED:
+// committed «Νέα κίνηση» rows of ai_* batches + ai_corrections.ingest_row_id
+// (0072 backfills the old drafts and their corrections onto the same ids, so
+// history is not lost at cutover).
+async function loadApprovals(
+  supabase: Client,
+  orgId: string,
+): Promise<{ approvedDrafts: { id: string; source: string }[]; corrections: string[] }> {
+  if (ingestUnified()) {
+    const [{ data: rows }, { data: corrections }] = await Promise.all([
+      supabase
+        .from("ingest_rows")
+        .select("id, ingest_batches!inner(source)")
+        .eq("org_id", orgId)
+        .eq("decision", "create")
+        .not("committed_at", "is", null)
+        .in("ingest_batches.source", ["ai_document", "ai_nl"]),
+      supabase.from("ai_corrections").select("ingest_row_id").eq("org_id", orgId).not("ingest_row_id", "is", null),
+    ]);
+    return {
+      approvedDrafts: (rows ?? []).map((r) => {
+        const batch = Array.isArray(r.ingest_batches) ? r.ingest_batches[0] : r.ingest_batches;
+        return { id: r.id, source: batch?.source ?? "" };
+      }),
+      corrections: (corrections ?? []).map((c) => c.ingest_row_id!),
+    };
+  }
+  const [{ data: drafts }, { data: corrections }] = await Promise.all([
+    supabase.from("transaction_drafts").select("id, source").eq("org_id", orgId).eq("status", "approved").in("source", ["ai_document", "ai_nl"]),
+    supabase.from("ai_corrections").select("draft_id").eq("org_id", orgId).not("draft_id", "is", null),
+  ]);
+  return { approvedDrafts: drafts ?? [], corrections: (corrections ?? []).map((c) => c.draft_id!) };
+}
 
 function median(values: number[]): number | null {
   if (values.length === 0) return null;
@@ -30,10 +68,9 @@ export async function CaptureAnalytics() {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
 
-  const [{ data: usage }, { data: approvedDrafts }, { data: corrections }] = await Promise.all([
+  const [{ data: usage }, { approvedDrafts, corrections }] = await Promise.all([
     supabase.from("ai_usage").select("feature, latency_ms, cost_cents").eq("org_id", orgId).order("created_at", { ascending: false }).limit(5000),
-    supabase.from("transaction_drafts").select("id, source").eq("org_id", orgId).eq("status", "approved").in("source", ["ai_document", "ai_nl"]),
-    supabase.from("ai_corrections").select("draft_id").eq("org_id", orgId).not("draft_id", "is", null),
+    loadApprovals(supabase, orgId),
   ]);
 
   if (!usage || usage.length === 0) {
@@ -61,9 +98,9 @@ export async function CaptureAnalytics() {
   // approved before that will always show as "no correction found" here
   // even if they were edited, since no correction row could reference them
   // yet. Only a skew for historical data; every approval from now on is accurate.
-  const correctedDraftIds = new Set((corrections ?? []).map((c) => c.draft_id));
+  const correctedDraftIds = new Set(corrections);
   const editRateBySource = (source: "ai_document" | "ai_nl") => {
-    const drafts = (approvedDrafts ?? []).filter((d) => d.source === source);
+    const drafts = approvedDrafts.filter((d) => d.source === source);
     if (drafts.length === 0) return null;
     const edited = drafts.filter((d) => correctedDraftIds.has(d.id)).length;
     return { edited, total: drafts.length };

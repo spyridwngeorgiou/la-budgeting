@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect, unstable_rethrow } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { aiEnabled, assertWithinAiBudget, logAiUsage } from "@/lib/ai/client";
@@ -11,6 +12,9 @@ import { deriveFromGross, cashOnly } from "@/lib/finance/money";
 import type { Extraction } from "@/lib/ai/schemas";
 import { todayAthens } from "@/lib/dates";
 import { action, UserError, type ActionResult } from "@/lib/actions";
+import { ingestUnified } from "@/lib/ingest/flag";
+import { CaptureError, stageAiDocument } from "@/lib/ingest/adapters/aiDocument";
+import { stageAiText } from "@/lib/ingest/adapters/aiText";
 
 // Synchronous end-to-end for v1: upload, extract, resolve, and stage a draft
 // all within one request. No queue/worker -- the dataset and document sizes
@@ -33,6 +37,25 @@ export async function uploadDocument(formData: FormData): Promise<ActionResult> 
     const {
       data: { session },
     } = await supabase.auth.getSession();
+
+    // Unified: the capture stages an ingest batch; the inbox is the review.
+    if (ingestUnified()) {
+      let batchId: string;
+      try {
+        ({ batchId } = await stageAiDocument(supabase, {
+          orgId,
+          userId: session?.user.id ?? null,
+          source: "ai_document",
+          file: { name: file.name, mimeType: file.type, bytes: new Uint8Array(await file.arrayBuffer()) },
+          usageFeature: "document_extraction",
+        }));
+      } catch (e) {
+        if (e instanceof CaptureError) throw new UserError(e.message);
+        throw e;
+      }
+      revalidatePath("/inbox");
+      redirect(`/inbox/${batchId}`);
+    }
 
     const buffer = await file.arrayBuffer();
     const storagePath = `${orgId}/${Date.now()}-${file.name}`;
@@ -149,6 +172,20 @@ export async function submitNlEntry(formData: FormData): Promise<ActionResult> {
     const {
       data: { session },
     } = await supabase.auth.getSession();
+
+    // Unified: one batch, one row per transaction described; inbox review.
+    if (ingestUnified()) {
+      const { batchId } = await stageAiText(supabase, {
+        orgId,
+        userId: session?.user.id ?? null,
+        source: "ai_nl",
+        text,
+        label: "Περιγραφή",
+        usageFeature: "nl_entry",
+      });
+      revalidatePath("/inbox");
+      redirect(`/inbox/${batchId}`);
+    }
 
     const { data: categories } = await supabase.from("categories").select("name").eq("org_id", orgId).order("sort_order");
     const categoryNames = (categories ?? []).map((c) => c.name);

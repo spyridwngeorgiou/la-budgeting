@@ -9,6 +9,7 @@ import { AskAssistantCard } from "./AskAssistantCard";
 import { DueDatesCalendar } from "./DueDatesCalendar";
 import { monthGridRange } from "@/lib/planner/calendar";
 import { monthKeyOf, monthLabel, todayAthens } from "@/lib/dates";
+import { loadPendingCaptures } from "@/lib/ingest/pendingCaptures";
 
 // Κέντρο Ελέγχου: liquidity per account, project portfolio, VAT position,
 // what's due soon -- the same shape as the workbook's Control Center sheet.
@@ -47,7 +48,7 @@ export default async function DashboardPage() {
     { data: dueDates },
     { data: vatPeriods },
     { count: missingProjectOrAccount },
-    { data: pendingDraftRows, count: pendingDrafts },
+    pendingCaptures,
     { count: pendingChanges },
     { data: liquidity },
     { data: forecast },
@@ -78,7 +79,7 @@ export default async function DashboardPage() {
     // flag a past period nobody has marked as filed yet.
     supabase.from("vat_periods").select("period_start, status").eq("org_id", orgId),
     supabase.from("v_qc_missing_project_or_account").select("transaction_id", { count: "exact", head: true }).eq("org_id", orgId),
-    supabase.from("transaction_drafts").select("id", { count: "exact" }).eq("org_id", orgId).eq("status", "pending").order("created_at"),
+    loadPendingCaptures(supabase, orgId),
     supabase.from("agent_changes").select("id", { count: "exact", head: true }).eq("org_id", orgId).in("status", ["pending", "conflict"]),
     // Liquid cash (v_liquidity, 0066) and the six-month runway from the same
     // cash_forecast() /reports/cash shows -- never re-derived here.
@@ -169,17 +170,12 @@ export default async function DashboardPage() {
       label: `${overdue.length} ληξιπρόθεσμ${overdue.length === 1 ? "η υποχρέωση" : "ες υποχρεώσεις"}`,
       href: `/transactions?ids=${overdue.map((tx) => tx.id).join(",")}`,
     },
-    (pendingDrafts ?? 0) > 0 && {
-      label: `${pendingDrafts} πρόχειρ${pendingDrafts === 1 ? "η κίνηση" : "ες κινήσεις"} προς έλεγχο`,
-      // Straight into the review screen for the oldest pending draft, the
-      // rest queued behind it (same ?queue= mechanism approveDraft/
-      // discardDraft already use to chain through several) -- not
-      // /documents/new, which is for capturing a NEW entry and has nothing
-      // to do with drafts already waiting on a decision.
-      href: (() => {
-        const [first, ...rest] = (pendingDraftRows ?? []).map((d) => d.id);
-        return first ? `/documents/${first}/review${rest.length > 0 ? `?queue=${rest.join(",")}` : ""}` : "/documents/new";
-      })(),
+    pendingCaptures.count > 0 && {
+      label: `${pendingCaptures.count} πρόχειρ${pendingCaptures.count === 1 ? "η κίνηση" : "ες κινήσεις"} προς έλεγχο`,
+      // Straight into the review of the oldest capture waiting on a
+      // decision (lib/ingest/pendingCaptures.ts: old draft review or the
+      // inbox, depending on INGEST_UNIFIED).
+      href: pendingCaptures.href,
     },
     (pendingChanges ?? 0) > 0 && {
       label: `${pendingChanges} εκκρεμ${pendingChanges === 1 ? "ής πρόταση AI" : "είς προτάσεις AI"}`,
