@@ -196,7 +196,7 @@ function Todo({ items }: { items: HomeData["worklist"] }) {
       {main.length > 0 && <Worklist label={home.todo.title}>{main.map(item)}</Worklist>}
       {rest.length > 0 && (
         <details className="group">
-          <summary className="flex cursor-pointer items-center justify-between border-b border-hairline py-3 text-body text-ink hover:bg-hover">
+          <summary className="flex cursor-pointer list-none [&::-webkit-details-marker]:hidden items-center justify-between border-b border-hairline py-3 text-body text-ink hover:bg-hover">
             <span>
               {home.todo.housekeeping} <span className="num text-muted">({rest.reduce((s, w) => s + w.count, 0)})</span>
             </span>
