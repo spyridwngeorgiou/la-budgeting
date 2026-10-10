@@ -132,6 +132,7 @@ export async function commitIngest(batchId: string, version: number): Promise<In
   const { error } = await supabase.rpc("commit_ingest_batch", { p_batch: batchId, p_expected_version: version });
   if (error) return { error: error.message };
   if (batch && isAiSource(batch.source)) await afterAiCommit(supabase, batchId, batch.org_id, batch.legacy_ref);
+  if (batch?.legacy_ref?.startsWith("aade:")) await afterLegacyAadeCommit(supabase, batchId, batch.legacy_ref);
   revalidatePath(`/inbox/${batchId}`);
   revalidatePath("/inbox");
   revalidatePath("/transactions");
@@ -190,6 +191,38 @@ async function afterAiCommit(
       .eq("id", draftId)
       .eq("status", "pending");
   }
+}
+
+// A draft AADE import backfilled by 0073 and finished here: mark the old
+// rows and batch done too, so the old tables stay truthful (and a re-run of
+// ingest_backfill_aade() leaves the committed copy alone) until Phase 8
+// drops them.
+async function afterLegacyAadeCommit(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  batchId: string,
+  legacyRef: string,
+) {
+  const aadeBatchId = legacyRef.slice("aade:".length);
+  const { data: rows } = await supabase
+    .from("ingest_rows")
+    .select("meta, committed_transaction_id")
+    .eq("batch_id", batchId)
+    .not("committed_transaction_id", "is", null);
+  for (const row of rows ?? []) {
+    const stagingId = ((row.meta ?? {}) as { aade_staging_row_id?: string }).aade_staging_row_id;
+    if (!stagingId) continue;
+    await supabase
+      .from("aade_staging_rows")
+      .update({ committed_transaction_id: row.committed_transaction_id, commit_error: null })
+      .eq("id", stagingId)
+      .is("committed_transaction_id", null);
+  }
+  const { error } = await supabase
+    .from("aade_import_batches")
+    .update({ status: "committed", committed_at: new Date().toISOString() })
+    .eq("id", aadeBatchId)
+    .eq("status", "draft");
+  if (error) console.error("[inbox] legacy aade batch", error.message);
 }
 
 // ---------------------------------------------------------------- documents

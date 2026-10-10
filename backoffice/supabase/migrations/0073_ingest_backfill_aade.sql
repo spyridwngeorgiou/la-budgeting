@@ -15,7 +15,8 @@
 -- batch whose committed rows are already committed: committing it in the
 -- inbox writes only the rest, exactly the old retry behaviour.
 --
--- Idempotent (skips AADE batches already copied); re-run at cutover with
+-- Idempotent (skips AADE batches already copied, re-copies a staged one the
+-- old importer has moved on since); re-run at cutover with
 -- ingest_backfill_aade(). Service role / migration owner only. Legacy
 -- batches cannot be undone (0072).
 
@@ -36,8 +37,26 @@ declare
   v_key text;
   v_batches int := 0;
   v_rows int := 0;
+  v_resynced int := 0;
 begin
   perform set_config('app.ingest_source', 'legacy_backfill', true);
+
+  -- A draft batch copied while staged and committed (or discarded, or
+  -- retried) the old way since: start over. Its transactions lose the link
+  -- (ingest_row_id on delete set null) and the copy below relinks them.
+  with stale as (
+    delete from ingest_batches b
+    using aade_import_batches a
+    where b.legacy_ref = 'aade:' || a.id and b.org_id = a.org_id and b.status = 'staged'
+      and (a.status <> 'draft' or exists (
+        select 1 from aade_staging_rows s
+        join ingest_rows r on r.batch_id = b.id and r.row_no = s.row_no
+        where s.batch_id = a.id
+          and (r.committed_transaction_id is distinct from s.committed_transaction_id
+               or (r.committed_at is not null) <> (s.committed_transaction_id is not null))))
+    returning b.id
+  )
+  select count(*) into v_resynced from stale;
 
   for ib in
     select a.* from aade_import_batches a
@@ -120,8 +139,13 @@ begin
           when 'dup_mark' then 'already_recorded'::ingest_dedup_status
           when 'dup_fingerprint' then 'already_recorded'::ingest_dedup_status
           else 'dup_in_file'::ingest_dedup_status end,
+        -- The old commit took decision = 'import' rows whatever their dedup
+        -- status (a reviewer could import a flagged duplicate); R9/R21 rows
+        -- it could never write are skipped, as the adapter stages them.
+        -- Only a draft batch can still commit anything.
         case when sr.committed_transaction_id is not null then 'create'::ingest_decision
-             when sr.decision::text = 'import' and not v_negative and sr.issue_date is not null and sr.direction is not null
+             when ib.status::text = 'draft' and sr.decision::text = 'import' and not v_negative
+                  and sr.issue_date is not null and sr.direction is not null
                then 'create'::ingest_decision
              else 'skip'::ingest_decision end,
         v_errors,
@@ -139,7 +163,7 @@ begin
   end loop;
 
   perform set_config('app.ingest_source', '', true);
-  return jsonb_build_object('batches', v_batches, 'rows', v_rows);
+  return jsonb_build_object('batches', v_batches, 'rows', v_rows, 'resynced', v_resynced);
 end;
 $$;
 
