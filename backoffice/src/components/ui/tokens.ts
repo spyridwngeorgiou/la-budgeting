@@ -111,5 +111,10 @@ export function contrast(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-// Chart series order: navy first, then the accent, then muted text.
-export const chartSeries = [color.navy, color.accent, color.muted, color.chipBorder] as const;
+// Chart series, in fixed order: navy, then the accent. The brand palette is
+// deliberately near-monochrome, so a chart carries at most TWO series
+// (navy/accent pass the colour-vision separation check; adding muted or
+// chip-border does not). A third measure is a second chart, not a third
+// colour. Lines also differ by dash (see chart.tsx), so identity is never
+// colour alone.
+export const chartSeries = [color.navy, color.accent] as const;
