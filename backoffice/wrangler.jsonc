@@ -20,7 +20,7 @@
       "name": "kansha-back-office-staging",
       "vars": {
         "AI_ENABLED": "true",
-        "INGEST_UNIFIED": "false"
+        "INGEST_UNIFIED": "true"
       },
       "observability": {
         "enabled": true
