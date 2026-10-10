@@ -1,6 +1,7 @@
 "use client";
 
 import { CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { formatMoney } from "@/lib/format";
 import { chartTheme, compactNumber } from "./chart";
 
 // One or two lines over time on the chart theme, with a crosshair tooltip,
@@ -10,7 +11,7 @@ export function TrendChart<T extends Record<string, unknown>>({
   data,
   xKey,
   series,
-  format,
+  format = formatMoney,
   threshold,
   todayX,
   height = 240,
@@ -19,7 +20,9 @@ export function TrendChart<T extends Record<string, unknown>>({
   data: T[];
   xKey: keyof T & string;
   series: [{ key: keyof T & string; name: string }] | [{ key: keyof T & string; name: string }, { key: keyof T & string; name: string }];
-  format: (n: number) => string;
+  // Defaults to money. A server component must leave it out: a function
+  // cannot cross into this client component.
+  format?: (n: number) => string;
   threshold?: { value: number; label: string };
   todayX?: string;
   height?: number;

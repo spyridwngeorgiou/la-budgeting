@@ -192,7 +192,6 @@ export async function FlowTab({ sp }: { sp: Params }) {
           data={chart}
           xKey="label"
           series={[{ key: "closing", name: t.closing }]}
-          format={formatMoney}
           threshold={buffer ? { value: buffer, label: r.buffer } : undefined}
           todayX={shortMonthYearLabel(todayMonth)}
           label={t.chart}
