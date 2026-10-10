@@ -8,8 +8,7 @@ import { loadProjectModel, type ScenarioResult } from "@/lib/finance/projectMode
 // Side-by-side view of every scenario a project has, computed by the same
 // computeScenarioFromInputs() as the single-scenario project page (see
 // projectModel.ts) so the two views can never disagree on a number.
-export default async function ProjectComparePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export async function LegacyComparePage({ id }: { id: string }) {
   const supabase = await createClient();
 
   const [{ data: project }, model] = await Promise.all([

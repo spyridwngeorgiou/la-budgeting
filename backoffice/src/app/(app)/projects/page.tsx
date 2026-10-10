@@ -3,11 +3,19 @@ import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { el } from "@/lib/i18n/el";
-import { ProjectFormModal } from "./ProjectFormModal";
+import { ProjectFormModal } from "./LegacyFormModals";
 import { ProjectsGrid } from "./ProjectsGrid";
 import { createProject } from "./actions";
+import { getUiVersion } from "@/lib/ui/version";
+import { PortfolioPage } from "@/features/projects/PortfolioPage";
 
-export default async function ProjectsPage() {
+export default async function ProjectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  if ((await getUiVersion("app")) === "v2") return <PortfolioPage searchParams={await searchParams} />;
+
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
 

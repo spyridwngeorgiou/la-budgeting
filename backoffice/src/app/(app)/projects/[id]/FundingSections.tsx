@@ -5,9 +5,9 @@ import { formatDate, formatMoney } from "@/lib/format";
 import type { LoansScheduleResult } from "@/lib/finance/loan";
 import type { LoanRow } from "@/lib/finance/projectModel";
 import type { CapitalSourceKind } from "@/lib/domain/enums";
-import { LoanFormModal } from "../LoanFormModal";
+import { LoanFormModal } from "../LegacyFormModals";
 import { saveLoan, deleteLoan } from "./finance-actions";
-import { CapitalSourceFormModal } from "../CapitalSourceFormModal";
+import { CapitalSourceFormModal } from "../LegacyFormModals";
 import { saveCapitalSource, deleteCapitalSource } from "./finance-actions";
 import { ProjectIrrRow } from "./FinanceSections";
 
