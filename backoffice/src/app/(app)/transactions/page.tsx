@@ -8,6 +8,7 @@ import { TransactionFilters } from "./TransactionFilters";
 import { TX_STATUS, TX_DIRECTION, type TxStatus, type TxDirection } from "@/lib/domain/enums";
 import { loadLookups } from "@/lib/data/lookups";
 import { getCurrentOrgId } from "@/lib/supabase/org";
+import { withParams } from "@/lib/url";
 
 function parseStatus(value: string | undefined): TxStatus | null {
   return TX_STATUS.includes(value as TxStatus) ? (value as TxStatus) : null;
@@ -232,7 +233,9 @@ export default async function TransactionsPage({
         {["", "paid", "pending", "scheduled"].map((s) => (
           <a
             key={s || "all"}
-            href={s ? `/transactions?status=${s}` : "/transactions"}
+            // Keeps the project / account / date filters already applied
+            // (it used to reset to ?status= alone).
+            href={withParams("/transactions", { ...params }, { status: s || null })}
             className={`rounded px-3 py-1 ${status === s || (!status && !s) ? "bg-ink text-white" : "bg-bg"}`}
           >
             {s ? el.transaction[s as "paid" | "pending" | "scheduled"] : "Όλα"}
