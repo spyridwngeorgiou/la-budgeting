@@ -36,6 +36,18 @@ export interface CashYearRow {
   dscr: number | null;
 }
 
+// The same loop, month by month: what «Στείλε στο ταμείο» writes into the
+// cash forecast (revenue and opex only -- rent and debt service are already
+// in the ledger through the lease and loan schedules).
+export interface CashMonthRow {
+  month: string; // 'YYYY-MM-01'
+  revenue: number;
+  opex: number;
+  rent: number;
+  interest: number;
+  principal: number;
+}
+
 export interface CashflowKpis {
   minDscr: { calendarYear: number; value: number } | null;
   firstAmortisationYearDscr: { calendarYear: number; value: number } | null;
@@ -54,6 +66,9 @@ export interface CashflowInputs {
   baseYear: number; // the revenue plan's own start_year: year_number 1 = this calendar year, laid out Jan-Dec
   revenueMonthlyByOperatingYear: number[][]; // [yearIndex][0=Jan..11=Dec], from RevenuePlanResult.yearTotals[].monthlyRevenue
   opexAnnualByOperatingYear: number[]; // index 0 = baseYear, spread evenly across that calendar year's 12 months
+  // Share of each month's revenue taken by % of revenue opex lines (opex.ts),
+  // per operating year; the last value carries on past the end.
+  opexPctOfRevenueByOperatingYear?: number[];
   revenueGrowthPct: number;
   opexGrowthPct: number;
   growthStartsAfterOperatingYear: number;
@@ -76,6 +91,7 @@ function monthYear(index: number): number {
 
 export function computeProjectCashflow(inputs: CashflowInputs): {
   years: CashYearRow[];
+  months: CashMonthRow[];
   kpis: CashflowKpis;
 } {
   const openingIdx = parseMonth(inputs.openingMonth);
@@ -143,7 +159,14 @@ export function computeProjectCashflow(inputs: CashflowInputs): {
     return row ? row.monthlyAmount : 0;
   }
 
+  function pctForYear(yearIndex: number): number {
+    const pct = inputs.opexPctOfRevenueByOperatingYear ?? [];
+    if (yearIndex < 0 || pct.length === 0) return 0;
+    return pct[Math.min(yearIndex, pct.length - 1)] ?? 0;
+  }
+
   const years: CashYearRow[] = [];
+  const months: CashMonthRow[] = [];
   for (let cy = startCalendarYear; cy <= endCalendarYear; cy++) {
     let revenue = 0;
     let opex = 0;
@@ -154,17 +177,30 @@ export function computeProjectCashflow(inputs: CashflowInputs): {
     const yearIndex = cy - inputs.baseYear; // 0 = baseYear itself
     for (let m = 0; m < 12; m++) {
       const calendarIdx = cy * 12 + m;
+      let mRevenue = 0;
+      let mOpex = 0;
       if (calendarIdx >= openingIdx) {
-        revenue += revenueForYearMonth(yearIndex, m);
-        opex += opexForYearMonth(yearIndex);
+        mRevenue = revenueForYearMonth(yearIndex, m);
+        mOpex = opexForYearMonth(yearIndex) + mRevenue * pctForYear(yearIndex);
       }
-      rent += rentForMonth(calendarIdx);
+      const mRent = rentForMonth(calendarIdx);
       const monthKey = `${cy}-${String(m + 1).padStart(2, "0")}-01`;
       const debt = loanMonthly.get(monthKey);
+      revenue += mRevenue;
+      opex += mOpex;
+      rent += mRent;
       if (debt) {
         interest += debt.interest;
         principal += debt.principal;
       }
+      months.push({
+        month: monthKey,
+        revenue: round2(mRevenue),
+        opex: round2(mOpex),
+        rent: round2(mRent),
+        interest: round2(debt?.interest ?? 0),
+        principal: round2(debt?.principal ?? 0),
+      });
     }
 
     const operatingResult = revenue - opex - rent;
@@ -209,6 +245,7 @@ export function computeProjectCashflow(inputs: CashflowInputs): {
 
   return {
     years,
+    months,
     kpis: {
       minDscr: minDscrRow ? { calendarYear: minDscrRow.calendarYear, value: minDscrRow.dscr } : null,
       firstAmortisationYearDscr:

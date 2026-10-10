@@ -8,6 +8,7 @@
 // years 11 and 16.
 
 import { toCents, fromCents } from "./money";
+import { addMonths, firstOfMonth, monthKeyOf } from "@/lib/dates";
 
 export interface LeaseTerms {
   baseMonthlyAmount: number;
@@ -97,4 +98,34 @@ export function computeLeaseSchedule(terms: LeaseTerms, stepUps: LeaseStepUp[]):
     totalAmount: fromCents(rows.reduce((sum, r) => sum + toCents(r.annualAmount), 0)),
     diagnostics,
   };
+}
+
+export interface LeaseMonthRow {
+  seq: number; // 1 = first rent actually paid
+  month: string; // 'YYYY-MM-01'
+  leaseYear: number;
+  amount: number;
+}
+
+// One row per month of rent actually paid: from the lease start through the
+// end of the term, skipping the months before first_payment_month (rent-free
+// fit-out months are common, and Λαζαράκη's lease starts in August with the
+// first payment in September). The lease year -- and so the escalation --
+// counts from the lease start, not from the first payment.
+export function leaseMonthlyRows(
+  schedule: LeaseSchedule,
+  opts: { leaseStartMonth: string; termYears: number; firstPaymentMonth?: string | null },
+): LeaseMonthRow[] {
+  const start = monthKeyOf(opts.leaseStartMonth);
+  const firstPay = opts.firstPaymentMonth ? monthKeyOf(opts.firstPaymentMonth) : start;
+  const out: LeaseMonthRow[] = [];
+  for (let i = 0; i < opts.termYears * 12; i++) {
+    const month = addMonths(start, i);
+    if (month < firstPay) continue;
+    const leaseYear = Math.floor(i / 12) + 1;
+    const row = schedule.rows.find((r) => r.leaseYear === leaseYear);
+    if (!row) continue;
+    out.push({ seq: out.length + 1, month: firstOfMonth(month), leaseYear, amount: row.monthlyAmount });
+  }
+  return out;
 }

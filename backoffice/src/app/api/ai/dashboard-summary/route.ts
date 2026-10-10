@@ -32,7 +32,7 @@ export async function POST() {
 
   const [{ data: accounts }, { data: projects }, { data: vat }, { data: thisMonthTx }, { data: lastMonthTx }, { data: pending }] =
     await Promise.all([
-      supabase.from("v_account_balances").select("current_balance").eq("org_id", orgId),
+      supabase.from("v_liquidity").select("balance").eq("org_id", orgId),
       supabase.from("v_project_rollup").select("display_name, spent, remaining_budget").eq("org_id", orgId).order("spent", { ascending: false }).limit(1),
       supabase.from("v_vat_position").select("*").eq("org_id", orgId).lte("period_start", todayIso).order("period_start", { ascending: false }).limit(1),
       supabase.from("transactions").select("gross_amount").eq("org_id", orgId).eq("direction", "expense").eq("month_key", thisMonthKey).neq("status", "cancelled"),
@@ -40,7 +40,7 @@ export async function POST() {
       supabase.from("transactions").select("gross_amount").eq("org_id", orgId).eq("status", "pending"),
     ]);
 
-  const liquidTotal = (accounts ?? []).reduce((s, a) => s + Number(a.current_balance ?? 0), 0);
+  const liquidTotal = (accounts ?? []).reduce((s, a) => s + Number(a.balance ?? 0), 0);
   const topProject = projects?.[0];
   const currentVat = vat?.[0];
   const thisMonthSpend = (thisMonthTx ?? []).reduce((s, t) => s + Number(t.gross_amount ?? 0), 0);
@@ -48,7 +48,7 @@ export async function POST() {
   const pendingTotal = (pending ?? []).reduce((s, t) => s + Number(t.gross_amount ?? 0), 0);
   const pendingCount = (pending ?? []).length;
 
-  const facts: string[] = [`Συνολική ρευστότητα σε λογαριασμούς: ${formatMoney(liquidTotal)}.`];
+  const facts: string[] = [`Συνολική ρευστότητα σε ρευστούς λογαριασμούς: ${formatMoney(liquidTotal)}.`];
   if (topProject) {
     facts.push(
       `Το έργο με τα περισσότερα δαπανηθέντα είναι "${topProject.display_name}": ${formatMoney(topProject.spent)} δαπανηθέντα, ${formatMoney(topProject.remaining_budget)} υπόλοιπο προϋπολογισμού.`,

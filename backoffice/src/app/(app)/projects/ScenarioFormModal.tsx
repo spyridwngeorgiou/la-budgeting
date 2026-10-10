@@ -13,6 +13,7 @@ export interface ScenarioInitial {
   growth_starts_after_operating_year?: number;
   discount_rate_pct?: number;
   dscr_covenant_min?: number;
+  adr_multiplier?: number;
   notes?: string | null;
 }
 
@@ -99,6 +100,18 @@ export function ScenarioFormModal({
                 <Input type="number" step="0.01" name="dscr_covenant_min" defaultValue={initial?.dscr_covenant_min ?? 1.2} />
               </Field>
             </div>
+            <Field>
+              <Label title="Πολλαπλασιαστής της μέσης τιμής δωματίου (ADR) της ανάλυσης εσόδων: 100% = όπως στην ανάλυση, 110% = όλες οι τιμές +10%. Δεν επηρεάζει τον σταθερό ετήσιο τζίρο.">
+                ADR σε σχέση με την ανάλυση (%)
+              </Label>
+              <Input
+                type="number"
+                step="1"
+                min="1"
+                name="adr_multiplier_pct"
+                defaultValue={initial?.adr_multiplier != null ? Math.round(initial.adr_multiplier * 100) : 100}
+              />
+            </Field>
             <Field>
               <Label>Σημειώσεις</Label>
               <textarea

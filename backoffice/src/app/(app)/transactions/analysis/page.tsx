@@ -60,7 +60,9 @@ export default async function AnalysisPage({
       "id, tx_date, gross_amount, direction, project_id, projects(display_name), category_id, categories(name), contact_id, contacts(name), account_id, accounts(name)",
     )
     .eq("org_id", orgId)
-    .neq("status", "cancelled")
+    // What happened: paid and pending only. Scheduled rows are the future --
+    // the cash forecast and the P&L («Με προγραμματισμένα») show them.
+    .in("status", ["paid", "pending"])
     .order("tx_date");
 
   if (direction !== "all") query = query.eq("direction", direction);

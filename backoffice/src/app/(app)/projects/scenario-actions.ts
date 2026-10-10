@@ -39,6 +39,7 @@ export async function saveScenario(projectId: string, scenarioId: string | null,
     growth_starts_after_operating_year: Number(formData.get("growth_starts_after_operating_year") ?? 3),
     discount_rate_pct: Number(formData.get("discount_rate_pct_pct") ?? 9) / 100,
     dscr_covenant_min: Number(formData.get("dscr_covenant_min") ?? 1.2),
+    adr_multiplier: Math.max(0.01, Number(formData.get("adr_multiplier_pct") ?? 100) / 100 || 1),
     notes: formString(formData, "notes"),
   };
 

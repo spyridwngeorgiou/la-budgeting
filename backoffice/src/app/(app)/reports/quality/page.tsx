@@ -5,6 +5,9 @@ import { formatDate, formatMoney } from "@/lib/format";
 import { Badge, Button, Input } from "@/components/ui";
 import { markInvoiceReceived } from "./actions";
 import { currentYear } from "@/lib/dates";
+import { el } from "@/lib/i18n/el";
+import { ActionForm } from "@/components/ActionForm";
+import { syncStaleSchedule } from "../../projects/schedule-actions";
 
 // Business-language framing for each check: not "amount_identity_mismatch"
 // but why it matters and what to do about it. Ported from the workbook's
@@ -297,6 +300,42 @@ const CHECKS = [
           {r.description ?? "—"} <span className="text-ink-faint">· {r.project_name ?? "—"}</span>
         </Link>
         <span className="font-mono">{formatMoney(r.gross_amount)}</span>
+      </Row>
+    ),
+  },
+  {
+    view: "v_qc_schedule_stale" as const,
+    title: "Προγράμματα δανείων/μισθώσεων που δεν έχουν περάσει στο ταμείο",
+    why: "Το δάνειο ή η μίσθωση άλλαξε (ή δεν έχει συγχρονιστεί ποτέ) μετά την τελευταία εγγραφή των δόσεων στις κινήσεις, οπότε η πρόβλεψη ταμείου δεν δείχνει τις σωστές πληρωμές. Ο συγχρονισμός ξαναγράφει μόνο τις απλήρωτες δόσεις.",
+    render: (r: { kind: string | null; source_id: string | null; project_id: string | null; label: string | null }) => (
+      <Row key={`${r.kind}:${r.source_id}`}>
+        <Link href={r.project_id ? `/projects/${r.project_id}` : "/projects"} className="flex-1 hover:underline">
+          {r.label ?? "—"}
+        </Link>
+        <Badge tone="amber">{r.kind === "loan" ? "δάνειο" : "μίσθωση"}</Badge>
+        <ActionForm action={syncStaleSchedule.bind(null, r.kind ?? "loan", r.source_id ?? "")}>
+          <Button type="submit" variant="secondary" className="!px-2 !py-1 text-xs">
+            Συγχρονισμός
+          </Button>
+        </ActionForm>
+      </Row>
+    ),
+  },
+  {
+    view: "v_qc_forecast_stale" as const,
+    title: "Παλιές εγγραφές που μεταφέρονται στην πρόβλεψη ταμείου",
+    why: "Εκταμιεύσεις, αναμενόμενα έσοδα, συμφωνίες ή εκκρεμείς κινήσεις που έπρεπε να έχουν γίνει και η πρόβλεψη τις μεταφέρει στον τρέχοντα μήνα. Σημειώστε τες ως πραγματοποιημένες, αλλάξτε την ημερομηνία ή ακυρώστε τες.",
+    render: (r: {
+      source: string | null; ref_id: string | null; label: string | null; due_date: string | null;
+      direction: string | null; amount: number | null;
+    }) => (
+      <Row key={`${r.source}:${r.ref_id}:${r.due_date}`}>
+        <span>{formatDate(r.due_date)}</span>
+        <span className="flex-1">
+          {r.label || "—"}{" "}
+          <span className="text-ink-faint">· {el.reports.sources[r.source as keyof typeof el.reports.sources] ?? r.source}</span>
+        </span>
+        <span className={`font-mono ${r.direction === "income" ? "text-sage-ink" : ""}`}>{formatMoney(r.amount)}</span>
       </Row>
     ),
   },

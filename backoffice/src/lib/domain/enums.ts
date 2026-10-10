@@ -73,6 +73,16 @@ export type CapitalSourceKind = (typeof CAPITAL_SOURCE_KIND)[number];
 export const ASSET_STATE = ["held", "pending_inheritance"] as const;
 export type AssetState = (typeof ASSET_STATE)[number];
 
+// ── Finance layer (0062) ──
+export const BUSINESS_LINE = ["hospitality", "construction", "brokerage", "investments", "general"] as const;
+export type BusinessLine = (typeof BUSINESS_LINE)[number];
+
+export const DEAL_STAGE = ["lead", "offer", "preliminary", "closed", "lost"] as const;
+export type DealStage = (typeof DEAL_STAGE)[number];
+
+export const EXPECTED_STATUS = ["expected", "received", "cancelled"] as const;
+export type ExpectedStatus = (typeof EXPECTED_STATUS)[number];
+
 export const PROJECT_NOTE_KIND = ["status", "risk", "action", "milestone"] as const;
 export type ProjectNoteKind = (typeof PROJECT_NOTE_KIND)[number];
 // The enum keeps all four values, but since 0041 a CHECK allows only these

@@ -1,5 +1,6 @@
 "use client";
 
+import { el } from "@/lib/i18n/el";
 import { useState } from "react";
 import { Button, Input, Label, Field } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
@@ -16,10 +17,10 @@ interface Props {
 }
 
 const LINE_LABELS: Record<BudgetLineCode, string> = {
-  acquisition: "Απόκτηση / δικαιώματα",
-  studies_permits_legal: "Μελέτες, άδειες, νομικά",
-  construction_equipment: "Κατασκευή & εξοπλισμός",
-  other: "Λοιπά κόστη",
+  acquisition: el.budgetLines.acquisition,
+  studies_permits_legal: el.budgetLines.studies_permits_legal,
+  construction_equipment: el.budgetLines.construction_equipment,
+  other: el.budgetLines.other,
 };
 
 export function BudgetFormModal({ action, initial }: Props) {
