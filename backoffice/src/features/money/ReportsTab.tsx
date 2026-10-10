@@ -188,7 +188,7 @@ async function Taxes({ supabase, orgId, canEdit }: { supabase: Supabase; orgId: 
             canEdit
               ? (p) => {
                   const isFiled = filed.has(p.period_start!);
-                  return <RowAction action={toggleVatFiled.bind(null, p.period_start!, isFiled)}>{isFiled ? t.unfile : t.markFiled}</RowAction>;
+                  return <RowAction action={toggleVatFiled} args={[p.period_start!, isFiled]}>{isFiled ? t.unfile : t.markFiled}</RowAction>;
                 }
               : undefined
           }
@@ -262,11 +262,11 @@ async function Assets({ supabase, orgId, canEdit, sp }: { supabase: Supabase; or
     { key: "maturity", header: n.maturity, cell: (l) => (l.maturity_date ? formatDate(l.maturity_date) : "—") },
     { key: "principal", header: n.principal, numeric: true, cell: (l) => <Amount value={-Number(l.principal)} format={formatMoney} /> },
   ];
-  const menu = (edit: string, remove: () => Promise<unknown>) => (
+  const menu = (edit: string, remove: (id: string) => Promise<unknown>, id: string) => (
     <>
       <MenuLink href={edit}>{el.common.edit}</MenuLink>
       <MenuSeparator />
-      <RowAction action={remove} confirm={t.deleteConfirm} tone="danger">
+      <RowAction action={remove} args={[id]} confirm={t.deleteConfirm} tone="danger">
         {el.common.delete}
       </RowAction>
     </>
@@ -304,7 +304,7 @@ async function Assets({ supabase, orgId, canEdit, sp }: { supabase: Supabase; or
           columns={assetColumns}
           rowKey={(a) => a.id}
           empty={n.empty}
-          rowActions={canEdit ? (a) => menu(here({ asset: a.id }), removeAsset.bind(null, a.id)) : undefined}
+          rowActions={canEdit ? (a) => menu(here({ asset: a.id }), removeAsset, a.id) : undefined}
         />
       </section>
       <section className="flex flex-col gap-4">
@@ -314,7 +314,7 @@ async function Assets({ supabase, orgId, canEdit, sp }: { supabase: Supabase; or
           columns={liabilityColumns}
           rowKey={(l) => l.id}
           empty={n.empty}
-          rowActions={canEdit ? (l) => menu(here({ liability: l.id }), removeLiability.bind(null, l.id)) : undefined}
+          rowActions={canEdit ? (l) => menu(here({ liability: l.id }), removeLiability, l.id) : undefined}
         />
       </section>
       {(assetId === "new" || editingAsset) && (

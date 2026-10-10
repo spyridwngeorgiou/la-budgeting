@@ -42,14 +42,19 @@ export function UrlDrawer({
 }
 
 // A «⋯» menu item that runs one server action (Πληρώθηκε, Διαγραφή …); a
-// returned { error } is shown, not lost.
+// returned { error } is shown, not lost. Pass the row's values in `args`,
+// never `action.bind(...)`: Next encrypts every bound argument, and a list
+// of 500 rows (rendered as table and as cards) took ~1s of CPU per load.
 export function RowAction({
   action,
+  args = [],
   confirm,
   tone,
   children,
 }: {
-  action: () => Promise<unknown>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- any server action
+  action: (...args: any[]) => Promise<unknown>;
+  args?: (string | boolean | number | null)[];
   confirm?: string;
   tone?: "danger";
   children: ReactNode;
@@ -62,7 +67,7 @@ export function RowAction({
       onClick={() => {
         if (confirm && !window.confirm(confirm)) return;
         start(async () => {
-          const message = errorOf(await action());
+          const message = errorOf(await action(...args));
           if (message) window.alert(message);
         });
       }}

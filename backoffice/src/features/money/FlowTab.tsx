@@ -225,8 +225,8 @@ export async function FlowTab({ sp }: { sp: Params }) {
                   ) : (
                     <>
                       <MenuLink href={here({ income: e.id })}>{el.common.edit}</MenuLink>
-                      <RowAction action={setExpectedStatus.bind(null, e.id, "received")}>{r.expectedReceived}</RowAction>
-                      <RowAction action={setExpectedStatus.bind(null, e.id, "cancelled")}>{r.expectedCancel}</RowAction>
+                      <RowAction action={setExpectedStatus} args={[e.id, "received"]}>{r.expectedReceived}</RowAction>
+                      <RowAction action={setExpectedStatus} args={[e.id, "cancelled"]}>{r.expectedCancel}</RowAction>
                     </>
                   )
               : undefined
@@ -250,9 +250,9 @@ export async function FlowTab({ sp }: { sp: Params }) {
               ? (d) => (
                   <>
                     <MenuLink href={here({ deal: d.id })}>{el.common.edit}</MenuLink>
-                    <RowAction action={closeBrokerageDeal.bind(null, d.id)} confirm={t.closeConfirm}>{el.deals.close}</RowAction>
+                    <RowAction action={closeBrokerageDeal} args={[d.id]} confirm={t.closeConfirm}>{el.deals.close}</RowAction>
                     <MenuSeparator />
-                    <RowAction action={removeBrokerageDeal.bind(null, d.id)} confirm={t.deleteConfirm} tone="danger">
+                    <RowAction action={removeBrokerageDeal} args={[d.id]} confirm={t.deleteConfirm} tone="danger">
                       {el.common.delete}
                     </RowAction>
                   </>

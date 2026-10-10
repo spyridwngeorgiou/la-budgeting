@@ -117,13 +117,13 @@ export async function TransactionsTab({ sp }: { sp: Params }) {
     ? (r: Row) => (
         <>
           <MenuLink href={withParams(PATH, kept, { edit: r.id })}>{el.common.edit}</MenuLink>
-          {r.status !== "paid" && <RowAction action={markTransactionPaid.bind(null, r.id)}>{el.common.markPaid}</RowAction>}
+          {r.status !== "paid" && <RowAction action={markTransactionPaid} args={[r.id]}>{el.common.markPaid}</RowAction>}
           {(r.status === "pending" || r.status === "scheduled") && !r.plan_id && (
             <MenuLink href={withParams(PATH, kept, { pay: r.id })}>{t.payPart}</MenuLink>
           )}
           {r.source_document_id && <SourceDocumentItem transactionId={r.id} />}
           <MenuSeparator />
-          <RowAction action={removeTransaction.bind(null, r.id)} confirm={t.deleteConfirm} tone="danger">
+          <RowAction action={removeTransaction} args={[r.id]} confirm={t.deleteConfirm} tone="danger">
             {el.common.delete}
           </RowAction>
         </>
