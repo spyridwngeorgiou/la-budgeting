@@ -13,7 +13,8 @@ import { Menu } from "./Menu";
 //   mode="scroll": always a table, scrolling sideways on phones (reports,
 //     where the columns ARE the content).
 //
-// The header sticks under the v2 top bar: AppShell sets --sticky-top.
+// The header sticks at the top of the page, offset by --sticky-top (0 unless
+// a fixed bar above it sets one).
 
 export interface Column<T> {
   key: string;

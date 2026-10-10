@@ -1,41 +1,6 @@
-// Texts of the v2 shell and the shared ui/ pieces. Destination-specific
-// texts go in their own src/lib/i18n/v2/<destination>.ts.
+// Texts of the shared ui/ pieces (src/components/ui) and the (app) error
+// page. Other texts of the restyled pieces go in src/lib/i18n/v2/<area>.ts.
 export const shell = {
-  nav: {
-    today: "Σήμερα",
-    inbox: "Εκκρεμότητες",
-    money: "Χρήματα",
-    projects: "Έργα",
-    planner: "Πλάνο",
-    settings: "Ρυθμίσεις",
-    ask: "Ρώτα",
-    capture: "Καταχώριση",
-    main: "Κύρια πλοήγηση",
-    pending: "σε εκκρεμότητα",
-    org: "Οργανισμός",
-  },
-  topbar: {
-    askPlaceholder: "Ρώτα το Kansha…",
-    askShortcut: "Ctrl K",
-    breadcrumb: "Διαδρομή",
-    userMenu: "Λογαριασμός",
-    newLook: "Νέα εμφάνιση",
-    classicLook: "Κλασική εμφάνιση",
-    signOut: "Αποσύνδεση",
-  },
-  capture: {
-    title: "Νέα καταχώριση",
-    photo: "Φωτογραφία ή PDF",
-    photoHint: "Απόδειξη, τιμολόγιο, σύμβαση",
-    bank: "Αρχείο τράπεζας",
-    bankHint: "Κινήσεις λογαριασμού (CSV, Excel)",
-    aade: "Αρχείο ΑΑΔΕ",
-    aadeHint: "Παραστατικά myDATA",
-    text: "Γράψε ή πες",
-    textHint: "«Πλήρωσα 120 € ρεύμα στο Q004»",
-    manual: "Χειροκίνητα",
-    manualHint: "Φόρμα κίνησης",
-  },
   ui: {
     more: "Περισσότερα",
     close: "Κλείσιμο",
@@ -50,6 +15,5 @@ export const shell = {
     body: "Παρουσιάστηκε ένα απρόσμενο σφάλμα. Δοκιμάστε ξανά, ή επιστρέψτε αργότερα.",
     code: "Κωδικός",
     retry: "Δοκιμάστε ξανά",
-    classic: "Κλασική εμφάνιση",
   },
 } as const;

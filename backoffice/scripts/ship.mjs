@@ -97,8 +97,7 @@ async function smoke(envName, paths, { gapMs = 0 } = {}) {
     const session = await fetch(`${auth}/token?grant_type=password`, { method: "POST", headers: { apikey: anon, "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) }).then((r) => r.json());
     const name = `sb-${env.ref}-auth-token`;
     const chunks = ("base64-" + Buffer.from(JSON.stringify(session)).toString("base64url")).match(/.{1,3180}/g);
-    let cookie = chunks.length === 1 ? `${name}=${chunks[0]}` : chunks.map((c, i) => `${name}.${i}=${c}`).join("; ");
-    if (process.env.UI) cookie += `; kansha_ui=${process.env.UI}`;
+    const cookie = chunks.length === 1 ? `${name}=${chunks[0]}` : chunks.map((c, i) => `${name}.${i}=${c}`).join("; ");
 
     const list = (paths.length ? paths : [...DEFAULT_PATHS, ...(proj ? [`/projects/${proj.id}`] : [])]).map((p) => p.replace("{project}", proj?.id ?? ""));
     for (const p of list) {

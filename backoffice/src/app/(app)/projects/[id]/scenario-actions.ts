@@ -9,7 +9,7 @@ import { computeScenarioFromInputs, loadScenarioInputs } from "@/lib/finance/pro
 import type { OpexLineKind } from "@/lib/domain/enums";
 import { el } from "@/lib/i18n/el";
 import { projects as t2 } from "@/lib/i18n/v2/projects";
-import { planNewScenario } from "@/features/projects/scenarioCode";
+import { planNewScenario } from "@/lib/projects/scenarioCode";
 import { revalidateProject } from "../revalidate";
 
 // Σενάρια: a project's scenarios, their opex lines, which one is the base,
