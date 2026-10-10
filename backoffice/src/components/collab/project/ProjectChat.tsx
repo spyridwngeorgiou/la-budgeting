@@ -3,13 +3,19 @@
 import { useMemo, useState } from "react";
 import { el } from "@/lib/i18n/el";
 import { createClient } from "@/lib/supabase/client";
+import { Badge, SectionHeader } from "@/components/ui";
 import { TeamChat } from "../TeamChat";
 import { useTeamChat } from "../useTeamChat";
 import { ToastStack, useConfirm, useToasts } from "../feedback";
 
-// The big «Συζήτηση ομάδας» entry on the project page, with an unread badge,
-// opening the team chat in a drawer (bottom sheet on phones). The assistant
+// The «Συζήτηση ομάδας» entry on the project page, with an unread badge,
+// opening the team chat in a drawer (full screen on phones). The assistant
 // lives on boards, so "@βοηθός" here just posts to the team.
+//
+// The drawer is a plain fixed panel with ui/Drawer's look rather than
+// ui/Drawer itself: that one is a native <dialog> in the top layer, which
+// would sit above (and make inert) the confirm dialog and the toasts from
+// ../feedback that the chat relies on.
 export function ProjectChat({
   projectId,
   orgId,
@@ -35,47 +41,56 @@ export function ProjectChat({
   const last = chat.messages[chat.messages.length - 1];
 
   return (
-    <>
+    <section className="flex flex-col">
+      <SectionHeader title={el.collab.project.chatCta} />
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="relative flex min-h-16 w-full items-center gap-3 rounded-xl bg-sage-strong px-4 py-3 text-left shadow-sm hover:bg-sage"
+        className="flex min-h-16 w-full items-center gap-4 border-b border-hairline px-1 py-3 text-left transition-colors hover:bg-hover"
       >
-        <span className="text-2xl" aria-hidden="true">
-          💬
-        </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-base font-semibold">{el.collab.project.chatCta}</span>
-          <span className="block truncate text-xs text-ink-muted">
-            {last ? `${(last.author_id && people[last.author_id]) || el.collab.unknownUser}: ${last.body}` : el.collab.project.chatCtaHint}
+          <span className="sr-only">{el.collab.project.chatCta}: </span>
+          <span className="block truncate text-sm text-text">
+            {last ? (
+              <>
+                <span className="text-ink">{(last.author_id && people[last.author_id]) || el.collab.unknownUser}</span>
+                <span className="text-muted">: </span>
+                {last.body}
+              </>
+            ) : (
+              <span className="text-muted">{el.collab.project.chatCtaHint}</span>
+            )}
           </span>
         </span>
         {chat.unread > 0 && (
-          <span className="flex h-7 min-w-7 items-center justify-center rounded-full bg-red-ink px-2 text-sm font-bold text-white">
+          <Badge tone="navy" className="num">
             {chat.unread > 99 ? "99+" : chat.unread}
             <span className="sr-only"> {el.collab.chat.unread}</span>
-          </span>
+          </Badge>
         )}
+        <span aria-hidden="true" className="shrink-0 text-small text-muted">
+          {el.collab.project.openBoard} →
+        </span>
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-ink/20" onClick={() => setOpen(false)} role="presentation">
+        <div className="fixed inset-0 z-50 flex justify-end bg-ink/30" onClick={() => setOpen(false)} role="presentation">
           <aside
             role="dialog"
             aria-modal="true"
             aria-label={el.collab.chat.title}
-            className="flex w-full flex-col bg-surface shadow-2xl max-md:absolute max-md:inset-x-0 max-md:bottom-0 max-md:h-[85dvh] max-md:rounded-t-2xl md:h-full md:max-w-md"
+            className="flex h-dvh w-full flex-col bg-raised text-ink md:w-drawer md:border-l md:border-hairline"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-line px-3 py-1.5">
-              <h2 className="text-base font-semibold">👥 {el.collab.chat.title}</h2>
+            <div className="flex items-center justify-between gap-4 border-b border-rule px-4 py-3 md:px-6">
+              <h2 className="text-section font-normal text-ink">{el.collab.chat.title}</h2>
               <button
                 type="button"
-                className="flex h-11 w-11 items-center justify-center rounded-lg text-xl text-ink-muted hover:bg-bg"
+                className="-mr-2 inline-flex min-h-11 min-w-11 items-center justify-center text-xl text-muted hover:bg-hover hover:text-ink"
                 onClick={() => setOpen(false)}
                 aria-label={el.collab.comments.close}
               >
-                ×
+                <span aria-hidden="true">×</span>
               </button>
             </div>
             <TeamChat
@@ -95,6 +110,6 @@ export function ProjectChat({
       )}
       {dialog}
       <ToastStack toasts={toasts} onDismiss={dismiss} className="fixed inset-x-0 bottom-4 z-[70] px-2" />
-    </>
+    </section>
   );
 }

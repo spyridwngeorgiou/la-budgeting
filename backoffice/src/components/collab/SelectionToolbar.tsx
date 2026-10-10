@@ -104,7 +104,7 @@ export function SelectionToolbar({
 
   return (
     <div
-      className="pointer-events-auto absolute z-[7] flex items-center gap-0.5 rounded-xl border border-line-strong bg-surface p-1 shadow-lg"
+      className="pointer-events-auto absolute z-[7] flex items-center gap-px border border-hairline bg-raised p-1"
       style={{ left: place.left, top: place.top, transform: `translate(-50%, ${place.below ? "0" : "-100%"})` }}
       role="toolbar"
       aria-label={el.collab.project.moreActions}
@@ -117,7 +117,7 @@ export function SelectionToolbar({
         </>
       )}
       <Btn label={s.comment} icon="💬" onClick={() => onComment(sel)} />
-      {hasAi && <Btn label={s.ask} icon={<AiSpark className="h-4 w-4 text-ai-ink" />} onClick={() => onAsk(sel)} />}
+      {hasAi && <Btn label={s.ask} icon={<AiSpark className="h-4 w-4 text-ai" />} onClick={() => onAsk(sel)} />}
       {link && <Btn label={el.collab.quick.openPdf} icon="📄" onClick={() => onOpenLink(link)} />}
       {canEdit && sel.image && <Btn label={s.deleteFile} icon="✖" danger onClick={() => sel.image && onDeleteFile(sel.image)} />}
     </div>
@@ -140,8 +140,8 @@ function Btn({
       type="button"
       onClick={onClick}
       title={label}
-      className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-lg px-2.5 text-xs font-medium whitespace-nowrap ${
-        danger ? "text-red-ink hover:bg-red-bg" : "text-ink hover:bg-bg"
+      className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 px-2.5 text-xs font-medium whitespace-nowrap ${
+        danger ? "text-negative hover:bg-negative-tint" : "text-ink hover:bg-hover"
       }`}
     >
       <span aria-hidden="true" className="text-base leading-none">

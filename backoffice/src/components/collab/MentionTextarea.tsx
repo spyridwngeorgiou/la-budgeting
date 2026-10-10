@@ -92,13 +92,13 @@ export function MentionTextarea({
       {open && (
         <ul
           role="listbox"
-          className="absolute bottom-full left-0 z-30 mb-1 max-h-56 w-64 max-w-full overflow-y-auto rounded-lg border border-line bg-surface py-1 shadow-lg"
+          className="absolute bottom-full left-0 z-30 mb-1 max-h-56 w-64 max-w-full overflow-y-auto border border-hairline bg-field py-1"
         >
           {suggestions.map((p, i) => (
             <li key={p.userId} role="option" aria-selected={i === highlighted}>
               <button
                 type="button"
-                className={`flex min-h-11 w-full items-center px-3 text-left text-sm ${i === highlighted ? "bg-sage/50" : "hover:bg-bg"}`}
+                className={`flex min-h-11 w-full items-center px-3 text-left text-sm text-ink ${i === highlighted ? "bg-hover" : "hover:bg-hover"}`}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => pick(p)}
               >
@@ -117,7 +117,7 @@ export function MentionTextarea({
         disabled={disabled}
         autoFocus={autoFocus}
         aria-label={ariaLabel ?? placeholder}
-        className={`block w-full resize-none rounded-lg border border-line-strong bg-surface px-3 py-2 text-base focus:border-sage-strong focus:outline-none sm:text-sm ${className}`}
+        className={`block w-full resize-none border border-field-border bg-field px-3 py-2 text-base text-ink placeholder:text-muted focus:border-navy focus:outline-none disabled:bg-hover disabled:text-muted sm:text-sm ${className}`}
         onChange={(e) => {
           onChange(e.target.value);
           setCaret(e.target.selectionStart ?? e.target.value.length);
@@ -136,7 +136,7 @@ export function MentionText({ body, names }: { body: string; names: string[] }) 
     <>
       {mentionSegments(body, names).map((s, i) =>
         s.mention ? (
-          <span key={i} className="rounded bg-sage/60 px-0.5 font-medium text-sage-ink">
+          <span key={i} className="bg-hover px-0.5 font-medium text-navy">
             {s.text}
           </span>
         ) : (

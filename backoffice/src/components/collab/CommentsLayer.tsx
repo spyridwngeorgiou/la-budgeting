@@ -77,7 +77,7 @@ export function CommentsLayer({
           key={c.id}
           type="button"
           onClick={() => onOpenThread(c.id)}
-          className="pointer-events-auto absolute flex h-7 min-w-7 -translate-x-1/2 -translate-y-full items-center justify-center rounded-full rounded-bl-none border border-amber-ink/40 bg-amber-bg px-1.5 text-xs font-medium text-amber-ink shadow-sm hover:bg-amber-bg/80"
+          className="pointer-events-auto absolute flex h-7 min-w-7 -translate-x-1/2 -translate-y-full items-center justify-center border border-warning bg-warning-tint px-1.5 text-xs font-medium text-warning hover:bg-hover"
           style={{ left, top }}
           title={c.body.slice(0, 120)}
         >
@@ -87,7 +87,7 @@ export function CommentsLayer({
 
       {placing && (
         <div
-          className="pointer-events-auto absolute inset-0 cursor-crosshair bg-amber-bg/10"
+          className="pointer-events-auto absolute inset-0 cursor-crosshair bg-warning-tint/10"
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
             onPlace({
@@ -96,7 +96,7 @@ export function CommentsLayer({
             });
           }}
         >
-          <div className="pointer-events-none absolute top-16 left-1/2 -translate-x-1/2 rounded-md bg-ink px-3 py-1.5 text-xs text-white shadow">
+          <div className="pointer-events-none absolute top-16 left-1/2 -translate-x-1/2 bg-panel px-3 py-1.5 text-xs text-panel-ink">
             {el.collab.comments.pinHint}
           </div>
         </div>
