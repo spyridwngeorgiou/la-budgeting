@@ -83,9 +83,9 @@ export const NAV_V2: Destination[] = [
   },
   {
     key: "money",
-    href: "/transactions",
+    href: "/money",
     label: shell.nav.money,
-    also: ["/reports", "/accounts", "/contacts"],
+    also: ["/transactions", "/reports", "/accounts", "/contacts"],
     mobile: true,
   },
   // Partners: their projects live in the collaboration space until Phase 4

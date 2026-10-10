@@ -3,6 +3,9 @@
 // flip to permanent once the new layout has settled. No imports: next.config
 // loads this file directly.
 export const LEGACY_REDIRECTS: { source: string; destination: string }[] = [
+  // «Αναφορές» opens on its first tab (was a page of its own, a bare
+  // redirect; moved here in Φ3 so /money fits the page budget).
+  { source: "/reports", destination: "/reports/cash" },
   { source: "/analysis", destination: "/transactions/analysis" },
   { source: "/installments", destination: "/transactions/installments" },
   { source: "/properties", destination: "/projects/properties" },

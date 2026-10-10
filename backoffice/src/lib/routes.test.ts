@@ -21,7 +21,15 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 // page.tsx / route.ts under src/app, route groups dropped, [param] -> one
-// segment, [...rest] -> one or more.
+// segment, [...rest] -> one or more, [[...rest]] -> zero or more.
+const segmentPattern = (s: string) =>
+  /^\[\[\.\.\..+\]\]$/.test(s)
+    ? "(?:/.+)?"
+    : /^\[\.\.\..+\]$/.test(s)
+      ? "/.+"
+      : /^\[.+\]$/.test(s)
+        ? "/[^/]+"
+        : `/${s.replace(/[.*+?^$()|\\]/g, "\\$&")}`;
 const routePatterns: RegExp[] = walk(APP)
   .filter((f) => /[\\/](page\.tsx|route\.ts)$/.test(f))
   .map((f) => {
@@ -29,9 +37,7 @@ const routePatterns: RegExp[] = walk(APP)
       .relative(APP, path.dirname(f))
       .split(path.sep)
       .filter((s) => s && !/^\(.*\)$/.test(s));
-    const re = segments
-      .map((s) => (/^\[\.\.\..+\]$/.test(s) ? "/.+" : /^\[.+\]$/.test(s) ? "/[^/]+" : `/${s.replace(/[.*+?^$()|\\]/g, "\\$&")}`))
-      .join("");
+    const re = segments.map(segmentPattern).join("");
     return new RegExp(`^${re || "/"}$`);
   });
 
