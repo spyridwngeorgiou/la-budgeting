@@ -22,6 +22,7 @@ export { ToastProvider, useToast, type ToastOptions } from "./Toast";
 export { Worklist, WorklistItem, type Severity } from "./Worklist";
 export { Sparkline } from "./Sparkline";
 export { chartTheme, compactNumber } from "./chart";
-export { TrendChart } from "./TrendChart";
+// TrendChart (recharts) is imported from "@/components/ui/TrendChart"
+// directly, so recharts never rides into a bundle through this barrel.
 export { Skeleton, PageSkeleton, Card } from "./Skeleton";
 export { Brand, LogoMark, Wordmark } from "./Brand";

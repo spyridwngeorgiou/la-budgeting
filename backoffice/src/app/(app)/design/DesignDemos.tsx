@@ -15,9 +15,9 @@ import {
   Modal,
   MoneyInput,
   Select,
-  TrendChart,
   useToast,
 } from "@/components/ui";
+import { TrendChart } from "@/components/ui/TrendChart";
 import { formatMoney } from "@/lib/format";
 import { DEMO_CASH } from "./fixtures";
 
