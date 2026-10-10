@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ButtonLink, EmptyState, cn } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { formatMoney } from "@/lib/format";
 import { dayMonthLabel, firstOfMonth, lastOfMonth, monthLabel } from "@/lib/dates";
@@ -34,24 +35,24 @@ export function PlannerCalendar({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-medium text-ink capitalize">{monthLabel(monthKey)}</h2>
-        <div className="flex gap-1 text-sm">
-          <Link href={nav.prev} className="rounded-md border border-line-strong px-2.5 py-1 hover:bg-bg">
+        <h2 className="text-section font-normal text-ink capitalize">{monthLabel(monthKey)}</h2>
+        <div className="flex">
+          <ButtonLink href={nav.prev} size="sm" className="max-md:min-h-11">
             {el.planner.calendar.prev}
-          </Link>
-          <Link href={nav.today} className="rounded-md border border-line-strong px-2.5 py-1 hover:bg-bg">
+          </ButtonLink>
+          <ButtonLink href={nav.today} size="sm" className="-ml-px max-md:min-h-11">
             {el.planner.calendar.thisMonth}
-          </Link>
-          <Link href={nav.next} className="rounded-md border border-line-strong px-2.5 py-1 hover:bg-bg">
+          </ButtonLink>
+          <ButtonLink href={nav.next} size="sm" className="-ml-px max-md:min-h-11">
             {el.planner.calendar.next}
-          </Link>
+          </ButtonLink>
         </div>
       </div>
 
-      <div className="hidden rounded-lg border border-line bg-surface p-2 md:block">
-        <div className="grid grid-cols-7 gap-1 text-xs">
+      <div className="hidden md:block">
+        <div className="grid grid-cols-7 border-t border-l border-hairline text-xs">
           {WEEKDAY_LABELS.map((w) => (
-            <div key={w} className="py-1 text-center text-ink-faint">
+            <div key={w} className="eyebrow border-r border-b border-hairline border-b-rule bg-raised px-1.5 py-2 text-muted">
               {w}
             </div>
           ))}
@@ -61,14 +62,18 @@ export function PlannerCalendar({
             return (
               <div
                 key={cell.dateIso}
-                className={`flex min-h-24 flex-col gap-0.5 rounded border p-1 ${
-                  isToday ? "border-sage-strong bg-sage/30" : "border-line"
-                } ${cell.inMonth ? "" : "bg-bg/60"}`}
+                aria-current={isToday ? "date" : undefined}
+                className={cn(
+                  "flex min-h-24 flex-col gap-0.5 border-r border-b border-hairline p-1",
+                  cell.inMonth ? "bg-field" : "bg-raised",
+                  isToday && "outline outline-1 -outline-offset-1 outline-navy",
+                )}
               >
                 <span
-                  className={`text-right text-[11px] ${
-                    isToday ? "font-semibold text-sage-ink" : cell.inMonth ? "text-ink-muted" : "text-ink-faint"
-                  }`}
+                  className={cn(
+                    "num self-end px-1 text-xs",
+                    isToday ? "bg-navy font-medium text-panel-ink" : cell.inMonth ? "text-text" : "text-muted",
+                  )}
                 >
                   {cell.day}
                 </span>
@@ -76,7 +81,7 @@ export function PlannerCalendar({
                   <Pill key={item.item_key} item={item} href={hrefFor(item)} overdue={!item.is_done && item.ends_on < today} />
                 ))}
                 {dayItems.length > MAX_PER_CELL && (
-                  <span className="px-1 text-[10px] text-ink-faint">
+                  <span className="px-1 text-xs text-muted">
                     +{dayItems.length - MAX_PER_CELL} {el.planner.calendar.more}
                   </span>
                 )}
@@ -86,15 +91,11 @@ export function PlannerCalendar({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 md:hidden">
-        {agenda.length === 0 && (
-          <p className="rounded-lg border border-line bg-surface p-4 text-center text-sm text-ink-faint">
-            {el.planner.calendar.empty}
-          </p>
-        )}
+      <div className="flex flex-col md:hidden">
+        {agenda.length === 0 && <EmptyState title={el.planner.calendar.empty} />}
         {agenda.map((day) => (
-          <section key={day.dateIso} className="rounded-lg border border-line bg-surface p-2">
-            <h3 className={`mb-1 text-xs font-medium ${day.dateIso === today ? "text-sage-ink" : "text-ink-muted"}`}>
+          <section key={day.dateIso} className="border-b border-hairline py-3">
+            <h3 className={cn("eyebrow mb-2", day.dateIso === today ? "text-navy" : "text-muted")}>
               {dayMonthLabel(day.dateIso)}
             </h3>
             <ul className="flex flex-col gap-1">
@@ -126,13 +127,17 @@ function Pill({
   const body = (
     <span
       title={`${el.planner.source[item.source]} · ${label}`}
-      className={`flex items-center gap-1 rounded border px-1 py-0.5 ${wide ? "text-sm" : "text-[11px]"} leading-tight ${
-        SOURCE_PILL[item.source]
-      } ${item.is_done ? "opacity-50 line-through" : ""} ${overdue ? "ring-1 ring-red-ink/50" : ""}`}
+      className={cn(
+        "flex items-center gap-1 border-l-2 bg-field leading-tight group-hover:bg-hover",
+        wide ? "min-h-11 px-2 py-1.5 text-sm" : "px-1 py-0.5 text-xs",
+        SOURCE_PILL[item.source],
+        item.is_done && "text-muted line-through",
+        overdue && "border-negative text-negative",
+      )}
     >
       <span className="min-w-0 flex-1 truncate">{label}</span>
       {item.amount != null && (
-        <span className="shrink-0 font-mono tabular-nums">
+        <span className="num shrink-0">
           {item.direction === "income" ? "+" : item.direction === "expense" ? "−" : ""}
           {formatMoney(item.amount)}
         </span>
@@ -140,7 +145,7 @@ function Pill({
     </span>
   );
   return href ? (
-    <Link href={href} className="block hover:opacity-80">
+    <Link href={href} className="group block">
       {body}
     </Link>
   ) : (

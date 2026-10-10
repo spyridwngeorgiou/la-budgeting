@@ -19,7 +19,7 @@ if (typeof window !== "undefined") {
 const BoardCanvas = dynamic(() => import("./BoardCanvas"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full items-center justify-center text-sm text-ink-muted">{el.collab.board.loading}</div>
+    <div className="flex h-full items-center justify-center text-sm text-muted">{el.collab.board.loading}</div>
   ),
 });
 

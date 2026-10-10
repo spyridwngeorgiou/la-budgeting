@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { el } from "@/lib/i18n/el";
+import { Button, buttonClass } from "@/components/ui";
 
 // Small overlays drawn over the canvas.
 
@@ -44,7 +45,7 @@ export function RemovedFilesLayer({ api, removed }: { api: ExcalidrawImperativeA
       {boxes.map((e) => (
         <div
           key={e.id}
-          className="absolute flex items-center justify-center rounded border border-dashed border-line-strong bg-bg/90 p-2 text-center text-xs text-ink-muted"
+          className="absolute flex items-center justify-center border border-dashed border-chip-border bg-canvas p-2 text-center text-xs text-muted"
           style={{
             left: (e.x + st.scrollX) * z,
             top: (e.y + st.scrollY) * z,
@@ -86,25 +87,21 @@ export function BoardTips() {
 
   return (
     <div className="absolute inset-0 z-[30] flex items-end justify-center bg-ink/20 p-3 sm:items-center" role="dialog" aria-modal="true" aria-label={t.title}>
-      <div className="w-full max-w-sm rounded-2xl bg-surface p-5 shadow-2xl">
+      <div className="w-full max-w-sm border border-hairline bg-raised p-5">
         <div className="mb-3 flex gap-1.5" aria-hidden="true">
           {steps.map((_, i) => (
-            <span key={i} className={`h-1.5 flex-1 rounded-full ${i <= step ? "bg-sage-strong" : "bg-line"}`} />
+            <span key={i} className={`h-0.5 flex-1 ${i <= step ? "bg-navy" : "bg-hairline"}`} />
           ))}
         </div>
-        <h2 className="text-lg font-semibold">{t.title}</h2>
-        <p className="mt-2 text-sm text-ink-muted">{t.body}</p>
+        <h2 className="text-section text-ink">{t.title}</h2>
+        <p className="mt-2 text-sm text-text">{t.body}</p>
         <div className="mt-5 flex items-center justify-between gap-2">
-          <button type="button" className="min-h-11 px-2 text-sm text-ink-muted hover:text-ink" onClick={finish}>
+          <Button type="button" variant="ghost" className="min-h-11" onClick={finish}>
             {el.collab.onboarding.skip}
-          </button>
-          <button
-            type="button"
-            className="min-h-11 rounded-lg bg-ink px-5 text-sm font-medium text-white hover:bg-ink/85"
-            onClick={() => (step + 1 < steps.length ? setStep(step + 1) : finish())}
-          >
+          </Button>
+          <Button type="button" className="min-h-11" onClick={() => (step + 1 < steps.length ? setStep(step + 1) : finish())}>
             {step + 1 < steps.length ? el.collab.onboarding.next : el.collab.onboarding.done}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -123,21 +120,21 @@ export function ShortcutsHelp({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-label={el.collab.shortcuts.title}
-        className="w-full max-w-sm rounded-2xl bg-surface p-5 shadow-2xl"
+        className="w-full max-w-sm border border-hairline bg-raised p-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-semibold">{el.collab.shortcuts.title}</h2>
+        <h2 className="text-section text-ink">{el.collab.shortcuts.title}</h2>
         <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
           {el.collab.shortcuts.list.map(([k, v]) => (
             <div key={k} className="contents">
               <dt>
-                <kbd className="rounded border border-line-strong bg-bg px-1.5 py-0.5 font-mono text-xs">{k}</kbd>
+                <kbd className="border border-chip-border bg-field px-1.5 py-0.5 font-mono text-xs text-ink">{k}</kbd>
               </dt>
-              <dd className="text-ink-muted">{v}</dd>
+              <dd className="text-text">{v}</dd>
             </div>
           ))}
         </dl>
-        <button type="button" className="mt-4 min-h-11 w-full rounded-lg border border-line-strong text-sm hover:bg-bg" onClick={onClose}>
+        <button type="button" className={buttonClass("secondary", "md", "mt-4 min-h-11 w-full")} onClick={onClose}>
           {el.collab.comments.close}
         </button>
       </div>

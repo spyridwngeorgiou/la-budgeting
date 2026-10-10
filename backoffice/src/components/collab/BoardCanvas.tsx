@@ -18,7 +18,7 @@ import { el } from "@/lib/i18n/el";
 import { fillText } from "@/lib/collab/text";
 import { describeElements, duplicateElements, type LooseElement } from "@/lib/collab/elements";
 import { NOTE_COLOURS, NOTE_SIZE, stickyNote, templateSkeletons, isBoardTemplate } from "@/lib/collab/templates";
-import { AiSpark } from "@/components/ui";
+import { AiSpark, Button, cn } from "@/components/ui";
 import { deleteCollabFile } from "@/app/(collab)/collab/[projectId]/actions";
 import { useBoardSync, type CommentEvent, type SyncStatus } from "./useBoardSync";
 import { dataUrlToBlob, isAllowedCollabFile, loadBoardFiles, uploadBoardFile, COLLAB_FILE_TYPES } from "./boardFiles";
@@ -33,6 +33,7 @@ import { SelectionToolbar, type SelectionInfo } from "./SelectionToolbar";
 import { BoardTips, RemovedFilesLayer, ShortcutsHelp } from "./overlays";
 import { ToastStack, useConfirm, useToasts } from "./feedback";
 import { useCanvasUploads } from "./useCanvasUploads";
+import { BOARD_BACKGROUND } from "./canvasTheme";
 import { COMMENT_COLUMNS, type BoardBootstrap, type BoardComment } from "./types";
 
 // Side panels. One is open at a time: a right-hand drawer on desktop, a
@@ -106,7 +107,7 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
   const initialData = useMemo(
     () => ({
       elements: bootstrap.elements as ExcalidrawElement[],
-      appState: { viewBackgroundColor: "#ffffff" },
+      appState: { viewBackgroundColor: BOARD_BACKGROUND },
       scrollToContent: true,
     }),
     [bootstrap.elements],
@@ -377,7 +378,7 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
         const blob = await exportToBlob({
           elements,
           files: api.getFiles(),
-          appState: { exportBackground: true, viewBackgroundColor: "#ffffff" },
+          appState: { exportBackground: true, viewBackgroundColor: BOARD_BACKGROUND },
           mimeType: "image/png",
           maxWidthOrHeight: 640,
           exportPadding: 24,
@@ -594,10 +595,10 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="flex h-14 shrink-0 items-center gap-1.5 border-b border-line bg-surface px-2 sm:px-3">
+      <header className="flex h-14 shrink-0 items-center gap-1.5 border-b border-hairline bg-raised px-2 sm:px-3">
         <Link
           href={bootstrap.backHref}
-          className="flex h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-sm text-ink-muted hover:bg-bg hover:text-ink"
+          className="flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 px-2 text-sm text-muted hover:bg-hover hover:text-ink"
           aria-label={el.collab.board.back}
         >
           <span aria-hidden="true" className="text-lg">
@@ -606,9 +607,9 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
           <span className="hidden md:inline">{el.collab.board.back}</span>
         </Link>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold">{bootstrap.title}</div>
-          <div className={`truncate text-[11px] ${status === "offline" || status === "error" ? "text-red-ink" : "text-ink-faint"}`}>
-            {!canEdit && <span className="font-medium text-amber-ink">{el.collab.viewOnly} · </span>}
+          <div className="truncate text-sm font-medium text-ink">{bootstrap.title}</div>
+          <div className={`truncate text-xs ${status === "offline" || status === "error" ? "text-negative" : "text-muted"}`}>
+            {!canEdit && <span className="font-medium text-warning">{el.collab.viewOnly} · </span>}
             {STATUS_LABEL[status]}
           </div>
         </div>
@@ -619,7 +620,7 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
                 key={p.userId}
                 type="button"
                 title={`${p.name} · ${el.collab.presence.goTo}`}
-                className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-surface text-xs font-semibold text-white"
+                className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-raised text-xs font-medium text-panel-ink"
                 style={{ background: p.color }}
                 onClick={() => {
                   const pointer = peerPointer(p.userId);
@@ -641,15 +642,16 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
         <button
           type="button"
           onClick={() => setPanel((p) => (p === "comments" ? null : "comments"))}
-          className={`relative flex h-11 min-w-11 items-center justify-center gap-1 rounded-lg border px-2.5 text-sm font-medium ${
-            panel === "comments" ? "border-sage-strong bg-sage text-sage-ink" : "border-line-strong bg-surface hover:bg-bg"
-          }`}
+          className={cn(
+            "relative flex h-11 min-w-11 items-center justify-center gap-1 border px-2.5 text-sm font-medium",
+            panel === "comments" ? "border-navy bg-navy text-panel-ink" : "border-chip-border text-ink hover:border-navy hover:bg-hover",
+          )}
           aria-label={el.collab.comments.title}
           title={el.collab.comments.title}
         >
           <span aria-hidden="true">📌</span>
           <span className="hidden lg:inline">{el.collab.comments.title}</span>
-          {openThreads > 0 && <span className="text-xs">{openThreads}</span>}
+          {openThreads > 0 && <span className="num text-xs">{openThreads}</span>}
         </button>
         <button
           type="button"
@@ -660,9 +662,10 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
               setPanel("chat");
             }
           }}
-          className={`relative flex h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold shadow-sm ${
-            panel === "chat" ? "bg-ink text-white" : "bg-sage-strong text-ink hover:bg-sage"
-          }`}
+          className={cn(
+            "relative flex h-11 items-center gap-1.5 border px-3 text-sm font-medium",
+            panel === "chat" ? "border-navy bg-navy text-panel-ink" : "border-chip-border text-ink hover:border-navy hover:bg-hover",
+          )}
           title={el.collab.chat.title}
         >
           <span aria-hidden="true" className="text-base">
@@ -670,7 +673,7 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
           </span>
           {el.collab.chat.open}
           {chat.unread > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-ink px-1 text-[11px] font-bold text-white">
+            <span className="num absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-negative px-1 text-xs font-medium text-panel-ink">
               {chat.unread > 99 ? "99+" : chat.unread}
               <span className="sr-only"> {el.collab.chat.unread}</span>
             </span>
@@ -784,29 +787,25 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
           {(uploads.progress || uploads.pdfOffer) && (
             <div className="pointer-events-none absolute inset-x-0 top-3 z-[8] flex justify-center px-2">
               {uploads.progress ? (
-                <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm text-white shadow-lg">
-                  <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />
+                <div className="pointer-events-auto flex max-w-full items-center gap-2 bg-panel px-4 py-2 text-sm text-panel-ink">
+                  <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-panel-muted border-t-panel-ink" aria-hidden="true" />
                   <span className="shrink-0">
                     {fillText(el.collab.quick.uploading, { done: uploads.progress.done + 1, total: uploads.progress.total })}
                   </span>
-                  <span className="min-w-0 truncate text-white/70">{uploads.progress.label}</span>
+                  <span className="min-w-0 truncate text-panel-muted">{uploads.progress.label}</span>
                 </div>
               ) : (
                 uploads.pdfOffer && (
-                  <div className="pointer-events-auto flex max-w-full flex-wrap items-center gap-2 rounded-2xl border border-line-strong bg-surface px-4 py-2 text-sm shadow-lg">
+                  <div className="pointer-events-auto flex max-w-full flex-wrap items-center gap-2 border border-hairline bg-raised px-4 py-2 text-sm text-ink">
                     <span className="min-w-0">
                       {fillText(el.collab.quick.pdfPages, { name: uploads.pdfOffer.name, pages: uploads.pdfOffer.numPages })}
                     </span>
-                    <button
-                      type="button"
-                      className="min-h-11 rounded-lg bg-ink px-3 font-medium text-white"
-                      onClick={() => void uploads.acceptPdfOffer()}
-                    >
+                    <Button type="button" className="min-h-11" onClick={() => void uploads.acceptPdfOffer()}>
                       {uploads.pdfOffer.numPages > 10 ? el.collab.quick.pdfAllPagesMax : el.collab.quick.pdfAllPages}
-                    </button>
-                    <button type="button" className="min-h-11 rounded-lg px-3 text-ink-muted hover:bg-bg" onClick={uploads.dismissPdfOffer}>
+                    </Button>
+                    <Button type="button" variant="ghost" className="min-h-11" onClick={uploads.dismissPdfOffer}>
                       {el.collab.quick.pdfDismiss}
-                    </button>
+                    </Button>
                   </div>
                 )
               )}
@@ -814,8 +813,8 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
           )}
 
           {dragging && (
-            <div className="pointer-events-none absolute inset-2 z-[9] flex items-center justify-center rounded-2xl border-4 border-dashed border-sage-strong bg-sage/30">
-              <span className="rounded-xl bg-surface px-5 py-3 text-base font-semibold shadow-lg">{el.collab.quick.dropHere}</span>
+            <div className="pointer-events-none absolute inset-2 z-[9] flex items-center justify-center border-2 border-dashed border-navy bg-hover/60">
+              <span className="border border-hairline bg-raised px-5 py-3 text-body font-medium text-ink">{el.collab.quick.dropHere}</span>
             </div>
           )}
 
@@ -840,13 +839,14 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
 
         {panel && (
           <aside
-            className={`flex min-h-0 flex-col border-line bg-surface max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:z-40 max-md:h-[75dvh] max-md:rounded-t-2xl max-md:border-t max-md:shadow-2xl md:border-l ${
-              panel === "chat" ? "md:w-96" : "md:w-80"
-            }`}
+            className={cn(
+              "flex min-h-0 flex-col border-hairline bg-raised max-md:fixed max-md:inset-0 max-md:z-40 max-md:h-dvh md:border-l",
+              panel === "chat" ? "md:w-96" : "md:w-80",
+            )}
           >
-            <div className="flex items-center justify-between gap-2 border-b border-line px-2 py-1.5">
+            <div className="flex items-center justify-between gap-2 border-b border-hairline px-2">
               {panel === "chat" ? (
-                <div className="flex gap-1" role="tablist">
+                <div className="flex gap-1 self-stretch" role="tablist">
                   <TabButton active={chatTab === "team"} onClick={() => setChatTab("team")}>
                     👥 {el.collab.chat.teamTab}
                   </TabButton>
@@ -857,11 +857,11 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
                   )}
                 </div>
               ) : (
-                <h2 className="px-1 text-sm font-semibold">{el.collab.comments.title}</h2>
+                <h2 className="eyebrow px-1 text-muted">{el.collab.comments.title}</h2>
               )}
               <button
                 type="button"
-                className="flex h-11 w-11 items-center justify-center rounded-lg text-xl text-ink-muted hover:bg-bg"
+                className="flex h-11 w-11 items-center justify-center text-xl text-muted hover:bg-hover hover:text-ink"
                 onClick={closePanel}
                 aria-label={el.collab.comments.close}
               >
@@ -956,9 +956,11 @@ function TabButton({
       role="tab"
       aria-selected={active}
       onClick={onClick}
-      className={`flex min-h-11 items-center gap-1.5 rounded-lg px-4 text-sm font-medium ${
-        active ? (ai ? "bg-ai-strong text-white" : "bg-ink text-white") : ai ? "text-ai-ink hover:bg-ai-bg" : "text-ink hover:bg-bg"
-      }`}
+      className={cn(
+        "-mb-px flex min-h-11 items-center gap-1.5 border-b-2 px-3 text-sm font-medium whitespace-nowrap",
+        active ? "border-navy" : "border-transparent hover:bg-hover",
+        ai ? "text-ai" : active ? "text-ink" : "text-muted hover:text-ink",
+      )}
     >
       {children}
     </button>

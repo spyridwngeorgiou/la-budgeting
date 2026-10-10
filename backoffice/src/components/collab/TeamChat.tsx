@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { el } from "@/lib/i18n/el";
 import { fillText } from "@/lib/collab/text";
 import { assistantQuestion, type MentionPerson } from "@/lib/collab/mentions";
-import { AiSpark } from "@/components/ui";
+import { AiSpark, Button, MenuItem, Textarea, cn } from "@/components/ui";
 import { MentionText, MentionTextarea } from "./MentionTextarea";
 import { COLLAB_FILE_TYPES, isAllowedCollabFile, isImageType } from "./boardFiles";
 import type { TeamChatState, TeamMessage } from "./useTeamChat";
@@ -125,18 +125,13 @@ export function TeamChat({
         addFiles(e.dataTransfer.files);
       }}
     >
-      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-3 text-sm">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3 text-sm md:px-4">
         {chat.loaded && chat.messages.length === 0 && (
-          <div className="flex flex-col items-center gap-2 py-10 text-center text-ink-muted">
-            <span className="text-3xl" aria-hidden="true">
-              👋
-            </span>
-            <p className="max-w-xs">{t.empty}</p>
-          </div>
+          <p className="max-w-xs py-10 text-small text-muted">{t.empty}</p>
         )}
         {rows.map((r) =>
           r.kind === "day" ? (
-            <div key={r.key} className="py-1 text-center text-[11px] font-medium text-ink-faint">
+            <div key={r.key} className="eyebrow border-b border-hairline pt-4 pb-1.5 text-muted first:pt-0">
               {r.label}
             </div>
           ) : (
@@ -183,28 +178,29 @@ export function TeamChat({
         <div ref={bottomRef} />
       </div>
 
-      <div className="space-y-2 border-t border-line bg-surface px-3 py-2">
+      <div className="flex flex-col gap-2 border-t border-hairline bg-raised px-3 py-3 md:px-4">
         {files.length > 0 && (
           <ul className="flex flex-wrap gap-1.5">
             {files.map((f, i) => (
-              <li key={`${f.name}-${i}`} className="flex items-center gap-1 rounded-full bg-bg py-1 pr-1 pl-3 text-xs">
+              <li key={`${f.name}-${i}`} className="flex items-center gap-1 border border-chip-border bg-field py-0.5 pr-0.5 pl-2.5 text-xs text-ink">
                 <span className="max-w-40 truncate">
-                  {f.type === "application/pdf" ? "📄" : "🖼️"} {f.name}
+                  {f.type === "application/pdf" && <span className="text-muted">PDF </span>}
+                  {f.name}
                 </span>
                 <button
                   type="button"
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-ink-muted hover:bg-line"
+                  className="flex h-8 w-8 items-center justify-center text-muted hover:bg-hover hover:text-ink max-md:h-11 max-md:w-11"
                   aria-label={el.collab.comments.close}
                   onClick={() => setFiles((list) => list.filter((_, j) => j !== i))}
                 >
-                  ×
+                  <span aria-hidden="true">×</span>
                 </button>
               </li>
             ))}
           </ul>
         )}
         {progress && (
-          <div className="text-xs text-ink-muted">{fillText(el.collab.fileLibrary.uploading, progress)}</div>
+          <p className="border-l-2 border-navy pl-3 text-xs text-muted">{fillText(el.collab.fileLibrary.uploading, progress)}</p>
         )}
         <form
           className="flex items-end gap-2"
@@ -215,15 +211,17 @@ export function TeamChat({
         >
           {canUpload && (
             <>
-              <button
+              <Button
                 type="button"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line-strong text-lg hover:bg-bg"
+                variant="secondary"
+                size="sm"
+                className="h-11 w-11 shrink-0"
                 title={t.attach}
                 aria-label={t.attach}
                 onClick={() => fileInput.current?.click()}
               >
-                📎
-              </button>
+                <PaperclipIcon />
+              </Button>
               <input
                 ref={fileInput}
                 type="file"
@@ -247,17 +245,16 @@ export function TeamChat({
             rows={2}
             disabled={busy}
           />
-          <button
-            type="submit"
-            disabled={busy || (!draft.trim() && files.length === 0)}
-            className="flex h-11 shrink-0 items-center rounded-lg bg-ink px-4 text-sm font-medium text-white hover:bg-ink/85 disabled:opacity-40"
-          >
+          <Button type="submit" className="h-11 shrink-0" disabled={busy || (!draft.trim() && files.length === 0)}>
             {t.send}
-          </button>
+          </Button>
         </form>
         {onAskAssistant && (
-          <button
+          <Button
             type="button"
+            variant="ai"
+            size="sm"
+            className="self-start max-md:min-h-11"
             disabled={!draft.trim()}
             onClick={() => {
               const q = assistantQuestion(draft) ?? draft.trim();
@@ -265,10 +262,9 @@ export function TeamChat({
               setDraft("");
               onAskAssistant(q);
             }}
-            className="flex min-h-9 items-center gap-1 rounded-full border border-ai-border bg-ai-bg px-3 text-xs text-ai-ink hover:bg-ai-border/40 disabled:opacity-40"
           >
             <AiSpark /> {t.askAssistant}
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -313,11 +309,18 @@ function MessageRow({
   onAsk?: () => void;
 }) {
   return (
-    <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-      <div className={`group max-w-[88%] ${mine ? "items-end" : "items-start"} flex flex-col`}>
-        <div className="flex items-baseline gap-1.5 px-1 text-[11px] text-ink-muted">
+    // A hairline-separated list, not bubbles: own messages carry a 2px navy
+    // bar and the hover tint.
+    <div
+      className={cn(
+        "group flex items-start gap-2 border-b border-l-2 border-b-hairline py-2.5 pr-1 pl-3",
+        mine ? "border-l-navy bg-hover" : "border-l-transparent",
+      )}
+    >
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 items-baseline gap-1.5 text-xs text-muted">
           {!mine && <span className="font-medium text-ink">{author}</span>}
-          <span>{timeFmt.format(new Date(m.created_at))}</span>
+          <span className="num">{timeFmt.format(new Date(m.created_at))}</span>
           {m.edited_at && <span>· {el.collab.chat.edited}</span>}
           {boardTitle && (
             <span className="truncate">
@@ -325,105 +328,107 @@ function MessageRow({
             </span>
           )}
         </div>
-        <div className={`flex items-start gap-1 ${mine ? "flex-row-reverse" : ""}`}>
-          <div className={`rounded-2xl px-3 py-2 ${mine ? "bg-sage text-ink" : "border border-line bg-surface"}`}>
-            {editing !== null ? (
-              <div className="flex flex-col gap-2">
-                <textarea
-                  value={editing}
-                  onChange={(e) => onEditChange(e.target.value)}
-                  rows={3}
-                  maxLength={4000}
-                  className="w-64 max-w-full rounded-lg border border-line-strong bg-surface px-2 py-1 text-base sm:text-sm"
-                  autoFocus
-                />
-                <div className="flex justify-end gap-2">
-                  <button type="button" className="min-h-11 px-3 text-sm" onClick={onCancelEdit}>
-                    {el.common.cancel}
-                  </button>
-                  <button
-                    type="button"
-                    className="min-h-11 rounded-lg bg-ink px-3 text-sm text-white"
-                    onClick={onSaveEdit}
-                  >
-                    {el.common.save}
-                  </button>
-                </div>
+        <div className="mt-0.5">
+          {editing !== null ? (
+            <div className="flex flex-col gap-2">
+              <Textarea
+                value={editing}
+                onChange={(e) => onEditChange(e.target.value)}
+                rows={3}
+                maxLength={4000}
+                className="w-full max-md:text-base"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="secondary" size="sm" className="max-md:min-h-11" onClick={onCancelEdit}>
+                  {el.common.cancel}
+                </Button>
+                <Button type="button" size="sm" className="max-md:min-h-11" onClick={onSaveEdit}>
+                  {el.common.save}
+                </Button>
               </div>
-            ) : (
-              m.body && (
-                <p className="whitespace-pre-wrap break-words">
-                  <MentionText body={m.body} names={names} />
-                </p>
-              )
-            )}
-            {m.attachment_ids.length > 0 && (
-              <ul className="mt-1.5 flex flex-wrap gap-1.5">
-                {m.attachment_ids.map((id) => {
-                  const a = attachments[id];
-                  if (a === null) {
-                    return (
-                      <li key={id} className="rounded-lg bg-bg px-2 py-1 text-xs text-ink-faint italic">
-                        {el.collab.fileLibrary.removed}
-                      </li>
-                    );
-                  }
-                  const href = `/collab/${projectId}/files/${id}`;
+            </div>
+          ) : (
+            m.body && (
+              <p className="whitespace-pre-wrap break-words text-ink">
+                <MentionText body={m.body} names={names} />
+              </p>
+            )
+          )}
+          {m.attachment_ids.length > 0 && (
+            <ul className="mt-1.5 flex flex-wrap gap-1.5">
+              {m.attachment_ids.map((id) => {
+                const a = attachments[id];
+                if (a === null) {
                   return (
-                    <li key={id}>
-                      <a href={href} target="_blank" rel="noopener" className="block">
-                        {a && isImageType(a.mimeType) ? (
-                          // eslint-disable-next-line @next/next/no-img-element -- signed, short-lived URL behind a redirect
-                          <img src={href} alt={a.name} className="h-24 max-w-48 rounded-lg border border-line object-cover" />
-                        ) : (
-                          <span className="flex min-h-11 items-center gap-1 rounded-lg bg-bg px-3 text-xs underline-offset-2 hover:underline">
-                            📄 <span className="max-w-40 truncate">{a?.name || "PDF"}</span>
-                          </span>
-                        )}
-                      </a>
+                    <li key={id} className="border border-hairline px-2 py-1 text-xs text-muted italic">
+                      {el.collab.fileLibrary.removed}
                     </li>
                   );
-                })}
-              </ul>
-            )}
-          </div>
-          {(canDelete || onAsk) && editing === null && (
-            <div className="relative">
-              <button
-                type="button"
-                aria-label={el.collab.project.moreActions}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-ink-faint hover:bg-bg hover:text-ink"
-                onClick={onMenu}
-              >
-                ⋯
-              </button>
-              {menuOpen && (
-                <div
-                  className={`absolute top-9 z-20 flex w-44 flex-col rounded-lg border border-line bg-surface py-1 text-sm shadow-lg ${
-                    mine ? "right-0" : "left-0"
-                  }`}
+                }
+                const href = `/collab/${projectId}/files/${id}`;
+                return (
+                  <li key={id}>
+                    <a href={href} target="_blank" rel="noopener" className="block">
+                      {a && isImageType(a.mimeType) ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- signed, short-lived URL behind a redirect
+                        <img src={href} alt={a.name} className="h-24 max-w-48 border border-hairline bg-field object-cover" />
+                      ) : (
+                        <span className="flex min-h-11 items-center gap-1.5 border border-hairline bg-field px-3 text-xs text-ink underline-offset-2 hover:border-navy hover:underline">
+                          <span className="font-medium text-negative">PDF</span>
+                          <span className="max-w-40 truncate">{a?.name || "PDF"}</span>
+                        </span>
+                      )}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+      {(canDelete || onAsk) && editing === null && (
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            aria-label={el.collab.project.moreActions}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            className="flex h-9 w-9 items-center justify-center text-lg leading-none text-muted hover:bg-raised hover:text-ink max-md:h-11 max-md:w-11"
+            onClick={onMenu}
+          >
+            <span aria-hidden="true">⋯</span>
+          </button>
+          {menuOpen && (
+            <div role="menu" className="absolute top-full right-0 z-20 mt-1 flex w-52 flex-col border border-hairline bg-field py-1">
+              {onAsk && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="flex min-h-10 w-full items-center gap-2 px-3 py-2 text-left text-sm text-ai hover:bg-ai-tint max-md:min-h-11"
+                  onClick={onAsk}
                 >
-                  {onAsk && (
-                    <button type="button" className="min-h-11 px-3 text-left text-ai-ink hover:bg-ai-bg" onClick={onAsk}>
-                      <AiSpark /> {el.collab.chat.askAssistant}
-                    </button>
-                  )}
-                  {mine && (
-                    <button type="button" className="min-h-11 px-3 text-left hover:bg-bg" onClick={onStartEdit}>
-                      {el.collab.chat.edit}
-                    </button>
-                  )}
-                  {canDelete && (
-                    <button type="button" className="min-h-11 px-3 text-left text-red-ink hover:bg-red-bg" onClick={onDelete}>
-                      {el.collab.chat.delete}
-                    </button>
-                  )}
-                </div>
+                  <AiSpark /> {el.collab.chat.askAssistant}
+                </button>
+              )}
+              {mine && <MenuItem onClick={onStartEdit}>{el.collab.chat.edit}</MenuItem>}
+              {canDelete && (
+                <MenuItem tone="danger" onClick={onDelete}>
+                  {el.collab.chat.delete}
+                </MenuItem>
               )}
             </div>
           )}
         </div>
-      </div>
+      )}
     </div>
+  );
+}
+
+function PaperclipIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4" aria-hidden="true">
+      <path d="M13.5 7.5 8 13a3.5 3.5 0 0 1-5-5l5.8-5.8a2.3 2.3 0 0 1 3.3 3.3L6.3 11.3a1.2 1.2 0 0 1-1.7-1.7L10 4.2" />
+    </svg>
   );
 }

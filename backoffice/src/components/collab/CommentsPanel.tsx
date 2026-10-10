@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { el } from "@/lib/i18n/el";
-import { Button } from "@/components/ui";
+import { Button, Input, cn } from "@/components/ui";
 import { MentionText, MentionTextarea } from "./MentionTextarea";
 import type { BoardComment } from "./types";
 
@@ -100,7 +100,7 @@ export function CommentsPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-col gap-2 border-b border-line p-3">
+      <div className="flex flex-col gap-2 border-b border-hairline p-3">
         <MentionTextarea
           value={draft}
           onChange={setDraft}
@@ -110,24 +110,24 @@ export function CommentsPanel({
           rows={3}
           submitOn="mod-enter"
         />
-        <p className="text-[11px] text-ink-faint">{el.collab.comments.mentionHint}</p>
+        <p className="text-xs text-muted">{el.collab.comments.mentionHint}</p>
         <div className="flex flex-wrap items-center gap-1.5">
           {draftAnchor ? (
             <button
               type="button"
               onClick={onClearAnchor}
-              className="rounded bg-amber-bg px-2 py-1 text-xs text-amber-ink"
+              className="inline-flex min-h-8 items-center gap-1 border border-warning bg-warning-tint px-2.5 py-1 text-small text-warning max-md:min-h-11"
               title={el.common.cancel}
             >
               📍 {draftAnchor.element_id ? el.collab.comments.anchoredToSelection : el.collab.comments.pin} ×
             </button>
           ) : (
             <>
-              <Button type="button" variant="secondary" className="!px-2 !py-1 text-xs" onClick={onStartPlacing}>
+              <Button type="button" variant="secondary" size="sm" className="max-md:min-h-11" onClick={onStartPlacing}>
                 📍 {el.collab.comments.pin}
               </Button>
               {canAnchorToSelection && (
-                <Button type="button" variant="secondary" className="!px-2 !py-1 text-xs" onClick={onAnchorToSelection}>
+                <Button type="button" variant="secondary" size="sm" className="max-md:min-h-11" onClick={onAnchorToSelection}>
                   {el.collab.comments.anchoredToSelection}
                 </Button>
               )}
@@ -135,7 +135,8 @@ export function CommentsPanel({
           )}
           <Button
             type="button"
-            className="ml-auto !px-3 !py-1 text-xs"
+            size="sm"
+            className="ml-auto max-md:min-h-11"
             disabled={!draft.trim() || busy}
             onClick={() => void submit()}
           >
@@ -145,8 +146,8 @@ export function CommentsPanel({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
-        {visible.length === 0 && <p className="py-4 text-center text-sm text-ink-faint">{el.collab.comments.none}</p>}
-        <ul className="flex flex-col gap-3">
+        {visible.length === 0 && <p className="py-4 text-center text-sm text-muted">{el.collab.comments.none}</p>}
+        <ul className="flex flex-col divide-y divide-hairline">
           {visible.map((root) => (
             <Thread
               key={root.id}
@@ -169,7 +170,7 @@ export function CommentsPanel({
           <button
             type="button"
             onClick={() => setShowResolved((v) => !v)}
-            className="mt-3 w-full text-center text-xs text-ink-muted hover:text-ink"
+            className="mt-3 min-h-10 w-full text-center text-xs text-muted hover:bg-hover hover:text-ink max-md:min-h-11"
           >
             {el.collab.comments.showResolved} ({resolvedCount}) {showResolved ? "▲" : "▼"}
           </button>
@@ -211,9 +212,11 @@ function Thread({
 
   return (
     <li
-      className={`rounded-md border p-2.5 text-sm ${focused ? "border-sage-strong bg-sage/30" : "border-line bg-surface"} ${
-        root.resolved_at ? "opacity-60" : ""
-      }`}
+      className={cn(
+        "border-l-2 py-3 pr-1 pl-2.5 text-sm text-ink",
+        focused ? "border-l-navy bg-hover" : "border-l-transparent",
+        root.resolved_at && "opacity-60",
+      )}
     >
       <CommentBody
         comment={root}
@@ -223,7 +226,7 @@ function Thread({
         onDelete={onDelete}
       />
       {replies.map((r) => (
-        <div key={r.id} className="mt-2 border-l-2 border-line pl-2">
+        <div key={r.id} className="mt-2 border-l border-hairline pl-2.5">
           <CommentBody
             comment={r}
             nameOf={nameOf}
@@ -234,12 +237,12 @@ function Thread({
         </div>
       ))}
       <div className="mt-2 flex items-center gap-1.5">
-        <input
+        <Input
           value={reply}
           onChange={(e) => setReply(e.target.value)}
           placeholder={el.collab.comments.replyPlaceholder}
           maxLength={4000}
-          className="min-w-0 flex-1 rounded border border-line px-2 py-1 text-xs focus:border-sage-strong focus:outline-none"
+          className="min-h-9 min-w-0 flex-1 px-2 py-1 text-base sm:text-small max-md:min-h-11"
           onKeyDown={async (e) => {
             if (e.key === "Enter" && reply.trim()) {
               if (await onReply(reply.trim())) setReply("");
@@ -249,7 +252,7 @@ function Thread({
         {anchored && (
           <button
             type="button"
-            className="rounded px-1.5 py-1 text-xs text-ink-muted hover:bg-bg"
+            className="inline-flex min-h-9 min-w-9 items-center justify-center text-xs text-muted hover:bg-hover hover:text-ink max-md:min-h-11 max-md:min-w-11"
             onClick={() => onFocus(root)}
             aria-label={el.collab.comments.showOnBoard}
           >
@@ -259,7 +262,7 @@ function Thread({
         {canResolve && (
           <button
             type="button"
-            className="rounded px-1.5 py-1 text-xs text-sage-ink hover:bg-sage/40"
+            className="inline-flex min-h-9 items-center px-2 text-xs font-medium text-navy hover:bg-hover max-md:min-h-11"
             onClick={() => onResolve(root.id, !root.resolved_at)}
           >
             {root.resolved_at ? el.collab.comments.reopen : el.collab.comments.resolve}
@@ -285,14 +288,14 @@ function CommentBody({
 }) {
   return (
     <div>
-      <div className="flex items-baseline justify-between gap-2 text-xs text-ink-muted">
+      <div className="flex items-baseline justify-between gap-2 text-xs text-muted">
         <span className="font-medium text-ink">{nameOf(comment.author_id)}</span>
         <span className="flex items-center gap-1.5">
           {timeFormatter.format(new Date(comment.created_at))}
           {canDelete && (
             <button
               type="button"
-              className="-my-2 flex h-9 w-9 items-center justify-center rounded text-base text-ink-faint hover:bg-red-bg hover:text-red-ink"
+              className="-my-2 flex h-9 w-9 items-center justify-center text-base text-muted hover:bg-negative-tint hover:text-negative max-md:h-11 max-md:w-11"
               onClick={() => onDelete(comment.id)}
               aria-label={el.collab.comments.delete}
               title={el.collab.comments.delete}

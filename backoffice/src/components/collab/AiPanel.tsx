@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db/types";
-import { Button, AiSpark } from "@/components/ui";
+import { Button, AiSpark, Select, Textarea, buttonClass } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { canvasPreview, canvasSpecSummary, canvasSpecToSkeletons, validateCanvasSpec } from "@/lib/ai/collab/skeletons";
 import { PROPOSAL_COLUMNS, plannerProposalSchema, type ProposalView } from "@/lib/ai/collab/proposals";
@@ -271,9 +271,9 @@ export function AiPanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-2 border-b border-line px-3 py-2 text-xs">
-        <select
-          className="min-w-0 flex-1 truncate rounded border border-line bg-surface px-2 py-1"
+      <div className="flex flex-wrap items-center gap-2 border-b border-hairline px-3 py-2 text-xs">
+        <Select
+          className="min-h-9 min-w-0 flex-1 truncate px-2 py-1 text-small max-md:min-h-11"
           value={threadId ?? ""}
           aria-label={t.history}
           disabled={busy}
@@ -291,10 +291,10 @@ export function AiPanel({
               {(th.title ?? t.untitledThread).slice(0, 60)}
             </option>
           ))}
-        </select>
+        </Select>
         <button
           type="button"
-          className="shrink-0 rounded px-2 py-1 text-ai-ink hover:bg-ai-bg disabled:opacity-50"
+          className={buttonClass("ai", "sm", "shrink-0 max-md:min-h-11")}
           disabled={busy || threadId === null}
           onClick={() => {
             setThreadId(null);
@@ -307,7 +307,7 @@ export function AiPanel({
         {threadId && canDeleteThread && (
           <button
             type="button"
-            className="shrink-0 rounded px-2 py-1 text-red-ink hover:bg-red-bg disabled:opacity-50"
+            className={buttonClass("danger", "sm", "shrink-0 max-md:min-h-11")}
             disabled={busy}
             onClick={() => void deleteThread()}
             title={t.deleteThread}
@@ -320,7 +320,7 @@ export function AiPanel({
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 text-sm">
         {messages.length === 0 && (
           <div className="space-y-3">
-            <p className="text-ink-muted">{t.intro}</p>
+            <p className="text-muted">{t.intro}</p>
           </div>
         )}
         {messages.map((m) => (
@@ -328,14 +328,12 @@ export function AiPanel({
             <div
               className={
                 m.role === "user"
-                  ? "max-w-[85%] whitespace-pre-wrap rounded-lg bg-bg px-3 py-2"
-                  : `whitespace-pre-wrap rounded-lg border px-3 py-2 ${
-                      m.error ? "border-red-200 bg-red-50 text-red-ink" : "border-ai-border bg-ai-bg/50"
-                    }`
+                  ? "max-w-[85%] bg-hover px-3 py-2 whitespace-pre-wrap text-ink"
+                  : `border-l-2 py-1 pl-3 whitespace-pre-wrap ${m.error ? "border-negative text-negative" : "border-ai-border text-ink"}`
               }
             >
               {m.role === "assistant" && (
-                <div className="mb-1 flex items-center gap-1 text-[11px] font-medium text-ai-ink">
+                <div className="mb-1 flex items-center gap-1 text-xs font-medium text-ai">
                   <AiSpark /> {t.assistant}
                 </div>
               )}
@@ -347,14 +345,14 @@ export function AiPanel({
           <ProposalCard key={p.id} proposal={p} rights={rights} canPlace={!!api} onDecide={(a) => decide(p, a)} />
         ))}
         {activity && (
-          <div className="flex items-center gap-1.5 text-xs text-ai-ink">
+          <div className="flex items-center gap-1.5 text-xs text-ai">
             <AiSpark className="animate-pulse" /> {activity}
           </div>
         )}
         <div ref={bottomRef} />
       </div>
 
-      <div className="space-y-2 border-t border-line px-3 py-2">
+      <div className="space-y-2 border-t border-hairline px-3 py-2">
         <div className="flex flex-wrap gap-1.5">
           {quick.map((q) => (
             <button
@@ -362,7 +360,7 @@ export function AiPanel({
               type="button"
               disabled={busy}
               onClick={() => void send(q.prompt)}
-              className="rounded-full border border-ai-border bg-ai-bg px-2.5 py-1 text-xs text-ai-ink hover:bg-ai-border/40 disabled:opacity-50"
+              className={buttonClass("ai", "sm", "max-md:min-h-11")}
             >
               {q.label}
             </button>
@@ -375,7 +373,7 @@ export function AiPanel({
             void send(input);
           }}
         >
-          <textarea
+          <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
@@ -387,15 +385,15 @@ export function AiPanel({
             rows={2}
             maxLength={4000}
             placeholder={t.placeholder}
-            className="min-h-[2.5rem] flex-1 resize-none rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm focus:border-ai-strong focus:outline-none"
+            className="min-h-11 flex-1 resize-none px-2 py-1.5 text-base sm:text-sm"
           />
           {busy ? (
-            <Button type="button" variant="secondary" onClick={() => abortRef.current?.abort()}>
+            <Button type="button" variant="secondary" className="max-md:min-h-11" onClick={() => abortRef.current?.abort()}>
               {t.stop}
             </Button>
           ) : (
-            <Button type="submit" variant="ai" disabled={!input.trim()}>
-              <AiSpark className="mr-1" />
+            <Button type="submit" variant="ai" className="max-md:min-h-11" disabled={!input.trim()}>
+              <AiSpark />
               {t.send}
             </Button>
           )}
@@ -447,17 +445,17 @@ function ProposalCard({
   const canApprove = proposal.kind === "tasks" ? rights.canApproveTasks : rights.canApproveMilestones;
 
   return (
-    <div className="rounded-lg border border-ai-border bg-surface p-3 shadow-sm">
-      <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-ai-ink">
+    <div className="border-l-2 border-ai-border py-1 pl-3">
+      <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs font-medium text-ai">
         <AiSpark /> {title}
-        {canvas && <span className="font-normal text-ink-muted">· {canvasSpecSummary(canvas.spec)}</span>}
+        {canvas && <span className="font-normal text-muted">· {canvasSpecSummary(canvas.spec)}</span>}
       </div>
 
       {proposal.kind === "canvas" &&
         (canvas ? (
-          <svg viewBox={canvas.preview.viewBox} className="h-36 w-full rounded border border-line bg-white" role="img" aria-label={title}>
+          <svg viewBox={canvas.preview.viewBox} className="h-36 w-full border border-hairline bg-field text-muted" role="img" aria-label={title}>
             {canvas.preview.lines.map((l, i) => (
-              <line key={i} x1={l.a.x} y1={l.a.y} x2={l.b.x} y2={l.b.y} stroke="#868e96" strokeWidth={3} />
+              <line key={i} x1={l.a.x} y1={l.a.y} x2={l.b.x} y2={l.b.y} stroke="currentColor" strokeWidth={3} />
             ))}
             {canvas.preview.nodes.map((n) =>
               n.type === "ellipse" ? (
@@ -485,16 +483,18 @@ function ProposalCard({
             )}
           </svg>
         ) : (
-          <p className="text-xs text-red-ink">{p.invalid}</p>
+          <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+            {p.invalid}
+          </p>
         ))}
 
       {planner && (
-        <ul className="space-y-1 text-sm">
+        <ul className="divide-y divide-hairline text-sm text-ink">
           {planner.items.map((item, i) => (
-            <li key={i} className="flex items-baseline justify-between gap-2">
+            <li key={i} className="flex items-baseline justify-between gap-2 py-1">
               <span className="min-w-0">{item.title}</span>
               {item.due_date && (
-                <span className="shrink-0 text-xs text-ink-muted">
+                <span className="num shrink-0 text-xs text-muted">
                   {p.due} {item.due_date}
                 </span>
               )}
@@ -502,35 +502,39 @@ function ProposalCard({
           ))}
         </ul>
       )}
-      {proposal.kind !== "canvas" && !planner && <p className="text-xs text-red-ink">{p.invalid}</p>}
+      {proposal.kind !== "canvas" && !planner && (
+        <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+          {p.invalid}
+        </p>
+      )}
 
       <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
         {decided ? (
-          <span className="text-ink-muted">{decided}</span>
+          <span className="text-muted">{decided}</span>
         ) : proposal.kind === "canvas" ? (
           rights.canEdit ? (
             <>
-              <Button variant="aiSolid" className="px-2.5 py-1 text-xs" disabled={pending || !canvas || !canPlace} onClick={() => run("place")}>
+              <Button variant="primary" size="sm" className="max-md:min-h-11" disabled={pending || !canvas || !canPlace} onClick={() => run("place")}>
                 {p.place}
               </Button>
-              <Button variant="secondary" className="px-2.5 py-1 text-xs" disabled={pending} onClick={() => run("reject")}>
+              <Button variant="secondary" size="sm" className="max-md:min-h-11" disabled={pending} onClick={() => run("reject")}>
                 {p.reject}
               </Button>
             </>
           ) : (
-            <span className="text-ink-muted">{p.needsEdit}</span>
+            <span className="text-muted">{p.needsEdit}</span>
           )
         ) : canApprove ? (
           <>
-            <Button variant="aiSolid" className="px-2.5 py-1 text-xs" disabled={pending || !planner} onClick={() => run("approve")}>
+            <Button variant="primary" size="sm" className="max-md:min-h-11" disabled={pending || !planner} onClick={() => run("approve")}>
               {p.approve}
             </Button>
-            <Button variant="secondary" className="px-2.5 py-1 text-xs" disabled={pending} onClick={() => run("reject")}>
+            <Button variant="secondary" size="sm" className="max-md:min-h-11" disabled={pending} onClick={() => run("reject")}>
               {p.reject}
             </Button>
           </>
         ) : (
-          <span className="text-ink-muted">{proposal.kind === "milestones" ? p.needsEditor : p.needsLead}</span>
+          <span className="text-muted">{proposal.kind === "milestones" ? p.needsEditor : p.needsLead}</span>
         )}
       </div>
     </div>

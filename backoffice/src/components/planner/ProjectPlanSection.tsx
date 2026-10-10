@@ -46,37 +46,37 @@ export async function ProjectPlanSection({ projectId }: { projectId: string }) {
           {counts
             .filter(([, n]) => n > 0)
             .map(([s, n]) => (
-              <span key={s} className="flex items-center gap-1 text-xs text-ink-muted">
+              <span key={s} className="flex items-center gap-1.5 text-xs text-muted">
                 <span className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT[s]}`} />
                 {el.planner.status[s]} {n}
               </span>
             ))}
           {overdue > 0 && (
-            <span className="text-xs font-medium text-red-ink">
+            <span className="border-l-2 border-negative pl-2 text-xs font-medium text-negative">
               {overdue} {el.planner.task.overdue}
             </span>
           )}
         </div>
         {milestones && milestones.length > 0 && (
-          <ul className="flex flex-col gap-1 border-t border-line/60 pt-2">
+          <ul className="flex flex-col gap-1 border-t border-hairline pt-2">
             {milestones.map((m) => (
               <li key={m.id} className="flex items-baseline justify-between gap-2">
                 <span className="truncate text-ink">{m.title}</span>
-                <span className={`shrink-0 text-xs ${m.due_date < today ? "text-red-ink" : "text-ink-muted"}`}>
+                <span className={`num shrink-0 text-xs ${m.due_date < today ? "text-negative" : "text-muted"}`}>
                   {formatDate(m.due_date)}
                 </span>
               </li>
             ))}
           </ul>
         )}
-        <div className="flex flex-wrap gap-3 border-t border-line/60 pt-2 text-xs">
-          <Link href={`/planner?project=${projectId}`} className="text-ink hover:underline">
+        <div className="flex flex-wrap gap-x-4 border-t border-hairline pt-1 text-small">
+          <Link href={`/planner?project=${projectId}`} className="inline-flex min-h-10 items-center text-ink hover:underline">
             {el.planner.tabs.board} →
           </Link>
-          <Link href={`/planner/timeline?project=${projectId}`} className="text-ink hover:underline">
+          <Link href={`/planner?view=timeline&project=${projectId}`} className="inline-flex min-h-10 items-center text-ink hover:underline">
             {el.planner.tabs.timeline} →
           </Link>
-          <Link href={`/planner/calendar?project=${projectId}`} className="text-ink hover:underline">
+          <Link href={`/planner?view=calendar&project=${projectId}`} className="inline-flex min-h-10 items-center text-ink hover:underline">
             {el.planner.tabs.calendar} →
           </Link>
         </div>

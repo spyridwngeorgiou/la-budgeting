@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Badge, Button, Card } from "@/components/ui";
+import { Badge, Button, KeyValue, PageHeader, SectionHeader } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { el } from "@/lib/i18n/el";
 import { formatDate } from "@/lib/format";
@@ -54,25 +54,27 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
     : [{ id: task.project_id, label: "—" }];
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="flex flex-col gap-1">
-          <Link href={`/planner?project=${task.project_id}`} className="text-xs text-ink-muted hover:underline">
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        eyebrow={
+          <Link href={`/planner?project=${task.project_id}`} className="inline-flex min-h-8 items-center hover:text-ink hover:underline">
             {el.planner.task.back}
           </Link>
-          <h2 className="text-lg font-semibold text-ink">{task.title}</h2>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-            <span className="flex items-center gap-1">
+        }
+        title={task.title}
+        meta={
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="flex items-center gap-1.5">
               <span className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT[task.status]}`} />
               {el.planner.status[task.status]}
             </span>
             {projectLabel && (
-              <Link href={`/projects/${task.project_id}`} className="hover:underline">
+              <Link href={`/projects/${task.project_id}`} className="hover:text-ink hover:underline">
                 {projectLabel}
               </Link>
             )}
             {task.due_date && (
-              <span className={overdue ? "font-medium text-red-ink" : ""}>
+              <span className={overdue ? "border-l-2 border-negative pl-2 font-medium text-negative" : "num"}>
                 {el.planner.task.due}: {formatDate(task.due_date)}
                 {overdue && ` · ${el.planner.task.overdue}`}
               </span>
@@ -82,30 +84,32 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
                 {el.planner.task.completed} {formatDate(task.completed_at)}
               </span>
             )}
-            {task.archived_at && <Badge tone="amber">{el.planner.task.archived}</Badge>}
+            {task.archived_at && <Badge tone="warning">{el.planner.task.archived}</Badge>}
             {task.source_note_id && <Badge>{el.planner.task.fromNote}</Badge>}
-          </div>
-        </div>
-        {caps.canWriteTasks && (
-          <div className="flex items-center gap-2">
-            <form action={setTaskArchived.bind(null, id, !task.archived_at)}>
-              <Button type="submit" variant="secondary">
-                {task.archived_at ? el.planner.task.unarchive : el.planner.task.archive}
-              </Button>
-            </form>
-            {caps.canDelete && (
-              <ConfirmSubmit action={deleteTask.bind(null, id, `/planner?project=${task.project_id}`)} confirmText={el.planner.task.deleteConfirm}>
-                {el.common.delete}
-              </ConfirmSubmit>
-            )}
-          </div>
-        )}
-      </div>
+          </span>
+        }
+        actions={
+          caps.canWriteTasks && (
+            <>
+              <form action={setTaskArchived.bind(null, id, !task.archived_at)}>
+                <Button type="submit" variant="secondary">
+                  {task.archived_at ? el.planner.task.unarchive : el.planner.task.archive}
+                </Button>
+              </form>
+              {caps.canDelete && (
+                <ConfirmSubmit action={deleteTask.bind(null, id, `/planner?project=${task.project_id}`)} confirmText={el.planner.task.deleteConfirm}>
+                  {el.common.delete}
+                </ConfirmSubmit>
+              )}
+            </>
+          )
+        }
+      />
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <Card>
+      <div className="grid grid-cols-1 gap-x-10 gap-y-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <section className="flex flex-col gap-4">
           {canWrite ? (
-            <ActionForm action={updateTask.bind(null, id)} className="flex flex-col gap-3">
+            <ActionForm action={updateTask.bind(null, id)} className="flex flex-col gap-4">
               <TaskFields
                 initial={task}
                 projects={projectOptions}
@@ -119,28 +123,31 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
               </div>
             </ActionForm>
           ) : (
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-              <dt className="text-ink-muted">{el.planner.task.priority}</dt>
-              <dd>{el.planner.priority[task.priority]}</dd>
-              <dt className="text-ink-muted">{el.planner.assignee}</dt>
-              <dd>{task.assignee_id ? (peopleById.get(task.assignee_id) ?? "—") : el.planner.unassigned}</dd>
-              <dt className="text-ink-muted">{el.planner.task.start}</dt>
-              <dd>{formatDate(task.start_date) || "—"}</dd>
-              <dt className="text-ink-muted">{el.planner.task.due}</dt>
-              <dd>{formatDate(task.due_date) || "—"}</dd>
+            <>
+              <KeyValue
+                items={[
+                  { label: el.planner.task.priority, value: el.planner.priority[task.priority] },
+                  {
+                    label: el.planner.assignee,
+                    value: task.assignee_id ? (peopleById.get(task.assignee_id) ?? "—") : el.planner.unassigned,
+                  },
+                  { label: el.planner.task.start, value: formatDate(task.start_date) || "—", numeric: true },
+                  { label: el.planner.task.due, value: formatDate(task.due_date) || "—", numeric: true },
+                ]}
+              />
               {task.description && (
-                <>
-                  <dt className="text-ink-muted">{el.planner.task.description}</dt>
-                  <dd className="whitespace-pre-wrap">{task.description}</dd>
-                </>
+                <div className="flex flex-col gap-1">
+                  <p className="eyebrow text-muted">{el.planner.task.description}</p>
+                  <p className="text-sm whitespace-pre-wrap text-ink">{task.description}</p>
+                </div>
               )}
-            </dl>
+            </>
           )}
-        </Card>
+        </section>
 
-        <div className="flex flex-col gap-4">
-          <Card>
-            <h3 className="mb-2 text-sm font-medium text-ink">{el.planner.task.checklist}</h3>
+        <div className="flex flex-col gap-10">
+          <section className="flex flex-col gap-3">
+            <SectionHeader as="h2" title={el.planner.task.checklist} />
             <TaskChecklist
               items={checklist ?? []}
               canWrite={canWrite}
@@ -148,9 +155,9 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
               toggleAction={toggleChecklistItem}
               deleteAction={deleteChecklistItem}
             />
-          </Card>
-          <Card>
-            <h3 className="mb-2 text-sm font-medium text-ink">{el.planner.task.comments}</h3>
+          </section>
+          <section className="flex flex-col gap-3">
+            <SectionHeader as="h2" title={el.planner.task.comments} />
             <TaskComments
               comments={(comments ?? []).map((c) => ({
                 id: c.id,
@@ -163,7 +170,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
               addAction={addComment.bind(null, id)}
               deleteAction={deleteComment}
             />
-          </Card>
+          </section>
         </div>
       </div>
     </div>

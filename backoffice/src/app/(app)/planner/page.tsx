@@ -1,66 +1,32 @@
-import { Suspense } from "react";
+import { PageHeader } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
-import { loadBoardTasks, loadPlannerPeople } from "@/lib/planner/queries";
-import { TaskBoard } from "@/components/planner/TaskBoard";
-import { TaskFormModal } from "@/components/planner/TaskFormModal";
-import { PlannerFilters } from "@/components/planner/PlannerNav";
+import { PlannerViews, parsePlannerView } from "@/components/planner/PlannerViews";
 import { plannerContext } from "./context";
-import { createTask, moveTask, setTaskStatus } from "./actions";
+import { BoardView, CalendarView, TimelineView } from "./views";
 
-// Εργασίες: the kanban. Without ?project it spans every project of the
-// current org, with each card naming its project.
-export default async function PlannerBoardPage({
+// Πλάνο: one page, three views (?view=board|timeline|calendar; board when
+// absent). The switch keeps every other filter, so "this project's board"
+// becomes "this project's timeline" in one click.
+export default async function PlannerPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = await searchParams;
+  const view = parsePlannerView(params.view);
   const ctx = await plannerContext(params);
-  const { supabase, filters, projects, caps } = ctx;
-
-  const [tasks, people] = await Promise.all([
-    loadBoardTasks(
-      supabase,
-      projects.map((p) => p.id),
-      filters,
-    ),
-    loadPlannerPeople(supabase, filters.projectId),
-  ]);
-
-  const projectOptions = projects.map((p) => ({ id: p.id, label: p.display_name }));
-  const peopleOptions = people.map((p) => ({ id: p.user_id, label: p.label }));
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <Suspense>
-          <PlannerFilters projects={projectOptions} people={peopleOptions} meId={ctx.userId} showArchived />
-        </Suspense>
-        {caps.canWriteTasks && (
-          <TaskFormModal
-            action={createTask}
-            projects={projectOptions}
-            people={peopleOptions}
-            initial={filters.projectId ? { project_id: filters.projectId } : undefined}
-          />
-        )}
-      </div>
-      {!caps.canWriteTasks && <p className="text-xs text-ink-faint">{el.planner.readOnly}</p>}
-      {projects.length === 0 ? (
-        <p className="rounded-lg border border-line bg-surface p-6 text-center text-sm text-ink-faint">
-          {el.planner.noProjects}
-        </p>
+    <div className="flex flex-col gap-6">
+      <PageHeader title={el.planner.title}>
+        <PlannerViews params={params} active={view} />
+      </PageHeader>
+      {view === "timeline" ? (
+        <TimelineView ctx={ctx} />
+      ) : view === "calendar" ? (
+        <CalendarView ctx={ctx} params={params} />
       ) : (
-        <TaskBoard
-          tasks={tasks}
-          people={people}
-          projectLabels={filters.projectId ? undefined : ctx.projectLabels}
-          canWrite={caps.canWriteTasks && !filters.archived}
-          todayIso={ctx.today}
-          taskHref="/planner/task"
-          moveAction={moveTask}
-          setStatusAction={setTaskStatus}
-        />
+        <BoardView ctx={ctx} />
       )}
     </div>
   );

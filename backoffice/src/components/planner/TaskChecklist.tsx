@@ -40,13 +40,13 @@ export function TaskChecklist({
   return (
     <div className="flex flex-col gap-2">
       {optimistic.length > 0 && (
-        <div className="h-1.5 overflow-hidden rounded-full bg-line">
-          <div className="h-full bg-sage-ink/70" style={{ width: `${(done / optimistic.length) * 100}%` }} />
+        <div className="h-1 overflow-hidden bg-hairline">
+          <div className="h-full bg-navy" style={{ width: `${(done / optimistic.length) * 100}%` }} />
         </div>
       )}
-      <ul className="flex flex-col gap-1">
+      <ul className="flex flex-col">
         {optimistic.map((item) => (
-          <li key={item.id} className="group flex items-center gap-2 text-sm">
+          <li key={item.id} className="group flex min-h-11 items-center gap-3 border-b border-hairline text-sm">
             <input
               type="checkbox"
               checked={item.done}
@@ -58,9 +58,10 @@ export function TaskChecklist({
                   await toggleAction(item.id, next);
                 });
               }}
-              className="h-4 w-4 accent-sage-ink"
+              aria-label={item.body}
+              className="h-4 w-4 accent-navy"
             />
-            <span className={`flex-1 ${item.done ? "text-ink-faint line-through" : "text-ink"}`}>{item.body}</span>
+            <span className={`flex-1 ${item.done ? "text-muted line-through" : "text-ink"}`}>{item.body}</span>
             {canWrite && (
               <button
                 type="button"
@@ -71,9 +72,9 @@ export function TaskChecklist({
                     await deleteAction(item.id);
                   })
                 }
-                className="text-ink-faint opacity-0 group-hover:opacity-100 hover:text-red-ink focus:opacity-100"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center text-muted hover:bg-hover hover:text-negative focus:opacity-100 md:opacity-0 md:group-hover:opacity-100"
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-4 w-4" aria-hidden />
               </button>
             )}
           </li>

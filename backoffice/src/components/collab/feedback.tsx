@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { el } from "@/lib/i18n/el";
+import { buttonClass, cn } from "@/components/ui";
 
 // Light-weight confirmations and toasts for the collaboration space. Every
 // destructive action either asks first (useConfirm) or offers an undo
@@ -69,25 +70,23 @@ function ConfirmDialog({
         role="alertdialog"
         aria-modal="true"
         aria-label={el.collab.confirm.title}
-        className="w-full max-w-sm rounded-xl bg-surface p-4 shadow-2xl"
+        className="w-full max-w-sm border border-hairline bg-raised p-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-base font-semibold">{el.collab.confirm.title}</h2>
-        <p className="mt-2 text-sm text-ink-muted">{message}</p>
+        <h2 className="text-section text-ink">{el.collab.confirm.title}</h2>
+        <p className="mt-2 text-sm text-text">{message}</p>
         <div className="mt-4 flex justify-end gap-2">
           <button
             ref={cancelRef}
             type="button"
-            className="min-h-11 rounded-lg border border-line-strong px-4 text-sm font-medium hover:bg-bg"
+            className={buttonClass("secondary", "md", "min-h-11")}
             onClick={() => onClose(false)}
           >
             {el.collab.confirm.no}
           </button>
           <button
             type="button"
-            className={`min-h-11 rounded-lg px-4 text-sm font-medium text-white ${
-              tone === "danger" ? "bg-red-ink hover:bg-red-ink/85" : "bg-ink hover:bg-ink/85"
-            }`}
+            className={buttonClass(tone === "danger" ? "danger" : "primary", "md", "min-h-11")}
             onClick={() => onClose(true)}
           >
             {confirmLabel}
@@ -150,15 +149,16 @@ export function ToastStack({
       {toasts.map((t) => (
         <div
           key={t.id}
-          className={`pointer-events-auto flex max-w-[calc(100vw-1.5rem)] items-center gap-3 rounded-xl px-4 py-2 text-sm shadow-lg ${
-            t.tone === "error" ? "bg-red-ink text-white" : "bg-ink text-white"
-          }`}
+          className={cn(
+            "pointer-events-auto flex max-w-[calc(100vw-1.5rem)] items-center gap-3 bg-panel py-1 pr-1 pl-4 text-sm text-panel-ink",
+            t.tone === "error" && "border-l-2 border-negative-tint",
+          )}
         >
           <span className="min-w-0">{t.message}</span>
           {t.action && (
             <button
               type="button"
-              className="min-h-11 shrink-0 rounded-lg px-3 font-semibold text-sage underline-offset-2 hover:underline"
+              className="min-h-11 shrink-0 px-3 font-medium underline underline-offset-4 hover:text-panel-muted"
               onClick={() => {
                 t.action?.run();
                 onDismiss(t.id);
@@ -170,7 +170,7 @@ export function ToastStack({
           <button
             type="button"
             aria-label={el.collab.comments.close}
-            className="flex h-11 w-8 shrink-0 items-center justify-center text-white/70 hover:text-white"
+            className="flex min-h-11 min-w-11 shrink-0 items-center justify-center text-panel-muted hover:text-panel-ink"
             onClick={() => onDismiss(t.id)}
           >
             ×

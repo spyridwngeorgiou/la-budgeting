@@ -2,22 +2,12 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
-import { Select } from "@/components/ui";
+import { Checkbox, Input, Select, cn } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
-import { SubNavKeepingParams } from "@/components/SubNav";
-import { SECTION_TABS } from "@/lib/navigation";
 
-// The planner's tabs and filter bar. Filters live in the URL (shareable,
-// back-button friendly, read by the server pages); switching tab keeps the
-// project and assignee so "this project's board" becomes "this project's
-// timeline" in one click.
-
-const SHARED_PARAMS = ["project", "assignee"];
-
-export function PlannerTabs({ base }: { base: string }) {
-  const tabs = SECTION_TABS.planner.map((t) => ({ ...t, href: base + t.href.slice("/planner".length) }));
-  return <SubNavKeepingParams tabs={tabs} label={el.planner.title} keep={SHARED_PARAMS} />;
-}
+// The planner's filter bar. Filters live in the URL (shareable, back-button
+// friendly, read by the server page); changing one keeps every other param,
+// the ?view= of PlannerViews included.
 
 export interface FilterOption {
   id: string;
@@ -51,7 +41,7 @@ export function PlannerFilters({
 
   return (
     <div
-      className={`flex flex-wrap items-end gap-2 transition-opacity ${isPending ? "opacity-60" : ""}`}
+      className={cn("flex flex-wrap items-center gap-2 transition-opacity max-sm:w-full", isPending && "opacity-60")}
       data-pending={isPending ? "" : undefined}
     >
       {projects.length > 1 && (
@@ -59,7 +49,7 @@ export function PlannerFilters({
           aria-label={el.planner.project}
           value={params.get("project") ?? ""}
           onChange={(e) => setParam("project", e.target.value || null)}
-          className="max-w-full sm:max-w-64"
+          className="max-w-full max-sm:w-full sm:max-w-64"
         >
           <option value="">{el.planner.allProjects}</option>
           {projects.map((p) => (
@@ -74,6 +64,7 @@ export function PlannerFilters({
           aria-label={el.planner.assignee}
           value={params.get("assignee") ?? ""}
           onChange={(e) => setParam("assignee", e.target.value || null)}
+          className="max-sm:w-full"
         >
           <option value="">{el.planner.anyone}</option>
           {meId && <option value={meId}>{el.planner.mine}</option>}
@@ -94,26 +85,25 @@ export function PlannerFilters({
             const q = String(new FormData(e.currentTarget).get("q") ?? "").trim();
             setParam("q", q || null);
           }}
+          className="max-sm:w-full"
         >
-          <input
+          <Input
             type="search"
             name="q"
+            aria-label={el.planner.search}
             defaultValue={params.get("q") ?? ""}
             placeholder={el.planner.search}
-            className="rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-sage-strong focus:outline-none"
+            className="w-full sm:w-64"
           />
         </form>
       )}
       {showArchived && (
-        <label className="flex items-center gap-1.5 px-1 py-2 text-sm text-ink-muted">
-          <input
-            type="checkbox"
-            checked={params.get("archived") === "1"}
-            onChange={(e) => setParam("archived", e.target.checked ? "1" : null)}
-            className="accent-sage-ink"
-          />
-          {el.planner.showArchived}
-        </label>
+        <Checkbox
+          label={el.planner.showArchived}
+          checked={params.get("archived") === "1"}
+          onChange={(e) => setParam("archived", e.target.checked ? "1" : null)}
+          className="px-1 text-text max-md:min-h-11"
+        />
       )}
     </div>
   );

@@ -13,4 +13,8 @@ export const LEGACY_REDIRECTS: { source: string; destination: string }[] = [
   { source: "/changes", destination: "/assistant?panel=changes" },
   { source: "/revenue-plans", destination: "/projects/revenue-plans" },
   { source: "/revenue-plans/:id", destination: "/projects/revenue-plans/:id" },
+  // Phase 6: the planner is one page with a view switch. The request's own
+  // query (project, assignee, month…) is passed through and merged.
+  { source: "/planner/timeline", destination: "/planner?view=timeline" },
+  { source: "/planner/calendar", destination: "/planner?view=calendar" },
 ];

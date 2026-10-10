@@ -8,6 +8,7 @@ import { fillText } from "@/lib/collab/text";
 import { BOARD_TEMPLATES, type BoardTemplate } from "@/lib/collab/templates";
 import { canTrashBoard, trashDaysLeft } from "@/lib/collab/trash";
 import { SubmitButton } from "@/components/SubmitButton";
+import { Button, Drawer, Input, Label, MenuItem, SectionHeader, cn } from "@/components/ui";
 import { createBoard, deleteBoardForever, renameBoard, restoreBoard, trashBoard } from "@/app/(collab)/collab/[projectId]/actions";
 import { ToastStack, useConfirm, useToasts } from "../feedback";
 
@@ -22,16 +23,10 @@ export interface BoardCard {
 
 const dateTime = new Intl.DateTimeFormat("el-GR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
-const TEMPLATE_ICON: Record<BoardTemplate, string> = {
-  blank: "⬜",
-  brainstorm: "💡",
-  moodboard: "🎨",
-  review: "📐",
-  todo: "✅",
-};
-
-// The project's boards as a card grid (thumbnail, inline rename, «Διαγραφή»
-// to the trash with an undo), «Νέος πίνακας» with templates, and the «Κάδος».
+// The project's boards as a grid of square-cornered tiles (thumbnail in a
+// hairline frame, title and date under it, inline rename, «Διαγραφή» to the
+// trash with an undo), «Νέος πίνακας» with templates in a drawer, and the
+// «Κάδος».
 export function ProjectBoards({
   projectId,
   boards,
@@ -80,59 +75,49 @@ export function ProjectBoards({
     );
   };
 
+  const newBoardButton = (
+    <Button type="button" size="sm" className="max-md:min-h-11" onClick={() => setCreating(true)}>
+      + {el.collab.newBoard}
+    </Button>
+  );
+
   return (
-    <section aria-labelledby="boards-heading">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 id="boards-heading" className="text-base font-semibold">
-          {el.collab.boards}
-        </h2>
-        {canEdit && (
-          <button
-            type="button"
-            onClick={() => setCreating(true)}
-            className="flex min-h-11 items-center gap-1 rounded-lg bg-ink px-4 text-sm font-medium text-white hover:bg-ink/85"
-          >
-            + {el.collab.newBoard}
-          </button>
-        )}
-      </div>
+    <section aria-labelledby="boards-heading" className="flex flex-col gap-4">
+      <SectionHeader title={<span id="boards-heading">{el.collab.boards}</span>} actions={canEdit && live.length > 0 ? newBoardButton : undefined} />
 
       {live.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-line-strong bg-surface px-4 py-10 text-center">
-          <span className="text-4xl" aria-hidden="true">
-            🗂️
-          </span>
-          <h3 className="font-semibold">{canEdit ? el.collab.project.emptyBoardsTitle : el.collab.noBoards}</h3>
-          <p className="max-w-md text-sm text-ink-muted">{canEdit ? el.collab.project.emptyBoardsHint : el.collab.project.emptyBoardsGuest}</p>
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() => setCreating(true)}
-              className="min-h-11 rounded-lg bg-ink px-5 text-sm font-medium text-white hover:bg-ink/85"
-            >
-              + {el.collab.newBoard}
-            </button>
-          )}
+        // EmptyState's look without its top hairline (the section header
+        // already draws one right above).
+        <div className="flex flex-col items-start gap-2 border-b border-hairline pt-2 pb-8">
+          <p className="text-body text-ink">{canEdit ? el.collab.project.emptyBoardsTitle : el.collab.noBoards}</p>
+          <p className="max-w-prose text-small text-muted">
+            {canEdit ? el.collab.project.emptyBoardsHint : el.collab.project.emptyBoardsGuest}
+          </p>
+          {canEdit && <div className="mt-2">{newBoardButton}</div>}
         </div>
       ) : (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
           {live.map((b) => {
             const mayTrash = canTrashBoard(b, me);
             return (
-              <li key={b.id} className="group relative flex flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-sm transition-shadow hover:shadow-md">
-                <Link href={`/collab/${projectId}/board/${b.id}`} className="block aspect-[16/10] bg-bg" aria-label={`${el.collab.project.openBoard}: ${b.title}`}>
+              <li key={b.id} className="flex min-w-0 flex-col gap-2">
+                <Link
+                  href={`/collab/${projectId}/board/${b.id}`}
+                  className="block aspect-[16/10] border border-hairline bg-field transition-colors hover:border-navy"
+                  aria-label={`${el.collab.project.openBoard}: ${b.title}`}
+                >
                   {b.thumbnailUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL from the private bucket
                     <img src={b.thumbnailUrl} alt="" className="h-full w-full object-contain" loading="lazy" />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-ink-faint">{el.collab.project.noThumbnail}</div>
+                    <div className="flex h-full items-center justify-center px-3 text-center text-xs text-muted">{el.collab.project.noThumbnail}</div>
                   )}
                 </Link>
-                <div className="flex items-start gap-1 p-3">
+                <div className="flex items-start gap-1">
                   <div className="min-w-0 flex-1">
                     {renaming?.id === b.id ? (
                       <form
-                        className="flex gap-1"
+                        className="flex gap-1.5"
                         onSubmit={(e) => {
                           e.preventDefault();
                           const title = renaming.title;
@@ -140,57 +125,59 @@ export function ProjectBoards({
                           run(() => renameBoard(projectId, b.id, title));
                         }}
                       >
-                        <input
+                        <Input
                           value={renaming.title}
                           onChange={(e) => setRenaming({ id: b.id, title: e.target.value })}
                           maxLength={200}
                           autoFocus
                           aria-label={el.collab.boardTitle}
-                          className="min-h-11 min-w-0 flex-1 rounded-lg border border-line-strong px-2 text-base sm:text-sm"
+                          className="min-w-0 flex-1 max-md:min-h-11 max-md:text-base"
                           onKeyDown={(e) => e.key === "Escape" && setRenaming(null)}
                         />
-                        <button type="submit" className="min-h-11 rounded-lg bg-ink px-3 text-sm text-white">
+                        <Button type="submit" className="max-md:min-h-11">
                           {el.collab.project.renameSave}
-                        </button>
+                        </Button>
                       </form>
                     ) : (
-                      <Link href={`/collab/${projectId}/board/${b.id}`} className="block truncate font-medium hover:underline">
+                      <Link
+                        href={`/collab/${projectId}/board/${b.id}`}
+                        className="block truncate text-body text-ink underline-offset-4 hover:underline"
+                      >
                         {b.title}
                       </Link>
                     )}
-                    <div className="mt-0.5 text-xs text-ink-faint">
-                      {el.collab.project.updated} {dateTime.format(new Date(b.updated_at))}
-                    </div>
+                    <p className="mt-0.5 text-small text-muted">
+                      {el.collab.project.updated} <span className="num">{dateTime.format(new Date(b.updated_at))}</span>
+                    </p>
                   </div>
                   {(canEdit || mayTrash) && renaming?.id !== b.id && (
-                    <div className="relative">
+                    <div className="relative shrink-0">
                       <button
                         type="button"
                         aria-label={el.collab.project.moreActions}
+                        aria-haspopup="menu"
                         aria-expanded={menuFor === b.id}
-                        className="flex h-11 w-11 items-center justify-center rounded-lg text-lg text-ink-muted hover:bg-bg"
+                        className="-mr-2 flex h-10 w-10 items-center justify-center text-lg leading-none text-muted hover:bg-hover hover:text-ink max-md:h-11 max-md:w-11"
                         onClick={() => setMenuFor((id) => (id === b.id ? null : b.id))}
                       >
-                        ⋯
+                        <span aria-hidden="true">⋯</span>
                       </button>
                       {menuFor === b.id && (
-                        <div className="absolute right-0 bottom-12 z-20 flex w-48 flex-col rounded-lg border border-line bg-surface py-1 text-sm shadow-lg">
+                        <div role="menu" className="absolute top-full right-0 z-20 mt-1 flex min-w-52 flex-col border border-hairline bg-field py-1">
                           {canEdit && (
-                            <button
-                              type="button"
-                              className="min-h-11 px-3 text-left hover:bg-bg"
+                            <MenuItem
                               onClick={() => {
                                 setMenuFor(null);
                                 setRenaming({ id: b.id, title: b.title });
                               }}
                             >
-                              ✏️ {el.collab.project.rename}
-                            </button>
+                              {el.collab.project.rename}
+                            </MenuItem>
                           )}
                           {mayTrash && (
-                            <button type="button" className="min-h-11 px-3 text-left text-red-ink hover:bg-red-bg" onClick={() => void trashIt(b)}>
-                              🗑️ {el.collab.trash.moveToTrash}
-                            </button>
+                            <MenuItem tone="danger" onClick={() => void trashIt(b)}>
+                              {el.collab.trash.moveToTrash}
+                            </MenuItem>
                           )}
                         </div>
                       )}
@@ -204,47 +191,53 @@ export function ProjectBoards({
       )}
 
       {trash.length > 0 && (
-        <div className="mt-4 rounded-xl border border-line bg-surface">
+        <div className="border-y border-hairline">
           <button
             type="button"
-            className="flex min-h-12 w-full items-center justify-between px-4 text-sm font-medium"
+            className="flex min-h-12 w-full items-center justify-between gap-3 text-left text-sm text-text hover:text-ink"
             aria-expanded={showTrash}
             onClick={() => setShowTrash((v) => !v)}
           >
             <span>
-              🗑️ {el.collab.trash.title} ({trash.length})
+              {el.collab.trash.title} <span className="num text-muted">({trash.length})</span>
             </span>
-            <span aria-hidden="true">{showTrash ? "▲" : "▼"}</span>
+            <span aria-hidden="true" className="text-xs text-muted">
+              {showTrash ? "▲" : "▼"}
+            </span>
           </button>
           {showTrash && (
-            <div className="border-t border-line px-4 py-3">
-              <p className="mb-2 text-xs text-ink-muted">{el.collab.trash.hint}</p>
-              <ul className="flex flex-col divide-y divide-line/60">
+            <div className="border-t border-hairline pt-3 pb-1">
+              <p className="mb-1 text-small text-muted">{el.collab.trash.hint}</p>
+              <ul className="flex flex-col">
                 {trash.map((b) => {
                   const days = trashDaysLeft(b.deleted_at as string);
                   const may = canTrashBoard(b, me);
                   return (
-                    <li key={b.id} className="flex flex-wrap items-center gap-2 py-2">
+                    <li key={b.id} className="flex flex-wrap items-center gap-2 border-t border-hairline py-2.5 first:border-t-0">
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium">{b.title}</div>
-                        <div className="text-xs text-ink-faint">
+                        <p className="truncate text-sm text-ink">{b.title}</p>
+                        <p className="text-small text-muted">
                           {days > 0 ? fillText(el.collab.trash.daysLeft, { days }) : el.collab.trash.lastDay}
-                        </div>
+                        </p>
                       </div>
                       {may && (
-                        <>
-                          <button
+                        <div className="flex flex-wrap gap-2">
+                          <Button
                             type="button"
+                            variant="secondary"
+                            size="sm"
+                            className="max-md:min-h-11"
                             disabled={pending}
-                            className="min-h-11 rounded-lg border border-line-strong px-3 text-sm hover:bg-bg disabled:opacity-50"
                             onClick={() => run(() => restoreBoard(projectId, b.id), el.collab.trash.restored)}
                           >
-                            ↩ {el.collab.trash.restore}
-                          </button>
-                          <button
+                            {el.collab.trash.restore}
+                          </Button>
+                          <Button
                             type="button"
+                            variant="danger"
+                            size="sm"
+                            className="max-md:min-h-11"
                             disabled={pending}
-                            className="min-h-11 rounded-lg px-3 text-sm text-red-ink hover:bg-red-bg disabled:opacity-50"
                             onClick={async () => {
                               if (
                                 await confirm({
@@ -256,8 +249,8 @@ export function ProjectBoards({
                             }}
                           >
                             {el.collab.trash.deleteForever}
-                          </button>
-                        </>
+                          </Button>
+                        </div>
                       )}
                     </li>
                   );
@@ -275,65 +268,56 @@ export function ProjectBoards({
   );
 }
 
+// «Νέος πίνακας» in a drawer (full screen on phones). A plain <form action>
+// rather than FormDrawer: createBoard redirects to the new board, which a
+// form action handles natively.
 function NewBoardDialog({ projectId, onClose }: { projectId: string; onClose: () => void }) {
   const [template, setTemplate] = useState<BoardTemplate>("blank");
   const t = el.collab.templates;
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-ink/30 sm:items-center sm:p-3" onClick={onClose} role="presentation">
-      <form
-        action={createBoard.bind(null, projectId)}
-        role="dialog"
-        aria-modal="true"
-        aria-label={el.collab.project.newBoardTitle}
-        className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-y-auto rounded-t-2xl bg-surface p-4 shadow-2xl sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{el.collab.project.newBoardTitle}</h2>
-          <button type="button" onClick={onClose} className="flex h-11 w-11 items-center justify-center rounded-lg text-xl text-ink-muted hover:bg-bg" aria-label={el.collab.comments.close}>
-            ×
-          </button>
+    <Drawer onClose={onClose} title={el.collab.project.newBoardTitle} closeOnBackdrop={false}>
+      <form action={createBoard.bind(null, projectId)} className="flex flex-col gap-5">
+        <div className="flex flex-col">
+          <Label htmlFor="new-board-title">{el.collab.boardTitle}</Label>
+          <Input
+            id="new-board-title"
+            name="title"
+            maxLength={200}
+            autoFocus
+            placeholder={template === "blank" ? el.collab.boardTitle : t[template].name}
+            className="max-md:min-h-11 max-md:text-base"
+          />
         </div>
-        <label className="mb-1 text-xs font-medium text-ink-muted" htmlFor="new-board-title">
-          {el.collab.boardTitle}
-        </label>
-        <input
-          id="new-board-title"
-          name="title"
-          maxLength={200}
-          autoFocus
-          placeholder={template === "blank" ? el.collab.boardTitle : t[template].name}
-          className="mb-4 min-h-11 rounded-lg border border-line-strong px-3 text-base sm:text-sm"
-        />
         <input type="hidden" name="template" value={template} />
         <fieldset>
-          <legend className="mb-2 text-xs font-medium text-ink-muted">{el.collab.project.chooseTemplate}</legend>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <legend className="mb-1 text-xs font-medium text-muted">{el.collab.project.chooseTemplate}</legend>
+          <div className="flex flex-col border-t border-hairline">
             {BOARD_TEMPLATES.map((key) => (
               <button
                 key={key}
                 type="button"
                 aria-pressed={template === key}
                 onClick={() => setTemplate(key)}
-                className={`flex min-h-16 items-start gap-3 rounded-xl border p-3 text-left ${
-                  template === key ? "border-ink bg-sage/40 ring-1 ring-ink" : "border-line hover:bg-bg"
-                }`}
+                className={cn(
+                  "flex min-h-14 flex-col justify-center border-b border-l-2 border-b-hairline px-3 py-2.5 text-left transition-colors",
+                  template === key ? "border-l-navy bg-hover" : "border-l-transparent hover:bg-hover",
+                )}
               >
-                <span className="text-2xl" aria-hidden="true">
-                  {TEMPLATE_ICON[key]}
-                </span>
-                <span>
-                  <span className="block text-sm font-medium">{t[key].name}</span>
-                  <span className="block text-xs text-ink-muted">{t[key].hint}</span>
-                </span>
+                <span className={cn("block text-sm", template === key ? "font-medium text-ink" : "text-ink")}>{t[key].name}</span>
+                <span className="block text-small text-muted">{t[key].hint}</span>
               </button>
             ))}
           </div>
         </fieldset>
-        <SubmitButton className="mt-4 min-h-12 w-full text-base" pendingLabel={el.collab.project.creating}>
-          {el.collab.project.create}
-        </SubmitButton>
+        <div className="sticky bottom-0 -mx-5 mt-2 flex justify-end gap-2 border-t border-hairline bg-raised px-5 py-4 md:-mx-8 md:px-8">
+          <Button type="button" variant="secondary" className="max-md:min-h-11" onClick={onClose}>
+            {el.common.cancel}
+          </Button>
+          <SubmitButton className="max-md:min-h-11" pendingLabel={el.collab.project.creating}>
+            {el.collab.project.create}
+          </SubmitButton>
+        </div>
       </form>
-    </div>
+    </Drawer>
   );
 }

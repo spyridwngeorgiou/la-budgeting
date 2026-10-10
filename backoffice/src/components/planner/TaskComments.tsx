@@ -1,7 +1,7 @@
 "use client";
 
 import { useOptimistic, useRef } from "react";
-import { Button } from "@/components/ui";
+import { Button, Textarea, cn } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 
 export interface TaskComment {
@@ -39,19 +39,19 @@ export function TaskComments({
 
   return (
     <div className="flex flex-col gap-3">
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col">
         {[...comments, ...pending].map((c) => (
           <li
             key={c.id}
-            className={`rounded-md border border-line bg-bg/50 px-3 py-2 ${c.id.startsWith("pending:") ? "opacity-60" : ""}`}
+            className={cn("border-b border-hairline py-3", c.mine && "border-l-2 border-l-navy pl-3", c.id.startsWith("pending:") && "opacity-60")}
           >
-            <div className="mb-0.5 flex items-center justify-between gap-2 text-xs text-ink-faint">
-              <span className="font-medium text-ink-muted">{c.author}</span>
-              <span className="flex items-center gap-2">
+            <div className="mb-1 flex items-center justify-between gap-2 text-xs text-muted">
+              <span className="font-medium text-text">{c.author}</span>
+              <span className="num flex items-center gap-2">
                 {timeFormatter.format(new Date(c.created_at))}
                 {c.mine && !c.id.startsWith("pending:") && (
                   <form action={deleteAction.bind(null, c.id)}>
-                    <button type="submit" className="hover:text-red-ink">
+                    <button type="submit" className="inline-flex min-h-8 items-center px-1 hover:text-negative max-md:min-h-11">
                       {el.common.delete}
                     </button>
                   </form>
@@ -80,13 +80,7 @@ export function TaskComments({
           }}
           className="flex flex-col gap-2"
         >
-          <textarea
-            name="body"
-            rows={2}
-            required
-            placeholder={el.planner.task.newComment}
-            className="rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-sage-strong focus:outline-none"
-          />
+          <Textarea name="body" rows={2} required placeholder={el.planner.task.newComment} className="min-h-20" />
           <div className="flex justify-end">
             <Button type="submit" variant="secondary">
               {el.planner.task.send}

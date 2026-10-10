@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/supabase/access";
 import { el } from "@/lib/i18n/el";
-import { Badge, Card } from "@/components/ui";
+import { Badge, PageHeader, SectionHeader } from "@/components/ui";
 import { ProjectBoards, type BoardCard } from "@/components/collab/project/ProjectBoards";
 import { ProjectFiles } from "@/components/collab/project/ProjectFiles";
 import { ProjectChat } from "@/components/collab/project/ProjectChat";
@@ -77,12 +77,8 @@ export default async function CollabProjectPage({ params }: { params: Promise<{ 
   const nameOf = (id: string | null) => (id && peopleMap[id]) || el.collab.unknownUser;
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-3 md:p-6">
-      <div>
-        <div className="text-xs text-ink-muted">{project.org_name}</div>
-        <h1 className="text-xl font-semibold">{project.display_name}</h1>
-        {project.phase && <p className="mt-1 text-sm text-ink-muted">{project.phase}</p>}
-      </div>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-4 py-6 md:px-8 md:py-10">
+      <PageHeader eyebrow={project.org_name} title={project.display_name} meta={project.phase || undefined} />
 
       <ProjectChat
         projectId={projectId}
@@ -94,8 +90,8 @@ export default async function CollabProjectPage({ params }: { params: Promise<{ 
         boardTitles={boardTitles}
       />
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="flex flex-col gap-4 lg:col-span-2">
+      <div className="grid grid-cols-1 gap-x-10 gap-y-10 lg:grid-cols-3">
+        <div className="flex min-w-0 flex-col gap-10 lg:col-span-2">
           <ProjectBoards
             projectId={projectId}
             boards={cards}
@@ -114,44 +110,44 @@ export default async function CollabProjectPage({ params }: { params: Promise<{ 
           />
         </div>
 
-        <div className="flex flex-col gap-4">
-          <Card>
-            <h2 className="mb-3 text-sm font-medium text-ink-muted">{el.collab.people}</h2>
-            <ul className="flex flex-col gap-2">
+        <div className="flex min-w-0 flex-col gap-10">
+          <section className="flex flex-col">
+            <SectionHeader title={el.collab.people} />
+            <ul className="flex flex-col">
               {(people ?? []).map((p) => (
-                <li key={`${p.user_id}-${p.is_internal}`} className="flex items-start justify-between gap-2 text-sm">
+                <li key={`${p.user_id}-${p.is_internal}`} className="flex items-start justify-between gap-2 border-b border-hairline py-2.5">
                   <div className="min-w-0">
-                    <div className="truncate">{p.display_name || el.collab.unknownUser}</div>
-                    <div className="truncate text-xs text-ink-muted">
+                    <p className="truncate text-sm text-ink">{p.display_name || el.collab.unknownUser}</p>
+                    <p className="truncate text-small text-muted">
                       {[p.company_name, p.discipline ? el.partner.disciplineValues[p.discipline] : null]
                         .filter(Boolean)
                         .join(" · ")}
-                    </div>
+                    </p>
                   </div>
                   {p.is_internal ? (
                     <Badge>{el.collab.internalBadge}</Badge>
                   ) : (
-                    p.project_role && <Badge tone="green">{el.partner.roleValues[p.project_role]}</Badge>
+                    p.project_role && <Badge tone="positive">{el.partner.roleValues[p.project_role]}</Badge>
                   )}
                 </li>
               ))}
             </ul>
-          </Card>
+          </section>
 
-          <Card>
-            <h2 className="mb-3 text-sm font-medium text-ink-muted">{el.collab.activity}</h2>
-            {(activity ?? []).length === 0 && <p className="py-2 text-sm text-ink-faint">{el.collab.noActivity}</p>}
-            <ul className="flex flex-col gap-2 text-sm">
+          <section className="flex flex-col">
+            <SectionHeader title={el.collab.activity} />
+            {(activity ?? []).length === 0 && <p className="py-3 text-sm text-muted">{el.collab.noActivity}</p>}
+            <ul className="flex flex-col">
               {(activity ?? []).map((a) => (
-                <li key={a.id}>
-                  <span className="font-medium">{nameOf(a.actor_id)}</span>{" "}
-                  <span className="text-ink-muted">{el.collab.activityKinds[a.kind] ?? a.kind}</span>
+                <li key={a.id} className="border-b border-hairline py-2.5 text-sm">
+                  <span className="text-ink">{nameOf(a.actor_id)}</span>{" "}
+                  <span className="text-muted">{el.collab.activityKinds[a.kind] ?? a.kind}</span>
                   {a.summary && <span className="text-ink"> «{a.summary}»</span>}
-                  <div className="text-xs text-ink-faint">{dateTime.format(new Date(a.created_at))}</div>
+                  <span className="num block text-small text-muted">{dateTime.format(new Date(a.created_at))}</span>
                 </li>
               ))}
             </ul>
-          </Card>
+          </section>
         </div>
       </div>
     </div>
