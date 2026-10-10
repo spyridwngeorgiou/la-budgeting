@@ -9,7 +9,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(22);
+select plan(24);
 
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000f1', 'aade-backfill-a@test.local'),
@@ -174,6 +174,14 @@ select is((select array_agg(aade_batch_id::text) from v_legacy_aade_batches),
   array['81000000-0000-0000-0000-000000000003'], 'B sees only its own import in the history view');
 select is((select count(*) from ingest_rows where org_id = pg_temp.org_a())::int, 0, 'B sees no ingest rows of A');
 reset role;
+
+select ok(not has_function_privilege('authenticated', 'public.ingest_backfill_aade()', 'execute'),
+  'only the service role / migration owner can run the backfill');
+select ok(
+  not has_table_privilege('authenticated', 'v_legacy_aade_batches', 'update')
+  and not has_table_privilege('authenticated', 'v_legacy_aade_staging_rows', 'insert')
+  and not has_table_privilege('authenticated', 'v_legacy_transaction_drafts', 'delete'),
+  'the history views are read-only');
 
 select * from finish();
 rollback;

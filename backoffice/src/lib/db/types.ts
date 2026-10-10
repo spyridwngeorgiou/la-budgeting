@@ -5687,6 +5687,76 @@ export type Database = {
           },
         ]
       }
+      v_legacy_aade_batches: {
+        Row: {
+          aade_batch_id: string | null
+          committed_at: string | null
+          dup_count: number | null
+          file_sha256: string | null
+          filename: string | null
+          ingest_batch_id: string | null
+          kind: string | null
+          new_count: number | null
+          org_id: string | null
+          period: string | null
+          row_count: number | null
+          status: string | null
+          storage_path: string | null
+          uploaded_at: string | null
+          uploaded_by: string | null
+        }
+        Relationships: []
+      }
+      v_legacy_aade_staging_rows: {
+        Row: {
+          aade_batch_id: string | null
+          aade_staging_row_id: string | null
+          account_id: string | null
+          category_id: string | null
+          commit_error: string | null
+          committed_transaction_id: string | null
+          counterparty_afm: string | null
+          counterparty_name: string | null
+          decision: string | null
+          dedup_status: string | null
+          direction: Database["public"]["Enums"]["tx_direction"] | null
+          discrepancy: string | null
+          document_type: string | null
+          gross_amount: number | null
+          ingest_row_id: string | null
+          invoice_number: string | null
+          issue_date: string | null
+          issuer_afm: string | null
+          mydata_mark: string | null
+          net_amount: number | null
+          org_id: string | null
+          other_taxes: number | null
+          project_id: string | null
+          raw: Json | null
+          receiver_afm: string | null
+          row_no: number | null
+          vat_amount: number | null
+          withholding_amount: number | null
+        }
+        Relationships: []
+      }
+      v_legacy_transaction_drafts: {
+        Row: {
+          approved_transaction_id: string | null
+          created_at: string | null
+          document_id: string | null
+          draft_id: string | null
+          extracted: Json | null
+          ingest_batch_id: string | null
+          ingest_row_id: string | null
+          needs_review_reasons: string[] | null
+          org_id: string | null
+          proposed: Json | null
+          source: string | null
+          status: string | null
+        }
+        Relationships: []
+      }
       v_net_worth: {
         Row: {
           asset_total: number | null
@@ -6506,6 +6576,10 @@ export type Database = {
         Args: { p_min: Database["public"]["Enums"]["org_role"]; p_org: string }
         Returns: boolean
       }
+      ingest_backfill_aade: { Args: never; Returns: Json }
+      ingest_backfill_drafts: { Args: never; Returns: Json }
+      ingest_safe_date: { Args: { p: string }; Returns: string }
+      ingest_safe_num: { Args: { p: Json }; Returns: number }
       is_internal_user: { Args: never; Returns: boolean }
       log_collab_ai_usage: {
         Args: {
