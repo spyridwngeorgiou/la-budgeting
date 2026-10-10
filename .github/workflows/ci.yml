@@ -52,7 +52,10 @@ jobs:
         run: |
           set -o pipefail
           supabase test db 2>&1 | tee pgtap.log || {
-            grep -E "^(not ok|#|[^ ]+\.sql \.\.)|Failed|ERROR|psql:" pgtap.log \
-              | head -40 | while IFS= read -r line; do echo "::error::$line"; done
+            # GitHub keeps only 10 annotations per step: drop passing files and
+            # NOTICEs, then join the rest into a single annotation.
+            msg=$(grep -E "^(not ok|#)|\.sql \.\.|Failed|ERROR|psql:" pgtap.log \
+              | grep -vE " ok$|NOTICE" | head -60 | awk '{printf "%s%%0A", $0}')
+            echo "::error::${msg}"
             exit 1
           }
