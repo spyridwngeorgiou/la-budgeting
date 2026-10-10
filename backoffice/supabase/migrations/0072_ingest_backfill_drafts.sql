@@ -31,6 +31,17 @@ exception when others then
 end;
 $$;
 
+-- Numbers the model wrote as JSON numbers or numeric strings; anything else null.
+create function public.ingest_safe_num(p jsonb) returns numeric
+language plpgsql immutable set search_path = public as $$
+begin
+  if p is null or jsonb_typeof(p) not in ('number', 'string') or (p #>> '{}') !~ '^\s*-?\d+(\.\d+)?\s*$' then
+    return null;
+  end if;
+  return (p #>> '{}')::numeric;
+end;
+$$;
+
 create function public.ingest_backfill_drafts() returns jsonb
 language plpgsql security invoker set search_path = public as $$
 declare
@@ -40,11 +51,28 @@ declare
   v_row uuid;
   e jsonb;
   p jsonb;
-  v_vat numeric;
-  v_net numeric;
-  v_gross numeric;
-  v_wh numeric;
+  v_read_vat numeric;
+  v_read_net numeric;
+  v_read_gross numeric;
+  v_read_wh numeric;
   v_rate numeric;
+  v_base numeric;
+  v_has_invoice boolean;
+  v_tx_date date;
+  v_direction tx_direction;
+  v_amount numeric;
+  v_net numeric;
+  v_vat numeric;
+  v_wh numeric;
+  v_vat_rate numeric;
+  v_errors text[];
+  v_afm text;
+  v_mark text;
+  v_project uuid;
+  v_category uuid;
+  v_contact uuid;
+  v_decision ingest_decision;
+  v_status ingest_batch_status;
   v_created int := 0;
   v_resynced int := 0;
 begin
@@ -52,6 +80,13 @@ begin
   perform set_config('app.ingest_source', 'legacy_backfill', true);
 
   -- A draft copied while pending and decided the old way since: start over.
+  -- Corrections are only written at commit, so none should point at a
+  -- staged row -- but ai_corrections.ingest_row_id cascades, so unlink first.
+  update ai_corrections c set ingest_row_id = null
+  from ingest_rows r, ingest_batches b, transaction_drafts dr
+  where c.ingest_row_id = r.id and r.batch_id = b.id
+    and b.legacy_ref = 'draft:' || dr.id and b.org_id = dr.org_id
+    and b.status = 'staged' and dr.status <> 'pending';
   with stale as (
     delete from ingest_batches b
     using transaction_drafts dr
@@ -71,28 +106,85 @@ begin
     if d.status = 'approved' and d.approved_transaction_id is not null then
       select * into t from transactions where id = d.approved_transaction_id and org_id = d.org_id;
     end if;
-    e := d.extracted;
-    p := d.proposed;
+    e := coalesce(d.extracted, '{}'::jsonb);
+    p := coalesce(d.proposed, '{}'::jsonb);
+    v_errors := '{}';
+    v_afm := nullif(regexp_replace(coalesce(e->>'issuer_afm', ''), '\D', '', 'g'), '');
+    v_mark := nullif(regexp_replace(coalesce(e->>'mydata_mark', ''), '\D', '', 'g'), '');
+
+    if t.id is not null then
+      -- approved: the row is the transaction as it was written.
+      v_tx_date := t.tx_date;
+      v_direction := t.direction;
+      v_amount := t.gross_amount;
+      v_net := t.net_amount;
+      v_vat := t.vat_amount;
+      v_wh := t.withholding_amount;
+      v_vat_rate := t.vat_rate;
+      v_has_invoice := t.has_invoice;
+      v_project := t.project_id;
+      v_category := t.category_id;
+      v_contact := t.contact_id;
+      v_decision := 'create';
+      v_status := 'committed';
+    else
+      -- pending / discarded (or approved, but its transaction is gone):
+      -- what the old review form opened with, as aiExtractionToStageRow
+      -- stages it -- «Με παραστατικό» when any VAT was read, net = the read
+      -- net or total, 24% unless read, the total derived.
+      v_read_vat := ingest_safe_num(e->'vat'->'value');
+      v_read_net := ingest_safe_num(e->'net'->'value');
+      v_read_gross := ingest_safe_num(e->'gross'->'value');
+      v_read_wh := ingest_safe_num(e->'withholding'->'value');
+      v_rate := ingest_safe_num(e->'vat_rate');
+      if v_rate is null or v_rate < 0 or v_rate > 1 then
+        v_rate := 0.24;
+      end if;
+      v_has_invoice := coalesce(v_read_vat, 0) > 0;
+      v_base := round(coalesce(v_read_net, v_read_gross, 0), 2);
+      if v_has_invoice then
+        v_net := v_base;
+        v_vat := round(v_base * v_rate, 2);
+        v_wh := round(coalesce(v_read_wh, 0), 2);
+        v_amount := v_net + v_vat - v_wh;
+        v_vat_rate := v_rate;
+      else
+        v_net := v_base;
+        v_vat := 0;
+        v_wh := 0;
+        v_amount := v_base;
+        v_vat_rate := null;
+      end if;
+      -- An amount the checks would reject (a negative or missing read) is
+      -- left for the reviewer instead of failing the backfill.
+      if v_amount <= 0 or v_net < 0 or v_vat < 0 or v_wh < 0 then
+        v_amount := null;
+        v_net := null;
+        v_vat := null;
+        v_wh := null;
+        v_errors := array['Δεν διαβάστηκε θετικό ποσό — συμπληρώστε το.'];
+      end if;
+      v_tx_date := coalesce(ingest_safe_date(e->>'issue_date'), (d.created_at at time zone 'Europe/Athens')::date);
+      v_direction := case when p->>'direction' = 'income' then 'income'::tx_direction else 'expense'::tx_direction end;
+      -- Ids the proposal named, only while they still exist in this org.
+      select x.id into v_project from projects x where x.id::text = p->>'project_id' and x.org_id = d.org_id;
+      select x.id into v_category from categories x where x.id::text = p->>'category_id' and x.org_id = d.org_id;
+      select x.id into v_contact from contacts x where x.id::text = p->>'contact_id' and x.org_id = d.org_id;
+      if d.status = 'pending' then
+        v_decision := 'pending';
+        v_status := 'staged';
+      else
+        v_decision := 'skip';
+        v_status := 'discarded';
+      end if;
+    end if;
 
     insert into ingest_batches (org_id, source, status, row_count, meta, legacy_ref, created_at, committed_at)
     values (
-      d.org_id, d.source::text::ingest_source,
-      case when t.id is not null then 'committed'::ingest_batch_status
-           when d.status = 'pending' then 'staged'::ingest_batch_status
-           else 'discarded'::ingest_batch_status end,
-      1,
-      jsonb_build_object('legacy', true, 'draft_id', d.id, 'document_id', d.document_id),
+      d.org_id, d.source::text::ingest_source, v_status, 1,
+      jsonb_build_object('legacy', true, 'draft_id', d.id, 'draft_status', d.status, 'document_id', d.document_id),
       'draft:' || d.id, d.created_at, t.created_at)
     returning id into v_batch;
-
-    -- What the old review form opened with (ReviewForm.tsx): net = read net
-    -- or total, VAT ticked when any was read, total derived.
-    v_vat := case when (e->'vat'->>'value') ~ '^-?\d+(\.\d+)?$' then (e->'vat'->>'value')::numeric end;
-    v_net := case when (e->'net'->>'value') ~ '^-?\d+(\.\d+)?$' then (e->'net'->>'value')::numeric end;
-    v_gross := case when (e->'gross'->>'value') ~ '^-?\d+(\.\d+)?$' then (e->'gross'->>'value')::numeric end;
-    v_wh := case when (e->'withholding'->>'value') ~ '^-?\d+(\.\d+)?$' then (e->'withholding'->>'value')::numeric end;
-    v_rate := case when (e->>'vat_rate') ~ '^\d+(\.\d+)?$' and (e->>'vat_rate')::numeric between 0 and 1
-                   then (e->>'vat_rate')::numeric end;
 
     insert into ingest_rows (
       org_id, batch_id, row_no, row_kind, raw, extracted, meta, document_id,
@@ -100,67 +192,35 @@ begin
       description, counterparty_name, counterparty_afm, invoice_number, mydata_mark, status, paid_on,
       account_id, project_id, category_id, contact_id, scope, decision, parse_errors,
       applied, committed_at, committed_transaction_id, created_at)
-    select
-      d.org_id, v_batch, 1, 'document'::ingest_row_kind, e,
-      jsonb_build_object('afms', '[]'::jsonb, 'ibans', '[]'::jsonb, 'rfs', '[]'::jsonb, 'marks', '[]'::jsonb),
+    values (
+      d.org_id, v_batch, 1, 'document', e,
+      jsonb_build_object(
+        'afms', coalesce(to_jsonb(array_remove(array[v_afm], null)), '[]'::jsonb),
+        'ibans', '[]'::jsonb, 'rfs', '[]'::jsonb,
+        'marks', coalesce(to_jsonb(array_remove(array[v_mark], null)), '[]'::jsonb)),
       jsonb_build_object(
         'legacy', true,
         'ai', jsonb_build_object(
+          -- AI_DOCUMENT_MODEL / AI_TEXT_MODEL (adapters/aiShared.ts).
           'model', case when d.source::text = 'ai_nl' then 'claude-haiku-4-5' else 'claude-opus-5' end,
           'draft_id', d.id,
           'needs_review_reasons', to_jsonb(coalesce(d.needs_review_reasons, '{}')),
           'proposal', jsonb_build_object(
             'contactId', p->>'contact_id', 'projectId', p->>'project_id', 'categoryId', p->>'category_id',
-            'contactMatchStrength', coalesce(p->>'contact_match_strength', 'none'), 'direction', p->>'direction'))),
+            'contactMatchStrength', coalesce(p->>'contact_match_strength', 'none'),
+            'direction', v_direction::text))),
       d.document_id,
-      x.tx_date, x.due_date, x.direction, x.amount, x.net_amount, x.vat_amount, x.vat_rate, x.withholding_amount,
-      x.has_invoice, x.description, x.counterparty_name, x.counterparty_afm, x.invoice_number, x.mydata_mark,
-      x.status, x.paid_on, x.account_id, x.project_id, x.category_id, x.contact_id, x.scope,
-      case when t.id is not null then 'create'::ingest_decision
-           when d.status = 'pending' then 'pending'::ingest_decision
-           else 'skip'::ingest_decision end,
-      '{}'::text[],
+      v_tx_date, t.due_date, v_direction, v_amount, v_net, v_vat, v_vat_rate, v_wh, v_has_invoice,
+      t.description,
+      case when t.id is not null then t.counterparty_name else e->>'issuer_name' end,
+      case when t.id is not null then t.counterparty_afm else v_afm end,
+      case when t.id is not null then t.invoice_number else e->>'invoice_number' end,
+      case when t.id is not null then t.mydata_mark else v_mark end,
+      t.status, t.paid_on, t.account_id, v_project, v_category, v_contact, coalesce(t.scope, 'business'),
+      v_decision, v_errors,
       case when t.id is not null then jsonb_build_object('action', 'create', 'transaction_id', t.id, 'legacy', true) end,
-      t.created_at, t.id, d.created_at
-    from (
-      select
-        -- approved: the transaction as it was written
-        t.tx_date, t.due_date, t.direction, t.gross_amount as amount, t.net_amount, t.vat_amount, t.vat_rate,
-        t.withholding_amount, t.has_invoice, t.description, t.counterparty_name, t.counterparty_afm,
-        t.invoice_number, t.mydata_mark, t.status, t.paid_on, t.account_id, t.project_id, t.category_id,
-        t.contact_id, t.scope
-      where t.id is not null
-      union all
-      select
-        -- pending / discarded: the proposal
-        coalesce(ingest_safe_date(e->>'issue_date'), d.created_at::date), null::date,
-        case when p->>'direction' = 'income' then 'income'::tx_direction else 'expense'::tx_direction end,
-        case when coalesce(v_vat, 0) > 0
-             then round(coalesce(v_net, v_gross, 0) * (1 + coalesce(v_rate, 0.24)), 2) - coalesce(v_wh, 0)
-             else coalesce(v_net, v_gross) end,
-        coalesce(v_net, v_gross),
-        case when coalesce(v_vat, 0) > 0 then round(coalesce(v_net, v_gross, 0) * coalesce(v_rate, 0.24), 2) else 0 end,
-        case when coalesce(v_vat, 0) > 0 then coalesce(v_rate, 0.24) end,
-        case when coalesce(v_vat, 0) > 0 then coalesce(v_wh, 0) else 0 end,
-        coalesce(v_vat, 0) > 0, null::text,
-        e->>'issuer_name', nullif(regexp_replace(coalesce(e->>'issuer_afm', ''), '\D', '', 'g'), ''),
-        e->>'invoice_number', nullif(regexp_replace(coalesce(e->>'mydata_mark', ''), '\D', '', 'g'), ''),
-        null::tx_status, null::date, null::uuid,
-        (select id from projects where id::text = p->>'project_id' and org_id = d.org_id),
-        (select id from categories where id::text = p->>'category_id' and org_id = d.org_id),
-        (select id from contacts where id::text = p->>'contact_id' and org_id = d.org_id),
-        'business'::tx_scope
-      where t.id is null
-    ) x
+      t.created_at, t.id, d.created_at)
     returning id into v_row;
-
-    -- Amounts the checks would reject (a negative read) are left for the
-    -- reviewer instead of failing the backfill.
-    update ingest_rows set
-      amount = null, net_amount = null, vat_amount = null, withholding_amount = null,
-      parse_errors = array['Δεν διαβάστηκε θετικό ποσό — συμπληρώστε το.']
-    where id = v_row and committed_at is null
-      and (amount is null or amount <= 0 or net_amount < 0 or vat_amount < 0 or withholding_amount < 0);
 
     if t.id is not null then
       update transactions set ingest_row_id = v_row where id = t.id and ingest_row_id is null;
