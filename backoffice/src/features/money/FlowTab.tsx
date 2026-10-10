@@ -14,11 +14,9 @@ import { closeBrokerageDeal, removeBrokerageDeal, saveBrokerageDeal, saveExpecte
 import { RowAction, UrlDrawer } from "./client";
 import { DealFields, ExpectedFields } from "./fields";
 
-// «Ροή»: the cash forecast, cash_forecast() / cash_forecast_items() (0066)
-// -- the same SQL as «Σήμερα» and the assistant; nothing is computed here
-// -- with the two hand-kept inputs under it: expected income and the
-// brokerage deals (still brokerage_deals until Phase 7), each edited in a
-// drawer (?income=<id|new>, ?deal=<id|new>).
+// «Ροή»: cash_forecast() / cash_forecast_items() (0066), the same SQL as
+// «Σήμερα», plus expected income and brokerage deals (brokerage_deals until
+// Phase 7), each edited in a drawer (?income=<id|new>, ?deal=<id|new>).
 
 const PATH = "/money/flow";
 const r = el.reports;

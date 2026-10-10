@@ -12,11 +12,8 @@ import { addAccount, checkBalance } from "./actions";
 import { UrlDrawer } from "./client";
 import { AccountFields, CheckFields } from "./fields";
 
-// «Λογαριασμοί»: balances from v_account_balances, reconciliation state
-// from the latest row of v_balance_checks (0035). Accounts that need a
-// look (a drift, never checked) sort first. New account and «Νέος έλεγχος»
-// open in a drawer (?account=new, ?check=<id>); the full check history
-// stays on the classic page until Phase 7.
+// «Λογαριασμοί»: v_account_balances, with the latest v_balance_checks row
+// (0035) as status; drifts sort first. New account / check in a drawer.
 
 const PATH = "/money/accounts";
 const t = money.accounts;
