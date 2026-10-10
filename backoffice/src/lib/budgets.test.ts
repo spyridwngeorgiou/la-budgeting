@@ -43,7 +43,9 @@ describe("navigation budget", () => {
           .split(path.sep)
           .filter((s) => s && !/^\(.*\)$/.test(s))
           .join("/")}`,
-      );
+      )
+      // An optional catch-all (money/[[...tab]]) also answers its parent.
+      .flatMap((p) => (/\/\[\[\.\.\.[^/]+\]\]$/.test(p) ? [p, p.replace(/\/\[\[\.\.\.[^/]+\]\]$/, "") || "/"] : [p]));
     for (const href of [...NAV_V2.flatMap((d) => [d.href, d.partnerHref ?? d.href]), SETTINGS_V2.href]) {
       expect(pages, href).toContain(href);
     }
