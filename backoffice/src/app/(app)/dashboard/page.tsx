@@ -5,6 +5,7 @@ import { formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { aiEnabled } from "@/lib/ai/client";
 import { DashboardSummary } from "./DashboardSummary";
+import { AskAssistantCard } from "./AskAssistantCard";
 import { DueDatesCalendar } from "./DueDatesCalendar";
 import { monthGridRange } from "@/lib/planner/calendar";
 import { monthKeyOf, monthLabel, todayAthens } from "@/lib/dates";
@@ -78,7 +79,7 @@ export default async function DashboardPage() {
     supabase.from("vat_periods").select("period_start, status").eq("org_id", orgId),
     supabase.from("v_qc_missing_project_or_account").select("transaction_id", { count: "exact", head: true }).eq("org_id", orgId),
     supabase.from("transaction_drafts").select("id", { count: "exact" }).eq("org_id", orgId).eq("status", "pending").order("created_at"),
-    supabase.from("agent_changes").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("status", "pending"),
+    supabase.from("agent_changes").select("id", { count: "exact", head: true }).eq("org_id", orgId).in("status", ["pending", "conflict"]),
     // Liquid cash (v_liquidity, 0066) and the six-month runway from the same
     // cash_forecast() /reports/cash shows -- never re-derived here.
     supabase.from("v_liquidity").select("owner_scope, balance").eq("org_id", orgId),
@@ -239,6 +240,7 @@ export default async function DashboardPage() {
       </section>
 
       {aiEnabled() && <DashboardSummary />}
+      {aiEnabled() && <AskAssistantCard />}
 
       <section>
         <h2 className="mb-2 text-sm font-medium text-ink-muted">Ρευστότητα</h2>

@@ -1,4 +1,4 @@
-import { fenceUntrusted } from "./boardText";
+import { fenceUntrusted } from "@/lib/ai/shared/fence";
 
 // System prompt for the board assistant. Kept byte-stable (no dates, ids or
 // names) so it caches; everything per-request goes in collabContextBlock().
