@@ -7013,6 +7013,7 @@ export type Database = {
           protected_count: number
         }[]
       }
+      set_base_scenario: { Args: { p_scenario: string }; Returns: undefined }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       sync_schedule_rows: {

@@ -2,9 +2,9 @@ import { OnePagerRow, OnePagerSection } from "@/components/onepager";
 import { Button, Term } from "@/components/ui";
 import { formatMoney } from "@/lib/format";
 import type { ScenarioResult, ScenarioRow } from "@/lib/finance/projectModel";
-import { saveScenario, saveOpexLine, deleteOpexLine } from "../scenario-actions";
-import { ScenarioFormModal } from "../ScenarioFormModal";
-import { OpexLineFormModal } from "../OpexLineFormModal";
+import { saveScenario, saveOpexLine, deleteOpexLine } from "./scenario-actions";
+import { ScenarioFormModal } from "../LegacyFormModals";
+import { OpexLineFormModal } from "../LegacyFormModals";
 import { SendToCashSection } from "./FinanceSections";
 
 // The base scenario's blocks of the project one-pager: its assumptions

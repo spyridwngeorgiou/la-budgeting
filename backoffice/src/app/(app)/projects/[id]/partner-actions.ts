@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateProject } from "../revalidate";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { formString } from "@/lib/supabase/org";
@@ -162,7 +162,7 @@ export async function invitePartner(projectId: string, formData: FormData): Prom
       fullName: formString(formData, "full_name")?.trim() || null,
       companyName: formString(formData, "company_name")?.trim() || null,
     });
-    revalidatePath(`/projects/${projectId}`);
+    revalidateProject(projectId);
   });
 }
 
@@ -177,7 +177,7 @@ export async function updatePartnerRole(projectId: string, userId: string, formD
       .eq("project_id", projectId)
       .eq("user_id", userId);
     if (error) throw error;
-    revalidatePath(`/projects/${projectId}`);
+    revalidateProject(projectId);
   });
 }
 
@@ -191,7 +191,7 @@ export async function removePartner(projectId: string, userId: string): Promise<
 
     const { error } = await supabase.from("project_members").delete().eq("project_id", projectId).eq("user_id", userId);
     if (error) throw error;
-    revalidatePath(`/projects/${projectId}`);
+    revalidateProject(projectId);
   });
 }
 
@@ -238,7 +238,7 @@ export async function resendPartnerInvite(projectId: string, inviteId: string): 
       fullName: invite.full_name,
       companyName: invite.company_name,
     });
-    revalidatePath(`/projects/${projectId}`);
+    revalidateProject(projectId);
   });
 }
 
@@ -253,6 +253,6 @@ export async function cancelPartnerInvite(projectId: string, inviteId: string): 
       .eq("id", inviteId)
       .eq("project_id", projectId);
     if (error) throw error;
-    revalidatePath(`/projects/${projectId}`);
+    revalidateProject(projectId);
   });
 }
