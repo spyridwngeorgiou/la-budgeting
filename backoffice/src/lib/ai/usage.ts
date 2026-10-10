@@ -11,6 +11,8 @@ export interface ModelPrice {
 }
 
 // List prices, from the claude-api skill's model table (cached 2026-09-25).
+// claude-opus-5 and claude-sonnet-5 are no longer called at runtime; they stay
+// so historical ai_usage rows (and a refusal served by a fallback) price right.
 export const MODEL_PRICES: Record<string, ModelPrice> = {
   "claude-opus-5-5": { input: 400, output: 2000, cacheRead: 20, cacheWrite: 500 },
   "claude-opus-5": { input: 500, output: 2500, cacheRead: 50, cacheWrite: 625 },
@@ -24,7 +26,15 @@ export const MODEL_PRICES: Record<string, ModelPrice> = {
 const FALLBACK_PRICE = MODEL_PRICES["claude-opus-5"];
 
 export function priceFor(model: string): ModelPrice {
-  return MODEL_PRICES[model] ?? FALLBACK_PRICE;
+  const exact = MODEL_PRICES[model];
+  if (exact) return exact;
+  // A dated/suffixed id (response.model may carry one): the longest known id
+  // it extends -- longest, because claude-sonnet-5-5 also starts with
+  // claude-sonnet-5.
+  const base = Object.keys(MODEL_PRICES)
+    .filter((id) => model.startsWith(`${id}-`))
+    .sort((a, b) => b.length - a.length)[0];
+  return base ? MODEL_PRICES[base] : FALLBACK_PRICE;
 }
 
 export interface TokenUsage {

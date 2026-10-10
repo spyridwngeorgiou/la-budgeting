@@ -1,7 +1,7 @@
 import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
-import { aiEnabled, assertWithinAiBudget, logAiUsage } from "@/lib/ai/client";
+import { AI_MODEL_FAST, aiEnabled, assertWithinAiBudget, logAiUsage } from "@/lib/ai/client";
 import { extractDocument, validateExtraction } from "@/lib/ai/extract";
 import { extractFromText, validateNlExtraction } from "@/lib/ai/nl";
 import { resolveEntities } from "@/lib/ai/resolve";
@@ -215,7 +215,7 @@ async function ingestAttachment(
     if (job) {
       await admin
         .from("document_jobs")
-        .update({ status: "extracted", model: "claude-opus-5", input_tokens: usage.inputTokens, output_tokens: usage.outputTokens })
+        .update({ status: "extracted", model: usage.model, input_tokens: usage.inputTokens, output_tokens: usage.outputTokens })
         .eq("id", job.id);
     }
 
@@ -223,9 +223,10 @@ async function ingestAttachment(
       orgId,
       userId: null,
       feature: "email_document_extraction",
-      model: "claude-opus-5",
+      model: usage.model,
       inputTokens: usage.inputTokens,
-      cacheReadTokens: 0,
+      cacheReadTokens: usage.cacheReadTokens,
+      cacheWriteTokens: usage.cacheWriteTokens,
       outputTokens: usage.outputTokens,
       requestId: usage.requestId,
       latencyMs,
@@ -307,7 +308,7 @@ async function ingestText(
     orgId,
     userId: null,
     feature: "email_nl_entry",
-    model: "claude-haiku-4-5",
+    model: AI_MODEL_FAST,
     inputTokens: usage.inputTokens,
     cacheReadTokens: 0,
     outputTokens: usage.outputTokens,

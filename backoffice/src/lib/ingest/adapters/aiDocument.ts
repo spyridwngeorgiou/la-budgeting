@@ -6,7 +6,7 @@ import { extractDocument, validateExtraction } from "@/lib/ai/extract";
 import { resolveEntities } from "@/lib/ai/resolve";
 import { todayAthens } from "@/lib/dates";
 import { stageBatch } from "../stage";
-import { AI_DOCUMENT_MODEL, aiExtractionToStageRow, needsReviewReasons } from "./aiShared";
+import { aiExtractionToStageRow, needsReviewReasons } from "./aiShared";
 
 // A photo / PDF of an invoice or receipt -> one staged ai_document (or
 // ai_email) row, the document kept in storage and linked on the row so the
@@ -80,7 +80,7 @@ export async function stageAiDocument(
       extraction,
       proposal,
       needsReview: needsReviewReasons(validateExtraction(extraction).reasons, proposal),
-      model: AI_DOCUMENT_MODEL,
+      model: usage.model,
       documentId: document.id,
       today: todayAthens(),
     });
@@ -98,16 +98,17 @@ export async function stageAiDocument(
     if (job) {
       await supabase
         .from("document_jobs")
-        .update({ status: "extracted", model: AI_DOCUMENT_MODEL, input_tokens: usage.inputTokens, output_tokens: usage.outputTokens })
+        .update({ status: "extracted", model: usage.model, input_tokens: usage.inputTokens, output_tokens: usage.outputTokens })
         .eq("id", job.id);
     }
     await logAiUsage(supabase, {
       orgId,
       userId: input.userId,
       feature: input.usageFeature,
-      model: AI_DOCUMENT_MODEL,
+      model: usage.model,
       inputTokens: usage.inputTokens,
-      cacheReadTokens: 0,
+      cacheReadTokens: usage.cacheReadTokens,
+      cacheWriteTokens: usage.cacheWriteTokens,
       outputTokens: usage.outputTokens,
       requestId: usage.requestId,
       latencyMs,

@@ -1,4 +1,5 @@
 import type { Extraction, NlEntry } from "@/lib/ai/schemas";
+import { AI_MODEL_FAST, EXTRACTION_MODEL } from "@/lib/ai/models";
 import { cashOnly, deriveFromGross, deriveFromNet } from "@/lib/finance/money";
 import { isIsoDate } from "@/lib/dates";
 import type { StageRow } from "../stage";
@@ -11,8 +12,8 @@ import type { StageRow } from "../stage";
 // ever a proposal. Rows stage with decision 'pending', so nothing reaches the
 // ledger until a person has looked at the row and chosen «Νέα κίνηση».
 
-export const AI_DOCUMENT_MODEL = "claude-opus-5";
-export const AI_TEXT_MODEL = "claude-haiku-4-5";
+export const AI_DOCUMENT_MODEL = EXTRACTION_MODEL;
+export const AI_TEXT_MODEL = AI_MODEL_FAST;
 
 export interface AiProposal {
   contactId: string | null;

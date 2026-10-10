@@ -7,6 +7,7 @@ import { getCurrentOrgId, formString } from "@/lib/supabase/org";
 import { deriveFromNet, cashOnly, isIdentityConsistent } from "@/lib/finance/money";
 import { findPossibleDuplicates, transactionWriteError, type WriteResult } from "@/lib/ingest/duplicates";
 import { el } from "@/lib/i18n/el";
+import { AI_MODEL_FAST, EXTRACTION_MODEL } from "@/lib/ai/models";
 
 // The only path from an AI draft into the real ledger. Re-runs every
 // validator server-side -- the client cannot be trusted to have enforced
@@ -133,6 +134,20 @@ export async function approveDraft(draftId: string, queue: string[], formData: F
   compareField("issuer_afm", extracted.issuer_afm as string | null, counterpartyAfm);
 
   if (corrections.length > 0) {
+    // Attribute the correction to the model that actually read the document
+    // (document_jobs.model) -- drafts made before a model switch keep theirs.
+    let docModel: string | null = null;
+    if (draft.source !== "ai_nl" && draft.document_id) {
+      const { data: job } = await supabase
+        .from("document_jobs")
+        .select("model")
+        .eq("document_id", draft.document_id)
+        .not("model", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      docModel = job?.model ?? null;
+    }
     await supabase.from("ai_corrections").insert(
       corrections.map((c) => ({
         org_id: orgId,
@@ -144,7 +159,7 @@ export async function approveDraft(draftId: string, queue: string[], formData: F
         field: c.field,
         ai_value: c.ai_value,
         human_value: c.human_value,
-        model: draft.source === "ai_nl" ? "claude-haiku-4-5" : "claude-opus-5",
+        model: draft.source === "ai_nl" ? AI_MODEL_FAST : (docModel ?? EXTRACTION_MODEL),
       })),
     );
   }

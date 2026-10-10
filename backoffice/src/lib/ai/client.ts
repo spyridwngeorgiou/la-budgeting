@@ -9,24 +9,9 @@ export { usageOf } from "./usage";
 // module a build error, not a leaked API key at runtime.
 export const anthropic = new Anthropic({ maxRetries: 3, timeout: 120_000 });
 
-// Model choice (claude-api skill):
-// - The back-office assistant chat runs on the current flagship,
-//   claude-opus-5-5, with an explicit effort (its default is medium) and
-//   claude-sonnet-5-5 as the fallback if the id is ever retired/renamed.
-//   Refusals are handled server-side with `fallbacks: "default"`.
-// - AI_MODEL stays on claude-opus-5 for document/revenue-plan extraction and
-//   the board assistant until those paths are migrated and re-checked
-//   (Opus 5.5 rejects forced tool_choice and disabled thinking).
-// - Insights and NL tiebreaks are phrasing tasks: the small Haiku model.
-export const CHAT_MODEL = "claude-opus-5-5";
-export const CHAT_MODEL_FALLBACK = "claude-sonnet-5-5";
-export const CHAT_EFFORT = "medium" as const;
-export const AI_MODEL = "claude-opus-5";
-export const AI_MODEL_FAST = "claude-haiku-4-5";
-// If AI_MODEL itself is ever retired/renamed, every call site would 404
-// with no fallback -- this is the one model callers can retry against on a
-// "model not found"-shaped error.
-export const AI_MODEL_FALLBACK = "claude-sonnet-5";
+// Model ids and the reasoning behind them live in ./models (pure, so the
+// ingest adapters and tests can use them without the SDK).
+export * from "./models";
 
 export function aiEnabled(): boolean {
   return process.env.AI_ENABLED === "true" && !!process.env.ANTHROPIC_API_KEY;

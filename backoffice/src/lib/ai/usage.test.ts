@@ -28,6 +28,20 @@ describe("estimateCostCents", () => {
     expect(estimateCostCents("claude-haiku-4-5", { inputTokens: 1_000_000, outputTokens: 0 })).toBe(100);
   });
 
+  it("prices Sonnet 5.5 (extraction, board assistant) at $2/$10, cache read $0.20, write 1.25x", () => {
+    expect(priceFor("claude-sonnet-5-5")).toEqual({ input: 200, output: 1000, cacheRead: 20, cacheWrite: 250 });
+    expect(estimateCostCents("claude-sonnet-5-5", { inputTokens: 1_000_000, outputTokens: 1_000_000 })).toBe(1200);
+  });
+
+  it("keeps pricing historical claude-opus-5 rows", () => {
+    expect(estimateCostCents("claude-opus-5", { inputTokens: 1_000_000, outputTokens: 1_000_000 })).toBe(3000);
+  });
+
+  it("prices a suffixed id by the longest known id it extends", () => {
+    expect(priceFor("claude-sonnet-5-5-20261001")).toBe(MODEL_PRICES["claude-sonnet-5-5"]);
+    expect(priceFor("claude-opus-5-20260101")).toBe(MODEL_PRICES["claude-opus-5"]);
+  });
+
   it("prices an unknown model like the most expensive known one", () => {
     const max = Math.max(...Object.values(MODEL_PRICES).map((p) => p.output));
     expect(priceFor("claude-future-9").output).toBe(max);
