@@ -23,7 +23,7 @@
       "vars": {
         "AI_ENABLED": "true",
         "INGEST_UNIFIED": "true",
-        "UI_DEFAULT": "v1",
+        "UI_DEFAULT": "v2",
         "COLLAB_UI_DEFAULT": "v1"
       },
       "observability": {
