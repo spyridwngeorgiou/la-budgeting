@@ -17,8 +17,8 @@ import {
   type OpexLineKind,
 } from "@/lib/domain/enums";
 
-// The project page's edit forms, as bare field sets: the v2 tabs wrap them
-// in a FormDrawer, the legacy *FormModal files in their Modal until Phase 7.
+// The project page's edit forms, as bare field sets, wrapped in a modal by
+// ./LegacyFormModals.tsx.
 // Field names are the server actions' contract (actions.ts,
 // [id]/finance-actions.ts, [id]/scenario-actions.ts) -- keep them.
 

@@ -4,8 +4,6 @@ import { redirect } from "next/navigation";
 import { getAccessContext } from "@/lib/supabase/access";
 import { el } from "@/lib/i18n/el";
 import { signOut } from "./actions";
-import { getUiVersion } from "@/lib/ui/version";
-import { AppShell } from "@/components/shell/AppShell";
 
 // The collaboration space's own shell, shared by staff and external
 // partners -- deliberately not the (app) Nav, so there is not a single
@@ -13,17 +11,6 @@ import { AppShell } from "@/components/shell/AppShell";
 export default async function CollabLayout({ children }: { children: React.ReactNode }) {
   const access = await getAccessContext();
   if (access.kind === "anonymous") redirect("/login");
-
-  // External partners get the v2 shell (Έργα · Πλάνο · Ρώτα, no «＋», no
-  // finance) only once COLLAB_UI_DEFAULT (or their own cookie) says v2 --
-  // switched after a test with a partner account on staging.
-  if (access.kind === "partner" && (await getUiVersion("collab")) === "v2") {
-    return (
-      <AppShell role="partner" orgs={[]} currentOrgId={null} email={access.email} pendingCount={0}>
-        {children}
-      </AppShell>
-    );
-  }
 
   return (
     <div className="flex min-h-dvh flex-col bg-canvas text-ink">

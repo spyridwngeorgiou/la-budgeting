@@ -6,16 +6,8 @@ import { el } from "@/lib/i18n/el";
 import { ProjectFormModal } from "./LegacyFormModals";
 import { ProjectsGrid } from "./ProjectsGrid";
 import { createProject } from "./actions";
-import { getUiVersion } from "@/lib/ui/version";
-import { PortfolioPage } from "@/features/projects/PortfolioPage";
 
-export default async function ProjectsPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  if ((await getUiVersion("app")) === "v2") return <PortfolioPage searchParams={await searchParams} />;
-
+export default async function ProjectsPage() {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
 

@@ -19,14 +19,12 @@ import {
   type ProjectNoteInitial,
   type ScenarioInitial,
   type UtilityInitial,
-} from "@/features/projects/forms/fields";
+} from "./fields";
 
-export { UTILITY_KIND_LABELS } from "@/features/projects/forms/fields";
+export { UTILITY_KIND_LABELS } from "./fields";
 
-// The classic (v1) project page's edit dialogs: a button and a centred
-// modal around the shared field sets (src/features/projects/forms). The v2
-// tabs open the same fields in a FormDrawer. Deleted in Phase 7 with the
-// classic page; these replace the nine *FormModal files.
+// The project page's edit dialogs: a button and a centred modal around the
+// field sets in ./fields.tsx; these replace the nine *FormModal files.
 
 type Action = (formData: FormData) => Promise<unknown>;
 

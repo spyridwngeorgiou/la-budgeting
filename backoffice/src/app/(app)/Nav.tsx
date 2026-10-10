@@ -7,8 +7,6 @@ import { el } from "@/lib/i18n/el";
 import { AiSpark } from "@/components/ui";
 import { OrgSwitcher } from "./OrgSwitcher";
 import type { OrgRole } from "@/lib/domain/enums";
-import { setUiVersion } from "@/lib/ui/actions";
-import { shell } from "@/lib/i18n/v2/shell";
 
 const ROLE_RANK: Record<OrgRole, number> = { viewer: 0, editor: 1, admin: 2, owner: 3 };
 
@@ -97,14 +95,6 @@ export function Nav({
             );
           })}
         </ul>
-        {/* Opt in to the v2 shell (src/components/shell); its user menu has
-            the way back («Κλασική εμφάνιση»). */}
-        <form action={setUiVersion} className="px-4 pb-3">
-          <input type="hidden" name="version" value="v2" />
-          <button type="submit" className="text-xs text-ink-muted underline underline-offset-2 hover:text-ink">
-            {shell.topbar.newLook}
-          </button>
-        </form>
       </nav>
       <main className="flex-1 bg-bg p-4 md:p-6">{children}</main>
     </div>
