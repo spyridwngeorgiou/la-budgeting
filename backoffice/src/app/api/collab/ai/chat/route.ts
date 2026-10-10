@@ -4,8 +4,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
 import {
   anthropic,
-  AI_MODEL,
-  AI_MODEL_FALLBACK,
+  COLLAB_EFFORT,
+  COLLAB_MODEL,
+  COLLAB_MODEL_FALLBACK,
+  REFUSAL_FALLBACK_BETA,
   aiEnabled,
   estimateCostCents,
   isModelNotFoundError,
@@ -166,7 +168,7 @@ export async function POST(request: Request) {
   });
   if (userMsgError) return jsonError(t.saveFailed, 500);
 
-  const messages: Anthropic.MessageParam[] = [{ role: "user", content: withChatHistory(history, message) }];
+  const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: withChatHistory(history, message) }];
 
   const tools = collabToolDefinitions(canEdit);
   const runTool = createCollabToolRunner({
@@ -179,7 +181,7 @@ export async function POST(request: Request) {
     canEdit,
   });
   // Stable prompt first (cached), per-request context after the breakpoint.
-  const system: Anthropic.TextBlockParam[] = [
+  const system: Anthropic.Beta.BetaTextBlockParam[] = [
     { type: "text", text: COLLAB_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
     { type: "text", text: collabContextBlock({ boardTitle: board.title, todayIso: todayAthens(), canEdit }) },
   ];
@@ -200,15 +202,17 @@ export async function POST(request: Request) {
       };
 
       let answer = "";
-      let model = AI_MODEL;
+      let model: string = COLLAB_MODEL;
       let failed = false;
 
-      const logUsage = async (msg: Anthropic.Message, startedAt: number) => {
+      const logUsage = async (msg: Anthropic.Beta.BetaMessage, startedAt: number) => {
+        // The model that actually served the call (a refusal fallback may differ).
+        const served = msg.model || model;
         // Priced with cache reads/writes; the RPC stores the token counts it has columns for.
-        const cost = estimateCostCents(model, usageOf(msg.usage));
+        const cost = estimateCostCents(served, usageOf(msg.usage));
         await supabase.rpc("log_collab_ai_usage", {
           p_project: projectId,
-          p_model: model,
+          p_model: served,
           p_input_tokens: msg.usage.input_tokens,
           p_cache_read_tokens: msg.usage.cache_read_input_tokens ?? 0,
           p_output_tokens: msg.usage.output_tokens,
@@ -224,11 +228,24 @@ export async function POST(request: Request) {
         let jsonRetries = 0;
         for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
           const startedAt = Date.now();
-          let final: Anthropic.Message;
+          let final: Anthropic.Beta.BetaMessage;
           let iterationText = "";
           try {
-            const s = anthropic.messages.stream(
-              { model, max_tokens: MAX_TOKENS, system, tools, messages, thinking: { type: "adaptive" } },
+            // Sonnet 5.5: no forced tool_choice (auto is the default) and no
+            // disabled thinking; adaptive thinking at an explicit effort.
+            // Refusals retry server-side on the default fallback (Claude API).
+            const s = anthropic.beta.messages.stream(
+              {
+                model,
+                max_tokens: MAX_TOKENS,
+                system,
+                tools,
+                messages,
+                thinking: { type: "adaptive" },
+                output_config: { effort: COLLAB_EFFORT },
+                betas: [REFUSAL_FALLBACK_BETA],
+                fallbacks: "default",
+              },
               { signal: request.signal },
             );
             s.on("text", (delta) => {
@@ -238,8 +255,8 @@ export async function POST(request: Request) {
             final = await s.finalMessage();
             jsonRetries = 0;
           } catch (error) {
-            if (iteration === 0 && model === AI_MODEL && isModelNotFoundError(error)) {
-              model = AI_MODEL_FALLBACK;
+            if (iteration === 0 && model === COLLAB_MODEL && isModelNotFoundError(error)) {
+              model = COLLAB_MODEL_FALLBACK;
               iteration--;
               continue;
             }
@@ -258,14 +275,22 @@ export async function POST(request: Request) {
           answer += iterationText;
           await logUsage(final, startedAt);
 
-          if (final.stop_reason === "refusal") break;
-          const toolUses = final.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
+          if (final.stop_reason === "refusal") {
+            // Sonnet 5.5 declines in more categories than Opus 5; say so
+            // rather than ending on an empty bubble.
+            if (!iterationText) {
+              answer += t.refused;
+              send({ type: "text", text: t.refused });
+            }
+            break;
+          }
+          const toolUses = final.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
           if (toolUses.length === 0) break;
           // A tool input cut off at max_tokens can still parse; never run it.
           if (final.stop_reason === "max_tokens") break;
 
           messages.push({ role: "assistant", content: final.content });
-          const results: Anthropic.ToolResultBlockParam[] = [];
+          const results: Anthropic.Beta.BetaToolResultBlockParam[] = [];
           for (const use of toolUses) {
             send({ type: "tool", name: use.name });
             const outcome = await runTool(use.name, use.input);

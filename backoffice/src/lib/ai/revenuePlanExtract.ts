@@ -1,6 +1,13 @@
 import "server-only";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { anthropic, AI_MODEL } from "./client";
+import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
+import {
+  anthropic,
+  EXTRACTION_EFFORT,
+  EXTRACTION_MODEL,
+  EXTRACTION_MODEL_FALLBACK,
+  isModelNotFoundError,
+  REFUSAL_FALLBACK_BETA,
+} from "./client";
 import { RevenuePlanExtractionSchema, type RevenuePlanExtraction } from "./schemas";
 import { UserError } from "@/lib/actions";
 
@@ -8,18 +15,35 @@ const SYSTEM_PROMPT = `Είστε βοηθός δημιουργίας εκτιμ
 
 export interface RevenuePlanExtractionResult {
   extraction: RevenuePlanExtraction;
-  usage: { inputTokens: number; outputTokens: number; requestId: string };
+  // model: the one that actually served the call (fallbacks may differ).
+  usage: { inputTokens: number; outputTokens: number; requestId: string; model: string };
 }
 
 export async function extractRevenuePlan(text: string, currentYear: number): Promise<RevenuePlanExtractionResult> {
-  const response = await anthropic.messages.parse({
-    model: AI_MODEL,
-    max_tokens: 8192,
-    system: `${SYSTEM_PROMPT}\n\nΤρέχον έτος: ${currentYear}.`,
-    messages: [{ role: "user", content: text }],
-    output_config: { format: zodOutputFormat(RevenuePlanExtractionSchema) },
-  });
+  // Structured outputs, not forced tool use (Sonnet 5.5 rejects tool_choice
+  // any/tool). Thinking stays adaptive; max_tokens covers thinking + the grid.
+  const params = {
+    model: EXTRACTION_MODEL,
+    max_tokens: 16000,
+    system: `${SYSTEM_PROMPT}
 
+Τρέχον έτος: ${currentYear}.`,
+    messages: [{ role: "user" as const, content: text }],
+    output_config: { format: betaZodOutputFormat(RevenuePlanExtractionSchema), effort: EXTRACTION_EFFORT },
+    betas: [REFUSAL_FALLBACK_BETA],
+    fallbacks: "default" as const,
+  };
+  let response;
+  try {
+    response = await anthropic.beta.messages.parse(params);
+  } catch (error) {
+    if (!isModelNotFoundError(error)) throw error;
+    response = await anthropic.beta.messages.parse({ ...params, model: EXTRACTION_MODEL_FALLBACK });
+  }
+
+  if (response.stop_reason === "refusal") {
+    throw new UserError("Το μοντέλο αρνήθηκε να επεξεργαστεί αυτή την περιγραφή.");
+  }
   if (!response.parsed_output) {
     throw new UserError("Η ανάλυση της περιγραφής απέτυχε (μη έγκυρη μορφή απάντησης).");
   }
@@ -30,6 +54,7 @@ export async function extractRevenuePlan(text: string, currentYear: number): Pro
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
       requestId: response.id,
+      model: response.model || params.model,
     },
   };
 }

@@ -19,3 +19,7 @@ public/pdfjs/
 
 # Supabase CLI link state (project ref, pooler URL)
 supabase/.temp/
+
+# Extraction eval inputs and report (real receipts -- never committed)
+eval-receipts/*
+!eval-receipts/README.md

@@ -101,7 +101,7 @@ export async function createRevenuePlanFromText(formData: FormData): Promise<Act
       orgId,
       userId: session?.user.id ?? null,
       feature: "revenue_plan_creation",
-      model: "claude-opus-5",
+      model: usage.model,
       inputTokens: usage.inputTokens,
       cacheReadTokens: 0,
       outputTokens: usage.outputTokens,

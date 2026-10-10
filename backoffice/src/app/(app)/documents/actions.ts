@@ -4,7 +4,7 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
-import { aiEnabled, assertWithinAiBudget, logAiUsage } from "@/lib/ai/client";
+import { AI_MODEL_FAST, aiEnabled, assertWithinAiBudget, logAiUsage } from "@/lib/ai/client";
 import { extractDocument, validateExtraction } from "@/lib/ai/extract";
 import { extractFromText, validateNlExtraction } from "@/lib/ai/nl";
 import { resolveEntities } from "@/lib/ai/resolve";
@@ -122,16 +122,17 @@ export async function uploadDocument(formData: FormData): Promise<ActionResult> 
 
       await supabase
         .from("document_jobs")
-        .update({ status: "extracted", model: "claude-opus-5", input_tokens: usage.inputTokens, output_tokens: usage.outputTokens })
+        .update({ status: "extracted", model: usage.model, input_tokens: usage.inputTokens, output_tokens: usage.outputTokens })
         .eq("id", job.id);
 
       await logAiUsage(supabase, {
         orgId,
         userId: session?.user.id ?? null,
         feature: "document_extraction",
-        model: "claude-opus-5",
+        model: usage.model,
         inputTokens: usage.inputTokens,
-        cacheReadTokens: 0,
+        cacheReadTokens: usage.cacheReadTokens,
+        cacheWriteTokens: usage.cacheWriteTokens,
         outputTokens: usage.outputTokens,
         requestId: usage.requestId,
         latencyMs,
@@ -265,7 +266,7 @@ export async function submitNlEntry(formData: FormData): Promise<ActionResult> {
       orgId,
       userId: session?.user.id ?? null,
       feature: "nl_entry",
-      model: "claude-haiku-4-5",
+      model: AI_MODEL_FAST,
       inputTokens: usage.inputTokens,
       cacheReadTokens: 0,
       outputTokens: usage.outputTokens,

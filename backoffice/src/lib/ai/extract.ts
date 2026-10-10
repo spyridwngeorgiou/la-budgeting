@@ -1,42 +1,51 @@
 import "server-only";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { anthropic, AI_MODEL } from "./client";
-import { ExtractionSchema, type Extraction } from "./schemas";
+import { anthropic, EXTRACTION_MODEL, EXTRACTION_MODEL_FALLBACK, isModelNotFoundError } from "./client";
+import { extractionRequest, type ExtractionEffort } from "./extractRequest";
+import { type Extraction } from "./schemas";
 import { isValidAfm } from "@/lib/finance/money";
 import { UserError } from "@/lib/actions";
 
-const SYSTEM_PROMPT = `Είστε ειδικός στην ανάγνωση ελληνικών αποδείξεων και τιμολογίων. Η δουλειά σας είναι να ΜΕΤΑΓΡΑΨΕΤΕ πιστά ό,τι βλέπετε -- ποτέ μην υπολογίζετε ή διορθώνετε αριθμούς. Για κάθε χρηματικό πεδίο, γράψτε στο "evidence" το ακριβές κείμενο που διαβάσατε. Αν κάτι δεν είναι ευανάγνωστο ή απουσιάζει, βάλτε null -- ποτέ μην το μαντεύετε.`;
-
 export interface ExtractionResult {
   extraction: Extraction;
-  usage: { inputTokens: number; outputTokens: number; requestId: string };
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+    requestId: string;
+    // The model that actually served the call (a refusal fallback or the
+    // model-not-found fallback may differ from EXTRACTION_MODEL) -- this is
+    // what document_jobs / ai_usage record.
+    model: string;
+  };
+}
+
+export interface ExtractOptions {
+  // Eval-only overrides; production always uses the defaults.
+  model?: string;
+  effort?: ExtractionEffort | null;
 }
 
 export async function extractDocument(
   base64Data: string,
   mediaType: string,
   categoryNames: string[],
+  options: ExtractOptions = {},
 ): Promise<ExtractionResult> {
-  const isPdf = mediaType === "application/pdf";
-  const contentBlock = isPdf
-    ? { type: "document" as const, source: { type: "base64" as const, media_type: "application/pdf" as const, data: base64Data } }
-    : {
-        type: "image" as const,
-        source: {
-          type: "base64" as const,
-          media_type: mediaType as "image/jpeg" | "image/png" | "image/webp",
-          data: base64Data,
-        },
-      };
+  const params = extractionRequest({ base64Data, mediaType, categoryNames, ...options });
+  let response;
+  try {
+    response = await anthropic.beta.messages.parse(params);
+  } catch (error) {
+    // Only a retired/renamed id falls back; rate limits and 5xx are already
+    // retried by the SDK and would fail the same way on another model.
+    if (params.model !== EXTRACTION_MODEL || !isModelNotFoundError(error)) throw error;
+    response = await anthropic.beta.messages.parse({ ...params, model: EXTRACTION_MODEL_FALLBACK });
+  }
 
-  const response = await anthropic.messages.parse({
-    model: AI_MODEL,
-    max_tokens: 4096,
-    system: `${SYSTEM_PROMPT}\n\nΔιαθέσιμες κατηγορίες (χρησιμοποιήστε ακριβώς ένα από αυτά τα ονόματα στο suggested_category, ή null): ${categoryNames.join(", ")}`,
-    messages: [{ role: "user", content: [contentBlock, { type: "text", text: "Μεταγράψτε αυτό το παραστατικό." }] }],
-    output_config: { format: zodOutputFormat(ExtractionSchema) },
-  });
-
+  if (response.stop_reason === "refusal") {
+    throw new UserError("Το μοντέλο αρνήθηκε να αναλύσει αυτό το παραστατικό. Καταχωρήστε το χειροκίνητα.");
+  }
   if (!response.parsed_output) {
     throw new UserError("Η ανάλυση του παραστατικού απέτυχε (μη έγκυρη μορφή απάντησης).");
   }
@@ -46,7 +55,10 @@ export async function extractDocument(
     usage: {
       inputTokens: response.usage.input_tokens,
       outputTokens: response.usage.output_tokens,
+      cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
+      cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
       requestId: response.id,
+      model: response.model || params.model,
     },
   };
 }
