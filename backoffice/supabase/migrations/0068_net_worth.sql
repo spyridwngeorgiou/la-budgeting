@@ -43,6 +43,8 @@ select t.org_id, case when t.direction = 'income' then 'receivables' else 'payab
 from transactions t
 left join accounts ac on ac.id = t.account_id
 where t.status = 'pending'
+  -- a pending loan instalment is already inside the loan balance below
+  and t.loan_id is null
 
 union all
 select li.org_id, 'liabilities', li.owner_scope, li.id, li.lender, -li.principal
@@ -63,7 +65,7 @@ left join lateral (
 left join lateral (
   select sum(t.gross_amount - coalesce(t.interest_amount, 0)) as repaid
   from transactions t
-  where t.loan_id = ln.id and t.status = 'paid'
+  where t.loan_id = ln.id and t.status = 'paid' and t.direction = 'expense'
 ) r on true
 where ln.state in ('approved', 'disbursed')
 
