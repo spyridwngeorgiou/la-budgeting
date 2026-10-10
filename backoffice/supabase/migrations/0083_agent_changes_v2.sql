@@ -37,7 +37,11 @@ create table agent_change_columns (
   primary key (table_name, column_name)
 );
 alter table agent_change_columns enable row level security;
-create policy agent_change_columns_select on agent_change_columns for select to authenticated using (true);
+-- Internal users only: external partners (0037) read nothing outside the
+-- collaboration space, schema metadata included. apply_agent_change() runs
+-- as the approving (internal) editor, so it still sees the list.
+create policy agent_change_columns_select on agent_change_columns for select to authenticated
+  using (is_internal_user());
 
 -- Must equal src/lib/ai/allowlist.ts ALLOWLIST[*].editableFields
 -- (src/lib/ai/allowlist.test.ts parses this statement).

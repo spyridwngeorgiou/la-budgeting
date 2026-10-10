@@ -27,8 +27,9 @@ $$;
 
 -- 1500 expenses of 10.00 € (net 8.00) over three months, plus one
 -- cancelled row that must never count.
-insert into transactions (org_id, tx_date, direction, status, gross_amount, net_amount, vat_amount)
-select pg_temp.org_a(), date '2026-01-01' + (i % 90), 'expense', 'paid', 10, 8, 2
+-- has_invoice: VAT needs an invoice (tx_cash_has_no_vat); paid needs paid_on.
+insert into transactions (org_id, tx_date, paid_on, direction, status, gross_amount, net_amount, vat_amount, has_invoice)
+select pg_temp.org_a(), date '2026-01-01' + (i % 90), date '2026-01-01' + (i % 90), 'expense', 'paid', 10, 8, 2, true
 from generate_series(1, 1500) i;
 insert into transactions (org_id, tx_date, direction, status, gross_amount)
 values (pg_temp.org_a(), date '2026-01-15', 'expense', 'cancelled', 999);
