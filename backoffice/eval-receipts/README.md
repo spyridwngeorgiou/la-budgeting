@@ -27,8 +27,9 @@ PowerShell: `$env:AI_EVAL='1'; $env:AI_EVAL_CONFIRM='1'; npx vitest run -c vites
 - `ANTHROPIC_API_KEY` is read from the environment, else `backoffice/.env.local`, `.dev.vars`, or the
   file named by `AI_EVAL_ENV_FILE`. It is never printed.
 - Spend is capped at `AI_EVAL_CAP_USD` (default and maximum $3). The run aborts if the estimate is over
-  the cap, or before any call that would take actual + in-flight spend past it. Roughly $0.03–0.06 per
-  document for both models together.
+  the cap, or before any call that would take actual + in-flight spend past it. Both models together cost
+  roughly $0.02–0.05 for a receipt photo and up to ~$0.20 for a multi-page PDF (most of it the
+  claude-opus-5 arm), so 20–30 documents fit well under the cap.
 - Compared fields, after normalisation: issuer ΑΦΜ (digits), issue date (ISO), gross / net / VAT amount
   (to the cent), myDATA MARK (digits), document type. Both-null counts as agreement. This measures
   agreement between the models, not accuracy — read the disagreeing documents yourself.

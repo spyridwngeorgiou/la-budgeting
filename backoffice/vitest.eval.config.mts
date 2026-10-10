@@ -12,5 +12,9 @@ export default defineConfig({
   test: {
     include: ["src/**/*.eval.ts"],
     testTimeout: 60 * 60 * 1000,
+    // The eval's output is its console tables; the default reporter hides
+    // console output of passing tests.
+    reporters: ["verbose"],
+    silent: false,
   },
 });
