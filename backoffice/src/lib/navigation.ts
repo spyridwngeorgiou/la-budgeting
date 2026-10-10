@@ -22,6 +22,8 @@ export const SECTION_TABS = {
   ],
   reports: [
     { href: "/reports/cash", label: el.tabs.cash },
+    { href: "/reports/pnl", label: el.tabs.pnl },
+    { href: "/reports/net-worth", label: el.tabs.netWorth },
     { href: "/reports/vat", label: el.tabs.vat },
     { href: "/reports/withholding", label: el.tabs.withholding },
     { href: "/reports/quality", label: el.tabs.quality },

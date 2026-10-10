@@ -6,7 +6,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(13);
+select plan(16);
 
 create function pg_temp.as_user(uid uuid) returns void language sql as $$
   select set_config('role', 'authenticated', true),
@@ -99,6 +99,13 @@ select is(
   (select array[net_result::int, lifetime_result::int] from v_project_rollup
    where project_id = '00000000-0000-0000-0000-0000000067c1'),
   array[500, 150], 'rollup: net_result booked so far, lifetime_result with scheduled');
+select is((select round(sum(amount))::int from pnl_summary((select org_a from t_ctx), (select m0 from t_ctx),
+            (select (m0 + interval '1 year')::date from t_ctx))), 500,
+  'pnl_summary: booked only by default (1.000 - 500)');
+select is((select round(sum(amount))::int from pnl_summary((select org_a from t_ctx), (select m0 from t_ctx),
+            (select (m0 + interval '1 year')::date from t_ctx), 'business_line', true)
+           where bucket = 'construction'), 150,
+  'pnl_summary by business line, with scheduled');
 select is((select business_line::text from v_project_rollup where project_id = '00000000-0000-0000-0000-0000000067c1'),
   'construction', 'rollup carries the business line');
 reset role;
@@ -108,6 +115,8 @@ select pg_temp.as_user('00000000-0000-0000-0000-0000000067e1');
 select is(
   (select count(*) from v_pnl_lines) + (select count(*) from v_pnl_monthly) + (select count(*) from v_project_rollup),
   0::bigint, 'a project partner sees 0 P&L rows');
+select is((select count(*)::int from pnl_summary((select org_a from t_ctx), '2000-01-01', '2100-01-01', 'month', true)), 0,
+  'a project partner gets an empty pnl_summary');
 reset role;
 
 select pg_temp.as_user('00000000-0000-0000-0000-0000000067b1');

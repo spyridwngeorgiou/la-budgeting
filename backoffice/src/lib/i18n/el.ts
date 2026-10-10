@@ -62,6 +62,9 @@ export const el = {
     loading: "Φόρτωση…",
     markPaid: "Πληρώθηκε",
     error: "Σφάλμα",
+    yes: "Ναι",
+    no: "Όχι",
+    close: "Κλείσιμο",
   },
   transaction: {
     type: "Τύπος",
@@ -753,6 +756,11 @@ export const el = {
       general: "Γενικά",
     },
     drillDown: "Κινήσεις",
+    pnlView: "Προβολή",
+    pnlEmpty: "Καμία κίνηση με αποτέλεσμα για το έτος.",
+    pnlOpenInTransactions: "Άνοιγμα στις κινήσεις",
+    pnlScheduledTag: "προγραμματισμένη",
+    pnlDrillTruncated: "Εμφανίζονται οι πρώτες 200 κινήσεις.",
     unclassifiedHint: "κινήσεις χωρίς αντιμετώπιση κόστους — δείτε την Ποιότητα δεδομένων",
   },
   // ── Brokerage deals (0065) ──────────────────────────────────────────────

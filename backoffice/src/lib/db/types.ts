@@ -1544,6 +1544,7 @@ export type Database = {
       }
       categories: {
         Row: {
+          budget_line_code: Database["public"]["Enums"]["budget_line_code"] | null
           code: string | null
           cost_treatment: Database["public"]["Enums"]["cost_treatment"] | null
           created_at: string
@@ -1560,6 +1561,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          budget_line_code?: Database["public"]["Enums"]["budget_line_code"] | null
           code?: string | null
           cost_treatment?: Database["public"]["Enums"]["cost_treatment"] | null
           created_at?: string
@@ -1576,6 +1578,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          budget_line_code?: Database["public"]["Enums"]["budget_line_code"] | null
           code?: string | null
           cost_treatment?: Database["public"]["Enums"]["cost_treatment"] | null
           created_at?: string
@@ -5625,21 +5628,27 @@ export type Database = {
       v_net_worth: {
         Row: {
           asset_total: number | null
+          cash_total: number | null
           liability_total: number | null
           liquid_total: number | null
+          loans_total: number | null
+          net_worth: number | null
           org_id: string | null
+          other_accounts_total: number | null
+          payables_total: number | null
+          receivables_total: number | null
+          vat_total: number | null
         }
-        Insert: {
-          asset_total?: never
-          liability_total?: never
-          liquid_total?: never
-          org_id?: string | null
-        }
-        Update: {
-          asset_total?: never
-          liability_total?: never
-          liquid_total?: never
-          org_id?: string | null
+        Relationships: []
+      }
+      v_net_worth_items: {
+        Row: {
+          amount: number | null
+          component: string | null
+          label: string | null
+          org_id: string | null
+          owner_scope: Database["public"]["Enums"]["owner_scope"] | null
+          ref_id: string | null
         }
         Relationships: []
       }
@@ -5699,6 +5708,39 @@ export type Database = {
           },
         ]
       }
+      v_pnl_lines: {
+        Row: {
+          amount: number | null
+          business_line: Database["public"]["Enums"]["business_line"] | null
+          category_id: string | null
+          direction: Database["public"]["Enums"]["tx_direction"] | null
+          is_scheduled: boolean | null
+          line: string | null
+          month: string | null
+          org_id: string | null
+          project_id: string | null
+          scope: Database["public"]["Enums"]["tx_scope"] | null
+          signed_amount: number | null
+          status: Database["public"]["Enums"]["tx_status"] | null
+          transaction_id: string | null
+          treatment: Database["public"]["Enums"]["cost_treatment"] | null
+          tx_date: string | null
+        }
+        Relationships: []
+      }
+      v_pnl_monthly: {
+        Row: {
+          amount: number | null
+          business_line: Database["public"]["Enums"]["business_line"] | null
+          is_scheduled: boolean | null
+          line: string | null
+          month: string | null
+          n: number | null
+          org_id: string | null
+          scope: Database["public"]["Enums"]["tx_scope"] | null
+        }
+        Relationships: []
+      }
       v_plan_progress: {
         Row: {
           installments_total: number | null
@@ -5731,8 +5773,22 @@ export type Database = {
           },
         ]
       }
+      v_project_budget_lines: {
+        Row: {
+          budget: number | null
+          committed: number | null
+          label: string | null
+          line_code: string | null
+          org_id: string | null
+          paid: number | null
+          project_id: string | null
+          remaining: number | null
+        }
+        Relationships: []
+      }
       v_project_rollup: {
         Row: {
+          business_line: Database["public"]["Enums"]["business_line"] | null
           business_model: Database["public"]["Enums"]["business_model"] | null
           capex_committed: number | null
           capex_paid: number | null
@@ -5740,7 +5796,9 @@ export type Database = {
           display_name: string | null
           income_expected: number | null
           income_received: number | null
+          lifetime_result: number | null
           occupancy_cost: number | null
+          net_result: number | null
           org_id: string | null
           other_opex: number | null
           pending: number | null
@@ -6552,6 +6610,30 @@ export type Database = {
           org_id: string
           start_date: string
           status: Database["public"]["Enums"]["project_status"]
+        }[]
+      }
+      pnl_line: {
+        Args: {
+          p_direction: Database["public"]["Enums"]["tx_direction"]
+          p_model: Database["public"]["Enums"]["business_model"]
+          p_treatment: Database["public"]["Enums"]["cost_treatment"]
+        }
+        Returns: string
+      }
+      pnl_summary: {
+        Args: {
+          p_from: string
+          p_group?: string
+          p_include_scheduled?: boolean
+          p_org: string
+          p_scope?: Database["public"]["Enums"]["tx_scope"]
+          p_to: string
+        }
+        Returns: {
+          amount: number
+          bucket: string
+          line: string
+          n: number
         }[]
       }
       realtime_board_topic_ok: {

@@ -67,6 +67,35 @@ select org_id, month, business_line, line, scope, is_scheduled,
 from v_pnl_lines
 group by org_id, month, business_line, line, scope, is_scheduled;
 
+-- The P&L table of /reports/pnl and the assistant: one row per bucket (a
+-- month 'YYYY-MM', or a business line) and line, signed (+ revenue, - cost).
+-- Aggregated here so a page never pages through v_pnl_lines (PostgREST caps
+-- a read at 1.000 rows). Security invoker: the caller's RLS applies, so a
+-- partner or another org gets nothing.
+create function public.pnl_summary(
+  p_org uuid,
+  p_from date,
+  p_to date,
+  p_group text default 'month',
+  p_include_scheduled boolean default false,
+  p_scope tx_scope default 'business'
+) returns table (bucket text, line text, amount numeric, n int)
+language sql stable security invoker set search_path = public as $$
+  select case when p_group = 'business_line' then l.business_line::text
+              else to_char(l.month, 'YYYY-MM') end as bucket,
+         l.line,
+         sum(l.signed_amount) as amount,
+         count(*)::int as n
+  from v_pnl_lines l
+  where l.org_id = p_org
+    and l.tx_date between p_from and p_to
+    and (p_include_scheduled or not l.is_scheduled)
+    and (p_scope is null or l.scope = p_scope)
+  group by 1, 2
+$$;
+revoke execute on function public.pnl_summary(uuid, date, date, text, boolean, tx_scope) from public, anon;
+grant execute on function public.pnl_summary(uuid, date, date, text, boolean, tx_scope) to authenticated;
+
 -- v_project_rollup (0020) with three columns appended -- the only change
 -- create-or-replace allows. net_result: the project's P&L result so far
 -- (paid + pending); lifetime_result: including what is already scheduled.
