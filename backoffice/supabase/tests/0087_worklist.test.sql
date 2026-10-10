@@ -49,8 +49,8 @@ insert into transactions (org_id, tx_date, due_date, direction, status, gross_am
 select org_a, athens_today(), athens_today() + 7, 'expense', 'pending', 999, 'Μελλοντικό',
        '00000000-0000-0000-0000-0000000087f1' from t_ctx;
 -- Withholding on an income (tier 2).
-insert into transactions (org_id, tx_date, direction, status, gross_amount, withholding_amount, description, project_id)
-select org_a, athens_today() - 3, 'income', 'paid', 1000, 50, 'Είσπραξη με παρακράτηση',
+insert into transactions (org_id, tx_date, direction, status, paid_on, has_invoice, gross_amount, withholding_amount, description, project_id)
+select org_a, athens_today() - 3, 'income', 'paid', athens_today() - 3, true, 1000, 50, 'Είσπραξη με παρακράτηση',
        '00000000-0000-0000-0000-0000000087f1' from t_ctx;
 
 -- Org B: one overdue bill of its own (and no buffer, so no cash warning).
