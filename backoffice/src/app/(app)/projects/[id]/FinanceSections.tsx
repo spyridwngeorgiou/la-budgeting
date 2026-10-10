@@ -4,8 +4,8 @@ import { Button, Select, Input, Term } from "@/components/ui";
 import { formatDate, formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import type { DevelopmentResult } from "@/lib/finance/development";
-import { syncLeaseScheduleAction } from "../schedule-actions";
-import { removeScenarioFromCash, sendScenarioToCash } from "../send-to-cash-actions";
+import { syncLeaseScheduleAction } from "./finance-actions";
+import { removeScenarioFromCash, sendScenarioToCash } from "./scenario-actions";
 
 // Blocks of the project one-pager that read the finance layer (0069,
 // development.ts, «Στείλε στο ταμείο»). Server components; the figures come
