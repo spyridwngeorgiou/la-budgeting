@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { formatMoney, formatDate } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge, Card, Button, Select, AiSpark, Term } from "@/components/ui";
+import { Badge, Card, Button, Select, AiSpark } from "@/components/ui";
 import { OnePagerSection, OnePagerRow, StatusNotes, type ProjectNote } from "@/components/onepager";
-import { ActionForm } from "@/components/ActionForm";
 import { computeScenarioFromInputs, loadProjectFlows, loadScenarioInputs } from "@/lib/finance/projectModel";
 import { computeDevelopmentResult } from "@/lib/finance/development";
-import { BudgetLineRows, DevelopmentSection, LeaseSyncButton, ProjectIrrRow, SendToCashSection } from "./FinanceSections";
+import { BudgetLineRows, DevelopmentSection, LeaseSyncButton } from "./FinanceSections";
+import { FundingSections } from "./FundingSections";
+import { ScenarioSections } from "./ScenarioSections";
 import { aiEnabled } from "@/lib/ai/client";
 import { ProjectHealthCheck } from "./ProjectHealthCheck";
 import { PartnersPanel } from "./PartnersPanel";
@@ -17,27 +18,15 @@ import { BudgetFormModal } from "../BudgetFormModal";
 import { saveProjectBudget } from "../budget-actions";
 import { ProjectFormModal } from "../ProjectFormModal";
 import { updateProject } from "../actions";
-import { LoanFormModal } from "../LoanFormModal";
-import { saveLoan, deleteLoan } from "../loan-actions";
-import { CapitalSourceFormModal } from "../CapitalSourceFormModal";
-import { saveCapitalSource, deleteCapitalSource } from "../capital-actions";
-import type { CapitalSourceKind } from "@/lib/domain/enums";
 import { addMonths, currentMonthKey, currentYear, firstOfMonth, todayAthens } from "@/lib/dates";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 
-const KIND_FALLBACK_LABEL: Record<CapitalSourceKind, string> = {
-  equity: "Ίδια κεφάλαια",
-  debt: "Δανεισμός",
-  co_investor: "Συνεπενδυτής",
-};
 import { ProjectNoteFormModal } from "../ProjectNoteFormModal";
 import { ProjectPlanSection } from "@/components/planner/ProjectPlanSection";
 import { UtilityFormModal, UTILITY_KIND_LABELS } from "../UtilityFormModal";
 import { saveUtility, deleteUtility } from "../utility-actions";
 import { saveProjectNote, resolveProjectNote } from "../note-actions";
-import { setScenarioRevenuePlan, saveScenario, saveOpexLine, deleteOpexLine } from "../scenario-actions";
-import { ScenarioFormModal } from "../ScenarioFormModal";
-import { OpexLineFormModal } from "../OpexLineFormModal";
+import { setScenarioRevenuePlan } from "../scenario-actions";
 import { AiCreateForm } from "../revenue-plans/AiCreateForm";
 import { createRevenuePlan } from "../revenue-plans/actions";
 
@@ -161,17 +150,11 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const scenario = inputs?.scenarios[0] ?? null;
   const scenarioResult = inputs && scenario ? computeScenarioFromInputs(inputs, scenario) : null;
   const firstYearRent = leaseSchedule?.rows[0];
-  const opexLines = scenario?.opex_lines ?? [];
 
   // ΚΕΦΑΛΑΙΟ: who funded the project. Its return is «IRR έργου (χωρίς
   // ΦΠΑ)»: every project flow net of VAT and before financing -- paid, still
   // open and expected -- plus the budget not yet committed (development.ts).
   const capitalRows = capitalSources ?? [];
-  const capitalTotal = capitalRows.reduce((s, c) => s + Number(c.amount), 0);
-  const capitalByKind = capitalRows.reduce<Record<string, number>>((acc, c) => {
-    acc[c.kind] = (acc[c.kind] ?? 0) + Number(c.amount);
-    return acc;
-  }, {});
   const revenueToDate = (projectIncomeTx ?? []).reduce((s, t) => s + Number(t.gross_amount ?? 0), 0);
   const development = computeDevelopmentResult(projectFlows.flows, {
     today,
@@ -179,13 +162,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   });
   const projectIrr = development.irr;
 
-  const revenue = scenarioResult?.revenue ?? 0;
-  const opexTotal = scenarioResult?.opexTotal ?? 0;
   const annualRent = scenarioResult?.annualRent ?? firstYearRent?.annualAmount ?? 0;
-  const cashflow = scenarioResult?.cashflow ?? null;
-
-  const operatingResult = revenue - opexTotal - annualRent;
-  const hasOperation = Boolean(scenario && revenue > 0);
   const linkedPlans = (revenuePlanOptions ?? []).filter((p) => p.project_id === id);
 
   const settlementMonthly = (settlementPlans ?? []).reduce(
@@ -353,151 +330,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </OnePagerSection>
         )}
 
-        {/* ΔΑΝΕΙΟ — the loan programme, summarised */}
-        {loanSchedule && (
-          <OnePagerSection
-            title="ΔΑΝΕΙΟ"
-            subtitle={`${loanRows.length} ${loanRows.length === 1 ? "σκέλος" : "σκέλη"} · σύνολο ${formatMoney(loanRows.reduce((s, l) => s + Number(l.principal), 0))}`}
-          >
-            <OnePagerRow label="Μηνιαία δόση μετά τη χάρη" amount={loanSchedule.totals.monthlyInstalment} />
-            <OnePagerRow label="Ετήσια εξυπηρέτηση" amount={loanSchedule.totals.annualDebtService} />
-            <OnePagerRow
-              label="Τόκοι χάριτος — πριν το άνοιγμα"
-              amount={loanSchedule.totals.graceInterestPreOpening}
-              note="Από την τσέπη σας, πριν υπάρχουν έσοδα."
-            />
-            <OnePagerRow
-              label="Τόκοι χάριτος — μετά το άνοιγμα"
-              amount={loanSchedule.totals.graceInterestPostOpening}
-              note="Καλύπτεται από τη λειτουργία."
-            />
-            <OnePagerRow label="Συνολικοί τόκοι" amount={loanSchedule.totals.totalInterest} />
-            <OnePagerRow label="Συνολικό κόστος δανείου" amount={loanSchedule.totals.totalCost} emphasis />
-          </OnePagerSection>
-        )}
-
-        {/* Loan tranches, directly editable -- previously only reachable
-            through the Kansha AI chat's propose-and-approve flow. Renders
-            even with zero tranches yet, so "+ Δάνειο" is always reachable. */}
-        <OnePagerSection title="Σκέλη Δανείου">
-          <div className="flex flex-col gap-2">
-            {loanRows.map((l) => (
-              <div key={l.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-line/60 py-1.5 first:border-0 first:pt-0">
-                <div className="text-sm">
-                  <span className="font-medium">{l.label}</span>{" "}
-                  <span className="text-ink-muted">
-                    · {formatMoney(l.principal)} · {(Number(l.interest_rate) * 100).toFixed(2)}% ·{" "}
-                    {l.term_years} έτη
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <LoanFormModal
-                    action={saveLoan.bind(null, id, l.id)}
-                    trigger="Επεξεργασία"
-                    initial={{
-                      label: l.label,
-                      principal: Number(l.principal),
-                      interest_rate: Number(l.interest_rate),
-                      term_years: l.term_years,
-                      grace_years: l.grace_years,
-                      first_amortisation_month: l.first_amortisation_month,
-                      state: l.state,
-                      notes: l.notes,
-                      drawdowns: (l.loan_drawdowns ?? []).map((d) => ({
-                        scheduled_month: d.scheduled_month,
-                        amount: Number(d.actual_amount ?? d.amount),
-                        done: d.actual_date != null,
-                      })),
-                    }}
-                  />
-                  <ActionForm action={deleteLoan.bind(null, id, l.id)}>
-                    <Button type="submit" variant="danger" className="!px-2 !py-1 text-xs">
-                      Διαγραφή
-                    </Button>
-                  </ActionForm>
-                </div>
-              </div>
-            ))}
-            <div>
-              <LoanFormModal action={saveLoan.bind(null, id, null)} />
-            </div>
-          </div>
-        </OnePagerSection>
-
-        {/* ΚΕΦΑΛΑΙΟ — who funded this project and what it has returned so
-            far. Answers "is this project making money?" directly, which
-            budget/actual and DSCR don't: those describe spend discipline and
-            debt coverage, not return on the capital someone actually put in. */}
-        <OnePagerSection
-          title="ΚΕΦΑΛΑΙΟ"
-          subtitle={capitalRows.length > 0 ? `σύνολο εισφορών ${formatMoney(capitalTotal)}` : undefined}
-        >
-          {capitalRows.length > 0 ? (
-            <>
-              {capitalByKind.equity != null && <OnePagerRow label="Ίδια κεφάλαια" amount={capitalByKind.equity} />}
-              {capitalByKind.debt != null && <OnePagerRow label="Δανεισμός (εκτός σκελών)" amount={capitalByKind.debt} />}
-              {capitalByKind.co_investor != null && (
-                <OnePagerRow label="Συνεπενδυτές" amount={capitalByKind.co_investor} />
-              )}
-              <OnePagerRow label="Σύνολο κεφαλαίου" amount={capitalTotal} emphasis />
-              <OnePagerRow
-                label="Έσοδα έργου μέχρι σήμερα"
-                amount={revenueToDate}
-                href={`/transactions?project_id=${id}&direction=income&status=paid`}
-              />
-              <ProjectIrrRow irr={projectIrr} />
-            </>
-          ) : (
-            <div className="flex flex-col gap-2 py-2">
-              <Badge tone="amber">Χωρίς καταχωρημένο κεφάλαιο</Badge>
-              <p className="text-sm text-ink-muted">
-                Δεν έχουν καταχωρηθεί πηγές κεφαλαίου για αυτό το έργο.
-              </p>
-            </div>
-          )}
-        </OnePagerSection>
-
-        {/* Capital sources, directly editable -- same pattern as loan
-            tranches above. Renders even with zero rows so "+ Κεφάλαιο" is
-            always reachable. */}
-        <OnePagerSection title="Πηγές Κεφαλαίου">
-          <div className="flex flex-col gap-2">
-            {capitalRows.map((c) => (
-              <div
-                key={c.id}
-                className="flex flex-wrap items-center justify-between gap-2 border-t border-line/60 py-1.5 first:border-0 first:pt-0"
-              >
-                <div className="text-sm">
-                  <span className="font-medium">{c.contributor || KIND_FALLBACK_LABEL[c.kind]}</span>{" "}
-                  <span className="text-ink-muted">
-                    · {formatMoney(c.amount)} · {KIND_FALLBACK_LABEL[c.kind]} · {formatDate(c.contributed_on)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <CapitalSourceFormModal
-                    action={saveCapitalSource.bind(null, id, c.id)}
-                    trigger="Επεξεργασία"
-                    initial={{
-                      kind: c.kind,
-                      contributor: c.contributor,
-                      amount: Number(c.amount),
-                      contributed_on: c.contributed_on,
-                      notes: c.notes,
-                    }}
-                  />
-                  <form action={deleteCapitalSource.bind(null, id, c.id)}>
-                    <Button type="submit" variant="danger" className="!px-2 !py-1 text-xs">
-                      Διαγραφή
-                    </Button>
-                  </form>
-                </div>
-              </div>
-            ))}
-            <div>
-              <CapitalSourceFormModal action={saveCapitalSource.bind(null, id, null)} />
-            </div>
-          </div>
-        </OnePagerSection>
+        <FundingSections
+          projectId={id}
+          loans={loanRows}
+          loanSchedule={loanSchedule}
+          capitalSources={capitalRows}
+          revenueToDate={revenueToDate}
+          projectIrr={projectIrr}
+        />
 
         {/* Αναλύσεις Εσόδων -- a project can have several (conservative /
             optimistic scenarios, revisions over time), previously only
@@ -594,169 +434,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </div>
         </OnePagerSection>
 
-        {/* Λειτουργικές Παραδοχές -- growth rates, discount rate, DSCR
-            covenant, and the opex line items themselves were previously not
-            editable anywhere in the app, not even through the AI chat
-            (project_scenarios/opex_lines aren't in writeTools.ts's
-            ALLOWLIST). This is what actually feeds the ΛΕΙΤΟΥΡΓΙΑ/DSCR/NPV
-            numbers below -- renders even with no scenario yet so the first
-            one can be created here instead of nowhere. */}
-        <OnePagerSection title="Λειτουργικές Παραδοχές">
-          <div className="flex flex-col gap-3">
-            {!scenario ? (
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-ink-faint">Δεν υπάρχει ακόμα σενάριο λειτουργίας για αυτό το έργο.</p>
-                <ScenarioFormModal action={saveScenario.bind(null, id, null)} trigger="+ Σενάριο Λειτουργίας" />
-              </div>
-            ) : (
-              <>
-                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                  <div className="text-ink-muted">
-                    Ανάπτυξη εσόδων {(Number(scenario.revenue_growth_pct) * 100).toFixed(1)}% ·{" "}
-                    <Term title="Opex (Operating Expenses) — λειτουργικά έξοδα, εκτός μισθώματος και εξυπηρέτησης δανείου.">
-                      opex
-                    </Term>{" "}
-                    {(Number(scenario.opex_growth_pct) * 100).toFixed(1)}% · προεξόφληση{" "}
-                    {(Number(scenario.discount_rate_pct) * 100).toFixed(1)}% ·{" "}
-                    <Term title="DSCR (Debt Service Coverage Ratio) — Δείκτης Κάλυψης Εξυπηρέτησης Χρέους: λειτουργικό αποτέλεσμα ÷ ετήσια δόση δανείου. Πάνω από 1.0× σημαίνει ότι τα έσοδα καλύπτουν τη δόση.">
-                      DSCR
-                    </Term>{" "}
-                    ≥ {scenario.dscr_covenant_min}×
-                  </div>
-                  <ScenarioFormModal
-                    action={saveScenario.bind(null, id, scenario.id)}
-                    initial={{
-                      name: scenario.name,
-                      flat_annual_revenue: scenario.flat_annual_revenue,
-                      revenue_growth_pct: Number(scenario.revenue_growth_pct),
-                      opex_growth_pct: Number(scenario.opex_growth_pct),
-                      growth_starts_after_operating_year: scenario.growth_starts_after_operating_year,
-                      discount_rate_pct: Number(scenario.discount_rate_pct),
-                      dscr_covenant_min: Number(scenario.dscr_covenant_min),
-                      adr_multiplier: Number(scenario.adr_multiplier ?? 1),
-                      notes: scenario.notes,
-                    }}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5 border-t border-line/60 pt-3">
-                  {opexLines.map((l) => (
-                    <div key={l.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                      <span>
-                        {l.label}{" "}
-                        <span className="text-xs text-ink-faint">
-                          (έτη {l.from_operating_year}
-                          {l.to_operating_year ? `–${l.to_operating_year}` : "+"})
-                        </span>
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <OpexLineFormModal
-                          action={saveOpexLine.bind(null, id, scenario.id, l.id)}
-                          trigger="Επεξεργασία"
-                          initial={{
-                            kind: l.kind,
-                            label: l.label,
-                            from_operating_year: l.from_operating_year,
-                            to_operating_year: l.to_operating_year,
-                            headcount: l.headcount,
-                            monthly_wage: l.monthly_wage,
-                            salaries_per_year: l.salaries_per_year,
-                            employer_contribution_pct: l.employer_contribution_pct,
-                            premium_pct: l.premium_pct,
-                            months_active: l.months_active,
-                            pct_of_revenue: l.pct_of_revenue,
-                            annual_amount: l.annual_amount,
-                            note: l.note,
-                          }}
-                        />
-                        <form action={deleteOpexLine.bind(null, id, l.id)}>
-                          <Button type="submit" variant="danger" className="!px-2 !py-1 text-xs">
-                            Διαγραφή
-                          </Button>
-                        </form>
-                      </div>
-                    </div>
-                  ))}
-                  <div>
-                    <OpexLineFormModal action={saveOpexLine.bind(null, id, scenario.id, null)} />
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </OnePagerSection>
-
-        {/* ΛΕΙΤΟΥΡΓΙΑ — the stabilised operating year */}
-        {hasOperation && (
-          <OnePagerSection
-            title="ΛΕΙΤΟΥΡΓΙΑ"
-            subtitle={[scenario?.name, scenarioResult?.referenceCalendarYear ? `έτος αναφοράς ${scenarioResult.referenceCalendarYear}` : null]
-              .filter(Boolean)
-              .join(" · ")}
-          >
-            <OnePagerRow label="Ετήσιος τζίρος" amount={revenue} />
-            {(scenarioResult?.opexLines ?? []).map((l, i) => (
-              <OnePagerRow key={i} label={l.label} amount={l.amount} negative note={l.note} />
-            ))}
-            {annualRent > 0 && (
-              <OnePagerRow
-                label="Μίσθωμα προς ιδιοκτήτες"
-                amount={annualRent}
-                negative
-                note={`${formatMoney(monthlyRent)} τον μήνα.`}
-              />
-            )}
-            <OnePagerRow label="ΕΤΗΣΙΟ ΑΠΟΤΕΛΕΣΜΑ" amount={operatingResult} emphasis />
-            <OnePagerRow
-              label="Περιθώριο επί τζίρου"
-              amount={`${((operatingResult / revenue) * 100).toFixed(1)}%`}
-            />
-          </OnePagerSection>
-        )}
-
-        {/* ΤΑΜΕΙΑΚΗ ΡΟΗ — headline resilience KPIs; the full year-by-year
-            table and chart are a future tab, not this one-pager. */}
-        {cashflow && (
-          <OnePagerSection
-            title="ΤΑΜΕΙΑΚΗ ΡΟΗ"
-            subtitle={`${cashflow.years.length}-ετής προβολή · κάλυψη δόσης τράπεζας ≥ ${scenario?.dscr_covenant_min ?? 1.2}×`}
-          >
-            {cashflow.kpis.firstAmortisationYearDscr && (
-              <OnePagerRow
-                label="Κάλυψη δόσης — πρώτο έτος χρεολυσίου"
-                amount={`${cashflow.kpis.firstAmortisationYearDscr.value.toFixed(2)}×`}
-                note={`${cashflow.kpis.firstAmortisationYearDscr.calendarYear}`}
-              />
-            )}
-            {cashflow.kpis.minDscr && (
-              <OnePagerRow
-                label="Χαμηλότερη κάλυψη δόσης"
-                amount={`${cashflow.kpis.minDscr.value.toFixed(2)}×`}
-                note={`${cashflow.kpis.minDscr.calendarYear}`}
-                negative={cashflow.kpis.minDscr.value < (scenario?.dscr_covenant_min ?? 1.2)}
-              />
-            )}
-            <OnePagerRow
-              label="Σωρευτική ταμειακή ροή"
-              amount={cashflow.kpis.cumulativeTotal}
-              note={`Έως ${cashflow.years[cashflow.years.length - 1]?.calendarYear ?? ""}.`}
-            />
-            <OnePagerRow
-              label="Καθαρή Παρούσα Αξία"
-              amount={cashflow.kpis.npv}
-              emphasis
-              note={`Προεξοφλημένη ροή μετά την εξυπηρέτηση δανείου, χωρίς την αρχική επένδυση — @${((Number(scenario?.discount_rate_pct ?? 0.09)) * 100).toFixed(0)}%.`}
-            />
-            {cashflow.kpis.covenantBreaches.length > 0 && (
-              <OnePagerRow
-                label="Έτη κάτω από την απαίτηση τράπεζας"
-                amount={cashflow.kpis.covenantBreaches.map((b) => b.calendarYear).join(", ")}
-                negative
-              />
-            )}
-            {scenario && <SendToCashSection projectId={id} scenarioId={scenario.id} sentCount={sentToCash ?? 0} />}
-          </OnePagerSection>
-        )}
+        <ScenarioSections
+          projectId={id}
+          scenario={scenario}
+          result={scenarioResult}
+          annualRent={annualRent}
+          monthlyRent={monthlyRent}
+          sentToCash={sentToCash ?? 0}
+        />
 
         {/* ΚΟΣΤΟΣ ΧΡΗΣΗΣ — the derived line the workbook never states */}
         {(settlementPlans ?? []).length > 0 && (
