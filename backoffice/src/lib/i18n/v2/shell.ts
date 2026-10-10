@@ -12,6 +12,7 @@ export const shell = {
     capture: "Καταχώριση",
     main: "Κύρια πλοήγηση",
     pending: "σε εκκρεμότητα",
+    org: "Οργανισμός",
   },
   topbar: {
     askPlaceholder: "Ρώτα το Kansha…",
