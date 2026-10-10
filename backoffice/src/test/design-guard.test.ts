@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 import baseline from "./design-guard.baseline.json";
 
 // The design rules, enforced on the new code (src/components/ui,
-// src/components/shell, src/features): square corners (rounded-full for
+// src/components/shell, src/features, src/components/planner,
+// src/components/collab): square corners (rounded-full for
 // dots and avatars is the one exception, rounded-none is fine), no
 // shadows, and colours only through tokens -- no raw #hex in a .tsx.
 // Legacy pages are left alone; they get the look through the aliases in
@@ -14,7 +15,9 @@ import baseline from "./design-guard.baseline.json";
 // "path:rule": allowed count, so it is reviewed rather than silent.
 
 const SRC = path.resolve(import.meta.dirname, "..");
-const GUARDED = ["components/ui", "components/shell", "features"];
+// Phase 6 added the planner and the collaboration pieces (the Excalidraw
+// scene's own colours live in .ts files, which are not scanned).
+const GUARDED = ["components/ui", "components/shell", "features", "components/planner", "components/collab"];
 
 const RULES: { name: string; re: RegExp }[] = [
   { name: "rounded", re: /\brounded-(?!full\b|none\b)[\w[\]-]+/g },
