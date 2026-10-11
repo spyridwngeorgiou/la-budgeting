@@ -26,7 +26,8 @@ const RULES: { name: string; re: RegExp; except?: (rel: string) => boolean }[] =
   { name: "text-size", re: /(?<![\w-])(?:[\w@[\]-]+:)*text-(?:xs|sm|base|lg|xl|[2-9]xl)(?![\w-])/g },
   { name: "text-arbitrary", re: /(?<![\w-])(?:[\w@[\]-]+:)*text-\[[^\]]*\]/g },
   { name: "font-mono", re: /font-mono/g },
-  { name: "h1", re: /<h1[\s>]/g, except: (rel) => rel === "components/ui/PageHeader.tsx" },
+  // The public landing page has its own cover title (no app chrome).
+  { name: "h1", re: /<h1[\s>]/g, except: (rel) => rel === "components/ui/PageHeader.tsx" || rel === "app/landing/Landing.tsx" },
   { name: "table", re: /<table[\s>]/g, except: (rel) => rel.startsWith("components/ui/") },
 ];
 
