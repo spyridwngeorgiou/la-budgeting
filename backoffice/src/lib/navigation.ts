@@ -27,6 +27,7 @@ export const SECTION_TABS = {
     { href: "/reports/vat", label: el.tabs.vat },
     { href: "/reports/withholding", label: el.tabs.withholding },
     { href: "/reports/quality", label: el.tabs.quality },
+    { href: "/reports/portfolio", label: el.tabs.portfolio },
   ],
   // The planner has no tabs: /planner is the task board; the calendar is
   // /calendar.
