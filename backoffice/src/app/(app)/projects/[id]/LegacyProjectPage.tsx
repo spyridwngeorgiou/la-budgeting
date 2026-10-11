@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMoney, formatPercent } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge, Button, ButtonLink, MetaList, Notice, PageHeader, Select, AiSpark } from "@/components/ui";
+import { Badge, Button, ButtonLink, GlancePanel, MetaList, Notice, PageHeader, Select, Stat, AiSpark } from "@/components/ui";
+import { projectHeadline } from "@/lib/finance/portfolio";
 import { OnePagerSection, OnePagerRow, StatusNotes, type ProjectNote } from "@/components/onepager";
 import { computeScenarioFromInputs, loadProjectFlows, loadScenarioInputs } from "@/lib/finance/projectModel";
 import { computeDevelopmentResult } from "@/lib/finance/development";
@@ -108,7 +109,7 @@ export async function LegacyProjectPage({ id }: { id: string }) {
   const twelveMonthsAgo = firstOfMonth(addMonths(currentMonthKey(), -11));
   const today = todayAthens();
   const baseScenarioId = inputs?.scenarios[0]?.id ?? null;
-  const [{ data: utilities }, { data: monthlyCostRows }, projectFlows, { count: sentToCash }] = await Promise.all([
+  const [{ data: utilities }, { data: monthlyCostRows }, projectFlows, { count: sentToCash }, { data: nextMilestone }] = await Promise.all([
     supabase.from("property_utilities").select("*").eq("project_id", id).order("kind"),
     supabase
       .from("v_property_monthly_cost")
@@ -123,6 +124,16 @@ export async function LegacyProjectPage({ id }: { id: string }) {
           .eq("scenario_id", baseScenarioId)
           .eq("status", "expected")
       : Promise.resolve({ count: 0 }),
+    // «Επόμενο ορόσημο» in «Με μια ματιά»: one row.
+    supabase
+      .from("project_milestones")
+      .select("title, due_date")
+      .eq("project_id", id)
+      .is("done_at", null)
+      .gte("due_date", today)
+      .order("due_date")
+      .limit(1)
+      .maybeSingle(),
   ]);
   const monthlyCost = new Map<string, number>();
   for (const r of monthlyCostRows ?? []) {
@@ -228,6 +239,43 @@ export async function LegacyProjectPage({ id }: { id: string }) {
       >
         {aiEnabled() && <ProjectHealthCheck projectId={id} />}
       </PageHeader>
+
+      {/* Με μια ματιά -- the investor-ready summary: figures this page
+          already computes (rollup, budget, «IRR έργου») and the next
+          milestone. Every block below stays as it was. */}
+      <GlancePanel>
+        <p className="max-w-4xl text-section font-normal break-words text-panel-ink">
+          {projectHeadline({
+            budget: hasBudget ? budgetTotal : null,
+            spent: Number(rollup.spent ?? 0),
+            remaining: Number(rollup.remaining_budget ?? 0),
+            irr: projectIrr,
+          })}
+        </p>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-3 xl:grid-cols-6">
+          <Stat onPanel label="Επένδυση" value={hasBudget ? formatMoney(budgetTotal) : "—"} sub={hasBudget ? undefined : "χωρίς προϋπολογισμό"} />
+          <Stat
+            onPanel
+            label="Δαπανήθηκε"
+            value={formatMoney(rollup.spent)}
+            sub={hasBudget && budgetTotal > 0 ? `${formatPercent(Number(rollup.spent ?? 0) / budgetTotal, { digits: 0 })} του προϋπολογισμού` : undefined}
+          />
+          <Stat
+            onPanel
+            label="Υπόλοιπο"
+            value={hasBudget ? formatMoney(rollup.remaining_budget) : "—"}
+            sub={hasBudget && Number(rollup.remaining_budget ?? 0) < 0 ? "εκτός προϋπολογισμού" : undefined}
+          />
+          <Stat onPanel label="Αποτέλεσμα" value={formatMoney(rollup.net_result)} sub="μέχρι σήμερα" />
+          <Stat onPanel label="IRR" value={projectIrr == null ? "—" : formatPercent(projectIrr)} sub="έργου, χωρίς ΦΠΑ" />
+          <Stat
+            onPanel
+            label="Επόμενο ορόσημο"
+            value={nextMilestone ? formatDate(nextMilestone.due_date) : "—"}
+            sub={nextMilestone?.title}
+          />
+        </div>
+      </GlancePanel>
 
       <div className="grid grid-cols-1 gap-x-12 gap-y-10 lg:grid-cols-2">
         {/* ΕΠΕΝΔΥΣΗ — the capex budget, line by line */}

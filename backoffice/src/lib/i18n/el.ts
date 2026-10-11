@@ -41,6 +41,7 @@ export const el = {
     pnl: "Αποτελέσματα",
     netWorth: "Καθαρή θέση",
     deals: "Μεσιτεία",
+    portfolio: "Χαρτοφυλάκιο",
   },
   upload: {
     title: "Ανέβασμα",
