@@ -2,11 +2,12 @@ import { PageHeader } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { PlannerViews, parsePlannerView } from "@/components/planner/PlannerViews";
 import { plannerContext } from "./context";
-import { BoardView, CalendarView, TimelineView } from "./views";
+import { BoardView, TimelineView } from "./views";
 
-// Πλάνο: one page, three views (?view=board|timeline|calendar; board when
-// absent). The switch keeps every other filter, so "this project's board"
-// becomes "this project's timeline" in one click.
+// Πλάνο: one page, two views (?view=board|timeline; board when absent). The
+// switch keeps every other filter, so "this project's board" becomes "this
+// project's timeline" in one click. The month calendar is /calendar
+// (?view=calendar redirects there, src/lib/redirects.ts).
 export default async function PlannerPage({
   searchParams,
 }: {
@@ -21,13 +22,7 @@ export default async function PlannerPage({
       <PageHeader title={el.planner.title}>
         <PlannerViews params={params} active={view} />
       </PageHeader>
-      {view === "timeline" ? (
-        <TimelineView ctx={ctx} />
-      ) : view === "calendar" ? (
-        <CalendarView ctx={ctx} params={params} />
-      ) : (
-        <BoardView ctx={ctx} />
-      )}
+      {view === "timeline" ? <TimelineView ctx={ctx} /> : <BoardView ctx={ctx} />}
     </div>
   );
 }

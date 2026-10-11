@@ -3,11 +3,12 @@ import { el } from "@/lib/i18n/el";
 import { planner } from "@/lib/i18n/v2/planner";
 import { withParams } from "@/lib/url";
 
-// /planner is one page with three views: ?view=board (the default, so the
-// param is left out), timeline or calendar. The old /planner/timeline and
-// /planner/calendar URLs redirect here (src/lib/redirects.ts).
+// /planner is one page with two views: ?view=board (the default, so the
+// param is left out) or timeline. The old /planner/timeline URL redirects
+// here; /planner/calendar and ?view=calendar go to /calendar
+// (src/lib/redirects.ts).
 
-export const PLANNER_VIEWS = ["board", "timeline", "calendar"] as const;
+export const PLANNER_VIEWS = ["board", "timeline"] as const;
 export type PlannerView = (typeof PLANNER_VIEWS)[number];
 
 type SearchParams = Record<string, string | string[] | undefined>;

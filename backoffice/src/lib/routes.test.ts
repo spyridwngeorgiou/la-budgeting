@@ -91,6 +91,8 @@ describe("internal links", () => {
     for (const r of LEGACY_REDIRECTS) {
       expect(resolves(r.destination.replace(/:[a-z]+/gi, "x")), r.destination).toBe(true);
       // and the old path itself no longer has a page shadowing the redirect
+      // (a `has` redirect only takes one query value, so its page stays)
+      if (r.has) continue;
       const old = r.source.replace(/:[a-z]+/gi, "x");
       expect(routePatterns.some((re) => re.test(old)), r.source).toBe(false);
     }

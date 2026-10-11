@@ -24,7 +24,10 @@ export const LEGACY_REDIRECTS: {
   // Phase 6: the planner is one page with a view switch. The request's own
   // query (project, assignee, month…) is passed through and merged.
   { source: "/planner/timeline", destination: "/planner?view=timeline" },
-  { source: "/planner/calendar", destination: "/planner?view=calendar" },
+  // The month calendar left the planner for its own page (/calendar); the
+  // query (month, project, src…) is passed through.
+  { source: "/planner/calendar", destination: "/calendar" },
+  { source: "/planner", has: [{ type: "query", key: "view", value: "calendar" }], destination: "/calendar" },
   // The v2 redesign («Χρήματα», the project tabs) was removed; its URLs land
   // on the classic page each tab stood for. Filters (status, project_id,
   // scenario, months…) use the same parameter names, so they carry over.
