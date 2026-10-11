@@ -36,6 +36,10 @@ describe("narratives", () => {
     expect(pnlNarrative({ year: 2026, revenueYtd: 0, resultYtd: -50_000, resultLastYearYtd: null })).toBe(
       "Ζημία 50 κ. € το 2026 έως τώρα.",
     );
+    // From a loss last year: no percentage on a negative base.
+    expect(pnlNarrative({ year: 2026, revenueYtd: 264_870, resultYtd: 71_205, resultLastYearYtd: -65_701 })).toBe(
+      "Κέρδος 71 κ. € το 2026 έως τώρα (περιθώριο 26,9%), από ζημία 66 κ. € πέρσι.",
+    );
     expect(pnlNarrative({ year: 2026, revenueYtd: 100_000, resultYtd: 10_000, resultLastYearYtd: 20_000 })).toContain(
       "50% χειρότερα από πέρσι",
     );

@@ -71,8 +71,15 @@ export function pnlNarrative({ year, revenueYtd, resultYtd, resultLastYearYtd }:
   const head = resultYtd >= 0 ? `Κέρδος ${money(resultYtd)}` : `Ζημία ${money(Math.abs(resultYtd))}`;
   const margin = revenueYtd > 0 ? ` (περιθώριο ${formatPercent(resultYtd / revenueYtd)})` : "";
   let vs = "";
-  if (resultLastYearYtd != null && resultLastYearYtd !== 0) {
-    const change = (resultYtd - resultLastYearYtd) / Math.abs(resultLastYearYtd);
+  if (resultLastYearYtd != null && resultLastYearYtd < 0) {
+    // A percentage on a loss base reads as nonsense («208% καλύτερα»): say
+    // where we came from instead.
+    vs =
+      resultYtd >= 0
+        ? `, από ζημία ${money(Math.abs(resultLastYearYtd))} πέρσι`
+        : `, έναντι ζημίας ${money(Math.abs(resultLastYearYtd))} πέρσι`;
+  } else if (resultLastYearYtd != null && resultLastYearYtd > 0) {
+    const change = (resultYtd - resultLastYearYtd) / resultLastYearYtd;
     vs =
       Math.abs(change) < 0.005
         ? ", όσο και πέρσι"

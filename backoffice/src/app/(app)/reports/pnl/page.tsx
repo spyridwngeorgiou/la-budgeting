@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
-import { formatDate, formatMoney, formatPercent } from "@/lib/format";
+import { formatDate, formatMoney, formatPercent, formatSignedMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import {
   Badge,
@@ -101,7 +101,9 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
   const resultYtd = sumTo(result, last);
   const resultLastYearYtd = lastYearTable ? sumTo(prevResult, last) : null;
   const change =
-    resultLastYearYtd != null && resultLastYearYtd !== 0 ? (resultYtd - resultLastYearYtd) / Math.abs(resultLastYearYtd) : null;
+    // Only meaningful on a profit base; from a loss the band shows the
+    // difference in euros instead.
+    resultLastYearYtd != null && resultLastYearYtd > 0 ? (resultYtd - resultLastYearYtd) / resultLastYearYtd : null;
   const periodSub = last === 11 ? String(year) : `${shortMonthLabel(months[0])} – ${shortMonthLabel(months[last])} ${year}`;
 
   // The monthly result as signed bars; the cumulative result of the year
@@ -227,7 +229,12 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
                 { label: "Αποτέλεσμα έτους", value: formatMoney(resultYtd), sub: periodSub },
                 {
                   label: "Μεταβολή έναντι πέρσι",
-                  value: change != null ? formatPercent(change, { digits: 0, signed: true }) : "—",
+                  value:
+                    change != null
+                      ? formatPercent(change, { digits: 0, signed: true })
+                      : resultLastYearYtd != null
+                        ? formatSignedMoney(resultYtd - resultLastYearYtd)
+                        : "—",
                   sub: resultLastYearYtd != null ? `${year - 1}: ${formatMoney(resultLastYearYtd)}` : "χωρίς στοιχεία πέρσι",
                 },
               ]}

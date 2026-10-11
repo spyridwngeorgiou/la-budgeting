@@ -12,8 +12,9 @@ export default function ReportsLayout({ children }: { children: React.ReactNode 
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <div className="flex min-w-0 flex-wrap items-end gap-x-4 gap-y-3">
-        <Tabs tabs={SECTION_TABS.reports} label={el.nav.reports} className="min-w-0 max-md:basis-full md:flex-1" />
-        <span className="inline-flex flex-wrap items-center gap-2 print-hide">
+        {/* The tabs get their own full row: seven of them don't fit beside the tools. */}
+        <Tabs tabs={SECTION_TABS.reports} label={el.nav.reports} className="min-w-0 basis-full" />
+        <span className="ml-auto inline-flex flex-wrap items-center gap-2 print-hide">
           <ExportCsvLink />
           <ReportTools />
         </span>
