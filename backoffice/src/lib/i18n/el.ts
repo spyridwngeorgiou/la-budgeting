@@ -2,7 +2,7 @@
 // language stays possible later without touching every component.
 export const el = {
   nav: {
-    dashboard: "Αρχική",
+    dashboard: "Επισκόπηση",
     transactions: "Κινήσεις",
     inbox: "Εισερχόμενα",
     projects: "Έργα",

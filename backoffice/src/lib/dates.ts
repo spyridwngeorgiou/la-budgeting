@@ -152,3 +152,26 @@ export function shortMonthYearLabel(monthKey: string): string {
 export function dayMonthLabel(iso: string): string {
   return dayMonthFormatter.format(parseIso(iso));
 }
+
+// «Κυριακή 11 Οκτωβρίου 2026» -- weekday, day and genitive month, built
+// from fixed names so it never depends on the runtime's ICU data (some
+// emit a comma, some don't). The eyebrow uppercases it.
+const WEEKDAYS = ["Δευτέρα", "Τρίτη", "Τετάρτη", "Πέμπτη", "Παρασκευή", "Σάββατο", "Κυριακή"];
+const MONTHS_GENITIVE = [
+  "Ιανουαρίου",
+  "Φεβρουαρίου",
+  "Μαρτίου",
+  "Απριλίου",
+  "Μαΐου",
+  "Ιουνίου",
+  "Ιουλίου",
+  "Αυγούστου",
+  "Σεπτεμβρίου",
+  "Οκτωβρίου",
+  "Νοεμβρίου",
+  "Δεκεμβρίου",
+];
+export function longDateLabel(iso: string): string {
+  const d = parseIso(iso);
+  return `${WEEKDAYS[weekdayMonFirst(iso)]} ${d.getUTCDate()} ${MONTHS_GENITIVE[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}

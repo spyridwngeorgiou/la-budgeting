@@ -1,35 +1,38 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentOrgId } from "@/lib/supabase/org";
+import { getAccessContext } from "@/lib/supabase/access";
 import { formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { PageHeader, SectionHeader } from "@/components/ui";
-import { specTd as TD, specTh as TH } from "@/components/specTable";
+import { AiSpark, GlancePanel, PageHeader, SectionHeader } from "@/components/ui";
 import { aiEnabled } from "@/lib/ai/client";
 import { rankAttention } from "@/lib/dashboard/attention";
 import { DashboardSummary } from "./DashboardSummary";
 import { AskAssistantCard } from "./AskAssistantCard";
-import { addDays, monthKeyOf, monthLabel, todayAthens } from "@/lib/dates";
-import { dashboardTiles, type DashboardTile } from "@/lib/dashboard/tiles";
+import { addDays, longDateLabel, monthKeyOf, monthLabel, todayAthens } from "@/lib/dates";
+import { overviewCards, overviewGlance, type DestinationCard, type GlanceFigure } from "@/lib/dashboard/overview";
 import { loadInboxCounts } from "@/lib/data/inboxCount";
 import { inboxTotal } from "@/lib/ingest/inboxCount";
 import { loadPendingCaptures } from "@/lib/ingest/pendingCaptures";
 
-// Αρχική: eight tiles (one per area, lib/dashboard/tiles.ts), the few things that need attention, the
-// project portfolio, then the AI. Every figure reads from the SQL views
-// (0011_views.sql and later), never from a hand-maintained rollup, so it can
-// never drift from the ledger. The month calendar lives at /calendar.
-//
-// Every KPI figure links through to /transactions pre-filtered to the rows
-// behind that number (or to the report that computes it) -- a total is a
-// claim, the underlying rows are the evidence.
+// Επισκόπηση: the page you navigate FROM. Four figures «Με μια ματιά», one
+// card per menu section (lib/dashboard/overview.ts) with one live line
+// each, the few things that need attention, then the AI. Every figure reads
+// from the SQL views (0011_views.sql and later), never from a hand-maintained
+// rollup, so it can never drift from the ledger. Server-rendered only: no
+// client JS beyond the opt-in AI summary.
 //
 // View columns are all nullable (Postgres views carry no NOT NULL
 // guarantees even when the underlying table does), so every read here goes
 // through `?? 0` / `?? ""` rather than assuming a value is present.
 export default async function DashboardPage() {
+  // Cached per request: the layout already asked.
+  const access = await getAccessContext();
+  if (access.kind !== "internal") redirect("/login");
+  const orgId = access.membership.orgId;
+  // Viewers can't review: the menu hides Εισερχόμενα, so does this page.
+  const canReview = access.membership.role !== "viewer";
   const supabase = await createClient();
-  const orgId = await getCurrentOrgId(supabase);
 
   // v_vat_position only has a row for months with actual transactions, and
   // "most recent row" naively includes FUTURE scheduled months -- a
@@ -52,8 +55,11 @@ export default async function DashboardPage() {
     { count: calendarNext7 },
     { data: pnlRows },
     inboxPending,
+    { count: accountsCount },
+    { count: openTasks },
+    { count: contactsCount },
   ] = await Promise.all([
-    supabase.from("v_project_rollup").select("*").eq("org_id", orgId).order("code"),
+    supabase.from("v_project_rollup").select("project_id, status, remaining_budget").eq("org_id", orgId).order("code"),
     supabase
       .from("v_vat_position")
       .select("period_start, payable_after_credit")
@@ -67,7 +73,7 @@ export default async function DashboardPage() {
     // be missed with zero warning anywhere in the app.
     supabase
       .from("transactions")
-      .select("id, due_date, direction, status, gross_amount")
+      .select("id, due_date, status")
       .eq("org_id", orgId)
       .in("status", ["pending", "scheduled"])
       .or(`status.eq.pending,due_date.lt.${todayIso}`),
@@ -81,7 +87,7 @@ export default async function DashboardPage() {
     // cash_forecast() /reports/cash shows -- never re-derived here.
     supabase.from("v_liquidity").select("owner_scope, balance").eq("org_id", orgId),
     supabase.rpc("cash_forecast", { p_org: orgId, p_months: 12 }),
-    // Calendar tile: items overlapping the next 7 days (today included),
+    // Calendar card: items overlapping the next 7 days (today included),
     // same overlap rule as the calendar itself; head-only, no rows travel.
     supabase
       .from("v_calendar_items")
@@ -90,18 +96,25 @@ export default async function DashboardPage() {
       .lte("starts_on", addDays(todayIso, 6))
       .gte("ends_on", todayIso)
       .not("is_done", "is", true),
-    // Result tile: the year so far, same function and defaults as /reports/pnl.
+    // Result figure: the year so far, same function and defaults as /reports/pnl.
     supabase.rpc("pnl_summary", { p_org: orgId, p_from: `${todayIso.slice(0, 4)}-01-01`, p_to: todayIso }),
     // The nav badge's number (cached per request: the layout reads it too).
-    loadInboxCounts(orgId).then(inboxTotal),
+    canReview ? loadInboxCounts(orgId).then(inboxTotal) : 0,
+    // Head-only counts for the destination cards: no rows travel.
+    supabase.from("accounts").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("is_active", true),
+    supabase
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", orgId)
+      .is("archived_at", null)
+      .neq("status", "done"),
+    supabase.from("contacts").select("id", { count: "exact", head: true }).eq("org_id", orgId),
   ]);
 
   const noBudget = new Set((withoutBudget ?? []).map((r) => r.project_id));
 
   const cashOf = (scope: "corporate" | "personal") =>
     (liquidity ?? []).filter((l) => l.owner_scope === scope).reduce((sum, l) => sum + Number(l.balance ?? 0), 0);
-  const cashCorporate = cashOf("corporate");
-  const cashPersonal = cashOf("personal");
   const lowest = (forecast ?? []).reduce<NonNullable<typeof forecast>[number] | null>(
     (min, m) => (!min || Number(m.closing_balance) < Number(min.closing_balance) ? m : min),
     null,
@@ -112,17 +125,12 @@ export default async function DashboardPage() {
   const currentVat = vat?.[0];
 
   const overdue = (openTx ?? []).filter((tx) => tx.due_date && tx.due_date < todayIso);
-  const pendingSum = (direction: "income" | "expense") =>
-    (openTx ?? [])
-      .filter((tx) => tx.status === "pending" && tx.direction === direction)
-      .reduce((s, tx) => s + Number(tx.gross_amount ?? 0), 0);
-  const receivables = pendingSum("income");
-  const payables = pendingSum("expense");
+  const pendingCount = (openTx ?? []).filter((tx) => tx.status === "pending").length;
 
-  // Projects with an actual budget (noBudget already excludes the ones with
-  // none, same set the portfolio table below uses) whose capex has run past
-  // it -- v_project_rollup.remaining_budget already accounts for capex-only
-  // consumption (0020_cost_treatment.sql), so a negative value here is real.
+  // Projects with an actual budget (noBudget excludes the ones with none)
+  // whose capex has run past it -- v_project_rollup.remaining_budget already
+  // accounts for capex-only consumption (0020_cost_treatment.sql), so a
+  // negative value here is real.
   const overBudgetProjects = (projects ?? []).filter(
     (p) => !noBudget.has(p.project_id) && Number(p.remaining_budget ?? 0) < 0,
   );
@@ -167,29 +175,37 @@ export default async function DashboardPage() {
     (sum, r) => sum + Number(r.lost_deduction_est ?? 0) + Number(r.lost_input_vat_est ?? 0),
     0,
   );
-  const uncountedAccounts = (accountIssues ?? []).filter((a) => a.issue !== "drift").length;
+  const driftAccounts = (accountIssues ?? []).filter((a) => a.issue === "drift");
+  const uncountedAccounts = (accountIssues ?? []).length - driftAccounts.length;
   const contactlessRows = (contactless ?? []).reduce((s, r) => s + Number(r.n ?? 0), 0);
   const inboxCount = pendingCaptures.count + (pendingChanges ?? 0);
 
-  // The dashboard's single worklist, ranked by severity and capped
-  // (lib/dashboard/attention.ts), so a zero-item list is a real, trustworthy
-  // "nothing needs you today".
-  const tiles = dashboardTiles({
-    cashCorporate,
-    cashPersonal,
+  const inputs = {
+    cashCorporate: cashOf("corporate"),
+    cashPersonal: cashOf("personal"),
     lowest,
     lowestDriver: lowestItems?.[0] ?? null,
-    inboxPending,
-    calendarNext7: calendarNext7 ?? 0,
     year: Number(todayIso.slice(0, 4)),
     pnlRows: pnlRows ?? [],
     vatPayable: Number(currentVat?.payable_after_credit ?? 0),
-    receivables,
-    payables,
+    canReview,
+    inboxPending,
+    overdue: overdue.length,
+    pending: pendingCount,
+    accounts: accountsCount ?? 0,
+    accountDrift: driftAccounts.length,
     activeProjects: (projects ?? []).filter((p) => p.status === "active").length,
     overBudgetProjects: overBudgetProjects.length,
-  });
+    openTasks: openTasks ?? 0,
+    calendarNext7: calendarNext7 ?? 0,
+    contacts: contactsCount ?? 0,
+  };
+  const glance = overviewGlance(inputs);
+  const cards = overviewCards(inputs);
 
+  // The single worklist, ranked by severity and capped
+  // (lib/dashboard/attention.ts), so a zero-item list is a real, trustworthy
+  // "nothing needs you today".
   const attention = rankAttention([
     forecastBelow && {
       kind: "cashBelowBuffer",
@@ -207,19 +223,17 @@ export default async function DashboardPage() {
       href: "/reports/cash",
     },
     // Captures waiting on review and AI proposals: one row, one place.
-    inboxCount > 0 && { kind: "inbox", label: `Εισερχόμενα: ${inboxCount} προς έλεγχο`, href: "/inbox" },
+    canReview && inboxCount > 0 && { kind: "inbox", label: `Εισερχόμενα: ${inboxCount} προς έλεγχο`, href: "/inbox" },
     unfiledVatPeriods.length > 0 && {
       kind: "vatUnfiled",
       label: `${unfiledVatPeriods.length} περίοδ${unfiledVatPeriods.length === 1 ? "ος ΦΠΑ" : "οι ΦΠΑ"} χωρίς υποβολή`,
       href: "/reports/vat",
     },
-    ...(accountIssues ?? [])
-      .filter((a) => a.issue === "drift")
-      .map((a) => ({
-        kind: "accountDrift" as const,
-        label: `${a.account_name}: λείπουν ${Number(a.drift) < 0 ? "έξοδα" : "έσοδα"} ${formatMoney(Math.abs(Number(a.drift)))} (έλεγχος με πραγματικό υπόλοιπο)`,
-        href: "/accounts",
-      })),
+    ...driftAccounts.map((a) => ({
+      kind: "accountDrift" as const,
+      label: `${a.account_name}: λείπουν ${Number(a.drift) < 0 ? "έξοδα" : "έσοδα"} ${formatMoney(Math.abs(Number(a.drift)))} (έλεγχος με πραγματικό υπόλοιπο)`,
+      href: "/accounts",
+    })),
     overBudgetProjects.length > 0 && {
       kind: "overBudget",
       label: `${overBudgetProjects.length} έργ${overBudgetProjects.length === 1 ? "ο εκτός" : "α εκτός"} προϋπολογισμού`,
@@ -247,22 +261,40 @@ export default async function DashboardPage() {
     },
   ]);
 
+  // An odd last card spans the empty cells, so the hairline grid closes.
+  const lastSpan = [
+    cards.length % 2 === 1 ? "max-lg:col-span-2" : "",
+    cards.length % 3 === 1 ? "lg:col-span-3" : cards.length % 3 === 2 ? "lg:col-span-2" : "",
+  ].join(" ");
+
   return (
     <div className="flex flex-col gap-10">
-      <PageHeader
-        title={el.nav.dashboard}
-        meta="Ένα πλακίδιο ανά ενότητα, εκκρεμότητες και έργα με μια ματιά. Κάθε νούμερο ανοίγει τη σελίδα από την οποία προκύπτει."
-      />
+      <PageHeader eyebrow={longDateLabel(todayIso)} title={el.nav.dashboard} />
 
-      <section aria-label="Με μια ματιά" className="flex flex-col">
-        <div className="grid grid-cols-2 border-t border-l border-hairline lg:grid-cols-4">
-          {tiles.map((tile) => (
-            <Tile key={tile.key} tile={tile} />
+      <GlancePanel
+        title="Με μια ματιά"
+        footer={
+          <span className="text-panel-muted">
+            Το ταμείο μετρά μόνο ρευστούς λογαριασμούς· χρυσός και crypto εμφανίζονται στην Καθαρή θέση.
+          </span>
+        }
+      >
+        <div className="grid grid-cols-2 gap-x-4 gap-y-6 xl:grid-cols-4 xl:gap-x-0">
+          {glance.map((f) => (
+            <Figure key={f.key} figure={f} />
           ))}
         </div>
-        <p className="mt-2 text-xs text-muted">
-          Το ταμείο μετρά μόνο ρευστούς λογαριασμούς· χρυσός και crypto εμφανίζονται στην Καθαρή θέση.
-        </p>
+      </GlancePanel>
+
+      <section aria-labelledby="destinations" className="flex flex-col gap-4">
+        <SectionHeader title={<span id="destinations">Πού θέλετε να πάτε</span>} />
+        <ul className="grid grid-cols-2 border-t border-l border-hairline lg:grid-cols-3">
+          {cards.map((card, i) => (
+            <li key={card.key} className={`min-w-0 border-r border-b border-hairline ${i === cards.length - 1 ? lastSpan : ""}`}>
+              <Card card={card} />
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="flex flex-col">
@@ -275,7 +307,7 @@ export default async function DashboardPage() {
               <li key={item.href + item.label} className="border-b border-hairline">
                 <Link
                   href={item.href}
-                  className="flex min-h-11 items-center justify-between gap-3 border-l-2 border-negative py-2.5 pr-2 pl-4 text-sm text-ink transition-colors hover:bg-hover"
+                  className="flex min-h-11 items-center justify-between gap-3 border-l-2 border-negative py-2 pr-2 pl-4 text-sm text-ink transition-colors hover:bg-hover"
                 >
                   <span>{item.label}</span>
                   <span aria-hidden="true" className="shrink-0 text-muted">
@@ -285,12 +317,14 @@ export default async function DashboardPage() {
               </li>
             ))}
             {attention.more > 0 && (
-              <li className="flex min-h-11 flex-wrap items-center gap-x-4 border-b border-hairline py-2.5 pr-2 pl-4 text-sm text-muted">
+              <li className="flex min-h-11 flex-wrap items-center gap-x-4 border-b border-hairline py-2 pr-2 pl-4 text-sm text-muted">
                 <span>+{attention.more} ακόμα</span>
-                <Link href="/inbox" className="text-ink underline-offset-4 hover:underline">
-                  Εισερχόμενα →
-                </Link>
-                <Link href="/reports/quality" className="text-ink underline-offset-4 hover:underline">
+                {canReview && (
+                  <Link href="/inbox" className="inline-flex min-h-11 items-center text-ink underline-offset-4 hover:underline">
+                    Εισερχόμενα →
+                  </Link>
+                )}
+                <Link href="/reports/quality" className="inline-flex min-h-11 items-center text-ink underline-offset-4 hover:underline">
                   Ποιότητα δεδομένων →
                 </Link>
               </li>
@@ -299,98 +333,84 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      <section className="flex flex-col gap-3">
-        <SectionHeader title="Χαρτοφυλάκιο Έργων" />
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <th scope="col" className={TH}>
-                  Έργο
-                </th>
-                <th scope="col" className={`${TH} hidden text-right sm:table-cell`}>
-                  {el.project.budget}
-                </th>
-                <th scope="col" className={`${TH} text-right`}>
-                  Δαπανηθέντα
-                </th>
-                <th scope="col" className={`${TH} text-right`}>
-                  Εκκρεμούν
-                </th>
-                <th scope="col" className={`${TH} hidden text-right sm:table-cell`}>
-                  + ΦΠΑ
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {(projects ?? []).map((p) => (
-                <tr key={p.project_id} className="hover:bg-hover">
-                  <td className={`${TD} text-ink`}>
-                    <Link href={`/projects/${p.project_id}`} className="underline-offset-4 hover:underline">
-                      {p.display_name}
-                    </Link>
-                  </td>
-                  <td className={`${TD} num hidden text-right sm:table-cell`}>
-                    {noBudget.has(p.project_id) ? <span className="text-muted">—</span> : formatMoney(p.total_budget)}
-                  </td>
-                  <td className={`${TD} num text-right`}>
-                    <Link
-                      href={`/transactions?project_id=${p.project_id}&direction=expense&status=paid`}
-                      className="underline-offset-4 hover:underline"
-                    >
-                      {formatMoney(p.spent)}
-                    </Link>
-                  </td>
-                  <td className={`${TD} num text-right`}>
-                    <Link
-                      href={`/transactions?project_id=${p.project_id}&direction=expense&status=pending`}
-                      className="underline-offset-4 hover:underline"
-                    >
-                      {formatMoney(p.pending)}
-                    </Link>
-                  </td>
-                  <td className={`${TD} num hidden text-right sm:table-cell`}>
-                    <Link
-                      href={`/transactions?project_id=${p.project_id}&direction=expense`}
-                      className="underline-offset-4 hover:underline"
-                    >
-                      {formatMoney(p.vat_on_expenses)}
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
       {aiEnabled() && (
-        <section className="flex flex-col gap-4">
-          <DashboardSummary />
+        <section aria-label={el.nav.assistant} className="flex flex-col gap-2">
           <AskAssistantCard />
+          <DashboardSummary />
         </section>
       )}
     </div>
   );
 }
 
-// One P15 tile: hairline grid cell, eyebrow, a big light tabular figure and
-// a small sub-line; the whole tile is the link.
-function Tile({ tile }: { tile: DashboardTile }) {
+// Each length steps down by the width its cell actually has (container
+// queries), so a million never overflows a quarter of the panel or a phone
+// half. Literal class strings: Tailwind only sees what is written out.
+const FIGURE_SIZE: Record<GlanceFigure["length"], string> = {
+  1: "text-xl @min-[9.25rem]:text-figure-sm @min-[14rem]:text-figure",
+  2: "text-lg @min-[9.25rem]:text-xl @min-[11rem]:text-figure-sm @min-[16.5rem]:text-figure",
+  3: "text-base @min-[10rem]:text-lg @min-[13.5rem]:text-figure-sm @min-[20.5rem]:text-figure",
+};
+
+// One «Με μια ματιά» figure: eyebrow (wraps), big light tabular value, a
+// muted line; the whole figure is the link to where the number comes from.
+function Figure({ figure }: { figure: GlanceFigure }) {
   return (
     <Link
-      href={tile.href}
-      className="flex min-w-0 flex-col gap-2 border-r border-b border-hairline p-4 transition-colors hover:bg-hover"
+      href={figure.href}
+      className="group @container flex min-h-11 min-w-0 flex-col gap-1.5 focus-visible:outline-panel-ink xl:border-l xl:border-panel-hairline xl:px-6 xl:first:border-l-0 xl:first:pl-0"
     >
-      <span className="eyebrow text-muted">{tile.eyebrow}</span>
-      {/* Millions don't fit a quarter-width tile at figure size: step down
-          instead of truncating or overlapping the next tile. */}
-      <span
-        className={`num font-light break-words ${tile.value.length > 13 ? "text-lg md:text-xl" : "text-figure-sm"} ${tile.negative ? "text-negative" : "text-ink"}`}
-      >
-        {tile.value}
+      <span className="eyebrow break-words text-panel-muted transition-colors group-hover:text-panel-ink">{figure.label}</span>
+      <span className={`num font-light text-panel-ink [overflow-wrap:anywhere] ${FIGURE_SIZE[figure.length]}`}>
+        {figure.value}
       </span>
-      <span className="text-xs text-muted">{tile.sub}</span>
+      <span className="text-small break-words text-panel-muted">
+        {figure.sub}
+        <span aria-hidden="true" className="ml-1.5 inline-block transition-transform group-hover:translate-x-0.5 group-hover:text-panel-ink">
+          →
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+const SEVERITY_BAR: Record<NonNullable<DestinationCard["severity"]>, string> = {
+  urgent: "border-negative",
+  attention: "border-warning",
+};
+const SEVERITY_TEXT: Record<NonNullable<DestinationCard["severity"]>, string> = {
+  urgent: "text-negative",
+  attention: "text-warning",
+};
+
+// One destination: section name, what you do there, one live line. The
+// whole cell is the link; hover draws the navy rule on top and tints it, an
+// exception draws a 2px severity bar on the left.
+function Card({ card }: { card: DestinationCard }) {
+  const ai = card.key === "assistant";
+  return (
+    <Link
+      href={card.href}
+      className="group relative flex h-full min-h-36 min-w-0 flex-col gap-1.5 p-4 transition-colors hover:bg-hover sm:p-5"
+    >
+      <span
+        aria-hidden="true"
+        className="absolute inset-x-0 -top-px border-t-2 border-navy opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+      />
+      {card.severity && (
+        <span aria-hidden="true" className={`absolute inset-y-0 -left-px border-l-2 ${SEVERITY_BAR[card.severity]}`} />
+      )}
+      <span className="flex items-baseline justify-between gap-2">
+        <span className={`inline-flex min-w-0 items-center gap-1.5 text-lg break-words sm:text-section ${ai ? "text-ai" : "text-ink"}`}>
+          {ai && <AiSpark className="shrink-0" />}
+          {card.title}
+        </span>
+        <span aria-hidden="true" className="shrink-0 text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-ink">
+          →
+        </span>
+      </span>
+      <span className="text-small text-muted">{card.description}</span>
+      <span className={`num mt-auto pt-3 text-sm ${card.severity ? SEVERITY_TEXT[card.severity] : "text-ink"}`}>{card.metric}</span>
     </Link>
   );
 }
