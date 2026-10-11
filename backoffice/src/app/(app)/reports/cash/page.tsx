@@ -6,14 +6,20 @@ import { el } from "@/lib/i18n/el";
 import {
   Badge,
   Button,
+  KpiBand,
   LINK_CLASS,
   NUM_CLASS,
   PageHeader,
+  ReportChart,
+  ReportDetail,
+  ReportFooter,
+  ReportHeadline,
+  ReportMethod,
+  ReportSection,
   SUB_CLASS,
   SectionHeader,
+  Segmented,
   SpecTable,
-  Stat,
-  StatRow,
   Td,
   Th,
   Tr,
@@ -21,10 +27,11 @@ import {
   cn,
 } from "@/components/ui";
 import { ArgsActionForm } from "@/components/ArgsActionForm";
+import { BandChart } from "@/components/ui/BandChart";
 import { BarChart } from "@/components/ui/BarChart";
 import { loadLookups } from "@/lib/data/lookups";
-import { currentMonthKey, firstOfMonth, isMonthKey, monthKeyOf, monthLabel, shortMonthYearLabel } from "@/lib/dates";
-import { cashChartRows } from "@/lib/finance/reportCharts";
+import { addMonths, currentMonthKey, todayAthens, firstOfMonth, isMonthKey, monthKeyOf, monthLabel, shortMonthYearLabel } from "@/lib/dates";
+import { cashNarrative } from "@/lib/finance/narratives";
 import {
   FORECAST_HORIZONS,
   FORECAST_SCENARIOS,
@@ -34,44 +41,95 @@ import {
   type ForecastScenario,
   type ForecastScope,
 } from "@/lib/finance/forecastParams";
+import { largestOutflow, outflowBySourceRows, scenarioBalanceRows, type OutflowGroup } from "./cashCharts";
 import { ExpectedIncomeFormModal } from "./ExpectedIncomeFormModal";
 import { saveExpectedIncome, setExpectedIncomeStatus } from "./actions";
 
-// Ταμείο & Πρόβλεψη. Every figure comes from cash_forecast() /
-// cash_forecast_items() (0066) -- the same SQL the dashboard and the
-// assistant read -- so this page computes nothing of its own: it only picks
-// the scenario, scope and horizon, and lays the rows out.
+// Ταμείο & Πρόβλεψη -- «Θα έχουμε λεφτά;». Every figure comes from
+// cash_forecast() / cash_forecast_items() (0066/0090) -- the same SQL the
+// dashboard and the assistant read -- so this page computes nothing of its
+// own: it picks the scenario, scope and horizon, and lays the rows out in
+// the report anatomy (components/ui/ReportSection).
+//
+// Cloudflare CPU: one forecast by default; the other two scenarios are read
+// only with «Σύγκριση σεναρίων» on (?compare=1).
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+// Texts new to this tab (the rest are el.reports).
+const T = {
+  question: "Θα έχουμε λεφτά;",
+  balanceTitle: "Υπόλοιπο ταμείου στο τέλος κάθε μήνα",
+  compare: "Σύγκριση σεναρίων",
+  compareOff: "Ένα σενάριο",
+  compareOn: "Και τα τρία",
+  belowMarked: "Μήνες κάτω από το απόθεμα",
+  driversTitle: "Τι κινεί το ταμείο",
+  driversCaption: "Εκροές ανά μήνα κατά πηγή, σε δική τους κλίμακα",
+  driversLabel: "Εκροές ανά μήνα κατά πηγή",
+  uncertain: "Αβέβαια έσοδα",
+  uncertainSub: (n: number) => `σταθμισμένα, σε ${n} μήνες`,
+  lowestSub: "χαμηλότερο σημείο",
+  bufferSub: (amount: string) => `απόθεμα ${amount}`,
+  byMonth: "Ανά μήνα",
+  groups: {
+    open: "Ανοιχτές πληρωμές & έργα",
+    installment: "Δόσεις & μισθώματα",
+    loan: "Δάνεια & υποχρεώσεις",
+    vat: "ΦΠΑ",
+    withholding: "Παρακράτηση",
+    other: "Λοιπά",
+  } satisfies Record<OutflowGroup, string>,
+  method: [
+    "Το υπόλοιπο κάθε μήνα είναι το άνοιγμα συν τις εισροές μείον τις εκροές του μήνα· το άνοιγμα του πρώτου μήνα είναι τα σημερινά ρευστά.",
+    "Τα σενάρια διαφέρουν μόνο στα αβέβαια: το βασικό σταθμίζει τα αβέβαια έσοδα με την πιθανότητά τους, το αισιόδοξο τα μετρά όλα στο 100%, το απαισιόδοξο κρατά μόνο τα βέβαια έσοδα και μετρά όλα τα έξοδα στο 100%. Οι συμβατικές κινήσεις είναι ίδιες και στα τρία.",
+    "«Τι κινεί το ταμείο»: οι εκροές του επιλεγμένου σεναρίου ανά μήνα, ομαδοποιημένες κατά πηγή· το σύνολο κάθε στήλης είναι οι «Εκροές» του πίνακα.",
+  ],
+};
 
 export default async function CashPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const scenario = parseScenario(sp.scenario);
   const scope = parseScope(sp.scope);
   const months = parseHorizon(sp.months, 12);
+  const compare = (Array.isArray(sp.compare) ? sp.compare[0] : sp.compare) === "1";
   const todayMonth = currentMonthKey();
   const selectedRaw = Array.isArray(sp.month) ? sp.month[0] : sp.month;
   const selected = isMonthKey(selectedRaw) ? selectedRaw : todayMonth;
+  const horizonEnd = firstOfMonth(addMonths(todayMonth, months));
 
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
 
-  const [{ data: forecast, error }, { data: items }, { data: expected }, lookups] = await Promise.all([
-    supabase.rpc("cash_forecast", { p_org: orgId, p_months: months, p_scenario: scenario, p_scope: scope ?? undefined }),
-    supabase.rpc("cash_forecast_items", {
-      p_org: orgId,
-      p_month: firstOfMonth(selected),
-      p_scenario: scenario,
-      p_scope: scope ?? undefined,
-    }),
-    supabase
-      .from("expected_income")
-      .select("id, source, amount, expected_month, probability, certainty, project_id, owner_scope, notes, scenario_id, direction, projects(display_name)")
-      .eq("org_id", orgId)
-      .eq("status", "expected")
-      .order("expected_month"),
-    loadLookups(supabase, orgId, { include: ["projects"] }),
-  ]);
+  const forecastOf = (s: ForecastScenario) =>
+    supabase.rpc("cash_forecast", { p_org: orgId, p_months: months, p_scenario: s, p_scope: scope ?? undefined });
+  const others = compare ? FORECAST_SCENARIOS.filter((s) => s !== scenario) : [];
+
+  const [{ data: forecast, error }, { data: items }, { data: horizonOut }, { data: expected }, lookups, ...otherForecasts] =
+    await Promise.all([
+      forecastOf(scenario),
+      supabase.rpc("cash_forecast_items", {
+        p_org: orgId,
+        p_month: firstOfMonth(selected),
+        p_scenario: scenario,
+        p_scope: scope ?? undefined,
+      }),
+      // Every outflow of the horizon, for «Τι κινεί το ταμείο» and the
+      // headline's driver (the lowest month's largest outflow).
+      supabase
+        .rpc("cash_forecast_items", { p_org: orgId, p_scenario: scenario, p_scope: scope ?? undefined })
+        .select("month, source, label, weighted_amount")
+        .eq("direction", "expense")
+        .lt("month", horizonEnd),
+      supabase
+        .from("expected_income")
+        .select("id, source, amount, expected_month, probability, certainty, project_id, owner_scope, notes, scenario_id, direction, projects(display_name)")
+        .eq("org_id", orgId)
+        .eq("status", "expected")
+        .order("expected_month"),
+      loadLookups(supabase, orgId, { include: ["projects"] }),
+      ...others.map((s) => forecastOf(s)),
+    ]);
   if (error) throw error;
 
   const rows = forecast ?? [];
@@ -83,8 +141,19 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
     (lo, r) => (lo === null || Number(r.closing_balance) < Number(lo.closing_balance) ? r : lo),
     null,
   );
+  const uncertainTotal = rows.reduce((s, r) => s + Number(r.uncertain_inflow ?? 0), 0);
 
-  const chartRows = cashChartRows(rows, shortMonthYearLabel);
+  // The balance per scenario: the selected one first (annotated, marked).
+  const byScenario: Record<string, typeof rows> = { [scenario]: rows };
+  others.forEach((s, i) => (byScenario[s] = otherForecasts[i]?.data ?? []));
+  const balanceData = scenarioBalanceRows(byScenario, shortMonthYearLabel);
+  const balanceSeries = [scenario, ...others].map((s) => ({ key: s, name: t.scenarios[s] }));
+
+  const outItems = (horizonOut ?? []) as { month: string | null; source: string | null; label: string | null; weighted_amount: number | null }[];
+  const drivers = outflowBySourceRows(rows, outItems, shortMonthYearLabel);
+  const lowestKey = lowest ? monthKeyOf(lowest.month) : null;
+  const driverItem = lowestKey ? largestOutflow(outItems, lowestKey) : null;
+  const driverName = driverItem ? driverItem.label?.trim() || t.sources[driverItem.source as keyof typeof t.sources] || null : null;
 
   const query = (patch: Record<string, string | null>) => {
     const p = new URLSearchParams();
@@ -93,6 +162,7 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
       scope,
       months: months === 12 ? null : String(months),
       month: selected === todayMonth ? null : selected,
+      compare: compare ? "1" : null,
       ...patch,
     };
     for (const [k, v] of Object.entries(base)) if (v) p.set(k, v);
@@ -105,7 +175,7 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
 
   return (
     <div className="flex min-w-0 flex-col gap-10">
-      <PageHeader title={t.cashTitle} meta={<span className="block max-w-3xl">{t.cashIntro}</span>} />
+      <PageHeader title={t.cashTitle} meta={T.question} />
 
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
@@ -132,59 +202,100 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
         <p className="text-small text-muted">{t.scenarioHint[scenario as ForecastScenario]}</p>
       </div>
 
-      <StatRow>
-        <Stat label={t.liquidNow} value={formatMoney(first?.opening_balance ?? 0)} />
-        <Stat label={t.buffer} value={formatMoney(buffer)} />
-        <Stat
-          label={t.lowestClose}
-          value={
-            <span className={lowest && Number(lowest.closing_balance) < buffer ? "text-negative" : undefined}>
-              {lowest ? formatMoney(lowest.closing_balance) : "—"}
-            </span>
-          }
-          sub={lowest ? monthLabel(monthKeyOf(lowest.month)) : undefined}
-        />
-        <Stat
-          label={t.firstBelow}
-          value={
-            <span className={firstBelow ? "text-negative" : undefined}>
-              {firstBelow ? monthLabel(monthKeyOf(firstBelow.month)) : t.noneBelow}
-            </span>
-          }
-        />
-      </StatRow>
+      <ReportSection label={t.cashTitle}>
+        {lowest && (
+          <ReportHeadline>
+            {cashNarrative({
+              lowest: { amount: Number(lowest.closing_balance), month: monthKeyOf(lowest.month) },
+              driver: driverName ? `«${driverName}»` : null,
+              firstBelowBuffer: firstBelow ? monthKeyOf(firstBelow.month) : null,
+              buffer,
+              horizonMonths: months,
+            })}
+          </ReportHeadline>
+        )}
 
-      <BarChart
-        label={t.cashChartLabel}
-        data={chartRows}
-        xKey="label"
-        series={[
-          { key: "inflow", name: t.inflow, tone: "navy" },
-          { key: "outflow", name: t.outflow, tone: "accent" },
-          { key: "balance", name: t.closing, kind: "line", tone: "navy" },
-        ]}
-        threshold={{ value: buffer, label: t.buffer }}
-      />
+        <KpiBand
+          items={[
+            { label: t.liquidNow, value: formatMoney(first?.opening_balance ?? 0) },
+            {
+              label: t.lowestClose,
+              value: (
+                <span className={lowest && Number(lowest.closing_balance) < buffer ? "text-negative" : undefined}>
+                  {lowest ? formatMoney(lowest.closing_balance) : "—"}
+                </span>
+              ),
+              sub: lowest ? monthLabel(monthKeyOf(lowest.month)) : undefined,
+            },
+            {
+              label: t.firstBelow,
+              value: (
+                <span className={firstBelow ? "text-negative" : undefined}>
+                  {firstBelow ? monthLabel(monthKeyOf(firstBelow.month)) : t.noneBelow}
+                </span>
+              ),
+              sub: T.bufferSub(formatMoney(buffer)),
+            },
+            { label: T.uncertain, value: formatMoney(uncertainTotal), sub: T.uncertainSub(months) },
+          ]}
+        />
 
-      {/* Stacked: the six-column month table needs the full width; the
-          selected month's breakdown follows it. */}
-      <div className="grid min-w-0 grid-cols-1 gap-8">
-        <SpecTable label={t.cashTitle} stickyFirst>
-          <thead>
-            <tr>
-              {/* Same inset as the body's first cells, which carry the 2px marker. */}
-              <Th className="border-l-2 border-l-transparent !pl-3">{t.month}</Th>
-              <Th numeric className="hidden md:table-cell">
-                {t.opening}
-              </Th>
-              <Th numeric>{t.inflow}</Th>
-              <Th numeric>{t.outflow}</Th>
-              <Th numeric className="hidden sm:table-cell">
-                {t.net}
-              </Th>
-              <Th numeric>{t.closing}</Th>
-            </tr>
-          </thead>
+        {balanceData.length > 0 && (
+          <ReportChart
+            title={T.balanceTitle}
+            caption={compare ? `${months} ${t.months} · ${balanceSeries.map((s) => s.name).join(", ")}` : `${months} ${t.months} · ${t.scenarios[scenario]}`}
+            actions={
+              <Segmented
+                label={T.compare}
+                options={[
+                  { key: "off", label: T.compareOff, href: query({ compare: null }) },
+                  { key: "on", label: T.compareOn, href: query({ compare: "1" }) },
+                ]}
+                active={compare ? "on" : "off"}
+                className="[&>a]:pointer-coarse:min-h-11"
+              />
+            }
+          >
+            <BandChart
+              data={balanceData}
+              xKey="label"
+              series={balanceSeries}
+              label={T.balanceTitle}
+              threshold={{ value: buffer, label: t.buffer }}
+              markBelow={T.belowMarked}
+            />
+          </ReportChart>
+        )}
+
+        {drivers.groups.length > 0 && (
+          <ReportChart title={T.driversTitle} caption={T.driversCaption}>
+            <BarChart
+              data={drivers.data}
+              xKey="label"
+              stacked
+              series={drivers.groups.map((g) => ({ key: g, name: T.groups[g] }))}
+              label={T.driversLabel}
+            />
+          </ReportChart>
+        )}
+
+        <ReportDetail title={T.byMonth} meta={`${rows.length} ${t.months}`}>
+          <SpecTable label={t.cashTitle} stickyFirst>
+            <thead>
+              <tr>
+                {/* Same inset as the body's first cells, which carry the 2px marker. */}
+                <Th className="border-l-2 border-l-transparent !pl-3">{t.month}</Th>
+                <Th numeric className="hidden md:table-cell">
+                  {t.opening}
+                </Th>
+                <Th numeric>{t.inflow}</Th>
+                <Th numeric>{t.outflow}</Th>
+                <Th numeric className="hidden sm:table-cell">
+                  {t.net}
+                </Th>
+                <Th numeric>{t.closing}</Th>
+              </tr>
+            </thead>
             <tbody>
               {rows.map((r) => {
                 const key = monthKeyOf(r.month);
@@ -226,8 +337,9 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
                   </Tr>
                 );
               })}
-          </tbody>
-        </SpecTable>
+            </tbody>
+          </SpecTable>
+        </ReportDetail>
 
         <section className="flex min-w-0 flex-col gap-4">
           <SectionHeader title={`${t.breakdown}: ${monthLabel(selected)}`} />
@@ -241,18 +353,21 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
             </div>
           )}
         </section>
-      </div>
 
-      <section className="flex min-w-0 flex-col gap-4">
-        <SectionHeader
-          title={t.expectedTitle}
-          actions={<ExpectedIncomeFormModal action={saveExpectedIncome} projects={lookups.projects} />}
-        />
-        {(expected ?? []).length === 0 ? (
-          <p className="text-body text-muted">{t.expectedEmpty}</p>
-        ) : (
-          <SpecTable label={t.expectedTitle}>
-            <tbody>
+        <section className="flex min-w-0 flex-col gap-4">
+          <SectionHeader
+            title={t.expectedTitle}
+            actions={
+              <span className="present-hide print-hide">
+                <ExpectedIncomeFormModal action={saveExpectedIncome} projects={lookups.projects} />
+              </span>
+            }
+          />
+          {(expected ?? []).length === 0 ? (
+            <p className="text-body text-muted">{t.expectedEmpty}</p>
+          ) : (
+            <SpecTable label={t.expectedTitle}>
+              <tbody>
                 {(expected ?? []).map((e) => {
                   const project = Array.isArray(e.projects) ? e.projects[0] : e.projects;
                   const probability = e.probability ?? (e.certainty === "certain" ? 1 : 0.5);
@@ -275,7 +390,7 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
                       </Td>
                       <Td className="py-1.5">
                         {!e.scenario_id && (
-                          <div className="flex items-center justify-end gap-1">
+                          <div className="present-hide print-hide flex items-center justify-end gap-1">
                             <ExpectedIncomeFormModal
                               action={saveExpectedIncome}
                               id={e.id}
@@ -307,10 +422,19 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
                     </Tr>
                   );
                 })}
-            </tbody>
-          </SpecTable>
-        )}
-      </section>
+              </tbody>
+            </SpecTable>
+          )}
+        </section>
+
+        <ReportMethod>
+          <p>{t.cashIntro}</p>
+          {T.method.map((m, i) => (
+            <p key={i}>{m}</p>
+          ))}
+        </ReportMethod>
+        <ReportFooter dataUntil={todayAthens()} />
+      </ReportSection>
     </div>
   );
 }
