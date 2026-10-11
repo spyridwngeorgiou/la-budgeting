@@ -3,8 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate, formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Button, Card } from "@/components/ui";
+import { Button, PageHeader, SectionHeader, Stat, cn } from "@/components/ui";
 import { ActionForm } from "@/components/ActionForm";
+import { FRAME, LINK, NUM, ROW, SUB, TABLE, TOUCH } from "../ui";
 import { AssetFormModal, LiabilityFormModal } from "./NetWorthForms";
 import { deleteAsset, deleteLiability, saveAsset, saveLiability } from "./actions";
 
@@ -69,131 +70,131 @@ export default async function NetWorthPage() {
   const owed = COMPONENTS.filter((c) => amountOf[c] < 0);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">{t.title}</h1>
-        <p className="mt-1 max-w-3xl text-sm text-ink-muted">{t.intro}</p>
+    <div className="flex min-w-0 flex-col gap-6">
+      <PageHeader title={t.title} meta={<span className="block max-w-3xl">{t.intro}</span>} />
+
+      <div className="border-b border-hairline pb-5">
+        <Stat
+          size="lg"
+          label={t.total}
+          value={<span className={Number(total?.net_worth ?? 0) < 0 ? "text-negative" : undefined}>{formatMoney(total?.net_worth ?? 0)}</span>}
+        />
       </div>
 
-      <Card>
-        <div className="text-xs text-ink-muted">{t.total}</div>
-        <div className={`font-mono text-2xl ${Number(total?.net_worth ?? 0) < 0 ? "text-red-ink" : ""}`}>
-          {formatMoney(total?.net_worth ?? 0)}
-        </div>
-      </Card>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid min-w-0 grid-cols-1 gap-8 md:grid-cols-2">
         <ComponentTable title={t.owned} components={owned} amountOf={amountOf} itemsOf={itemsOf} />
         <ComponentTable title={t.owed} components={owed} amountOf={amountOf} itemsOf={itemsOf} />
       </div>
 
-      <section className="rounded-lg border border-line p-3">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-medium">{t.assetsTitle}</h2>
-          <AssetFormModal action={saveAsset.bind(null, null)} />
-        </div>
+      <section className="flex min-w-0 flex-col gap-3">
+        <SectionHeader title={t.assetsTitle} actions={<AssetFormModal action={saveAsset.bind(null, null)} />} />
         {(assets ?? []).length === 0 ? (
-          <p className="text-sm text-ink-muted">{t.empty}</p>
+          <p className="text-sm text-muted">{t.empty}</p>
         ) : (
-          <table className="w-full text-left text-sm">
-            <tbody>
-              {(assets ?? []).map((a) => {
-                const counted = a.state === "held";
-                return (
-                  <tr key={a.id} className={`border-t border-line first:border-0 ${counted ? "" : "text-ink-faint"}`}>
-                    <td className="py-1.5 pr-2">
-                      {a.name}
-                      {a.category && <span className="ml-1 text-xs text-ink-muted">· {a.category}</span>}
-                      <span className="block text-xs text-ink-faint">
-                        {el.account.ownerValues[a.owner_scope]}
-                        {Number(a.ownership_pct) !== 1 && ` · ${Math.round(Number(a.ownership_pct) * 10000) / 100}%`}
-                        {a.valuation_date && ` · ${formatDate(a.valuation_date)}`}
-                        {!counted && ` · ${t.assetStates.pending_inheritance}`}
-                      </span>
-                    </td>
-                    <td className="py-1.5 pr-2 text-right font-mono">{formatMoney(a.estimated_value)}</td>
-                    <td className="py-1.5">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <AssetFormModal
-                          action={saveAsset.bind(null, a.id)}
-                          initial={{
-                            name: a.name,
-                            category: a.category,
-                            estimated_value: Number(a.estimated_value),
-                            ownership_pct: Number(a.ownership_pct),
-                            owner_scope: a.owner_scope,
-                            state: a.state,
-                            valuation_date: a.valuation_date,
-                            notes: a.notes,
-                          }}
-                        />
-                        <ActionForm action={deleteAsset.bind(null, a.id)}>
-                          <Button type="submit" variant="secondary" className="!px-2 !py-1 text-xs">
-                            {el.common.delete}
-                          </Button>
-                        </ActionForm>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className={FRAME}>
+            <table className={TABLE}>
+              <tbody>
+                {(assets ?? []).map((a) => {
+                  const counted = a.state === "held";
+                  return (
+                    <tr key={a.id} className={cn(ROW, !counted && "text-muted")}>
+                      <td className={cn("min-w-48 py-2.5 pr-3 align-middle", counted ? "text-ink" : "text-muted")}>
+                        {a.name}
+                        {a.category && <span className="ml-1 text-xs text-muted">· {a.category}</span>}
+                        <span className={SUB}>
+                          {el.account.ownerValues[a.owner_scope]}
+                          {Number(a.ownership_pct) !== 1 && ` · ${Math.round(Number(a.ownership_pct) * 10000) / 100}%`}
+                          {a.valuation_date && ` · ${formatDate(a.valuation_date)}`}
+                          {!counted && ` · ${t.assetStates.pending_inheritance}`}
+                        </span>
+                      </td>
+                      <td className={cn("py-2.5 pr-3 align-middle", NUM, counted ? "text-ink" : "text-muted")}>
+                        {formatMoney(a.estimated_value)}
+                      </td>
+                      <td className="py-1.5 align-middle">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <AssetFormModal
+                            action={saveAsset.bind(null, a.id)}
+                            initial={{
+                              name: a.name,
+                              category: a.category,
+                              estimated_value: Number(a.estimated_value),
+                              ownership_pct: Number(a.ownership_pct),
+                              owner_scope: a.owner_scope,
+                              state: a.state,
+                              valuation_date: a.valuation_date,
+                              notes: a.notes,
+                            }}
+                          />
+                          <ActionForm action={deleteAsset.bind(null, a.id)}>
+                            <Button type="submit" variant="secondary" size="sm" className={TOUCH}>
+                              {el.common.delete}
+                            </Button>
+                          </ActionForm>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
-      <section className="rounded-lg border border-line p-3">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-medium">{t.liabilitiesTitle}</h2>
-          <LiabilityFormModal action={saveLiability.bind(null, null)} />
-        </div>
-        <p className="mb-2 text-xs text-ink-faint">{t.liabilitiesHint}</p>
+      <section className="flex min-w-0 flex-col gap-3">
+        <SectionHeader title={t.liabilitiesTitle} actions={<LiabilityFormModal action={saveLiability.bind(null, null)} />} />
+        <p className="text-small text-muted">{t.liabilitiesHint}</p>
         {(liabilities ?? []).length === 0 ? (
-          <p className="text-sm text-ink-muted">{t.empty}</p>
+          <p className="text-sm text-muted">{t.empty}</p>
         ) : (
-          <table className="w-full text-left text-sm">
-            <tbody>
-              {(liabilities ?? []).map((l) => {
-                const counted = l.state === "disbursed";
-                return (
-                  <tr key={l.id} className={`border-t border-line first:border-0 ${counted ? "" : "text-ink-faint"}`}>
-                    <td className="py-1.5 pr-2">
-                      {l.lender}
-                      <span className="ml-1 text-xs text-ink-muted">· {t.liabilityKinds[l.kind]}</span>
-                      <span className="block text-xs text-ink-faint">
-                        {t.liabilityStates[l.state]} · {el.account.ownerValues[l.owner_scope]}
-                        {Number(l.interest_rate) > 0 && ` · ${Math.round(Number(l.interest_rate) * 100000) / 1000}%`}
-                        {l.maturity_date && ` · ${t.maturity} ${formatDate(l.maturity_date)}`}
-                      </span>
-                    </td>
-                    <td className="py-1.5 pr-2 text-right font-mono">{formatMoney(l.principal)}</td>
-                    <td className="py-1.5">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <LiabilityFormModal
-                          action={saveLiability.bind(null, l.id)}
-                          initial={{
-                            lender: l.lender,
-                            kind: l.kind,
-                            principal: Number(l.principal),
-                            interest_rate: Number(l.interest_rate),
-                            maturity_date: l.maturity_date,
-                            state: l.state,
-                            owner_scope: l.owner_scope,
-                            terms: l.terms,
-                          }}
-                        />
-                        <ActionForm action={deleteLiability.bind(null, l.id)}>
-                          <Button type="submit" variant="secondary" className="!px-2 !py-1 text-xs">
-                            {el.common.delete}
-                          </Button>
-                        </ActionForm>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className={FRAME}>
+            <table className={TABLE}>
+              <tbody>
+                {(liabilities ?? []).map((l) => {
+                  const counted = l.state === "disbursed";
+                  return (
+                    <tr key={l.id} className={ROW}>
+                      <td className={cn("min-w-48 py-2.5 pr-3 align-middle", counted ? "text-ink" : "text-muted")}>
+                        {l.lender}
+                        <span className="ml-1 text-xs text-muted">· {t.liabilityKinds[l.kind]}</span>
+                        <span className={SUB}>
+                          {t.liabilityStates[l.state]} · {el.account.ownerValues[l.owner_scope]}
+                          {Number(l.interest_rate) > 0 && ` · ${Math.round(Number(l.interest_rate) * 100000) / 1000}%`}
+                          {l.maturity_date && ` · ${t.maturity} ${formatDate(l.maturity_date)}`}
+                        </span>
+                      </td>
+                      <td className={cn("py-2.5 pr-3 align-middle", NUM, counted ? "text-ink" : "text-muted")}>
+                        {formatMoney(l.principal)}
+                      </td>
+                      <td className="py-1.5 align-middle">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <LiabilityFormModal
+                            action={saveLiability.bind(null, l.id)}
+                            initial={{
+                              lender: l.lender,
+                              kind: l.kind,
+                              principal: Number(l.principal),
+                              interest_rate: Number(l.interest_rate),
+                              maturity_date: l.maturity_date,
+                              state: l.state,
+                              owner_scope: l.owner_scope,
+                              terms: l.terms,
+                            }}
+                          />
+                          <ActionForm action={deleteLiability.bind(null, l.id)}>
+                            <Button type="submit" variant="secondary" size="sm" className={TOUCH}>
+                              {el.common.delete}
+                            </Button>
+                          </ActionForm>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>
@@ -216,36 +217,36 @@ function ComponentTable({
   const t = el.netWorth;
   const sum = components.reduce((s, c) => s + amountOf[c], 0);
   return (
-    <section className="rounded-lg border border-line p-3">
-      <div className="mb-2 flex justify-between text-sm font-medium">
-        <span>{title}</span>
-        <span className="font-mono">{formatMoney(sum)}</span>
+    <section className="flex min-w-0 flex-col">
+      <div className="flex items-baseline justify-between gap-3 border-b border-rule pb-2">
+        <h2 className="eyebrow text-muted">{title}</h2>
+        <span className="num text-figure-sm font-light text-ink">{formatMoney(sum)}</span>
       </div>
       {components.length === 0 ? (
-        <p className="text-sm text-ink-muted">{t.empty}</p>
+        <p className="py-3 text-sm text-muted">{t.empty}</p>
       ) : (
-        <ul className="flex flex-col gap-2 text-sm">
+        <ul className="flex flex-col text-sm">
           {components.map((c) => {
             const href = COMPONENT_HREF[c];
             const list = itemsOf(c);
             return (
-              <li key={c}>
-                <div className="flex justify-between gap-2">
+              <li key={c} className={cn(ROW, "py-2.5")}>
+                <div className="flex justify-between gap-3 text-ink">
                   {href ? (
-                    <Link href={href} className="hover:underline">
+                    <Link href={href} className={LINK}>
                       {t.components[c]}
                     </Link>
                   ) : (
                     <span>{t.components[c]}</span>
                   )}
-                  <span className="font-mono">{formatMoney(amountOf[c])}</span>
+                  <span className={NUM}>{formatMoney(amountOf[c])}</span>
                 </div>
                 {list.length > 0 && (
-                  <ul className="mt-0.5 flex flex-col gap-0.5 pl-3 text-xs text-ink-muted">
+                  <ul className="mt-1 flex flex-col gap-0.5 pl-3 text-xs text-muted">
                     {list.map((i) => (
-                      <li key={`${c}:${i.ref_id}`} className="flex justify-between gap-2">
+                      <li key={`${c}:${i.ref_id}`} className="flex justify-between gap-3">
                         <span className="min-w-0 truncate">{i.label || "—"}</span>
-                        <span className="shrink-0 font-mono">{formatMoney(i.amount ?? 0)}</span>
+                        <span className={cn("shrink-0", NUM)}>{formatMoney(i.amount ?? 0)}</span>
                       </li>
                     ))}
                   </ul>

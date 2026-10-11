@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
+import { PageHeader, cn } from "@/components/ui";
+import { FRAME, NUM, TABLE, TD, TH } from "../ui";
 
 export default async function WithholdingPage() {
   const supabase = await createClient();
@@ -14,31 +16,39 @@ export default async function WithholdingPage() {
     .limit(24);
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">{el.nav.withholding}</h1>
-      <p className="text-sm text-ink-muted">
-        Παρακράτηση φόρου σε πληρωμές προς προμηθευτές/συνεργάτες, μηνιαία, μόνο στην πλευρά
-        των εξόδων.
-      </p>
+    <div className="flex min-w-0 flex-col gap-6">
+      <PageHeader
+        title={el.nav.withholding}
+        meta={
+          <span className="block max-w-3xl">
+            Παρακράτηση φόρου σε πληρωμές προς προμηθευτές/συνεργάτες, μηνιαία, μόνο στην πλευρά
+            των εξόδων.
+          </span>
+        }
+      />
 
       {(positions ?? []).length === 0 ? (
-        <p className="p-6 text-center text-sm text-ink-muted">
+        <p className="border-y border-hairline py-6 text-sm text-muted">
           Δεν υπάρχουν ακόμα κινήσεις με παρακράτηση.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-bg text-ink-muted">
+        <div className={cn(FRAME, "max-w-2xl")}>
+          <table className={TABLE}>
+            <thead>
               <tr>
-                <th className="p-2">{el.vat.period}</th>
-                <th className="p-2 text-right">Παρακρατηθέν Ποσό</th>
+                <th scope="col" className={TH}>
+                  {el.vat.period}
+                </th>
+                <th scope="col" className={cn(TH, "text-right")}>
+                  Παρακρατηθέν Ποσό
+                </th>
               </tr>
             </thead>
             <tbody>
               {(positions ?? []).map((p) => (
-                <tr key={p.period_start} className="border-t border-line">
-                  <td className="p-2">{formatDate(p.period_start)}</td>
-                  <td className="p-2 text-right font-mono">{formatMoney(p.withheld_total)}</td>
+                <tr key={p.period_start} className="hover:bg-hover">
+                  <td className={cn(TD, "num text-ink")}>{formatDate(p.period_start)}</td>
+                  <td className={cn(TD, NUM, "text-ink")}>{formatMoney(p.withheld_total)}</td>
                 </tr>
               ))}
             </tbody>
