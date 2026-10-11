@@ -40,10 +40,14 @@ export default async function WithholdingPage() {
   const current = byMonth.find((r) => r.month === thisMonth)?.amount ?? 0;
   const last12 = byMonth.filter((r) => r.month >= from12 && r.month <= thisMonth).reduce((s, r) => s + r.amount, 0);
   const latest = byMonth[0] ?? null;
-  const chart = byMonth
-    .slice()
-    .reverse()
-    .map((r) => ({ label: shortMonthYearLabel(r.month), withheld: r.amount }));
+  // A fixed 24-month window up to this month (or the latest month, when a
+  // pending invoice is dated ahead): quiet months show as gaps, not missing.
+  const amountOf = new Map(byMonth.map((r) => [r.month, r.amount]));
+  const end = latest && latest.month > thisMonth ? latest.month : thisMonth;
+  const chart = Array.from({ length: 24 }, (_, i) => addMonths(end, i - 23)).map((m) => ({
+    label: shortMonthYearLabel(m),
+    withheld: amountOf.get(m) ?? 0,
+  }));
 
   return (
     <div className="flex min-w-0 flex-col gap-10">
@@ -66,10 +70,19 @@ export default async function WithholdingPage() {
               { label: "Μέσος όρος μήνα", value: formatMoney(last12 / 12), sub: "τελευταίοι 12 μήνες" },
             ]}
           />
-          <ReportChart title="Παρακρατήσεις ανά μήνα" caption={`Τελευταίοι ${chart.length} μήνες`}>
-            <BarChart data={chart} xKey="label" series={[{ key: "withheld", name: "Παρακρατηθέν ποσό" }]} label="Παρακρατήσεις ανά μήνα" />
+          <ReportChart
+            title="Παρακρατήσεις ανά μήνα"
+            caption={`${monthLabel(addMonths(end, -23))} – ${monthLabel(end)} · αποδίδονται ως το τέλος του επόμενου μήνα`}
+          >
+            <BarChart
+              data={chart}
+              xKey="label"
+              series={[{ key: "withheld", name: "Παρακρατηθέν ποσό", tone: "navy" }]}
+              label="Παρακρατήσεις ανά μήνα, τελευταίοι 24 μήνες"
+              marker={end === thisMonth ? undefined : { x: shortMonthYearLabel(thisMonth), label: "τρέχων μήνας" }}
+            />
           </ReportChart>
-          <ReportDetail title="Ανά μήνα">
+          <ReportDetail title="Ανά μήνα" meta={`${rows.length} μήνες`}>
             <SpecTable label={el.nav.withholding} className="max-w-2xl">
               <thead>
                 <tr>
