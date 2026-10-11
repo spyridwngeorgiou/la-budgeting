@@ -26,6 +26,8 @@
 --   v_qc_loan_without_interest  a loan payment with no interest part: the
 --                           P&L shows no financing cost for it.
 --   v_worklist              the two new checks added.
+--   pnl_cost_categories()   the largest cost categories of a period, for
+--                           the P&L chart.
 -- Every view keeps its columns and order (create or replace); cash_forecast()
 -- and cash_forecast_items() read the views by name and are unchanged.
 -- Nothing is dropped or deleted.
@@ -507,3 +509,32 @@ with items as (
 select i.org_id, i.tier, i.code, i.code as label_key, i.count, round(i.amount, 2) as amount, i.href
 from items i
 where i.count > 0 and has_role(i.org_id, 'viewer');
+
+-- ── pnl_cost_categories: the largest costs of a period, for /reports/pnl ─────
+-- Same rows as pnl_summary (v_pnl_lines), every cost line together, grouped
+-- by category, positive magnitudes, largest first. Aggregated here so the
+-- page never pages through v_pnl_lines. Security invoker.
+create function public.pnl_cost_categories(
+  p_org uuid,
+  p_from date,
+  p_to date,
+  p_include_scheduled boolean default false,
+  p_scope tx_scope default 'business',
+  p_limit int default 8
+) returns table (category_id uuid, name text, amount numeric)
+language sql stable security invoker set search_path = public as $$
+  select l.category_id, coalesce(c.name, 'Χωρίς κατηγορία'), -sum(l.signed_amount)
+  from v_pnl_lines l
+  left join categories c on c.id = l.category_id
+  where l.org_id = p_org
+    and l.tx_date between p_from and p_to
+    and l.line <> 'revenue'
+    and (p_include_scheduled or not l.is_scheduled)
+    and (p_scope is null or l.scope = p_scope)
+  group by l.category_id, c.name
+  having sum(l.signed_amount) < 0
+  order by 3 desc
+  limit least(greatest(coalesce(p_limit, 8), 1), 50)
+$$;
+revoke execute on function public.pnl_cost_categories(uuid, date, date, boolean, tx_scope, int) from public, anon;
+grant execute on function public.pnl_cost_categories(uuid, date, date, boolean, tx_scope, int) to authenticated;

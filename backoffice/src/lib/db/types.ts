@@ -7004,6 +7004,21 @@ export type Database = {
         }
         Returns: string
       }
+      pnl_cost_categories: {
+        Args: {
+          p_from: string
+          p_include_scheduled?: boolean
+          p_limit?: number
+          p_org: string
+          p_scope?: Database["public"]["Enums"]["tx_scope"]
+          p_to: string
+        }
+        Returns: {
+          amount: number
+          category_id: string
+          name: string
+        }[]
+      }
       pnl_summary: {
         Args: {
           p_from: string

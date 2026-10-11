@@ -9,7 +9,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(22);
+select plan(23);
 
 create function pg_temp.as_user(uid uuid) returns void language sql as $$
   select set_config('role', 'authenticated', true),
@@ -129,6 +129,12 @@ select is((select array[tier, count] from v_worklist where code = 'expected_vs_s
   'worklist: expected vs scheduled, tier 1');
 select is((select array[tier, count] from v_worklist where code = 'loan_without_interest'), array[2, 1],
   'worklist: loan without interest, tier 2');
+-- Costs net of VAT, withholding added back (gross − VAT + withholding):
+-- 1000 + 500 + 400, plus the 120 interest; the scheduled 700 only on request.
+select is(
+  array(select name || ':' || amount::int from pnl_cost_categories((select org_a from t_ctx),
+        (select mprev from t_ctx), (select (m0 + interval '1 month - 1 day')::date from t_ctx))),
+  array['Χωρίς κατηγορία:2020'], 'pnl_cost_categories: the period''s costs by category');
 reset role;
 
 -- The VAT of last month paid by a ledger row due this month: that period is
@@ -169,7 +175,8 @@ select is(
 select is(
   (select count(*) from v_qc_expected_vs_scheduled) + (select count(*) from v_qc_loan_without_interest)
   + (select count(*) from v_cash_forecast_items where org_id = (select org_a from t_ctx))
-  + (select count(*) from v_worklist where org_id = (select org_a from t_ctx)),
+  + (select count(*) from v_worklist where org_id = (select org_a from t_ctx))
+  + (select count(*) from pnl_cost_categories((select org_a from t_ctx), (select mprev from t_ctx), (select m0 + 40 from t_ctx))),
   0::bigint, 'org B sees none of org A''s checks, forecast or worklist');
 reset role;
 
