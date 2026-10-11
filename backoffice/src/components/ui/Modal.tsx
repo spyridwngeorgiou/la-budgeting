@@ -4,6 +4,7 @@ import { useId, useState, type ReactNode } from "react";
 import { el } from "@/lib/i18n/el";
 import { errorOf } from "@/lib/actions";
 import { Button } from "./Button";
+import { Notice } from "./Notice";
 import { SubmitButton } from "../SubmitButton";
 import { useDialog } from "./useDialog";
 
@@ -90,9 +91,9 @@ export function DialogForm({
     >
       {children}
       {error && (
-        <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
+        <Notice tone="negative" role="alert">
           {error}
-        </p>
+        </Notice>
       )}
       <div className={footerClassName}>
         <Button type="button" variant="secondary" onClick={onClose}>

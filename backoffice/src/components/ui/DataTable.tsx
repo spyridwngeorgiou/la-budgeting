@@ -126,7 +126,7 @@ export function DataTable<T>({
             {columns.map((c, i) => (
               <td
                 key={c.key}
-                className={cn("border-t border-ink px-3 py-3 font-semibold text-ink", c.numeric && "num text-right", c.className)}
+                className={cn("border-t border-ink px-3 py-3 font-medium text-ink", c.numeric && "num text-right", c.className)}
               >
                 {totals[c.key] ?? (i === 0 ? shell.ui.total : null)}
               </td>
@@ -139,7 +139,7 @@ export function DataTable<T>({
   );
 
   if (mode === "scroll") {
-    return <div className={cn("overflow-x-auto", className)}>{table}</div>;
+    return <div className={cn("scroll-frame max-w-full", className)}>{table}</div>;
   }
 
   const rest = columns.filter((c) => c.key !== primaryKey && !c.hideOnCard);
@@ -173,7 +173,7 @@ export function DataTable<T>({
                 .map((c) => (
                   <div key={c.key} className={cn("flex flex-col", c.numeric && "items-end text-right")}>
                     <dt className="text-small text-muted">{c.header}</dt>
-                    <dd className={cn("text-body font-semibold text-ink", c.numeric && "num")}>{totals[c.key]}</dd>
+                    <dd className={cn("text-body font-medium text-ink", c.numeric && "num")}>{totals[c.key]}</dd>
                   </div>
                 ))}
             </dl>
