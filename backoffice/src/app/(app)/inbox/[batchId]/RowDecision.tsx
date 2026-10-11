@@ -57,7 +57,7 @@ export function RowDecision({
       <Select
         value={value}
         disabled={pending}
-        className={decision === "pending" ? "border-amber-ink/70" : ""}
+        className={decision === "pending" ? "border-warning" : ""}
         onChange={(e) => {
           const next = e.target.value;
           const [d, ids] = next.split("|");
@@ -89,7 +89,7 @@ export function RowDecision({
           </Badge>
         </span>
       ))}
-      {error && <span className="text-xs text-red-ink">{error}</span>}
+      {error && <span role="alert" className="text-xs text-negative">{error}</span>}
     </div>
   );
 }

@@ -37,54 +37,50 @@ export function DueDatesCalendar({ dueDates, todayIso }: { dueDates: DueTx[]; to
   const monthLabel = today.toLocaleDateString("el-GR", { month: "long", year: "numeric", timeZone: "UTC" });
 
   return (
-    <div className="rounded-lg border border-line p-3">
-      <div className="mb-2 text-sm font-medium text-ink capitalize">{monthLabel}</div>
-      <div className="grid grid-cols-7 gap-1 text-center text-xs">
+    <div>
+      <div className="mb-2 text-sm text-ink capitalize">{monthLabel}</div>
+      <div className="grid grid-cols-7 border-t border-l border-hairline text-center text-xs">
         {WEEKDAY_LABELS.map((w) => (
-          <div key={w} className="py-1 text-ink-faint">
+          <div key={w} className="eyebrow border-r border-b border-hairline border-b-rule py-2 text-muted">
             {w}
           </div>
         ))}
         {cells.map(({ day, dateIso, inMonth }) => {
-          if (!inMonth) return <div key={dateIso} />;
+          if (!inMonth) return <div key={dateIso} className="border-r border-b border-hairline" />;
           const entry = byDay.get(dateIso);
           const isToday = dateIso === todayIso;
           const content = (
             <div
-              className={`flex h-14 flex-col items-center justify-start gap-0.5 rounded border p-1 text-xs ${
-                isToday
-                  ? "border-sage-strong bg-sage/40"
-                  : entry?.hasOverdueUnpaid
-                    ? "border-red-ink/40 bg-red-bg"
-                    : entry
-                      ? "border-amber-ink/40 bg-amber-bg"
-                      : "border-line"
-              }`}
+              className={`flex h-14 min-w-0 flex-col items-center justify-start gap-0.5 overflow-hidden border-l-2 p-1 text-xs ${
+                entry?.hasOverdueUnpaid ? "border-l-negative" : entry ? "border-l-warning" : "border-l-transparent"
+              } ${isToday ? "bg-hover" : ""}`}
             >
-              <span className={isToday ? "font-semibold text-sage-ink" : "text-ink-muted"}>{day}</span>
+              <span className={`num ${isToday ? "font-medium text-navy" : "text-muted"}`}>{day}</span>
               {entry && (
-                <span className={`font-mono text-[10px] ${entry.total < 0 ? "text-red-ink" : "text-sage-ink"}`}>
-                  {entry.total < 0 ? "-" : "+"}
+                <span className="num max-w-full truncate text-[10px] text-ink">
+                  {entry.total < 0 ? "−" : "+"}
                   {formatMoney(Math.abs(entry.total))}
                 </span>
               )}
             </div>
           );
           return entry ? (
-            <Link key={dateIso} href={`/transactions?ids=${entry.ids.join(",")}`} className="hover:opacity-80">
+            <Link key={dateIso} href={`/transactions?ids=${entry.ids.join(",")}`} className="border-r border-b border-hairline hover:bg-hover">
               {content}
             </Link>
           ) : (
-            <div key={dateIso}>{content}</div>
+            <div key={dateIso} className="border-r border-b border-hairline">
+              {content}
+            </div>
           );
         })}
       </div>
-      <div className="mt-2 flex flex-wrap gap-3 text-xs text-ink-faint">
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm border border-red-ink/40 bg-red-bg" /> εκπρόθεσμο
+      <div className="mt-2 flex flex-wrap gap-4 text-xs text-muted">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-0.5 bg-negative" /> εκπρόθεσμο
         </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm border border-amber-ink/40 bg-amber-bg" /> προσεχές
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-0.5 bg-warning" /> προσεχές
         </span>
       </div>
     </div>

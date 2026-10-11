@@ -211,29 +211,29 @@ export function ChatPanel({
   }
 
   return (
-    <div className="grid h-[calc(100vh-8rem)] grid-cols-1 gap-3 md:grid-cols-[14rem_minmax(0,1fr)]">
-      <aside className="flex max-h-48 flex-col gap-2 overflow-hidden rounded-lg border border-line bg-surface p-2 md:max-h-none">
+    <div className="grid h-[calc(100vh-8rem)] grid-cols-1 gap-4 md:grid-cols-[14rem_minmax(0,1fr)] md:gap-6">
+      <aside className="flex max-h-48 flex-col gap-2 overflow-hidden border-b border-hairline pb-2 md:max-h-none md:border-r md:border-b-0 md:pr-4 md:pb-0">
         <Button type="button" variant="ai" onClick={newConversation}>
           Νέα συζήτηση
         </Button>
         {listError && (
-          <p role="alert" className="text-xs text-red-ink">
+          <p role="alert" className="border-l-2 border-negative pl-2 text-xs text-negative">
             {listError}
           </p>
         )}
         <nav aria-label="Συζητήσεις" className="flex-1 overflow-y-auto">
           {conversations.length === 0 ? (
-            <p className="p-2 text-xs text-ink-faint">Καμία αποθηκευμένη συζήτηση.</p>
+            <p className="py-2 text-xs text-muted">Καμία αποθηκευμένη συζήτηση.</p>
           ) : (
-            <ul className="flex flex-col gap-0.5">
+            <ul className="flex flex-col">
               {conversations.map((c) => (
-                <li key={c.id} className="group flex items-center gap-1">
+                <li key={c.id} className="group flex items-center gap-1 border-b border-hairline">
                   <button
                     type="button"
                     onClick={() => openConversation(c.id)}
                     aria-current={c.id === activeId ? "true" : undefined}
-                    className={`flex-1 truncate rounded px-2 py-1.5 text-left text-xs ${
-                      c.id === activeId ? "bg-ai-bg font-medium text-ai-ink" : "text-ink-muted hover:bg-bg"
+                    className={`min-h-10 flex-1 truncate border-l-2 px-2 py-2 text-left text-xs ${
+                      c.id === activeId ? "border-ai bg-ai-tint text-ai" : "border-transparent text-muted hover:bg-hover hover:text-ink"
                     }`}
                     title={c.title ?? undefined}
                   >
@@ -243,7 +243,7 @@ export function ChatPanel({
                     type="button"
                     onClick={() => removeConversation(c.id)}
                     aria-label={`Διαγραφή συζήτησης «${c.title ?? ""}»`}
-                    className="rounded px-1 text-xs text-ink-faint opacity-0 group-hover:opacity-100 hover:text-red-ink focus:opacity-100"
+                    className="flex h-10 w-8 items-center justify-center text-xs text-muted opacity-0 group-hover:opacity-100 hover:text-negative focus:opacity-100 max-md:opacity-100"
                   >
                     ×
                   </button>
@@ -255,11 +255,11 @@ export function ChatPanel({
       </aside>
 
       <div className="flex min-h-0 flex-col gap-3">
-        <div className="flex-1 overflow-y-auto rounded-lg border border-line bg-surface p-4" aria-live="polite">
-          {loadingThread && <p className="text-sm text-ink-faint">Φόρτωση συζήτησης…</p>}
+        <div className="flex-1 overflow-y-auto border-y border-hairline py-4" aria-live="polite">
+          {loadingThread && <p className="text-sm text-muted">Φόρτωση συζήτησης…</p>}
           {!loadingThread && messages.length === 0 && (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-              <p className="text-sm text-ink-muted">
+              <p className="max-w-prose text-sm text-muted">
                 Ρωτήστε οτιδήποτε για τα οικονομικά της επιχείρησης — κάθε απάντηση βασίζεται σε πραγματικά δεδομένα
                 από το βιβλίο σας, με συνδέσμους στις πηγές.
               </p>
@@ -269,7 +269,7 @@ export function ChatPanel({
                     key={s}
                     type="button"
                     onClick={() => send(s)}
-                    className="rounded-full border border-line-strong px-3 py-1.5 text-xs text-ink-muted hover:bg-bg"
+                    className="inline-flex min-h-9 items-center border border-ai-border px-3 py-1.5 text-xs text-ai hover:bg-ai-tint"
                   >
                     {s}
                   </button>
@@ -320,7 +320,7 @@ function MessageView({ message: m, canReview }: { message: UiMessage; canReview:
   if (m.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-lg bg-ink px-3 py-2 text-sm whitespace-pre-wrap text-white">{m.content}</div>
+        <div className="max-w-[85%] bg-hover px-3 py-2 text-sm whitespace-pre-wrap text-ink">{m.content}</div>
       </div>
     );
   }
@@ -333,12 +333,12 @@ function MessageView({ message: m, canReview }: { message: UiMessage; canReview:
             {m.tools.map((t, i) => (
               <span
                 key={i}
-                className={`rounded-full border px-2 py-0.5 text-[11px] ${
+                className={`border px-2 py-0.5 text-[11px] ${
                   t.status === "error"
-                    ? "border-red-ink/30 text-red-ink"
+                    ? "border-negative text-negative"
                     : t.status === "start"
-                      ? "animate-pulse border-ai-border text-ai-ink"
-                      : "border-line text-ink-muted"
+                      ? "animate-pulse border-ai-border text-ai"
+                      : "border-hairline text-muted"
                 }`}
               >
                 {TOOL_LABEL[t.name] ?? t.name}
@@ -348,25 +348,25 @@ function MessageView({ message: m, canReview }: { message: UiMessage; canReview:
           </div>
         )}
         {(m.content || thinking) && (
-          <div className="rounded-lg border border-ai-border bg-ai-bg px-3 py-2 text-sm whitespace-pre-wrap text-ink">
-            {m.content || <span className="text-ink-faint">Ο βοηθός σκέφτεται…</span>}
+          <div className="border-l-2 border-ai-border py-1 pl-3 text-sm whitespace-pre-wrap text-ink">
+            {m.content || <span className="text-muted">Ο βοηθός σκέφτεται…</span>}
           </div>
         )}
         {m.proposals.map((p) => (
           <ChangeCardView key={p.id} initial={p} canReview={canReview} />
         ))}
         {m.error && (
-          <div role="alert" className="rounded-lg bg-red-bg px-3 py-2 text-sm text-red-ink">
+          <div role="alert" className="border-l-2 border-negative py-1 pl-3 text-sm text-negative">
             {m.error}
           </div>
         )}
         {m.sources.length > 0 && (
-          <div className="text-xs text-ink-muted">
+          <div className="text-xs text-muted">
             <span className="font-medium">Πηγές: </span>
             {m.sources.map((s, i) => (
               <span key={s.href}>
                 {i > 0 && " · "}
-                <Link href={s.href} className="underline hover:text-ink">
+                <Link href={s.href} className="underline underline-offset-4 hover:text-ink">
                   {s.label}
                 </Link>
               </span>

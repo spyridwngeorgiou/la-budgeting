@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { uploadAadeFile } from "./actions";
 import { ActionForm } from "@/components/ActionForm";
+import { specRow, specTable, specTd, specTh } from "@/components/specTable";
 
 const STATUS_LABEL = { draft: "Πρόχειρο", committed: "Ολοκληρώθηκε", discarded: "Απορρίφθηκε" } as const;
 const STATUS_TONE = { draft: "amber", committed: "green", discarded: "neutral" } as const;
@@ -23,68 +24,74 @@ export default async function AadePage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <Link href="/inbox" className="text-sm text-ink-muted hover:text-ink">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1.5 border-b border-rule pb-4">
+        <Link href="/inbox" className="eyebrow inline-flex min-h-8 items-center text-muted hover:text-ink">
           ← {el.nav.inbox}
         </Link>
-        <h1 className="text-xl font-semibold">{el.nav.aade}</h1>
-        <p className="mt-1 text-sm text-ink-muted">
+        <h1 className="text-title font-normal text-ink">{el.nav.aade}</h1>
+        <p className="text-small text-muted">
           Ανεβάστε το αρχείο εξαγωγής myDATA/AADE για να ελέγξετε και να εισάγετε παραστατικά μαζικά.
         </p>
       </div>
 
       {(!org?.own_afm || org.own_afm === "000000000") && (
-        <div className="rounded-lg border border-amber-ink/40 bg-amber-bg p-3 text-sm text-amber-ink">
+        <div className="border-l-2 border-warning py-1 pl-4 text-sm text-warning">
           Ορίστε πρώτα το πραγματικό ΑΦΜ της επιχείρησης στις{" "}
-          <Link href="/settings" className="underline">
+          <Link href="/settings" className="underline underline-offset-4">
             Ρυθμίσεις
           </Link>{" "}
           — χρειάζεται για να καθοριστεί σωστά η κατεύθυνση (έσοδο/έξοδο) κάθε κίνησης.
         </div>
       )}
 
-      <ActionForm action={uploadAadeFile} className="flex flex-wrap items-center gap-2 rounded-lg border border-line p-4">
-        <input type="file" name="file" accept=".xlsx" required className="text-sm" />
+      <ActionForm action={uploadAadeFile} className="flex flex-wrap items-center gap-2 border-b border-hairline pb-4">
+        <input
+          type="file"
+          name="file"
+          accept=".xlsx"
+          required
+          className="min-h-10 min-w-0 text-sm text-text file:mr-3 file:min-h-10 file:border file:border-chip-border file:bg-transparent file:px-3 file:text-sm file:text-ink hover:file:border-navy"
+        />
         <SubmitButton pendingLabel="Εισαγωγή…">Εισαγωγή Αρχείου myDATA</SubmitButton>
       </ActionForm>
 
       {(batches ?? []).length === 0 ? (
-        <p className="p-6 text-center text-sm text-ink-muted">
+        <p className="border-y border-hairline py-6 text-sm text-muted">
           Δεν έχει γίνει ακόμα καμία εισαγωγή. Ανεβάστε ένα αρχείο myDATA (.xlsx) παραπάνω.
         </p>
       ) : (
-      <div className="overflow-x-auto rounded-lg border border-line">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-bg text-ink-muted">
+      <div className="overflow-x-auto">
+        <table className={specTable}>
+          <thead>
             <tr>
-              <th className="p-2">Αρχείο</th>
-              <th className="hidden p-2 sm:table-cell">Περίοδος</th>
-              <th className="hidden p-2 text-right sm:table-cell">Γραμμές</th>
-              <th className="hidden p-2 text-right md:table-cell">Νέες</th>
-              <th className="hidden p-2 text-right md:table-cell">Διπλότυπες</th>
-              <th className="p-2">Κατάσταση</th>
-              <th className="hidden p-2 md:table-cell">Ημ/νία</th>
+              <th scope="col" className={specTh}>Αρχείο</th>
+              <th scope="col" className={`${specTh} hidden sm:table-cell`}>Περίοδος</th>
+              <th scope="col" className={`${specTh} hidden text-right sm:table-cell`}>Γραμμές</th>
+              <th scope="col" className={`${specTh} hidden text-right md:table-cell`}>Νέες</th>
+              <th scope="col" className={`${specTh} hidden text-right md:table-cell`}>Διπλότυπες</th>
+              <th scope="col" className={specTh}>Κατάσταση</th>
+              <th scope="col" className={`${specTh} hidden text-right md:table-cell`}>Ημ/νία</th>
             </tr>
           </thead>
           <tbody>
             {(batches ?? []).map((b) => (
-              <tr key={b.id} className="border-t border-line">
-                <td className="p-2">
-                  <Link href={`/aade/${b.id}`} className="hover:underline">
+              <tr key={b.id} className={specRow}>
+                <td className={`${specTd} text-ink`}>
+                  <Link href={`/aade/${b.id}`} className="underline-offset-4 hover:underline">
                     {b.filename}
                   </Link>
                 </td>
-                <td className="hidden p-2 sm:table-cell">{b.period ?? "—"}</td>
-                <td className="hidden p-2 text-right sm:table-cell">{b.row_count}</td>
-                <td className="hidden p-2 text-right md:table-cell">{b.new_count ?? "—"}</td>
-                <td className="hidden p-2 text-right md:table-cell">{b.dup_count ?? "—"}</td>
-                <td className="p-2">
+                <td className={`${specTd} hidden sm:table-cell`}>{b.period ?? "—"}</td>
+                <td className={`${specTd} num hidden text-right sm:table-cell`}>{b.row_count}</td>
+                <td className={`${specTd} num hidden text-right md:table-cell`}>{b.new_count ?? "—"}</td>
+                <td className={`${specTd} num hidden text-right md:table-cell`}>{b.dup_count ?? "—"}</td>
+                <td className={specTd}>
                   <Badge tone={STATUS_TONE[b.status as keyof typeof STATUS_TONE]}>
                     {STATUS_LABEL[b.status as keyof typeof STATUS_LABEL]}
                   </Badge>
                 </td>
-                <td className="hidden p-2 text-xs text-ink-muted md:table-cell">{formatDate(b.uploaded_at)}</td>
+                <td className={`${specTd} num hidden text-right text-xs text-muted md:table-cell`}>{formatDate(b.uploaded_at)}</td>
               </tr>
             ))}
           </tbody>

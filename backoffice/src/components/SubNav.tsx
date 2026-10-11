@@ -10,7 +10,7 @@ export function SubNav({ tabs, label, query = "" }: { tabs: SubNavTab[]; label: 
   const pathname = usePathname() ?? "";
   const active = activeTab(tabs, pathname);
   return (
-    <nav className="flex gap-1 overflow-x-auto border-b border-line" aria-label={label}>
+    <nav className="flex gap-1 overflow-x-auto border-b border-hairline" aria-label={label}>
       {tabs.map((t) => {
         const isActive = t.href === active;
         return (
@@ -18,8 +18,8 @@ export function SubNav({ tabs, label, query = "" }: { tabs: SubNavTab[]; label: 
             key={t.href}
             href={`${t.href}${query}`}
             aria-current={isActive ? "page" : undefined}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm whitespace-nowrap ${
-              isActive ? "border-ink font-medium text-ink" : "border-transparent text-ink-muted hover:text-ink"
+            className={`-mb-px min-h-10 border-b-2 px-3 py-2.5 text-sm whitespace-nowrap ${
+              isActive ? "border-navy text-ink" : "border-transparent text-muted hover:text-ink"
             }`}
           >
             {t.label}

@@ -42,19 +42,19 @@ export async function PendingChanges() {
 
   return (
     <section id="changes" className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <AiSpark className="text-ai-ink" />
-        <h2 className="text-base font-semibold">{el.nav.changes}</h2>
+      <div className="flex items-center gap-2 border-b border-hairline pb-3">
+        <AiSpark className="text-ai" />
+        <h2 className="text-section font-normal text-ink">{el.nav.changes}</h2>
       </div>
-      <p className="text-sm text-ink-muted">
+      <p className="text-sm text-muted">
         Προτάσεις αλλαγών από το Kansha Operator. Καμία δεν έχει εφαρμοστεί ακόμα -- ελέγξτε το πριν/μετά και
         εγκρίνετε ή απορρίψτε.
       </p>
 
       {(changes ?? []).length === 0 ? (
-        <p className="text-sm text-ink-faint">Καμία εκκρεμής πρόταση αυτή τη στιγμή.</p>
+        <p className="border-b border-hairline pb-3 text-sm text-muted">Καμία εκκρεμής πρόταση αυτή τη στιγμή.</p>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-4">
           {(changes ?? []).map((c) => (
             <ChangeCardView key={c.id} initial={toChangeCard(c)} canReview />
           ))}
@@ -63,30 +63,30 @@ export async function PendingChanges() {
 
       {history && history.length > 0 && (
         <section>
-          <h2 className="mb-2 text-sm font-medium text-ink-muted">Ιστορικό Αποφάσεων</h2>
-          <div className="overflow-x-auto rounded-lg border border-line">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-bg text-ink-muted">
+          <h2 className="eyebrow mb-2 text-muted">Ιστορικό Αποφάσεων</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-xs">
+              <thead>
                 <tr>
-                  <th className="p-1.5">Πίνακας</th>
-                  <th className="p-1.5">Ενέργεια</th>
-                  <th className="p-1.5">Απόφαση</th>
-                  <th className="p-1.5">Από</th>
-                  <th className="p-1.5">Πότε</th>
+                  <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Πίνακας</th>
+                  <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Ενέργεια</th>
+                  <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Απόφαση</th>
+                  <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Από</th>
+                  <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Πότε</th>
                 </tr>
               </thead>
               <tbody>
                 {history.map((h) => (
-                  <tr key={h.id} className="border-t border-line">
-                    <td className="p-1.5">{tableLabel(h.table_name, h.action)}</td>
-                    <td className="p-1.5">{OP_LABEL[h.operation as ChangeOperation] ?? h.operation}</td>
-                    <td className="p-1.5">
+                  <tr key={h.id}>
+                    <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0">{tableLabel(h.table_name, h.action)}</td>
+                    <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0">{OP_LABEL[h.operation as ChangeOperation] ?? h.operation}</td>
+                    <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0">
                       <Badge tone={h.status === "approved" ? "green" : "red"}>
                         {STATUS_LABEL[h.status as ChangeStatus] ?? h.status}
                       </Badge>
                     </td>
-                    <td className="p-1.5">{reviewerName(h.reviewed_by)}</td>
-                    <td className="p-1.5 text-ink-faint">{h.reviewed_at ? formatDate(h.reviewed_at) : "—"}</td>
+                    <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0">{reviewerName(h.reviewed_by)}</td>
+                    <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0 num text-muted">{h.reviewed_at ? formatDate(h.reviewed_at) : "—"}</td>
                   </tr>
                 ))}
               </tbody>

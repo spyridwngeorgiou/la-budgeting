@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { Card } from "@/components/ui";
+import { SectionHeader } from "@/components/ui";
+import { specRow, specTable, specTd, specTh } from "@/components/specTable";
 import { formatMoney } from "@/lib/format";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { ingestUnified } from "@/lib/ingest/flag";
@@ -75,13 +76,13 @@ export async function CaptureAnalytics() {
 
   if (!usage || usage.length === 0) {
     return (
-      <Card className="max-w-2xl">
-        <h2 className="mb-1 text-sm font-medium text-ink-muted">Ανάλυση Καταγραφής AI</h2>
-        <p className="text-sm text-ink-faint">
+      <section className="flex w-full max-w-2xl flex-col gap-4">
+        <SectionHeader title="Ανάλυση Καταγραφής AI" />
+        <p className="text-sm text-muted">
           Καμία χρήση AI ακόμα. Αυτή η ενότητα γεμίζει μόλις αρχίσετε να χρησιμοποιείτε το Kansha
           Operator για πραγματικές κινήσεις.
         </p>
-      </Card>
+      </section>
     );
   }
 
@@ -107,20 +108,20 @@ export async function CaptureAnalytics() {
   };
 
   return (
-    <Card className="max-w-2xl">
-      <h2 className="mb-1 text-sm font-medium text-ink-muted">Ανάλυση Καταγραφής AI</h2>
-      <p className="mb-3 text-xs text-ink-faint">
+    <section className="flex w-full max-w-2xl flex-col gap-4">
+      <SectionHeader title="Ανάλυση Καταγραφής AI" />
+      <p className="text-xs text-muted">
         Ταχύτητα και ακρίβεια ανά λειτουργία AI, από τις πραγματικές κλήσεις.
       </p>
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="text-ink-muted">
+        <table className={specTable}>
+          <thead>
             <tr>
-              <th className="py-1 pr-4 font-medium">Λειτουργία</th>
-              <th className="py-1 pr-4 text-right font-medium">Κλήσεις</th>
-              <th className="py-1 pr-4 text-right font-medium">Μέση Ταχύτητα</th>
-              <th className="py-1 pr-4 text-right font-medium">Ποσοστό Επεξεργασίας</th>
-              <th className="py-1 text-right font-medium">Κόστος</th>
+              <th scope="col" className={specTh}>Λειτουργία</th>
+              <th scope="col" className={`${specTh} text-right`}>Κλήσεις</th>
+              <th scope="col" className={`${specTh} text-right`}>Μέση Ταχύτητα</th>
+              <th scope="col" className={`${specTh} text-right`}>Ποσοστό Επεξεργασίας</th>
+              <th scope="col" className={`${specTh} text-right`}>Κόστος</th>
             </tr>
           </thead>
           <tbody>
@@ -133,26 +134,26 @@ export async function CaptureAnalytics() {
                     ? editRateBySource("ai_nl")
                     : null;
               return (
-                <tr key={feature} className="border-t border-line">
-                  <td className="py-1.5 pr-4">{FEATURE_LABELS[feature] ?? feature}</td>
-                  <td className="py-1.5 pr-4 text-right font-mono">{stats.count}</td>
-                  <td className="py-1.5 pr-4 text-right font-mono">
+                <tr key={feature} className={specRow}>
+                  <td className={`${specTd} text-ink`}>{FEATURE_LABELS[feature] ?? feature}</td>
+                  <td className={`${specTd} num text-right`}>{stats.count}</td>
+                  <td className={`${specTd} num text-right`}>
                     {med != null ? `${(med / 1000).toFixed(1)}s` : "—"}
                   </td>
-                  <td className="py-1.5 pr-4 text-right font-mono">
+                  <td className={`${specTd} num text-right`}>
                     {editRate ? `${Math.round((editRate.edited / editRate.total) * 100)}%` : "—"}
                   </td>
-                  <td className="py-1.5 text-right font-mono">{formatMoney(stats.costCents / 100)}</td>
+                  <td className={`${specTd} num text-right`}>{formatMoney(stats.costCents / 100)}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
-      <p className="mt-2 text-xs text-ink-faint">
+      <p className="text-xs text-muted">
         «Ποσοστό Επεξεργασίας» = πόσες εγκεκριμένες κινήσεις χρειάστηκαν διόρθωση πριν καταχωρηθούν
         (μόνο για φωτό/κείμενο-φωνή).
       </p>
-    </Card>
+    </section>
   );
 }

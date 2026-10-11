@@ -75,7 +75,7 @@ export function NlEntryForm() {
         const message = errorOf(await submitNlEntry(formData));
         if (message) setError(message);
       }}
-      className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4"
+      className="flex flex-col gap-3"
     >
       <div className="flex items-start gap-2">
         <textarea
@@ -85,7 +85,7 @@ export function NlEntryForm() {
           placeholder="π.χ. Πλήρευσα 80 ευρώ στον υδραυλικό για το Q003, μετρητά, χωρίς απόδειξη. Μπορείτε να περιγράψετε περισσότερες από μία κινήσεις μαζί -- θα καταχωρηθούν ξεχωριστά."
           rows={3}
           required
-          className="flex-1 rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-sage-strong focus:outline-none"
+          className="min-w-0 flex-1 border border-field-border bg-field px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-navy focus:outline-none"
         />
         {micSupported && (
           <Button
@@ -98,7 +98,11 @@ export function NlEntryForm() {
           </Button>
         )}
       </div>
-      {error && <p className="text-sm text-red-ink">{error}</p>}
+      {error && (
+        <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+          {error}
+        </p>
+      )}
       <SubmitButton variant={text.trim() ? "aiSolid" : "ai"} className="w-full py-3 text-base" pendingLabel="Ανάλυση περιγραφής…" disabled={!text.trim()}>
         <AiSpark className="mr-1.5" />
         Ανάλυση με AI

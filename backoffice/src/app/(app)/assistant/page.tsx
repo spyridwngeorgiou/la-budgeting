@@ -31,11 +31,11 @@ export default async function AssistantPage({
   const showChanges = canReview && panel === "changes";
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">{el.nav.assistant}</h1>
-          <p className="mt-1 text-sm text-ink-muted">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-rule pb-4">
+        <div className="flex min-w-0 max-w-3xl flex-col gap-1.5">
+          <h1 className="text-title font-normal text-ink">{el.nav.assistant}</h1>
+          <p className="text-small text-muted">
             Ρωτήστε ελεύθερα για τα οικονομικά της επιχείρησης -- κάθε απάντηση βασίζεται σε πραγματικά δεδομένα,
             ποτέ σε εικασία, με «Πηγές» για κάθε αριθμό. Οι αλλαγές που προτείνει ο βοηθός εφαρμόζονται μόνο αφού
             τις εγκρίνετε.
@@ -45,8 +45,8 @@ export default async function AssistantPage({
           <Link
             href={showChanges ? "/assistant" : "/assistant?panel=changes"}
             aria-expanded={showChanges}
-            className={`rounded-md border px-3 py-1.5 text-sm whitespace-nowrap ${
-              showChanges ? "border-ai-border bg-ai-bg font-medium text-ai-ink" : "border-line text-ink-muted hover:text-ink"
+            className={`inline-flex min-h-10 items-center border px-3 py-1.5 text-sm whitespace-nowrap ${
+              showChanges ? "border-ai bg-ai-tint text-ai" : "border-chip-border text-muted hover:border-navy hover:text-ink"
             }`}
           >
             {el.nav.pending} ({pending})

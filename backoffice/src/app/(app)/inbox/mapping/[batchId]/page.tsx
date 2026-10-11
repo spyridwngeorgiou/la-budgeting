@@ -24,7 +24,7 @@ export default async function MappingPage({ params }: { params: Promise<{ batchI
   try {
     ({ grid } = await readBankGrid({ name: batch.filename ?? "", mimeType: "", bytes: new Uint8Array(await blob.arrayBuffer()) }));
   } catch (e) {
-    if (e instanceof UnsupportedFileError) return <p className="text-sm text-red-ink">{e.message}</p>;
+    if (e instanceof UnsupportedFileError) return <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">{e.message}</p>;
     throw e;
   }
 
@@ -33,10 +33,10 @@ export default async function MappingPage({ params }: { params: Promise<{ batchI
   const width = Math.max(1, ...preview.map((r) => r.length));
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Αντιστοίχιση στηλών</h1>
-        <p className="mt-1 text-sm text-ink-muted">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-1.5 border-b border-rule pb-4">
+        <h1 className="text-title font-normal text-ink">Αντιστοίχιση στηλών</h1>
+        <p className="text-small text-muted">
           Η μορφή του «{batch.filename}» δεν αναγνωρίστηκε. Δείξτε ποια γραμμή είναι η επικεφαλίδα και τι περιέχει κάθε
           στήλη — η αντιστοίχιση αποθηκεύεται και το επόμενο αρχείο της ίδιας τράπεζας αναγνωρίζεται αυτόματα.
         </p>

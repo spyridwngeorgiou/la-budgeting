@@ -49,8 +49,8 @@ export function Nav({
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      <nav className="border-b border-line bg-surface md:w-56 md:border-b-0 md:border-r">
-        <Link href="/dashboard" className="block px-4 pt-4 pb-2">
+      <nav className="min-w-0 border-b border-hairline bg-canvas md:sticky md:top-0 md:h-screen md:w-56 md:shrink-0 md:overflow-y-auto md:border-b-0 md:border-r">
+        <Link href="/dashboard" className="block px-4 pt-5 pb-3">
           <Image
             src="/kansha-logo.png"
             alt="Kansha"
@@ -61,7 +61,7 @@ export function Nav({
           />
         </Link>
         <OrgSwitcher orgs={orgs} currentOrgId={currentOrgId} />
-        <ul className="flex gap-1 overflow-x-auto p-2 text-sm md:flex-col md:overflow-visible">
+        <ul className="flex overflow-x-auto px-2 text-sm md:flex-col md:gap-px md:overflow-visible md:px-0 md:py-2">
           {items.map((item) => {
             const path = pathname ?? "";
             const active = owns(item.href, path) || (item.also ?? []).some((p) => owns(p, path));
@@ -70,21 +70,22 @@ export function Nav({
               <li key={item.href} className="shrink-0">
                 <Link
                   href={item.href}
-                  className={`flex items-center gap-1.5 rounded-md px-3 py-2 whitespace-nowrap transition-colors ${
+                  aria-current={active ? "page" : undefined}
+                  className={`flex min-h-11 items-center gap-1.5 border-b-2 px-3 whitespace-nowrap transition-colors md:border-b-0 md:border-l-2 md:px-4 ${
                     active
                       ? item.ai
-                        ? "bg-ai-bg font-medium text-ai-ink"
-                        : "bg-sage font-medium text-sage-ink"
+                        ? "border-ai bg-ai-tint text-ai"
+                        : "border-navy bg-hover text-ink"
                       : item.ai
-                        ? "text-ai-ink hover:bg-ai-bg"
-                        : "text-ink-muted hover:bg-bg hover:text-ink"
+                        ? "border-transparent text-ai hover:bg-ai-tint"
+                        : "border-transparent text-muted hover:bg-hover hover:text-ink"
                   }`}
                 >
                   {item.ai && <AiSpark />}
                   {item.label}
                   {badge !== null && (
                     <span
-                      className="ml-auto rounded-full bg-ai-ink px-1.5 text-[11px] leading-[18px] font-medium text-white"
+                      className="num ml-auto border border-ai-border px-1.5 text-[11px] leading-[18px] font-medium text-ai"
                       aria-label={`${badge} ${el.nav.pending}`}
                     >
                       {badge}
@@ -96,7 +97,7 @@ export function Nav({
           })}
         </ul>
       </nav>
-      <main className="flex-1 bg-bg p-4 md:p-6">{children}</main>
+      <main className="min-w-0 flex-1 bg-canvas px-4 py-5 md:px-8 md:py-8">{children}</main>
     </div>
   );
 }

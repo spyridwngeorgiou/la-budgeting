@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { formatMoney, formatDate } from "@/lib/format";
 import { Badge, Button, Select } from "@/components/ui";
 import { updateStagingRowField, bulkAssign } from "../actions";
+import { specRow, specTable, specTd, specTh } from "@/components/specTable";
 
 interface Option {
   id: string;
@@ -78,7 +79,7 @@ export function ReviewTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <label className="flex items-center gap-2 text-sm text-ink-muted">
+      <label className="flex min-h-10 items-center gap-2 text-sm text-muted">
         <input
           type="checkbox"
           checked={showDuplicates}
@@ -88,7 +89,7 @@ export function ReviewTable({
       </label>
 
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line-strong bg-bg p-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 border-y border-hairline py-2 text-sm">
           <span>{selected.size} επιλεγμένες:</span>
           <Select value={bulkProject} onChange={(e) => setBulkProject(e.target.value)}>
             <option value="">Έργο —</option>
@@ -120,24 +121,24 @@ export function ReviewTable({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-line">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-bg text-ink-muted">
+      <div className="overflow-x-auto">
+        <table className={specTable}>
+          <thead>
             <tr>
-              <th className="p-2"></th>
-              <th className="p-2">Ημ/νία</th>
-              <th className="p-2">Αντισυμβαλλόμενος</th>
-              <th className="p-2 text-right">Ποσό</th>
-              <th className="p-2">Κατάσταση</th>
-              <th className="p-2">Έργο</th>
-              <th className="p-2">Κατηγορία</th>
-              <th className="p-2">Λογαριασμός</th>
+              <th scope="col" className={specTh}></th>
+              <th scope="col" className={specTh}>Ημ/νία</th>
+              <th scope="col" className={specTh}>Αντισυμβαλλόμενος</th>
+              <th scope="col" className={`${specTh} text-right`}>Ποσό</th>
+              <th scope="col" className={specTh}>Κατάσταση</th>
+              <th scope="col" className={specTh}>Έργο</th>
+              <th scope="col" className={specTh}>Κατηγορία</th>
+              <th scope="col" className={specTh}>Λογαριασμός</th>
             </tr>
           </thead>
           <tbody>
             {visibleRows.map((row) => (
-              <tr key={row.id} className="border-t border-line">
-                <td className="p-2">
+              <tr key={row.id} className={specRow}>
+                <td className={specTd}>
                   {row.dedup_status === "new" && (
                     <input
                       type="checkbox"
@@ -146,14 +147,15 @@ export function ReviewTable({
                     />
                   )}
                 </td>
-                <td className="p-2">{formatDate(row.issue_date)}</td>
-                <td className="p-2">{row.counterparty_name ?? "—"}</td>
+                <td className={`${specTd} num`}>{formatDate(row.issue_date)}</td>
+                <td className={`${specTd} text-ink`}>{row.counterparty_name ?? "—"}</td>
                 <td
-                  className={`p-2 text-right font-mono ${row.direction === "income" ? "text-sage-ink" : ""}`}
+                  className={`${specTd} num text-right text-ink`}
                 >
+                  {row.direction === "income" ? "+" : row.direction === "expense" ? "−" : ""}
                   {formatMoney(row.gross_amount)}
                 </td>
-                <td className="p-2">
+                <td className={specTd}>
                   {row.dedup_status === "new" ? (
                     <Badge tone="green">Νέα</Badge>
                   ) : (
@@ -162,7 +164,7 @@ export function ReviewTable({
                 </td>
                 {row.dedup_status === "new" ? (
                   <>
-                    <td className="p-2">
+                    <td className={specTd}>
                       <RowSelect
                         rowId={row.id}
                         field="project_id"
@@ -170,7 +172,7 @@ export function ReviewTable({
                         options={projects}
                       />
                     </td>
-                    <td className="p-2">
+                    <td className={specTd}>
                       <RowSelect
                         rowId={row.id}
                         field="category_id"
@@ -178,7 +180,7 @@ export function ReviewTable({
                         options={categories}
                       />
                     </td>
-                    <td className="p-2">
+                    <td className={specTd}>
                       <RowSelect
                         rowId={row.id}
                         field="account_id"
@@ -188,7 +190,7 @@ export function ReviewTable({
                     </td>
                   </>
                 ) : (
-                  <td className="p-2 text-xs text-ink-faint" colSpan={3}>
+                  <td className={`${specTd} text-xs text-muted`} colSpan={3}>
                     Θα παραλειφθεί
                   </td>
                 )}

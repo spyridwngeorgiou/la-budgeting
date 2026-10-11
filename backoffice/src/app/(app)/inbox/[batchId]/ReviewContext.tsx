@@ -68,7 +68,7 @@ export function AssignSelect({
         aria-label={FIELD_LABEL[field]}
         defaultValue={value ?? ""}
         disabled={pending}
-        className={`w-full !py-1 text-xs ${!value && field !== "category_id" ? "border-amber-ink/70" : ""}`}
+        className={`w-full !py-1 text-xs ${!value && field !== "category_id" ? "border-warning" : ""}`}
         onChange={(e) => {
           const next = e.target.value;
           setError(null);
@@ -85,7 +85,7 @@ export function AssignSelect({
           </option>
         ))}
       </Select>
-      {error && <span className="text-xs text-red-ink">{error}</span>}
+      {error && <span role="alert" className="text-xs text-negative">{error}</span>}
     </>
   );
 }
@@ -108,7 +108,7 @@ export function BulkAssignBar() {
   return (
     <form
       id={BULK_FORM_ID}
-      className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-bg p-2 text-sm"
+      className="flex flex-wrap items-center gap-2 border-y border-hairline py-2 text-sm"
       onSubmit={(e) => {
         e.preventDefault();
         const form = e.currentTarget;
@@ -121,7 +121,7 @@ export function BulkAssignBar() {
         });
       }}
     >
-      <span className="text-ink-muted">{el.ingest.review.selected}</span>
+      <span className="eyebrow text-muted">{el.ingest.review.selected}</span>
       {(Object.keys(FIELD_OPTIONS) as (keyof typeof FIELD_OPTIONS)[]).map((field) => (
         <Select key={field} name={field} defaultValue="" className="!py-1 text-xs">
           <option value="">{FIELD_LABEL[field]} —</option>
@@ -135,7 +135,7 @@ export function BulkAssignBar() {
       <Button type="submit" disabled={pending} className="!px-2 !py-1 text-xs">
         {el.ingest.review.apply}
       </Button>
-      {error && <span className="text-xs text-red-ink">{error}</span>}
+      {error && <span role="alert" className="text-xs text-negative">{error}</span>}
     </form>
   );
 }

@@ -19,24 +19,24 @@ export function UploadChooser({ accounts }: { accounts: { id: string; label: str
   const [showBank, setShowBank] = useState(true);
   return (
     <section className="flex flex-col gap-3" aria-labelledby="upload-title">
-      <div>
-        <h2 id="upload-title" className="text-base font-semibold">
+      <div className="border-b border-hairline pb-3">
+        <h2 id="upload-title" className="text-section font-normal text-ink">
           {el.upload.title}
         </h2>
-        <p className="text-sm text-ink-muted">{el.upload.hint}</p>
+        <p className="mt-1 text-sm text-muted">{el.upload.hint}</p>
       </div>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {CHOICES.map(({ key, icon: Icon, title, text, href }) => {
           const active = key === "bank" && showBank;
-          const className = `flex items-start gap-3 rounded-lg border bg-surface p-3 text-left transition-colors ${
-            active ? "border-sage-strong ring-2 ring-sage" : "border-line hover:border-line-strong hover:bg-bg"
+          const className = `flex min-h-11 items-start gap-3 border p-3 text-left transition-colors ${
+            active ? "border-navy bg-hover" : "border-hairline hover:border-chip-border hover:bg-hover"
           }`;
           const body = (
             <>
-              <Icon className="mt-0.5 h-5 w-5 shrink-0 text-ink-muted" aria-hidden />
+              <Icon className={`mt-0.5 h-5 w-5 shrink-0 ${active ? "text-navy" : "text-muted"}`} strokeWidth={1.5} aria-hidden />
               <span className="flex flex-col gap-0.5">
-                <span className="text-sm font-medium text-ink">{title}</span>
-                <span className="text-xs text-ink-muted">{text}</span>
+                <span className="text-sm text-ink">{title}</span>
+                <span className="text-xs text-muted">{text}</span>
               </span>
             </>
           );

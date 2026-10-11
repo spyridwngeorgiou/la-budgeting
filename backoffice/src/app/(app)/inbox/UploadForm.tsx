@@ -2,6 +2,7 @@
 
 import { startTransition, useActionState } from "react";
 import { Button, Select } from "@/components/ui";
+import { alertNegative } from "@/components/specTable";
 import { uploadBankStatement, type InboxResult } from "./actions";
 
 // The one drop zone. Today it takes bank statements (CSV / XLSX); AADE,
@@ -21,10 +22,16 @@ export function UploadForm({ accounts }: { accounts: { id: string; label: string
         const formData = new FormData(e.currentTarget);
         startTransition(() => action(formData));
       }}
-      className="flex flex-col gap-2 rounded-lg border border-line p-4"
+      className="flex flex-col gap-2 border-b border-hairline pb-4"
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <input type="file" name="file" accept=".csv,.txt,.xlsx" required className="min-w-0 text-sm" />
+        <input
+          type="file"
+          name="file"
+          accept=".csv,.txt,.xlsx"
+          required
+          className="min-h-10 min-w-0 text-sm text-text file:mr-3 file:min-h-10 file:border file:border-chip-border file:bg-transparent file:px-3 file:text-sm file:text-ink hover:file:border-navy"
+        />
         <Select name="account_id" required defaultValue="" className="sm:w-64">
           <option value="" disabled>
             Λογαριασμός αντιγράφου…
@@ -39,10 +46,12 @@ export function UploadForm({ accounts }: { accounts: { id: string; label: string
           {pending ? "Ανάγνωση…" : "Ανέβασμα αντιγράφου κίνησης"}
         </Button>
       </div>
-      <p className="text-xs text-ink-muted">
+      <p className="text-xs text-muted">
         CSV ή XLSX από το e-banking. Τα παλιά .xls: ανοίξτε τα στο Excel και αποθηκεύστε ως .xlsx.
       </p>
-      {state && "error" in state && <p className="text-sm text-red-ink">{state.error}</p>}
+      {state && "error" in state && <p role="alert" className={alertNegative}>
+          {state.error}
+        </p>}
     </form>
   );
 }

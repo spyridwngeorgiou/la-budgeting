@@ -41,11 +41,11 @@ export default async function AadeBatchReviewPage({
   const dupCount = (rows?.length ?? 0) - newCount;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">{batch.filename}</h1>
-          <p className="text-sm text-ink-muted">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-rule pb-4">
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <h1 className="text-title font-normal break-words text-ink">{batch.filename}</h1>
+          <p className="text-small text-muted">
             {rows?.length ?? 0} γραμμές · {newCount} νέες · {dupCount} διπλότυπες
           </p>
         </div>
@@ -59,8 +59,8 @@ export default async function AadeBatchReviewPage({
       </div>
 
       {failedRows.length > 0 && (
-        <div role="alert" className="rounded-lg border border-red-ink/40 bg-red-bg p-3 text-sm text-red-ink">
-          <p className="font-semibold">
+        <div role="alert" className="border-l-2 border-negative py-1 pl-4 text-sm text-negative">
+          <p className="eyebrow">
             {failedRows.length} {el.ingest.commitFailedRows}
           </p>
           <ul className="mt-1 list-disc pl-5">
