@@ -1,8 +1,22 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
-import { formatDate, formatMoney } from "@/lib/format";
-import { Badge, Button, Input, Notice, PageHeader, Stat, cn } from "@/components/ui";
+import { formatDate, formatMoney, formatPercent } from "@/lib/format";
+import {
+  Badge,
+  Button,
+  Input,
+  KpiBand,
+  Notice,
+  PageHeader,
+  ReportFooter,
+  ReportHeadline,
+  ReportMethod,
+  ReportSection,
+  Stat,
+  cn,
+} from "@/components/ui";
+import { qualityNarrative, trustIndex } from "@/lib/finance/narratives";
 import { markInvoiceReceived } from "./actions";
 import { currentYear, monthKeyOf, monthLabel } from "@/lib/dates";
 import { el } from "@/lib/i18n/el";
@@ -83,7 +97,7 @@ const CHECKS = [
           χάνονται ~{formatMoney(Number(r.lost_deduction_est ?? 0) + Number(r.lost_input_vat_est ?? 0))}
         </span>
         {r.risk_kind === "no_invoice" && (
-          <ArgsActionForm action={markInvoiceReceived} args={[r.transaction_id]} className="flex items-center gap-1">
+          <ArgsActionForm action={markInvoiceReceived} args={[r.transaction_id]} className="present-hide print-hide flex items-center gap-1">
             <Input name="invoice_number" placeholder="Αρ. παραστατικού" className="w-40" />
             <Button type="submit" variant="secondary" size="sm">
               Ήρθε
@@ -313,7 +327,7 @@ const CHECKS = [
           {r.label ?? "—"}
         </Link>
         <Badge tone="amber">{r.kind === "loan" ? "δάνειο" : "μίσθωση"}</Badge>
-        <ArgsActionForm action={syncStaleSchedule} args={[r.kind ?? "loan", r.source_id ?? ""]}>
+        <ArgsActionForm action={syncStaleSchedule} args={[r.kind ?? "loan", r.source_id ?? ""]} className="present-hide print-hide">
           <Button type="submit" variant="secondary" size="sm">
             Συγχρονισμός
           </Button>
@@ -402,23 +416,31 @@ export default async function QualityPage() {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
 
-  const results = await Promise.all(
-    CHECKS.map(async (check) => {
-      const { data, count } = await supabase
-        .from(check.view)
-        .select("*", { count: "exact" })
-        .eq("org_id", orgId)
-        .limit(20);
-      return { ...check, rows: data ?? [], count: count ?? 0 };
-    }),
-  );
+  const [results, { data: exposureRows }, { data: worklist }] = await Promise.all([
+    Promise.all(
+      CHECKS.map(async (check) => {
+        const { data, count } = await supabase
+          .from(check.view)
+          .select("*", { count: "exact" })
+          .eq("org_id", orgId)
+          .limit(20);
+        return { ...check, rows: data ?? [], count: count ?? 0 };
+      }),
+    ),
+    supabase
+      .from("v_uninvoiced_exposure")
+      .select("gross_amount, lost_deduction_est, lost_input_vat_est, month")
+      .eq("org_id", orgId),
+    // The open items by severity (money · compliance · housekeeping).
+    supabase.from("v_worklist").select("tier, count").eq("org_id", orgId),
+  ]);
 
   const totalIssues = results.reduce((sum, r) => sum + r.count, 0);
+  const passing = results.filter((r) => r.count === 0).length;
+  const tiers = [1, 2, 3].map((tier) =>
+    (worklist ?? []).filter((w) => w.tier === tier).reduce((s, w) => s + Number(w.count ?? 0), 0),
+  );
 
-  const { data: exposureRows } = await supabase
-    .from("v_uninvoiced_exposure")
-    .select("gross_amount, lost_deduction_est, lost_input_vat_est, month")
-    .eq("org_id", orgId);
   const thisYear = String(currentYear());
   const exposure = (exposureRows ?? []).reduce(
     (acc, r) => {
@@ -442,16 +464,36 @@ export default async function QualityPage() {
             </Badge>
           </span>
         }
-        meta={
-          <span className="block max-w-3xl">
-            Αυτόματοι έλεγχοι πάνω στα δεδομένα σας, ώστε να εντοπίζονται λάθη πριν γίνουν πρόβλημα
-            στο ΦΠΑ ή στα οικονομικά των έργων.
-          </span>
-        }
+      />
+
+      <ReportSection label="Ποιότητα δεδομένων">
+      <ReportHeadline>{qualityNarrative({ passing, total: results.length, urgent: tiers[0] })}</ReportHeadline>
+      <KpiBand
+        items={[
+          {
+            label: "Δείκτης εμπιστοσύνης",
+            value: formatPercent(trustIndex(passing, results.length), { digits: 0 }),
+            sub: `${passing} από ${results.length} έλεγχοι περνούν`,
+          },
+          {
+            label: "Θέματα ανά επίπεδο",
+            value: (
+              <span className="num">
+                {tiers.join(" · ")}
+              </span>
+            ),
+            sub: "χρήματα · συμμόρφωση · τακτοποίηση",
+          },
+          {
+            label: "Φορολογικός κίνδυνος",
+            value: formatMoney(exposure.lost),
+            sub: exposure.gross > 0 ? `από ${formatMoney(exposure.gross)} δαπάνες χωρίς παραστατικό` : "καμία δαπάνη χωρίς παραστατικό",
+          },
+        ]}
       />
 
       {exposure.gross > 0 && (
-        <Notice tone="warning" as="section" className="flex flex-col gap-4">
+        <Notice tone="warning" as="section" internal className="flex flex-col gap-4">
           <h2 className="text-body text-ink">Εκτιμώμενη φορολογική απώλεια από δαπάνες χωρίς παραστατικό</h2>
           <div className="flex flex-wrap gap-x-10 gap-y-4">
             <Stat label="Δαπάνες" value={formatMoney(exposure.gross)} />
@@ -494,6 +536,19 @@ export default async function QualityPage() {
           </section>
         ))}
       </div>
+      <ReportMethod>
+        <p>
+          Αυτόματοι έλεγχοι πάνω στα δεδομένα σας, ώστε να εντοπίζονται λάθη πριν γίνουν πρόβλημα στο ΦΠΑ ή στα
+          οικονομικά των έργων.
+        </p>
+        <p>
+          Δείκτης εμπιστοσύνης: οι έλεγχοι χωρίς κανένα εύρημα, ως ποσοστό όλων των ελέγχων. Τα θέματα ανά επίπεδο
+          είναι τα ανοιχτά ευρήματα της λίστας εργασιών: χρήματα (επείγοντα), συμμόρφωση, τακτοποίηση. Φορολογικός
+          κίνδυνος: ο εκτιμώμενος χαμένος φόρος και ΦΠΑ από δαπάνες χωρίς παραστατικό.
+        </p>
+      </ReportMethod>
+      <ReportFooter />
+      </ReportSection>
     </div>
   );
 }
