@@ -6,7 +6,7 @@ import { cn } from "./cn";
 // A <details> that is open on a desktop and folds on a phone: rendered
 // open (so the server HTML and a desktop show everything), closed once on
 // mount below md. The content stays server-rendered children; nothing is
-// rendered twice. Printing opens it again (components/PresentMode).
+// rendered twice.
 export function PhoneDetails({
   summary,
   children,

@@ -24,7 +24,7 @@ export function CompositionBars({
   const totals = rows.map((r) => r.segments.reduce((s, x) => s + x.amount, 0));
   const max = Math.max(...totals, 0);
   return (
-    <figure aria-label={label} className="print-avoid-break flex min-w-0 flex-col gap-6">
+    <figure aria-label={label} className="flex min-w-0 flex-col gap-6">
       {rows.map((r, ri) => {
         const total = totals[ri];
         const segs = r.segments.filter((s) => s.amount > 0);

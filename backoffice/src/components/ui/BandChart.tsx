@@ -108,7 +108,7 @@ export function BandChart({
   }));
 
   return (
-    <figure aria-label={label} className={cn("w-full min-w-0 print-avoid-break", className)}>
+    <figure aria-label={label} className={cn("w-full min-w-0", className)}>
       <div className={CHART_HEIGHT_CLASS}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>

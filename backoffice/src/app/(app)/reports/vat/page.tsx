@@ -92,7 +92,7 @@ export default async function VatPage() {
   }));
   const hasForecast = rows.some((p) => Number(p.net_scheduled ?? 0) !== 0);
   const exportLink = (
-    <a href="/api/vat/export" className={cn(buttonClass("secondary", "md"), "present-hide print-hide")}>
+    <a href="/api/vat/export" className={buttonClass("secondary", "md")}>
       Εξαγωγή CSV
     </a>
   );
@@ -171,7 +171,7 @@ export default async function VatPage() {
                   <Th numeric>{el.vat.payable}</Th>
                   <Th className="hidden md:table-cell">{el.vat.deadline}</Th>
                   <Th>{el.vat.filed}</Th>
-                  <Th className="present-hide print-hide" />
+                  <Th />
                 </tr>
               </thead>
               <tbody>
@@ -211,7 +211,7 @@ export default async function VatPage() {
                       <Td>
                         <Badge tone={filed ? "neutral" : "amber"}>{filed ? el.vat.filed : el.vat.notFiled}</Badge>
                       </Td>
-                      <Td className="present-hide print-hide py-1.5 text-right">
+                      <Td className="py-1.5 text-right">
                         <ArgsActionForm action={toggleVatFiled} args={[p.period_start!, filed]}>
                           <Button type="submit" variant="ghost" size="sm">
                             {filed ? "Αναίρεση" : "Σήμανση ως υποβλήθηκε"}

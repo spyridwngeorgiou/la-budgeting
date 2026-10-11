@@ -202,7 +202,7 @@ export default async function NetWorthPage() {
         {/* The «add» triggers sit in the body, never inside the <summary>
             (a form in a summary toggles it on space). */}
         <ReportDetail title={t.assetsTitle} meta={(assets ?? []).length || undefined}>
-        <div className="present-hide print-hide -mt-1 mb-3 flex justify-end">
+        <div className="-mt-1 mb-3 flex justify-end">
           <AssetFormModal action={saveAsset} />
         </div>
         {(assets ?? []).length === 0 ? (
@@ -228,7 +228,7 @@ export default async function NetWorthPage() {
                         {formatMoney(a.estimated_value)}
                       </Td>
                       <Td className="py-1.5">
-                        <div className="present-hide print-hide flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-end gap-1.5">
                           <AssetFormModal
                             action={saveAsset}
                             id={a.id}
@@ -257,7 +257,7 @@ export default async function NetWorthPage() {
         <ReportDetail title={t.liabilitiesTitle} meta={(liabilities ?? []).length || undefined}>
         <div className="mb-3 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
           <p className="min-w-0 flex-1 text-small text-muted">{t.liabilitiesHint}</p>
-          <span className="present-hide print-hide shrink-0">
+          <span className="shrink-0">
             <LiabilityFormModal action={saveLiability} />
           </span>
         </div>
@@ -283,7 +283,7 @@ export default async function NetWorthPage() {
                         {formatMoney(l.principal)}
                       </Td>
                       <Td className="py-1.5">
-                        <div className="present-hide print-hide flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-end gap-1.5">
                           <LiabilityFormModal
                             action={saveLiability}
                             id={l.id}

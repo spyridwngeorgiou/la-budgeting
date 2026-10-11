@@ -172,7 +172,7 @@ export function SendToCashSection({
 export function LeaseSyncButton({ leaseId }: { leaseId: string }) {
   return (
     <ActionForm action={syncLeaseScheduleAction.bind(null, leaseId)}>
-      <Button type="submit" variant="secondary" className="present-hide print-hide">
+      <Button type="submit" variant="secondary" >
         {el.projectFinance.syncLease}
       </Button>
     </ActionForm>

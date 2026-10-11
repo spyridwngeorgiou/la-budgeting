@@ -3,17 +3,16 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { buttonClass } from "@/components/ui";
 
-// «Εξαγωγή CSV» beside «Παρουσίαση» / «Εκτύπωση» on the report tabs that
-// have an export (/api/reports/<tab>/export), carrying the tab's own filters
-// (year, by, scheduled / scenario, scope, months) so the file is what the
-// page shows. Nothing on the other tabs.
+// «Εξαγωγή CSV» on the report tabs that have an export
+// (/api/reports/<tab>/export), carrying the tab's own filters (year, by,
+// scheduled / scenario, scope, months) so the file is what the page shows. Nothing on the other tabs.
 const EXPORTS: Record<string, string> = {
   "/reports/pnl": "/api/reports/pnl/export",
   "/reports/cash": "/api/reports/cash/export",
   "/reports/net-worth": "/api/reports/net-worth/export",
 };
-// Page-only state (the selected month, a drill-down cell, presenting).
-const DROP = ["month", "cell", "line", "present"];
+// Page-only state (the selected month, a drill-down cell).
+const DROP = ["month", "cell", "line"];
 
 export function ExportCsvLink() {
   const pathname = (usePathname() ?? "").replace(/\/+$/, "");
@@ -24,7 +23,7 @@ export function ExportCsvLink() {
   for (const k of DROP) params.delete(k);
   const q = params.toString();
   return (
-    <a href={q ? `${api}?${q}` : api} download className={buttonClass("secondary", "md", "present-hide print-hide")}>
+    <a href={q ? `${api}?${q}` : api} download className={buttonClass("secondary", "md")}>
       Εξαγωγή CSV
     </a>
   );

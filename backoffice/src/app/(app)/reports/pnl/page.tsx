@@ -198,7 +198,7 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
     <div className="flex min-w-0 flex-col gap-10">
       <PageHeader title={t.pnlTitle} />
 
-      <div className="print-hide flex flex-wrap items-start gap-x-8 gap-y-4">
+      <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
         <ViewSwitch
           label={t.year}
           options={years.map((y) => ({ key: String(y), label: String(y), href: query({ year: y === thisYear ? null : String(y) }) }))}
@@ -293,7 +293,6 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
             <div className="flex min-w-0 flex-col gap-4">
               <ViewSwitch
                 label={t.pnlView}
-                className="print-hide"
                 options={[
                   { key: "month", label: t.byMonth, href: query({ by: null }) },
                   { key: "business_line", label: t.byLine, href: query({ by: "line" }) },
@@ -358,7 +357,7 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
                 </tbody>
               </SpecTable>
               {table.rows.some((r) => r.line === "unclassified" && r.total !== 0) && (
-                <Notice tone="warning" size="small" internal>
+                <Notice tone="warning" size="small">
                   <Link href="/reports/quality" className="text-ink underline underline-offset-4">
                     {t.lines.unclassified}
                   </Link>

@@ -24,14 +24,10 @@ export function Notice({
   size = "body",
   as: Tag = "p",
   className = "",
-  internal = false,
   children,
   ...props
 }: HTMLAttributes<HTMLElement> & {
   tone?: NoticeTone;
-  // For the team only (a data-quality warning, an internal note): hidden in
-  // presentation mode and in print.
-  internal?: boolean;
   size?: "body" | "small";
   // "p" for a line of text; "div" when it holds blocks; "ul" for a list.
   as?: "p" | "div" | "span" | "ul" | "aside" | "section";
@@ -45,7 +41,6 @@ export function Notice({
         size === "small" ? "text-small" : "text-body",
         Tag === "span" && "inline-block",
         TONE[tone],
-        internal && "present-hide print-hide",
         className,
       )}
       {...props}

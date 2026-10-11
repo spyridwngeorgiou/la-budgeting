@@ -97,7 +97,7 @@ const CHECKS = [
           χάνονται ~{formatMoney(Number(r.lost_deduction_est ?? 0) + Number(r.lost_input_vat_est ?? 0))}
         </span>
         {r.risk_kind === "no_invoice" && (
-          <ArgsActionForm action={markInvoiceReceived} args={[r.transaction_id]} className="present-hide print-hide flex items-center gap-1">
+          <ArgsActionForm action={markInvoiceReceived} args={[r.transaction_id]} className="flex items-center gap-1">
             <Input name="invoice_number" placeholder="Αρ. παραστατικού" className="w-40" />
             <Button type="submit" variant="secondary" size="sm">
               Ήρθε
@@ -327,7 +327,7 @@ const CHECKS = [
           {r.label ?? "—"}
         </Link>
         <Badge tone="amber">{r.kind === "loan" ? "δάνειο" : "μίσθωση"}</Badge>
-        <ArgsActionForm action={syncStaleSchedule} args={[r.kind ?? "loan", r.source_id ?? ""]} className="present-hide print-hide">
+        <ArgsActionForm action={syncStaleSchedule} args={[r.kind ?? "loan", r.source_id ?? ""]}>
           <Button type="submit" variant="secondary" size="sm">
             Συγχρονισμός
           </Button>
@@ -493,7 +493,7 @@ export default async function QualityPage() {
       />
 
       {exposure.gross > 0 && (
-        <Notice tone="warning" as="section" internal className="flex flex-col gap-4">
+        <Notice tone="warning" as="section" className="flex flex-col gap-4">
           <h2 className="text-body text-ink">Εκτιμώμενη φορολογική απώλεια από δαπάνες χωρίς παραστατικό</h2>
           <div className="flex flex-wrap gap-x-10 gap-y-4">
             <Stat label="Δαπάνες" value={formatMoney(exposure.gross)} />
