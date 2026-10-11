@@ -33,7 +33,7 @@ values ('00000000-0000-0000-0000-0000000091c1', 'partner91@test.local', now());
 
 -- Org A: two accounts; org B: one.
 insert into accounts (id, org_id, name, kind, owner_scope, is_liquid, opening_balance, opening_balance_date)
-select '91000000-0000-0000-0000-0000000000a1', org_a, 'Τράπεζα 91', 'bank', 'corporate', true, 1000, '2026-01-01' from t_ctx
+select '91000000-0000-0000-0000-0000000000a1'::uuid, org_a, 'Τράπεζα 91', 'bank'::account_kind, 'corporate'::owner_scope, true, 1000, '2026-01-01'::date from t_ctx
 union all
 select '91000000-0000-0000-0000-0000000000a2', org_a, 'Ταμείο 91', 'cash', 'corporate', true, 0, '2026-01-01' from t_ctx
 union all
