@@ -1,11 +1,14 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui";
 import { formatMoney } from "@/lib/format";
 
 // The three-column grammar the Q004 workbook already proved: label on the
-// left, the figure right-aligned and monospaced, and the long Greek note that
-// says WHY the figure is what it is. Those notes are not decoration -- «35.000
-// πληρώθηκαν 30/07 ΧΩΡΙΣ ΤΙΜΟΛΟΓΙΟ» is the most important thing on that page.
+// left, the figure right-aligned in tabular figures, and the long Greek note
+// that says WHY the figure is what it is. Those notes are not decoration --
+// «35.000 πληρώθηκαν 30/07 ΧΩΡΙΣ ΤΙΜΟΛΟΓΙΟ» is the most important thing on
+// that page.
+//
+// P15: no cards. A section is a title over a hairline, then spec-sheet rows
+// with hairlines between them and an ink rule over a total.
 
 export function OnePagerSection({
   title,
@@ -17,20 +20,27 @@ export function OnePagerSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="break-inside-avoid rounded-lg border border-line bg-surface p-4">
-      <h2 className="text-sm font-semibold tracking-wide text-ink">{title}</h2>
-      {subtitle && <p className="mb-2 text-xs text-ink-faint">{subtitle}</p>}
-      <div className={subtitle ? "" : "mt-2"}>{children}</div>
+    <section className="flex min-w-0 break-inside-avoid flex-col gap-2">
+      <div className="flex flex-col gap-1 border-b border-hairline pb-2.5">
+        <h2 className="text-section font-normal text-ink">{title}</h2>
+        {subtitle && <p className="text-small text-muted">{subtitle}</p>}
+      </div>
+      <div>{children}</div>
     </section>
   );
 }
 
+// `negative` shows a number with its minus sign (a cost or a shortfall)
+// instead of a colour. `alert` marks a true exception (over budget, a
+// negative margin) with the 2px severity bar; a `negative` text figure
+// (a DSCR under the covenant, the breach years) is always one.
 export function OnePagerRow({
   label,
   amount,
   note,
   emphasis,
   negative,
+  alert,
   href,
   suffix,
 }: {
@@ -39,33 +49,40 @@ export function OnePagerRow({
   note?: string | null;
   emphasis?: boolean;
   negative?: boolean;
+  alert?: boolean;
   href?: string;
   suffix?: string;
 }) {
-  const rendered =
-    typeof amount === "string" ? amount : amount == null ? "—" : formatMoney(amount);
+  const rendered = typeof amount === "string" ? amount : amount == null ? "—" : formatMoney(amount);
+  const exception = Boolean(alert || (negative && typeof amount === "string"));
 
   const figure = (
     <span
-      className={`font-mono tabular-nums ${emphasis ? "text-base font-semibold" : "text-sm"} ${
-        negative ? "text-red-ink" : ""
-      }`}
+      className={`num ${emphasis ? "text-body font-medium" : "text-sm"} ${exception ? "text-negative" : "text-ink"}`}
     >
-      {negative && typeof amount === "number" ? `(${formatMoney(Math.abs(amount))})` : rendered}
+      {negative && typeof amount === "number" && amount !== 0 ? `−${formatMoney(Math.abs(amount))}` : rendered}
       {suffix}
     </span>
   );
 
   return (
     <div
-      className={`grid grid-cols-[1fr_auto] items-baseline gap-x-4 py-1.5 sm:grid-cols-[minmax(0,1fr)_9rem_minmax(0,1.1fr)] ${
-        emphasis ? "mt-1 border-t border-line-strong pt-2" : "border-t border-line/60"
-      }`}
+      className={`grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 py-2 sm:grid-cols-[minmax(0,1fr)_9rem_minmax(0,1.1fr)] ${
+        emphasis ? "border-t border-ink" : "border-b border-hairline"
+      } ${exception ? "border-l-2 border-l-negative pl-2.5" : ""}`}
     >
-      <span className={`text-sm ${emphasis ? "font-semibold" : "text-ink-muted"}`}>{label}</span>
-      <span className="text-right">{href ? <Link href={href} className="hover:underline">{figure}</Link> : figure}</span>
+      <span className={`text-sm ${emphasis ? "font-medium text-ink" : "text-text"}`}>{label}</span>
+      <span className="text-right">
+        {href ? (
+          <Link href={href} className="underline-offset-4 hover:underline">
+            {figure}
+          </Link>
+        ) : (
+          figure
+        )}
+      </span>
       {note ? (
-        <span className="col-span-2 text-xs text-ink-faint sm:col-span-1 sm:pl-2">{note}</span>
+        <span className="col-span-2 text-small text-muted sm:col-span-1 sm:pl-2">{note}</span>
       ) : (
         <span className="hidden sm:block" />
       )}
@@ -73,7 +90,9 @@ export function OnePagerRow({
   );
 }
 
-const SEVERITY_TONE = { info: "neutral", watch: "amber", urgent: "red" } as const;
+// Severity as the 2px bar on the note's left edge, with its label above.
+const SEVERITY_BAR = { info: "border-l-hairline", watch: "border-l-warning", urgent: "border-l-negative" } as const;
+const SEVERITY_TEXT = { info: "text-muted", watch: "text-warning", urgent: "text-negative" } as const;
 const SEVERITY_LABEL = { info: "Ενημέρωση", watch: "Προσοχή", urgent: "Επείγον" } as const;
 
 export interface ProjectNote {
@@ -100,29 +119,29 @@ export function StatusNotes({
 }) {
   if (notes.length === 0) {
     return (
-      <div className="flex flex-col gap-2">
-        <p className="text-sm text-ink-faint">Καμία ανοιχτή σημείωση.</p>
+      <div className="flex flex-col gap-3">
+        <p className="border-b border-hairline py-3 text-sm text-muted">Καμία ανοιχτή σημείωση.</p>
         {footer}
       </div>
     );
   }
   return (
-    <div className="flex flex-col gap-2">
-      <ul className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
+      <ul className="flex flex-col">
         {notes.map((n) => (
-          <li key={n.id} className="flex flex-col gap-1 border-t border-line/60 pt-2 first:border-0 first:pt-0">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge tone={SEVERITY_TONE[n.severity]}>{SEVERITY_LABEL[n.severity]}</Badge>
-                {n.exposure_amount != null && (
-                  <span className="font-mono text-sm tabular-nums text-red-ink">
-                    έκθεση {formatMoney(n.exposure_amount)}
-                  </span>
-                )}
+          <li key={n.id} className="border-b border-hairline py-3">
+            <div className={`flex flex-col gap-1.5 border-l-2 pl-3 ${SEVERITY_BAR[n.severity]}`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-baseline gap-3">
+                  <span className={`eyebrow ${SEVERITY_TEXT[n.severity]}`}>{SEVERITY_LABEL[n.severity]}</span>
+                  {n.exposure_amount != null && (
+                    <span className="num text-sm text-ink">έκθεση {formatMoney(n.exposure_amount)}</span>
+                  )}
+                </div>
+                {renderActions && <div className="flex flex-wrap items-center gap-2">{renderActions(n)}</div>}
               </div>
-              {renderActions && <div className="flex items-center gap-1.5">{renderActions(n)}</div>}
+              <p className="text-sm text-ink">{n.body}</p>
             </div>
-            <p className="text-sm text-ink">{n.body}</p>
           </li>
         ))}
       </ul>

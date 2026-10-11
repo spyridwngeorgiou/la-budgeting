@@ -29,23 +29,23 @@ export function ProjectHealthCheck({ projectId }: { projectId: string }) {
 
   if (text) {
     return (
-      <div className="rounded-md border border-ai-border bg-ai-bg p-3 text-sm text-ink">
-        <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-ai-ink">
+      <div className="flex max-w-prose flex-col gap-1.5 border-l-2 border-ai pl-4 text-sm text-ink">
+        <div className="eyebrow flex items-center gap-1.5 text-ai">
           <AiSpark />
           AI Έλεγχος Υγείας Έργου
         </div>
-        {text}
+        <p className="whitespace-pre-line">{text}</p>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <Button variant="ai" onClick={generate} disabled={loading}>
+    <div className="flex flex-wrap items-center gap-3">
+      <Button variant="ai" onClick={generate} disabled={loading} className="max-md:min-h-11">
         <AiSpark className="mr-1.5" />
         {loading ? "Ανάλυση…" : "AI Έλεγχος Υγείας Έργου"}
       </Button>
-      {error && <span className="text-sm text-red-ink">{error}</span>}
+      {error && <span className="border-l-2 border-negative pl-3 text-sm text-negative">{error}</span>}
     </div>
   );
 }

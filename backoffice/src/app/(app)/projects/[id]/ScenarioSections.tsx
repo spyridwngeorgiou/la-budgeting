@@ -45,14 +45,14 @@ export function ScenarioSections({
       <OnePagerSection title="Λειτουργικές Παραδοχές">
         <div className="flex flex-col gap-3">
           {!scenario ? (
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm text-ink-faint">Δεν υπάρχει ακόμα σενάριο λειτουργίας για αυτό το έργο.</p>
+            <div className="flex flex-col items-start gap-3 border-b border-hairline py-3 md:flex-row md:items-center md:justify-between">
+              <p className="text-sm text-muted">Δεν υπάρχει ακόμα σενάριο λειτουργίας για αυτό το έργο.</p>
               <ScenarioFormModal action={saveScenario.bind(null, id, null)} trigger="+ Σενάριο Λειτουργίας" />
             </div>
           ) : (
             <>
-              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                <div className="text-ink-muted">
+              <div className="flex flex-col items-start gap-2 border-b border-hairline py-3 text-sm md:flex-row md:items-center md:justify-between">
+                <div className="num text-text">
                   Ανάπτυξη εσόδων {(Number(scenario.revenue_growth_pct) * 100).toFixed(1)}% ·{" "}
                   <Term title="Opex (Operating Expenses) — λειτουργικά έξοδα, εκτός μισθώματος και εξυπηρέτησης δανείου.">
                     opex
@@ -80,17 +80,20 @@ export function ScenarioSections({
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5 border-t border-line/60 pt-3">
+              <div className="flex flex-col">
                 {opexLines.map((l) => (
-                  <div key={l.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                    <span>
+                  <div
+                    key={l.id}
+                    className="flex flex-col gap-2 border-b border-hairline py-3 text-sm md:flex-row md:items-center md:justify-between md:gap-4"
+                  >
+                    <span className="min-w-0 text-ink">
                       {l.label}{" "}
-                      <span className="text-xs text-ink-faint">
+                      <span className="num text-small text-muted">
                         (έτη {l.from_operating_year}
                         {l.to_operating_year ? `–${l.to_operating_year}` : "+"})
                       </span>
                     </span>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-2">
                       <OpexLineFormModal
                         action={saveOpexLine.bind(null, id, scenario.id, l.id)}
                         trigger="Επεξεργασία"
@@ -111,14 +114,14 @@ export function ScenarioSections({
                         }}
                       />
                       <form action={deleteOpexLine.bind(null, id, l.id)}>
-                        <Button type="submit" variant="danger" className="!px-2 !py-1 text-xs">
+                        <Button type="submit" variant="danger" size="sm" className="max-md:min-h-11">
                           Διαγραφή
                         </Button>
                       </form>
                     </div>
                   </div>
                 ))}
-                <div>
+                <div className="pt-3">
                   <OpexLineFormModal action={saveOpexLine.bind(null, id, scenario.id, null)} />
                 </div>
               </div>
@@ -175,6 +178,7 @@ export function ScenarioSections({
               amount={`${cashflow.kpis.minDscr.value.toFixed(2)}×`}
               note={`${cashflow.kpis.minDscr.calendarYear}`}
               negative={cashflow.kpis.minDscr.value < (scenario?.dscr_covenant_min ?? 1.2)}
+              alert={cashflow.kpis.minDscr.value < (scenario?.dscr_covenant_min ?? 1.2)}
             />
           )}
           <OnePagerRow

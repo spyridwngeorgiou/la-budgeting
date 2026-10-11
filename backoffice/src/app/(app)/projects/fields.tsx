@@ -17,13 +17,14 @@ import {
   type OpexLineKind,
 } from "@/lib/domain/enums";
 
-// The project page's edit forms, as bare field sets, wrapped in a modal by
+// The project page's edit forms, as bare field sets, wrapped in a drawer by
 // ./LegacyFormModals.tsx.
 // Field names are the server actions' contract (actions.ts,
 // [id]/finance-actions.ts, [id]/scenario-actions.ts) -- keep them.
 
 const pct = (v: number | null | undefined, fallback: number | "") => (v != null ? v * 100 : fallback);
-const two = "grid grid-cols-2 gap-3";
+// Two fields side by side from sm up, stacked on a phone's sheet.
+const two = "grid grid-cols-1 gap-4 sm:grid-cols-2";
 const f = projects.forms;
 
 // What a form starts from: any subset of its row (the DB row types, so a
@@ -315,7 +316,7 @@ export function LoanFields({ initial }: { initial?: LoanInitial }) {
               <input type="checkbox" className="accent-navy" checked={r.done} onChange={(e) => patch(i, { done: e.target.checked })} />
               έγινε
             </label>
-            <Button type="button" variant="ghost" size="sm" aria-label="Αφαίρεση εκταμίευσης" onClick={() => setRows(rows.filter((_, j) => j !== i))}>
+            <Button type="button" variant="ghost" size="sm" className="max-md:min-h-11 max-md:min-w-11" aria-label="Αφαίρεση εκταμίευσης" onClick={() => setRows(rows.filter((_, j) => j !== i))}>
               ×
             </Button>
           </div>
@@ -325,6 +326,7 @@ export function LoanFields({ initial }: { initial?: LoanInitial }) {
             type="button"
             variant="secondary"
             size="sm"
+            className="max-md:min-h-11"
             onClick={() => setRows([...rows, { key: nextKey++, month: "", amount: "", done: false }])}
           >
             + Εκταμίευση

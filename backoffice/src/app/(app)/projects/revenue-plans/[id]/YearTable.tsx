@@ -10,6 +10,12 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 // pushed every column out of alignment with its header before.
 const compactEur = new Intl.NumberFormat("el-GR", { maximumFractionDigits: 0 });
 
+// The P15 spec table with the inputs in its cells; the 12 months ARE the
+// columns, so it scrolls inside its frame on a phone.
+const TH = "eyebrow border-b border-rule p-1.5 font-medium text-muted";
+const INPUT =
+  "num min-h-9 w-full border border-field-border bg-field px-1 py-1 text-center text-ink focus:border-navy focus:outline-none";
+
 export function YearTable({
   planId,
   roomTypeId,
@@ -28,86 +34,98 @@ export function YearTable({
   const annualNights = months.reduce((s, m) => s + m.nightsSold, 0);
 
   return (
-    <form action={saveYearAssumptions.bind(null, planId, roomTypeId, yearNumber)} className="overflow-x-auto rounded-md border border-line">
-      <table className="w-full table-fixed border-collapse text-xs">
-        <colgroup>
-          <col className="w-28" />
-          {MONTHS.map((m) => (
-            <col key={m} className="w-[4.75rem]" />
-          ))}
-          <col className="w-20" />
-        </colgroup>
-        <thead>
-          <tr className="border-b border-line bg-bg text-ink-muted">
-            <th className="p-1.5 text-left font-medium">
-              Έτος {yearNumber} <span className="font-normal text-ink-faint">({calendarYear})</span>
-            </th>
-            {MONTH_LABELS.map((m) => (
-              <th key={m} className="p-1.5 text-center font-medium">
-                {m}
+    <form action={saveYearAssumptions.bind(null, planId, roomTypeId, yearNumber)} className="flex flex-col gap-3">
+      <div className="overflow-x-auto">
+        <table className="w-full table-fixed border-collapse text-xs">
+          <colgroup>
+            <col className="w-28" />
+            {MONTHS.map((m) => (
+              <col key={m} className="w-[4.75rem]" />
+            ))}
+            <col className="w-20" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col" className={`${TH} text-left`}>
+                Έτος {yearNumber} <span className="num font-normal">({calendarYear})</span>
               </th>
-            ))}
-            <th className="p-1.5 text-center font-semibold">Σύνολο</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr className="border-b border-line">
-            <td className="p-1.5 text-ink-muted">Πληρότητα %</td>
-            {MONTHS.map((month) => (
-              <td key={month} className="p-1">
-                <input
-                  type="number"
-                  name={`occ_${month}`}
-                  min={0}
-                  max={100}
-                  step="0.1"
-                  defaultValue={Math.round((byMonth.get(month)?.occupancyPct ?? 0) * 1000) / 10}
-                  className="w-full rounded-md border border-line-strong px-1 py-1 text-center tabular-nums"
-                />
-              </td>
-            ))}
-            <td />
-          </tr>
-          <tr className="border-b border-line">
-            <td className="p-1.5 text-ink-muted">
-              <Term title="ADR (Average Daily Rate) — μέση τιμή δωματίου ανά διανυκτέρευση.">ADR</Term> (€)
-            </td>
-            {MONTHS.map((month) => (
-              <td key={month} className="p-1">
-                <input
-                  type="number"
-                  name={`adr_${month}`}
-                  min={0}
-                  step="0.01"
-                  defaultValue={byMonth.get(month)?.adr ?? 0}
-                  className="w-full rounded-md border border-line-strong px-1 py-1 text-center tabular-nums"
-                />
-              </td>
-            ))}
-            <td />
-          </tr>
-          <tr className="border-b border-line text-ink-faint">
-            <td className="p-1.5">Διανυκτ.</td>
-            {MONTHS.map((month) => (
-              <td key={month} className="p-1.5 text-center tabular-nums">
-                {byMonth.get(month)?.nightsSold ?? 0}
-              </td>
-            ))}
-            <td className="p-1.5 text-center font-medium tabular-nums">{annualNights}</td>
-          </tr>
-          <tr className="bg-bg font-medium">
-            <td className="p-1.5">Έσοδα</td>
-            {MONTHS.map((month) => (
-              <td key={month} className="p-1.5 text-center tabular-nums">
-                {compactEur.format(byMonth.get(month)?.revenue ?? 0)}€
-              </td>
-            ))}
-            <td className="p-1.5 text-center tabular-nums">{compactEur.format(annualRevenue)}€</td>
-          </tr>
-        </tbody>
-      </table>
-      <div className="flex justify-end border-t border-line bg-surface p-2">
-        <Button type="submit" variant="secondary">
+              {MONTH_LABELS.map((m) => (
+                <th key={m} scope="col" className={`${TH} text-center`}>
+                  {m}
+                </th>
+              ))}
+              <th scope="col" className={`${TH} text-center`}>
+                Σύνολο
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" className="border-b border-hairline p-1.5 text-left font-normal text-text">
+                Πληρότητα %
+              </th>
+              {MONTHS.map((month) => (
+                <td key={month} className="border-b border-hairline p-1">
+                  <input
+                    type="number"
+                    name={`occ_${month}`}
+                    aria-label={`Πληρότητα % ${MONTH_LABELS[month - 1]}`}
+                    min={0}
+                    max={100}
+                    step="0.1"
+                    defaultValue={Math.round((byMonth.get(month)?.occupancyPct ?? 0) * 1000) / 10}
+                    className={INPUT}
+                  />
+                </td>
+              ))}
+              <td className="border-b border-hairline" />
+            </tr>
+            <tr>
+              <th scope="row" className="border-b border-hairline p-1.5 text-left font-normal text-text">
+                <Term title="ADR (Average Daily Rate) — μέση τιμή δωματίου ανά διανυκτέρευση.">ADR</Term> (€)
+              </th>
+              {MONTHS.map((month) => (
+                <td key={month} className="border-b border-hairline p-1">
+                  <input
+                    type="number"
+                    name={`adr_${month}`}
+                    aria-label={`ADR ${MONTH_LABELS[month - 1]}`}
+                    min={0}
+                    step="0.01"
+                    defaultValue={byMonth.get(month)?.adr ?? 0}
+                    className={INPUT}
+                  />
+                </td>
+              ))}
+              <td className="border-b border-hairline" />
+            </tr>
+            <tr className="text-muted">
+              <th scope="row" className="border-b border-hairline p-1.5 text-left font-normal">
+                Διανυκτ.
+              </th>
+              {MONTHS.map((month) => (
+                <td key={month} className="num border-b border-hairline p-1.5 text-center">
+                  {byMonth.get(month)?.nightsSold ?? 0}
+                </td>
+              ))}
+              <td className="num border-b border-hairline p-1.5 text-center font-medium text-text">{annualNights}</td>
+            </tr>
+            <tr className="text-ink">
+              <th scope="row" className="border-t border-ink p-1.5 text-left font-medium">
+                Έσοδα
+              </th>
+              {MONTHS.map((month) => (
+                <td key={month} className="num border-t border-ink p-1.5 text-center">
+                  {compactEur.format(byMonth.get(month)?.revenue ?? 0)}€
+                </td>
+              ))}
+              <td className="num border-t border-ink p-1.5 text-center font-medium">{compactEur.format(annualRevenue)}€</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="flex justify-end">
+        <Button type="submit" variant="secondary" className="max-md:min-h-11">
           Αποθήκευση Έτους {yearNumber}
         </Button>
       </div>

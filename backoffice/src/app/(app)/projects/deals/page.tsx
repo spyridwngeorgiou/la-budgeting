@@ -3,20 +3,27 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate, formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge, Button } from "@/components/ui";
+import { Badge, Button, PageHeader, Stat, type Tone } from "@/components/ui";
 import { ActionForm } from "@/components/ActionForm";
 import { loadLookups } from "@/lib/data/lookups";
 import type { DealStage } from "@/lib/domain/enums";
 import { DealFormModal } from "./DealFormModal";
 import { closeDeal, deleteDeal, saveDeal } from "./actions";
 
-const STAGE_TONE: Record<DealStage, "neutral" | "amber" | "green" | "red" | "ai"> = {
+// Colour only where a deal needs attention or has an outcome; violet stays
+// the AI family's.
+const STAGE_TONE: Record<DealStage, Tone> = {
   lead: "neutral",
-  offer: "amber",
-  preliminary: "ai",
-  closed: "green",
-  lost: "red",
+  offer: "warning",
+  preliminary: "warning",
+  closed: "positive",
+  lost: "negative",
 };
+
+// P15 spec table cells; 44px buttons on phones.
+const TH = "eyebrow border-b border-rule px-3 py-2.5 font-medium text-muted";
+const TD = "border-b border-hairline px-3 py-3";
+const TAP = "max-md:min-h-11";
 
 // Μεσιτεία: the deals list. What each open deal contributes to the cash
 // forecast is read back from v_cash_forecast_items (its stage weight lives
@@ -43,38 +50,42 @@ export default async function DealsPage() {
   const pipeline = [...weightedByDeal.values()].reduce((s, v) => s + v, 0);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">{t.title}</h1>
-          <p className="mt-1 text-sm text-ink-muted">{t.intro}</p>
-        </div>
-        <DealFormModal action={saveDeal.bind(null, null)} contacts={lookups.contacts} projects={lookups.projects} />
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={t.title}
+        meta={<span className="block max-w-prose">{t.intro}</span>}
+        actions={<DealFormModal action={saveDeal.bind(null, null)} contacts={lookups.contacts} projects={lookups.projects} />}
+      />
 
       {pipeline > 0 && (
-        <p className="text-sm">
-          {t.weighted}: <span className="font-mono font-medium">{formatMoney(pipeline)}</span>{" "}
-          <Link href="/reports/cash" className="text-xs text-ink-muted underline">
-            {el.tabs.cash}
-          </Link>
-        </p>
+        <Stat
+          label={t.weighted}
+          value={formatMoney(pipeline)}
+          sub={
+            <Link href="/reports/cash" className="inline-flex min-h-10 items-center text-ink underline underline-offset-4">
+              {el.tabs.cash} →
+            </Link>
+          }
+        />
       )}
 
       {(deals ?? []).length === 0 ? (
-        <p className="p-6 text-center text-sm text-ink-muted">{t.empty}</p>
+        <p className="border-y border-hairline py-6 text-sm text-muted">{t.empty}</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-bg text-ink-muted">
+        // Spec table; scrolls inside its frame on a phone.
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-sm">
+            <thead>
               <tr>
-                <th className="p-2">{t.property}</th>
-                <th className="hidden p-2 md:table-cell">{t.client}</th>
-                <th className="p-2 text-right">{t.price}</th>
-                <th className="p-2 text-right">{t.commission}</th>
-                <th className="p-2">{t.stage}</th>
-                <th className="hidden p-2 sm:table-cell">{t.expectedClose}</th>
-                <th className="p-2"></th>
+                <th scope="col" className={TH}>{t.property}</th>
+                <th scope="col" className={`${TH} hidden md:table-cell`}>{t.client}</th>
+                <th scope="col" className={`${TH} text-right`}>{t.price}</th>
+                <th scope="col" className={`${TH} text-right`}>{t.commission}</th>
+                <th scope="col" className={TH}>{t.stage}</th>
+                <th scope="col" className={`${TH} hidden sm:table-cell`}>{t.expectedClose}</th>
+                <th scope="col" className={TH}>
+                  <span className="sr-only">{el.common.edit}</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -84,30 +95,32 @@ export default async function DealsPage() {
                 const weighted = weightedByDeal.get(d.id);
                 const isOpen = d.stage !== "closed" && d.stage !== "lost";
                 return (
-                  <tr key={d.id} className="border-t border-line align-top">
-                    <td className="p-2">
+                  <tr key={d.id} className="align-top hover:bg-hover">
+                    <td className={`${TD} min-w-40 text-ink`}>
                       {d.property_label}
-                      {d.notes && <div className="text-xs text-ink-faint">{d.notes}</div>}
+                      {d.notes && <div className="text-small text-muted">{d.notes}</div>}
                     </td>
-                    <td className="hidden p-2 md:table-cell">{contact?.name ?? t.noClient}</td>
-                    <td className="p-2 text-right font-mono">{formatMoney(d.price)}</td>
-                    <td className="p-2 text-right font-mono">
+                    <td className={`${TD} hidden text-text md:table-cell`}>{contact?.name ?? t.noClient}</td>
+                    <td className={`${TD} num text-right whitespace-nowrap text-ink`}>{formatMoney(d.price)}</td>
+                    <td className={`${TD} num text-right whitespace-nowrap text-ink`}>
                       {formatMoney(commission)}
-                      {weighted != null && <div className="text-[10px] text-ink-faint">{formatMoney(weighted)} στην πρόβλεψη</div>}
+                      {weighted != null && <div className="text-xs text-muted">{formatMoney(weighted)} στην πρόβλεψη</div>}
                     </td>
-                    <td className="p-2">
-                      <Badge tone={STAGE_TONE[d.stage]}>{t.stages[d.stage]}</Badge>
-                      {d.stage === "closed" && d.transaction_id && (
-                        <Link href={`/transactions?ids=${d.transaction_id}`} className="ml-1.5 text-xs text-ink-muted underline">
-                          {t.receivable}
-                        </Link>
-                      )}
+                    <td className={TD}>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <Badge tone={STAGE_TONE[d.stage]}>{t.stages[d.stage]}</Badge>
+                        {d.stage === "closed" && d.transaction_id && (
+                          <Link href={`/transactions?ids=${d.transaction_id}`} className="text-small text-ink underline underline-offset-4">
+                            {t.receivable}
+                          </Link>
+                        )}
+                      </div>
                     </td>
-                    <td className="hidden p-2 text-ink-muted sm:table-cell">
+                    <td className={`${TD} num hidden whitespace-nowrap text-text sm:table-cell`}>
                       {formatDate(d.stage === "closed" ? d.closed_on : d.expected_close_date)}
                     </td>
-                    <td className="p-2">
-                      <div className="flex flex-wrap items-center justify-end gap-1.5">
+                    <td className={TD}>
+                      <div className="flex flex-wrap items-center justify-end gap-2">
                         {isOpen && (
                           <>
                             <DealFormModal
@@ -128,7 +141,7 @@ export default async function DealsPage() {
                               }}
                             />
                             <ActionForm action={closeDeal.bind(null, d.id)}>
-                              <Button type="submit" className="!px-2 !py-1 text-xs" title={t.closeConfirm}>
+                              <Button type="submit" variant="secondary" size="sm" className={TAP} title={t.closeConfirm}>
                                 {t.close}
                               </Button>
                             </ActionForm>
@@ -136,7 +149,7 @@ export default async function DealsPage() {
                         )}
                         {d.stage !== "closed" && (
                           <ActionForm action={deleteDeal.bind(null, d.id)}>
-                            <Button type="submit" variant="secondary" className="!px-2 !py-1 text-xs">
+                            <Button type="submit" variant="danger" size="sm" className={TAP}>
                               {el.common.delete}
                             </Button>
                           </ActionForm>
@@ -150,7 +163,7 @@ export default async function DealsPage() {
           </table>
         </div>
       )}
-      <p className="text-xs text-ink-faint">{t.closeConfirm}</p>
+      <p className="max-w-prose text-small text-muted">{t.closeConfirm}</p>
     </div>
   );
 }

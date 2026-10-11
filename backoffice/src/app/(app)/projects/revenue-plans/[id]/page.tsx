@@ -1,11 +1,18 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/format";
-import { Card, Button } from "@/components/ui";
+import { el } from "@/lib/i18n/el";
+import { Button, Field, Input, PageHeader, SectionHeader, Stat } from "@/components/ui";
 import { computeRevenuePlan, type RoomType, type Assumption } from "@/lib/finance/revenuePlan";
 import { addRoomType, deleteRoomType, deleteRevenuePlan } from "../actions";
 import { YearTable } from "./YearTable";
 import { todayAthens } from "@/lib/dates";
+
+// P15 spec table cells; 44px buttons on phones.
+const TH = "eyebrow border-b border-rule px-3 py-2.5 font-medium whitespace-nowrap text-muted";
+const TD = "border-b border-hairline px-3 py-3";
+const TF = "border-t border-ink px-3 py-3 font-medium text-ink";
+const TAP = "max-md:min-h-11";
 
 export default async function RevenuePlanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -90,55 +97,60 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">{plan.name}</h1>
-          <p className="text-sm text-ink-muted">
-            {plan.start_year}–{plan.start_year + plan.years - 1}
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        eyebrow={el.nav.revenuePlans}
+        title={plan.name}
+        meta={
+          <>
+            <span className="num">
+              {plan.start_year}–{plan.start_year + plan.years - 1}
+            </span>
             {project && ` · ${project.display_name}`}
-          </p>
-          {plan.notes && <p className="mt-1 text-sm text-ink-muted">{plan.notes}</p>}
-        </div>
-        <form action={deleteRevenuePlan.bind(null, plan.id)}>
-          <Button type="submit" variant="danger">
-            Διαγραφή Ανάλυσης
-          </Button>
-        </form>
-      </div>
+            {plan.notes && <span className="mt-1 block max-w-prose">{plan.notes}</span>}
+          </>
+        }
+        actions={
+          <form action={deleteRevenuePlan.bind(null, plan.id)}>
+            <Button type="submit" variant="danger" className={TAP}>
+              Διαγραφή Ανάλυσης
+            </Button>
+          </form>
+        }
+      />
 
-      <Card>
-        <div className="text-xs font-medium text-ink-muted">Συνολικά Έσοδα Περιόδου</div>
-        <div className="font-mono text-2xl">{formatMoney(result.grandTotal)}</div>
-      </Card>
+      <Stat label="Συνολικά Έσοδα Περιόδου" value={formatMoney(result.grandTotal)} size="lg" />
 
       {!plan.project_id && (
-        <p className="text-xs text-ink-faint">
+        <p className="text-small text-muted">
           Η ανάλυση δεν είναι συνδεδεμένη με έργο, οπότε δεν υπάρχει σύγκριση με πραγματικά έσοδα.
         </p>
       )}
 
       {plan.project_id && actualComparison.length > 0 && (
-        <div className="overflow-x-auto rounded-md border border-line">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-bg text-ink-muted">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-sm">
+            <thead>
               <tr>
-                <th className="p-2">Πραγματικά vs Πρόβλεψη</th>
-                <th className="p-2 text-right">Πρόβλεψη</th>
-                <th className="p-2 text-right">Πραγματικό</th>
-                <th className="p-2 text-right">Διαφορά</th>
+                <th scope="col" className={TH}>Πραγματικά vs Πρόβλεψη</th>
+                <th scope="col" className={`${TH} text-right`}>Πρόβλεψη</th>
+                <th scope="col" className={`${TH} text-right`}>Πραγματικό</th>
+                <th scope="col" className={`${TH} text-right`}>Διαφορά</th>
               </tr>
             </thead>
             <tbody>
               {actualComparison.map((r) => {
                 const diffPct = r.planned > 0 ? Math.round(((r.actual - r.planned) / r.planned) * 100) : null;
+                const current = r.monthKey === todayMonthKey;
                 return (
-                  <tr key={r.monthKey} className={`border-t border-line ${r.monthKey === todayMonthKey ? "bg-sage/40" : ""}`}>
-                    <td className="p-2 capitalize">{r.label}</td>
-                    <td className="p-2 text-right font-mono text-ink-muted">{formatMoney(r.planned)}</td>
-                    <td className="p-2 text-right font-mono">{formatMoney(r.actual)}</td>
-                    <td className={`p-2 text-right font-mono ${diffPct != null && diffPct < 0 ? "text-red-ink" : diffPct != null ? "text-sage-ink" : "text-ink-faint"}`}>
-                      {diffPct != null ? `${diffPct > 0 ? "+" : ""}${diffPct}%` : "—"}
+                  <tr key={r.monthKey} aria-current={current ? "date" : undefined} className="hover:bg-hover">
+                    <td className={`${TD} capitalize ${current ? "border-l-2 border-l-navy font-medium text-ink" : "text-text"}`}>
+                      {r.label}
+                    </td>
+                    <td className={`${TD} num text-right whitespace-nowrap text-text`}>{formatMoney(r.planned)}</td>
+                    <td className={`${TD} num text-right whitespace-nowrap text-ink`}>{formatMoney(r.actual)}</td>
+                    <td className={`${TD} num text-right whitespace-nowrap ${diffPct != null ? "text-ink" : "text-muted"}`}>
+                      {diffPct != null ? `${diffPct > 0 ? "+" : diffPct < 0 ? "−" : ""}${Math.abs(diffPct)}%` : "—"}
                     </td>
                   </tr>
                 );
@@ -149,68 +161,66 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
       )}
 
       {result.summary.length > 0 && (
-        <div className="overflow-x-auto rounded-md border border-line">
-          <table className="w-full table-fixed border-collapse text-left text-sm">
-            <colgroup>
-              <col />
-              {years.map((y) => (
-                <col key={y} className="w-28" />
-              ))}
-              <col className="w-32" />
-            </colgroup>
-            <thead className="bg-bg text-ink-muted">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-max border-collapse text-left text-sm">
+            <thead>
               <tr>
-                <th className="p-2 font-medium">Τύπος Δωματίου</th>
+                <th scope="col" className={TH}>Τύπος Δωματίου</th>
                 {years.map((y) => (
-                  <th key={y} className="p-2 text-right font-medium">
+                  <th key={y} scope="col" className={`${TH} text-right`}>
                     Έτος {y}
                   </th>
                 ))}
-                <th className="p-2 text-right font-semibold">Σύνολο</th>
+                <th scope="col" className={`${TH} text-right`}>Σύνολο</th>
               </tr>
             </thead>
             <tbody>
               {result.summary.map((s) => (
-                <tr key={s.roomTypeId} className="border-t border-line">
-                  <td className="p-2">{s.roomTypeName}</td>
+                <tr key={s.roomTypeId} className="hover:bg-hover">
+                  <td className={`${TD} text-ink`}>{s.roomTypeName}</td>
                   {years.map((y) => (
-                    <td key={y} className="p-2 text-right font-mono">
+                    <td key={y} className={`${TD} num text-right whitespace-nowrap text-text`}>
                       {formatMoney(s.byYear[y - 1] ?? 0)}
                     </td>
                   ))}
-                  <td className="p-2 text-right font-mono font-semibold">{formatMoney(s.total)}</td>
+                  <td className={`${TD} num text-right font-medium whitespace-nowrap text-ink`}>{formatMoney(s.total)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-line-strong font-semibold">
-                <td className="p-2">Σύνολο</td>
+              <tr>
+                <td className={TF}>Σύνολο</td>
                 {result.yearTotals.map((y) => (
-                  <td key={y.yearNumber} className="p-2 text-right font-mono">
+                  <td key={y.yearNumber} className={`${TF} num text-right whitespace-nowrap`}>
                     {formatMoney(y.annualRevenue)}
                   </td>
                 ))}
-                <td className="p-2 text-right font-mono">{formatMoney(result.grandTotal)}</td>
+                <td className={`${TF} num text-right whitespace-nowrap`}>{formatMoney(result.grandTotal)}</td>
               </tr>
             </tfoot>
           </table>
         </div>
       )}
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-10">
         {(roomTypesData ?? []).map((rt) => (
-          <Card key={rt.id}>
-            <div className="mb-2 flex items-center justify-between">
-              <div className="text-sm font-medium">
-                {rt.name} <span className="text-ink-faint">({rt.unit_count} δωμάτια)</span>
-              </div>
-              <form action={deleteRoomType.bind(null, plan.id, rt.id)}>
-                <Button type="submit" variant="secondary">
-                  Αφαίρεση
-                </Button>
-              </form>
-            </div>
-            <div className="flex flex-col gap-4">
+          <section key={rt.id} className="flex flex-col gap-4">
+            <SectionHeader
+              as="h2"
+              title={
+                <>
+                  {rt.name} <span className="num text-muted">({rt.unit_count} δωμάτια)</span>
+                </>
+              }
+              actions={
+                <form action={deleteRoomType.bind(null, plan.id, rt.id)}>
+                  <Button type="submit" variant="secondary" size="sm" className={TAP}>
+                    Αφαίρεση
+                  </Button>
+                </form>
+              }
+            />
+            <div className="flex flex-col gap-6">
               {years.map((y) => (
                 <YearTable
                   key={y}
@@ -222,24 +232,24 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
                 />
               ))}
             </div>
-          </Card>
+          </section>
         ))}
       </div>
 
-      <Card>
-        <h2 className="mb-2 text-sm font-medium text-ink-muted">+ Νέος Τύπος Δωματίου</h2>
+      <section className="flex flex-col gap-4">
+        <SectionHeader title="+ Νέος Τύπος Δωματίου" />
         <form action={addRoomType.bind(null, plan.id)} className="flex flex-wrap items-end gap-3">
-          <div className="flex flex-col">
-            <label className="mb-1 text-xs font-medium text-ink-muted">Όνομα</label>
-            <input name="name" required className="rounded-md border border-line-strong px-3 py-2 text-sm" />
-          </div>
-          <div className="flex flex-col">
-            <label className="mb-1 text-xs font-medium text-ink-muted">Αριθμός Δωματίων</label>
-            <input name="unit_count" type="number" min={1} required className="w-24 rounded-md border border-line-strong px-3 py-2 text-sm" />
-          </div>
-          <Button type="submit">Προσθήκη</Button>
+          <Field label="Όνομα" htmlFor="room-type-name" className="min-w-48 flex-1 sm:flex-none">
+            <Input id="room-type-name" name="name" required />
+          </Field>
+          <Field label="Αριθμός Δωματίων" htmlFor="room-type-units">
+            <Input id="room-type-units" name="unit_count" type="number" min={1} required className="num w-24" />
+          </Field>
+          <Button type="submit" className={TAP}>
+            Προσθήκη
+          </Button>
         </form>
-      </Card>
+      </section>
     </div>
   );
 }

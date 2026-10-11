@@ -17,6 +17,11 @@ const KIND_FALLBACK_LABEL: Record<CapitalSourceKind, string> = {
   co_investor: "Συνεπενδυτής",
 };
 
+// An editable record: its facts on the left, the buttons on the right
+// (under it on phones, 44px tall there), a hairline under each.
+const ROW = "flex flex-col gap-2 border-b border-hairline py-3 md:flex-row md:items-center md:justify-between md:gap-4";
+const TAP = "max-md:min-h-11";
+
 export interface CapitalSourceRow {
   id: string;
   kind: CapitalSourceKind;
@@ -79,17 +84,17 @@ export function FundingSections({
           through the Kansha AI chat's propose-and-approve flow. Renders
           even with zero tranches yet, so "+ Δάνειο" is always reachable. */}
       <OnePagerSection title="Σκέλη Δανείου">
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col">
           {loanRows.map((l) => (
-            <div key={l.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-line/60 py-1.5 first:border-0 first:pt-0">
-              <div className="text-sm">
-                <span className="font-medium">{l.label}</span>{" "}
-                <span className="text-ink-muted">
+            <div key={l.id} className={ROW}>
+              <div className="min-w-0 text-sm">
+                <span className="text-ink">{l.label}</span>{" "}
+                <span className="num text-muted">
                   · {formatMoney(l.principal)} · {(Number(l.interest_rate) * 100).toFixed(2)}% ·{" "}
                   {l.term_years} έτη
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-2">
                 <LoanFormModal
                   action={saveLoan.bind(null, id, l.id)}
                   trigger="Επεξεργασία"
@@ -110,14 +115,14 @@ export function FundingSections({
                   }}
                 />
                 <ActionForm action={deleteLoan.bind(null, id, l.id)}>
-                  <Button type="submit" variant="danger" className="!px-2 !py-1 text-xs">
+                  <Button type="submit" variant="danger" size="sm" className={TAP}>
                     Διαγραφή
                   </Button>
                 </ActionForm>
               </div>
             </div>
           ))}
-          <div>
+          <div className="pt-3">
             <LoanFormModal action={saveLoan.bind(null, id, null)} />
           </div>
         </div>
@@ -147,9 +152,9 @@ export function FundingSections({
             <ProjectIrrRow irr={projectIrr} />
           </>
         ) : (
-          <div className="flex flex-col gap-2 py-2">
-            <Badge tone="amber">Χωρίς καταχωρημένο κεφάλαιο</Badge>
-            <p className="text-sm text-ink-muted">
+          <div className="flex flex-col items-start gap-2 border-b border-hairline py-3">
+            <Badge tone="warning">Χωρίς καταχωρημένο κεφάλαιο</Badge>
+            <p className="text-sm text-muted">
               Δεν έχουν καταχωρηθεί πηγές κεφαλαίου για αυτό το έργο.
             </p>
           </div>
@@ -160,19 +165,17 @@ export function FundingSections({
           tranches above. Renders even with zero rows so "+ Κεφάλαιο" is
           always reachable. */}
       <OnePagerSection title="Πηγές Κεφαλαίου">
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col">
           {capitalRows.map((c) => (
-            <div
-              key={c.id}
-              className="flex flex-wrap items-center justify-between gap-2 border-t border-line/60 py-1.5 first:border-0 first:pt-0"
-            >
-              <div className="text-sm">
-                <span className="font-medium">{c.contributor || KIND_FALLBACK_LABEL[c.kind]}</span>{" "}
-                <span className="text-ink-muted">
-                  · {formatMoney(c.amount)} · {KIND_FALLBACK_LABEL[c.kind]} · {formatDate(c.contributed_on)}
+            <div key={c.id} className={ROW}>
+              <div className="min-w-0 text-sm">
+                <span className="text-ink">{c.contributor || KIND_FALLBACK_LABEL[c.kind]}</span>{" "}
+                <span className="text-muted">
+                  · <span className="num">{formatMoney(c.amount)}</span> · {KIND_FALLBACK_LABEL[c.kind]} ·{" "}
+                  <span className="num">{formatDate(c.contributed_on)}</span>
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-2">
                 <CapitalSourceFormModal
                   action={saveCapitalSource.bind(null, id, c.id)}
                   trigger="Επεξεργασία"
@@ -185,14 +188,14 @@ export function FundingSections({
                   }}
                 />
                 <form action={deleteCapitalSource.bind(null, id, c.id)}>
-                  <Button type="submit" variant="danger" className="!px-2 !py-1 text-xs">
+                  <Button type="submit" variant="danger" size="sm" className={TAP}>
                     Διαγραφή
                   </Button>
                 </form>
               </div>
             </div>
           ))}
-          <div>
+          <div className="pt-3">
             <CapitalSourceFormModal action={saveCapitalSource.bind(null, id, null)} />
           </div>
         </div>

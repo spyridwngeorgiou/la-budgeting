@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui";
+import { ButtonLink, PageHeader } from "@/components/ui";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { el } from "@/lib/i18n/el";
 import { ProjectFormModal } from "./LegacyFormModals";
@@ -24,25 +23,27 @@ export default async function ProjectsPage() {
     .filter((id): id is string => id !== null);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">{el.nav.projects}</h1>
-          <p className="mt-1 text-sm text-ink-muted">
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        title={el.nav.projects}
+        meta={
+          <span className="block max-w-prose">
             Προϋπολογισμός, πορεία και κατάσταση κάθε έργου. Μπείτε σε ένα έργο για δάνεια, μίσθωση
             και σημειώσεις.
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Link href="/projects/revenue-plans">
-            <Button variant="secondary">{el.nav.revenuePlans}</Button>
-          </Link>
-          <Link href="/collab">
-            <Button variant="secondary">{el.collab.navLabel}</Button>
-          </Link>
-          <ProjectFormModal action={createProject} />
-        </div>
-      </div>
+          </span>
+        }
+        actions={
+          <>
+            <ButtonLink href="/projects/revenue-plans" className="max-md:min-h-11">
+              {el.nav.revenuePlans}
+            </ButtonLink>
+            <ButtonLink href="/collab" className="max-md:min-h-11">
+              {el.collab.navLabel}
+            </ButtonLink>
+            <ProjectFormModal action={createProject} />
+          </>
+        }
+      />
 
       <ProjectsGrid rollup={rollup ?? []} noBudgetIds={noBudgetIds} />
     </div>

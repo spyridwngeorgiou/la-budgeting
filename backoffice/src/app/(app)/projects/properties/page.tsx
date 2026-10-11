@@ -4,6 +4,13 @@ import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { addMonths, currentMonthKey, isMonthKey, monthRange } from "@/lib/dates";
+import { ButtonLink, PageHeader } from "@/components/ui";
+
+// P15 spec table: uppercase 12px head over the navy rule, hairline rows,
+// a total row over an ink rule.
+const TH = "eyebrow border-b border-rule px-3 py-2.5 font-medium whitespace-nowrap text-muted";
+const TD = "border-b border-hairline px-3 py-3";
+const TF = "border-t border-ink px-3 py-3 font-medium whitespace-nowrap text-ink";
 
 // The workbook's Πληρωμές «Κόστος ανά ακίνητο — τρέχων μήνας», minus its two
 // bugs (rent summed with no month filter; Internet/Λοιπά never filled in).
@@ -47,89 +54,109 @@ export default async function PropertiesPage({ searchParams }: { searchParams: P
   const grandTotal = (costs ?? []).reduce((s, c) => s + Number(c.paid_amount ?? 0), 0);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">{el.nav.properties}</h1>
-          <p className="mt-1 text-sm text-ink-muted">
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={el.nav.properties}
+        meta={
+          <span className="block max-w-prose">
             Κόστος λειτουργίας ανά ακίνητο: ενοίκιο, παροχές, κοινόχρηστα. Εταιρικές κινήσεις του έργου μαζί με
             προσωπικά έξοδα που έχουν χαρακτηριστεί με το ακίνητο. Οι δαπάνες ανάπτυξης (προϋπολογισμός) δεν
             μετράνε εδώ.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <Link href={`/projects/properties?month=${addMonths(month, -1)}`} className="rounded-md border border-line px-2 py-1 hover:bg-bg">
-            ←
-          </Link>
-          <span className="min-w-24 text-center font-medium">{monthLabel(month)}</span>
-          <Link href={`/projects/properties?month=${addMonths(month, 1)}`} className="rounded-md border border-line px-2 py-1 hover:bg-bg">
-            →
-          </Link>
-        </div>
-      </div>
+          </span>
+        }
+        actions={
+          <div className="flex items-center gap-1 text-sm">
+            <ButtonLink
+              href={`/projects/properties?month=${addMonths(month, -1)}`}
+              variant="ghost"
+              aria-label="Προηγούμενος μήνας"
+              className="min-w-10 max-md:min-h-11 max-md:min-w-11"
+            >
+              ←
+            </ButtonLink>
+            <span className="num min-w-24 text-center text-ink">{monthLabel(month)}</span>
+            <ButtonLink
+              href={`/projects/properties?month=${addMonths(month, 1)}`}
+              variant="ghost"
+              aria-label="Επόμενος μήνας"
+              className="min-w-10 max-md:min-h-11 max-md:min-w-11"
+            >
+              →
+            </ButtonLink>
+          </div>
+        }
+      />
 
-      <div className="overflow-x-auto rounded-lg border border-line bg-surface">
-        <table className="min-w-full text-sm">
+      {/* Spec table; the buckets ARE the columns, so it scrolls inside its
+          frame on a phone with the property column pinned. */}
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-line text-ink-muted">
-              <th className="p-3 text-left font-medium">Ακίνητο</th>
+            <tr>
+              <th scope="col" className={`${TH} sticky left-0 z-10 bg-canvas text-left`}>
+                Ακίνητο
+              </th>
               {BUCKETS.map((b) => (
-                <th key={b.key} className="p-3 text-right font-medium">
+                <th key={b.key} scope="col" className={`${TH} text-right`}>
                   {b.label}
                 </th>
               ))}
-              <th className="p-3 text-right font-semibold text-ink">Σύνολο</th>
+              <th scope="col" className={`${TH} text-right`}>
+                Σύνολο
+              </th>
             </tr>
           </thead>
           <tbody>
             {(projects ?? []).map((p) => (
-              <tr key={p.id} className="border-b border-line last:border-0">
-                <td className="p-3">
-                  <Link href={`/projects/${p.id}`} className="hover:underline">
+              <tr key={p.id} className="hover:bg-hover">
+                <th scope="row" className={`${TD} sticky left-0 min-w-36 bg-canvas text-left font-normal`}>
+                  <Link href={`/projects/${p.id}`} className="text-ink underline-offset-4 hover:underline">
                     {p.display_name}
                   </Link>
-                </td>
+                </th>
                 {BUCKETS.map((b) => {
                   const c = cell(p.id, b.key);
                   const paid = Number(c?.paid_amount ?? 0);
                   const open = Number(c?.open_amount ?? 0);
                   return (
-                    <td key={b.key} className="p-3 text-right font-mono tabular-nums">
+                    <td key={b.key} className={`${TD} num text-right whitespace-nowrap text-ink`}>
                       {paid || open ? (
                         <Link
                           href={`/transactions?project_id=${p.id}&direction=expense&from=${monthStart}&to=${monthEnd}`}
-                          className="hover:underline"
+                          className="underline-offset-4 hover:underline"
                         >
                           {paid ? formatMoney(paid) : ""}
-                          {open ? <span className="ml-1 text-ink-faint">+{formatMoney(open)}</span> : null}
+                          {open ? <span className="ml-1 text-muted">+{formatMoney(open)}</span> : null}
                         </Link>
                       ) : (
-                        <span className="text-ink-faint">—</span>
+                        <span className="text-muted">—</span>
                       )}
                     </td>
                   );
                 })}
-                <td className="p-3 text-right font-mono font-semibold tabular-nums">
-                  {rowTotal(p.id) ? formatMoney(rowTotal(p.id)) : <span className="font-normal text-ink-faint">—</span>}
-                  {rowOpen(p.id) ? <span className="ml-1 font-normal text-ink-faint">+{formatMoney(rowOpen(p.id))}</span> : null}
+                <td className={`${TD} num text-right font-medium whitespace-nowrap text-ink`}>
+                  {rowTotal(p.id) ? formatMoney(rowTotal(p.id)) : <span className="font-normal text-muted">—</span>}
+                  {rowOpen(p.id) ? <span className="ml-1 font-normal text-muted">+{formatMoney(rowOpen(p.id))}</span> : null}
                 </td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t border-line-strong font-semibold">
-              <td className="p-3">Σύνολο</td>
+            <tr>
+              <th scope="row" className={`${TF} sticky left-0 bg-canvas text-left`}>
+                Σύνολο
+              </th>
               {BUCKETS.map((b) => (
-                <td key={b.key} className="p-3 text-right font-mono tabular-nums">
+                <td key={b.key} className={`${TF} num text-right`}>
                   {formatMoney(columnTotal(b.key))}
                 </td>
               ))}
-              <td className="p-3 text-right font-mono tabular-nums">{formatMoney(grandTotal)}</td>
+              <td className={`${TF} num text-right`}>{formatMoney(grandTotal)}</td>
             </tr>
           </tfoot>
         </table>
       </div>
-      <p className="text-xs text-ink-faint">
+      <p className="max-w-prose text-small text-muted">
         Πληρωμένα ποσά του μήνα· με αχνό, ό,τι είναι ακόμα εκκρεμές ή προγραμματισμένο. Οι λογαριασμοί ΔΕΗ/ΕΥΔΑΠ/internet
         αντιστοιχίζονται αυτόματα στο ακίνητο όταν αναφέρουν αριθμό παροχής από τις Παροχές του έργου.
       </p>

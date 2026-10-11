@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Field, Input, Label, Select } from "@/components/ui";
-import { FormModal } from "@/components/Modal";
+import { Button, Field, FormDrawer, Input, Label, Select } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { DEAL_STAGE, type DealStage } from "@/lib/domain/enums";
 import type { ActionResult } from "@/lib/actions";
@@ -36,11 +35,16 @@ export function DealFormModal({
   const t = el.deals;
   return (
     <>
-      <Button variant={initial ? "secondary" : "primary"} className={initial ? "!px-2 !py-1 text-xs" : undefined} onClick={() => setOpen(true)}>
+      <Button
+        variant={initial ? "secondary" : "primary"}
+        size={initial ? "sm" : "md"}
+        className="max-md:min-h-11"
+        onClick={() => setOpen(true)}
+      >
         {trigger ?? `+ ${t.add}`}
       </Button>
       {open && (
-        <FormModal onClose={() => setOpen(false)} title={initial ? t.edit : t.add} action={action}>
+        <FormDrawer onClose={() => setOpen(false)} eyebrow={t.title} title={initial ? t.edit : t.add} action={action}>
           <Field>
             <Label>{t.property}</Label>
             <Input name="property_label" defaultValue={initial?.property_label} required />
@@ -56,7 +60,7 @@ export function DealFormModal({
               ))}
             </Select>
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field>
               <Label>{t.price} (€)</Label>
               <Input type="number" step="0.01" min="0" name="price" defaultValue={initial?.price} required />
@@ -77,7 +81,7 @@ export function DealFormModal({
             <Label>{t.commissionOverride}</Label>
             <Input type="number" step="0.01" min="0" name="commission_amount" defaultValue={initial?.commission_amount ?? ""} />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field>
               <Label>{t.stage}</Label>
               <Select name="stage" defaultValue={initial?.stage ?? "lead"}>
@@ -108,7 +112,7 @@ export function DealFormModal({
             <Label>{t.notes}</Label>
             <Input name="notes" defaultValue={initial?.notes ?? ""} />
           </Field>
-        </FormModal>
+        </FormDrawer>
       )}
     </>
   );

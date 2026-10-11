@@ -16,7 +16,9 @@ import baseline from "./design-guard.baseline.json";
 const SRC = path.resolve(import.meta.dirname, "..");
 // Phase 6 added the planner and the collaboration pieces (the Excalidraw
 // scene's own colours live in .ts files, which are not scanned).
-const GUARDED = ["components/ui", "components/planner", "components/collab"];
+// The projects area (list, Ακίνητα, Μεσιτεία, revenue plans, the project
+// one-pager) was restyled after that.
+const GUARDED = ["components/ui", "components/planner", "components/collab", "app/(app)/projects"];
 
 const RULES: { name: string; re: RegExp }[] = [
   { name: "rounded", re: /\brounded-(?!full\b|none\b)[\w[\]-]+/g },

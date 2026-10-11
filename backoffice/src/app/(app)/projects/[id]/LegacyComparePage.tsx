@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/format";
-import { Badge, Button } from "@/components/ui";
+import { el } from "@/lib/i18n/el";
+import { Badge, ButtonLink, PageHeader } from "@/components/ui";
 import { loadProjectModel, type ScenarioResult } from "@/lib/finance/projectModel";
 
 // Side-by-side view of every scenario a project has, computed by the same
@@ -40,30 +40,42 @@ export async function LegacyComparePage({ id }: { id: string }) {
   ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">Σύγκριση σεναρίων — {project.display_name}</h1>
-          <p className="text-sm text-ink-muted">{project.code}</p>
-        </div>
-        <Link href={`/projects/${id}`}>
-          <Button variant="secondary">Πίσω στο έργο</Button>
-        </Link>
-      </div>
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        eyebrow={el.nav.projects}
+        title={`Σύγκριση σεναρίων — ${project.display_name}`}
+        meta={project.code}
+        actions={
+          <ButtonLink href={`/projects/${id}`} className="max-md:min-h-11">
+            Πίσω στο έργο
+          </ButtonLink>
+        }
+      />
 
       {results.length === 0 ? (
-        <p className="text-sm text-ink-muted">Δεν υπάρχουν σενάρια για αυτό το έργο ακόμα.</p>
+        <p className="border-y border-hairline py-6 text-sm text-muted">Δεν υπάρχουν σενάρια για αυτό το έργο ακόμα.</p>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-line bg-surface">
-          <table className="min-w-full text-sm">
+        // The scenarios ARE the columns: a spec table that scrolls inside
+        // its frame on a phone, the label column pinned.
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b border-line">
-                <th className="p-3 text-left font-semibold text-ink">Μέγεθος</th>
+              <tr>
+                <th
+                  scope="col"
+                  className="eyebrow sticky left-0 z-10 border-b border-rule bg-canvas px-3 py-2.5 text-left font-medium text-muted"
+                >
+                  Μέγεθος
+                </th>
                 {results.map(({ scenario }) => (
-                  <th key={scenario.id} className="p-3 text-right font-semibold text-ink">
+                  <th
+                    key={scenario.id}
+                    scope="col"
+                    className="eyebrow border-b border-rule px-3 py-2.5 text-right font-medium whitespace-nowrap text-muted"
+                  >
                     <div className="flex items-center justify-end gap-2">
                       {scenario.name}
-                      {scenario.is_base && <Badge tone="green">βάση</Badge>}
+                      {scenario.is_base && <Badge>βάση</Badge>}
                     </div>
                   </th>
                 ))}
@@ -71,10 +83,15 @@ export async function LegacyComparePage({ id }: { id: string }) {
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.label} className="border-b border-line last:border-0">
-                  <td className="p-3 text-ink-muted">{row.label}</td>
+                <tr key={row.label} className="hover:bg-hover">
+                  <th
+                    scope="row"
+                    className="sticky left-0 border-b border-hairline bg-canvas px-3 py-3 text-left font-normal text-text"
+                  >
+                    {row.label}
+                  </th>
                   {results.map(({ scenario, result }) => (
-                    <td key={scenario.id} className="p-3 text-right font-mono tabular-nums text-ink">
+                    <td key={scenario.id} className="num border-b border-hairline px-3 py-3 text-right whitespace-nowrap text-ink">
                       {row.render(result)}
                     </td>
                   ))}

@@ -33,30 +33,50 @@ export function BudgetLineRows({ rows }: { rows: BudgetLineRow[] }) {
         LINE_ORDER.indexOf(b.line_code as (typeof LINE_ORDER)[number]),
     );
   if (visible.length === 0) return null;
+  // A small spec table: uppercase head over the navy rule, hairline rows,
+  // figures right-aligned; scrolls inside its frame on a phone.
   return (
-    <div className="mt-2 border-t border-line/60 pt-2">
-      <div className="mb-1 text-xs font-medium text-ink-muted">{t.title}</div>
-      <table className="w-full text-xs">
-        <tbody>
-          {visible.map((r) => {
-            const remaining = Number(r.remaining ?? 0);
-            const code = (r.line_code ?? "other") as keyof typeof t;
-            return (
-              <tr key={r.line_code} className="border-t border-line/40 first:border-0">
-                <td className="py-1 pr-2">{r.label || (t[code] as string) || r.line_code}</td>
-                <td className="py-1 pr-2 text-right font-mono">{formatMoney(r.budget ?? 0)}</td>
-                <td className="py-1 pr-2 text-right font-mono text-ink-muted" title={t.spent}>
-                  {formatMoney(Number(r.paid ?? 0) + Number(r.committed ?? 0))}
-                </td>
-                <td className={`py-1 text-right font-mono ${remaining < 0 ? "text-red-ink" : ""}`} title={t.left}>
-                  {formatMoney(remaining)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      {visible.some((r) => r.line_code === "contingency") && <p className="mt-1 text-[11px] text-ink-faint">{t.contingencyNote}</p>}
+    <div className="mt-4 flex flex-col gap-2">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <caption className="eyebrow pb-2 text-left text-muted">{t.title}</caption>
+          <thead>
+            <tr>
+              <th scope="col" className="border-b border-rule py-2 pr-3 text-left">
+                <span className="sr-only">{t.title}</span>
+              </th>
+              <th scope="col" className="eyebrow border-b border-rule py-2 pr-3 text-right font-medium text-muted">
+                {el.project.budget}
+              </th>
+              <th scope="col" className="eyebrow border-b border-rule py-2 pr-3 text-right font-medium text-muted">
+                {t.spent}
+              </th>
+              <th scope="col" className="eyebrow border-b border-rule py-2 text-right font-medium text-muted">
+                {t.left}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((r) => {
+              const remaining = Number(r.remaining ?? 0);
+              const code = (r.line_code ?? "other") as keyof typeof t;
+              return (
+                <tr key={r.line_code}>
+                  <td className="border-b border-hairline py-2 pr-3 text-text">{r.label || (t[code] as string) || r.line_code}</td>
+                  <td className="num border-b border-hairline py-2 pr-3 text-right text-ink">{formatMoney(r.budget ?? 0)}</td>
+                  <td className="num border-b border-hairline py-2 pr-3 text-right text-text" title={t.spent}>
+                    {formatMoney(Number(r.paid ?? 0) + Number(r.committed ?? 0))}
+                  </td>
+                  <td className={`num border-b border-hairline py-2 text-right ${remaining < 0 ? "text-negative" : "text-ink"}`} title={t.left}>
+                    {formatMoney(remaining)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {visible.some((r) => r.line_code === "contingency") && <p className="text-small text-muted">{t.contingencyNote}</p>}
     </div>
   );
 }
@@ -66,12 +86,16 @@ export function BudgetLineRows({ rows }: { rows: BudgetLineRow[] }) {
 export function ProjectIrrRow({ irr }: { irr: number | null }) {
   const t = el.development;
   return (
-    <div className="flex items-center justify-between border-t border-line/60 pt-1.5 text-sm">
-      <span className="flex items-center gap-1">
+    <div
+      className={`flex items-baseline justify-between gap-4 border-b border-hairline py-2 text-sm ${
+        irr != null && irr < 0 ? "border-l-2 border-l-negative pl-2.5" : ""
+      }`}
+    >
+      <span className="flex items-center gap-1 text-text">
         <Term title={t.irrHint}>{t.irr}</Term>
       </span>
-      <span className={`font-mono font-medium ${irr != null && irr < 0 ? "text-red-ink" : "text-sage-ink"}`}>
-        {irr != null ? `${(irr * 100).toFixed(1)}%` : "—"}
+      <span className={`num font-medium ${irr != null && irr < 0 ? "text-negative" : "text-ink"}`}>
+        {irr != null ? `${irr > 0 ? "+" : irr < 0 ? "−" : ""}${Math.abs(irr * 100).toFixed(1)}%` : "—"}
       </span>
     </div>
   );
@@ -84,7 +108,7 @@ export function DevelopmentSection({ result, truncated }: { result: DevelopmentR
     <OnePagerSection title={t.title} subtitle={t.subtitle}>
       <OnePagerRow label={t.revenue} amount={result.revenue} />
       <OnePagerRow label={t.cost} amount={result.cost} negative />
-      <OnePagerRow label={t.margin} amount={result.margin} negative={result.margin < 0} emphasis />
+      <OnePagerRow label={t.margin} amount={result.margin} negative={result.margin < 0} alert={result.margin < 0} emphasis />
       {result.marginPct != null && <OnePagerRow label={t.marginPct} amount={`${(result.marginPct * 100).toFixed(1)}%`} />}
       <OnePagerRow
         label={t.peak}
@@ -92,7 +116,7 @@ export function DevelopmentSection({ result, truncated }: { result: DevelopmentR
         note={result.peakFundingDate ? `${t.peakNote} · ${formatDate(result.peakFundingDate)}` : null}
       />
       <ProjectIrrRow irr={result.irr} />
-      {truncated && <p className="pt-1 text-xs text-amber-ink">{t.truncated}</p>}
+      {truncated && <p className="mt-2 border-l-2 border-warning pl-3 text-small text-text">{t.truncated}</p>}
     </OnePagerSection>
   );
 }
@@ -110,13 +134,13 @@ export function SendToCashSection({
 }) {
   const t = el.sendToCash;
   return (
-    <div className="mt-2 flex flex-col gap-2 border-t border-line/60 pt-2">
-      <div className="text-xs font-medium text-ink-muted">{t.title}</div>
-      <p className="text-xs text-ink-faint">{t.hint}</p>
-      <ActionForm action={sendScenarioToCash.bind(null, projectId, scenarioId)} className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-1 text-xs text-ink-muted">
+    <div className="mt-4 flex flex-col gap-2">
+      <h3 className="eyebrow border-b border-hairline pb-2 text-muted">{t.title}</h3>
+      <p className="text-small text-muted">{t.hint}</p>
+      <ActionForm action={sendScenarioToCash.bind(null, projectId, scenarioId)} className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1 text-small text-muted">
           {t.months}
-          <Select name="months" defaultValue="24">
+          <Select name="months" defaultValue="24" className="max-md:min-h-11">
             {[12, 24, 36].map((m) => (
               <option key={m} value={m}>
                 {m} {t.monthsUnit}
@@ -124,21 +148,21 @@ export function SendToCashSection({
             ))}
           </Select>
         </label>
-        <label className="flex flex-col gap-1 text-xs text-ink-muted">
+        <label className="flex flex-col gap-1 text-small text-muted">
           {t.probability}
-          <Input type="number" name="probability_pct" min="1" max="100" step="5" defaultValue={80} className="w-24" />
+          <Input type="number" name="probability_pct" min="1" max="100" step="5" defaultValue={80} className="num w-24 max-md:min-h-11" />
         </label>
-        <Button type="submit" variant="secondary">
+        <Button type="submit" variant="secondary" className="max-md:min-h-11">
           {sentCount > 0 ? t.resend : t.send}
         </Button>
       </ActionForm>
       {sentCount > 0 && (
-        <div className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-          <span>
+        <div className="flex flex-wrap items-center gap-3 text-small text-muted">
+          <span className="num">
             {sentCount} {t.sent}
           </span>
           <ActionForm action={removeScenarioFromCash.bind(null, projectId, scenarioId)}>
-            <button type="submit" className="underline">
+            <button type="submit" className="inline-flex min-h-10 items-center text-ink underline underline-offset-4 max-md:min-h-11">
               {t.remove}
             </button>
           </ActionForm>
@@ -151,7 +175,7 @@ export function SendToCashSection({
 export function LeaseSyncButton({ leaseId }: { leaseId: string }) {
   return (
     <ActionForm action={syncLeaseScheduleAction.bind(null, leaseId)}>
-      <Button type="submit" variant="secondary" className="!px-2 !py-1 text-xs">
+      <Button type="submit" variant="secondary" className="max-md:min-h-11">
         {el.projectFinance.syncLease}
       </Button>
     </ActionForm>
