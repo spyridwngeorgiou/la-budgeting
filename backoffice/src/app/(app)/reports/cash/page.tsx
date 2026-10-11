@@ -166,7 +166,9 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
         threshold={{ value: buffer, label: t.buffer }}
       />
 
-      <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[3fr_2fr]">
+      {/* Stacked: the six-column month table needs the full width; the
+          selected month's breakdown follows it. */}
+      <div className="grid min-w-0 grid-cols-1 gap-8">
         <SpecTable label={t.cashTitle} stickyFirst>
           <thead>
             <tr>

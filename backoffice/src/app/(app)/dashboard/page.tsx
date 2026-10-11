@@ -401,7 +401,7 @@ function Card({ card }: { card: DestinationCard }) {
         </span>
       </span>
       <span className="text-small text-muted">{card.description}</span>
-      <span className={`num mt-auto pt-3 text-body ${card.severity ? SEVERITY_TEXT[card.severity] : "text-ink"}`}>{card.metric}</span>
+      <span className={`mt-auto min-w-0 pt-3 text-body tabular-nums break-words ${card.severity ? SEVERITY_TEXT[card.severity] : "text-ink"}`}>{card.metric}</span>
     </Link>
   );
 }
