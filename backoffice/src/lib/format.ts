@@ -132,3 +132,21 @@ export function formatDate(date: string | Date | null | undefined): string {
 export function figureLength(value: string): 1 | 2 | 3 {
   return value.length <= 11 ? 1 : value.length <= 13 ? 2 : 3;
 }
+
+// A compact figure in Greek units, for chart ticks and one-line summaries:
+// 12.400 -> «12 κ.», 1.250.000 -> «1,3 εκ.», 850 -> «850». True minus.
+export function formatCompactNumber(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(Number(n))) return DASH;
+  const v = Number(n);
+  const a = Math.abs(v);
+  const sign = v < 0 ? MINUS : "";
+  if (a >= 999_950) return `${sign}${formatNumber(a / 1_000_000, 0, 1)} εκ.`;
+  if (a >= 999.5) return `${sign}${formatNumber(Math.round(a / 1000))} κ.`;
+  const body = formatNumber(a, 0, 1);
+  return body === "0" ? "0" : `${sign}${body}`;
+}
+
+// The same with the euro sign: «−1,2 εκ. €», «340 κ. €», «85 €».
+export function formatCompactMoney(n: number | null | undefined): string {
+  return n == null || !Number.isFinite(Number(n)) ? DASH : `${formatCompactNumber(n)} €`;
+}

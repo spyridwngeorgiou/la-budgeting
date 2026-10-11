@@ -23,8 +23,20 @@ export { EmptyState } from "./EmptyState";
 export { ToastProvider, useToast, type ToastOptions } from "./Toast";
 export { Worklist, WorklistItem, type Severity } from "./Worklist";
 export { Sparkline } from "./Sparkline";
-export { chartTheme, compactNumber } from "./chart";
-// TrendChart (recharts) is imported from "@/components/ui/TrendChart"
-// directly, so recharts never rides into a bundle through this barrel.
+export { chartTheme, compactNumber, ReferenceKey, STACK_PALETTE, type ReferenceKeyKind } from "./chart";
+// TrendChart, BarChart and BandChart (recharts) are imported from
+// "@/components/ui/<Name>" directly, so recharts never rides into a bundle
+// through this barrel.
+export {
+  ReportSection,
+  ReportHeadline,
+  KpiBand,
+  ReportChart,
+  ReportDetail,
+  ReportMethod,
+  ReportFooter,
+  type KpiItem,
+} from "./ReportSection";
+export { PhoneDetails } from "./PhoneDetails";
 export { Skeleton, PageSkeleton, Card } from "./Skeleton";
 export { Brand, LogoMark, Wordmark } from "./Brand";

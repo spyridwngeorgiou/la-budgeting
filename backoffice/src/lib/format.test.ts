@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   formatBytes,
+  formatCompactMoney,
+  formatCompactNumber,
   formatDate,
   formatDuration,
   formatMoney,
@@ -68,5 +70,22 @@ describe("durations, sizes, dates", () => {
   it("calendar dates are not shifted by the time zone", () => {
     expect(formatDate("2026-10-09")).toBe("09/10/2026");
     expect(formatDate(null)).toBe("");
+  });
+});
+
+describe("compact figures (κ., εκ.)", () => {
+  it("thousands and millions in Greek units, true minus", () => {
+    expect(formatCompactNumber(12_400)).toBe("12 κ.");
+    expect(formatCompactNumber(1_250_000)).toBe("1,3 εκ.");
+    expect(formatCompactNumber(-1_200_000)).toBe("−1,2 εκ.");
+    expect(formatCompactNumber(2_000_000)).toBe("2 εκ.");
+    expect(formatCompactNumber(999_999)).toBe("1 εκ.");
+    expect(formatCompactNumber(850)).toBe("850");
+    expect(formatCompactNumber(-0.01)).toBe("0");
+    expect(formatCompactNumber(null)).toBe("—");
+  });
+  it("money adds the euro sign", () => {
+    expect(formatCompactMoney(-1_200_000)).toBe("−1,2 εκ. €");
+    expect(formatCompactMoney(340_000)).toBe("340 κ. €");
   });
 });

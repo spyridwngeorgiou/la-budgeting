@@ -12,6 +12,7 @@ import { FundingSections } from "./FundingSections";
 import { ScenarioSections } from "./ScenarioSections";
 import { aiEnabled } from "@/lib/ai/client";
 import { ProjectHealthCheck } from "./ProjectHealthCheck";
+import { ReportTools } from "@/components/PresentMode";
 import { PartnersPanel } from "./PartnersPanel";
 import { getAccessContext } from "@/lib/supabase/access";
 import { BudgetFormModal } from "../LegacyFormModals";
@@ -183,6 +184,7 @@ export async function LegacyProjectPage({ id }: { id: string }) {
         }
         actions={
           <>
+          <ReportTools />
           <ProjectFormModal
             action={updateProject.bind(null, id)}
             trigger="Επεξεργασία Έργου"

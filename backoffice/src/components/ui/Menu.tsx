@@ -46,7 +46,8 @@ export function Menu({
   }, [open]);
 
   return (
-    <div ref={root} className={cn("relative inline-flex", className)}>
+    // Secondary actions are never part of a presentation or a printout.
+    <div ref={root} className={cn("present-hide print-hide relative inline-flex", className)}>
       <button
         ref={button}
         type="button"

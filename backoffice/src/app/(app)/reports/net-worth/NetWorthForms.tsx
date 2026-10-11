@@ -24,7 +24,7 @@ function OwnerSelect({ value }: { value?: string }) {
 
 function Trigger({ edit, label, onClick }: { edit: boolean; label: string; onClick: () => void }) {
   return (
-    <Button variant="secondary" size="sm" onClick={onClick}>
+    <Button variant="secondary" size="sm" onClick={onClick} className="present-hide print-hide">
       {edit ? el.common.edit : `+ ${label}`}
     </Button>
   );

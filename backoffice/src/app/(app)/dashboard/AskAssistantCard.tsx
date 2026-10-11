@@ -4,7 +4,7 @@ import { AiSpark, Button, Input } from "@/components/ui";
 // asks straight away (ChatPanel sends ?q= once on arrival). No client JS.
 export function AskAssistantCard() {
   return (
-    <form action="/assistant" method="get" className="flex items-center gap-2 border-l-2 border-ai-border py-1 pl-4">
+    <form action="/assistant" method="get" className="present-hide print-hide flex items-center gap-2 border-l-2 border-ai-border py-1 pl-4">
       <AiSpark className="shrink-0 text-ai" />
       <Input
         name="q"

@@ -1,3 +1,4 @@
+import { formatCompactNumber } from "@/lib/format";
 import { chartSeries, color } from "./tokens";
 
 // The recharts theme: spread these props onto recharts elements so every
@@ -64,34 +65,53 @@ export const chartTheme = {
 // (h-chart-sm / h-chart, spacing tokens in globals.css).
 export const CHART_HEIGHT_CLASS = "h-chart-sm md:h-chart";
 
-// 12.400 -> «12k», 1.250.000 -> «1,3m» for axis ticks (the tooltip shows
-// the exact amount).
+// 12.400 -> «12 κ.», 1.250.000 -> «1,3 εκ.» for axis ticks (the tooltip
+// shows the exact amount). Greek units and the true minus (lib/format).
 export function compactNumber(v: number): string {
-  const a = Math.abs(v);
-  const sign = v < 0 ? "−" : "";
-  if (a >= 1_000_000) return `${sign}${(a / 1_000_000).toLocaleString("el-GR", { maximumFractionDigits: 1 })}m`;
-  if (a >= 1000) return `${sign}${Math.round(a / 1000)}k`;
-  return `${sign}${a.toLocaleString("el-GR", { maximumFractionDigits: 1 })}`;
+  return formatCompactNumber(v);
 }
+
+// The categorical palette of stacked bars (outflows by source, results by
+// segment): the brand's own shades only, no new hue, ordered dark / light /
+// mid so neighbouring segments separate; a canvas hairline between the
+// segments does the rest. At most six series. The negative colour is not
+// here: it is kept for «below the threshold».
+export const STACK_PALETTE = [color.navy, color.chipBorder, color.accent, color.ink, color.hairline, color.muted] as const;
 
 // The labels of reference lines (the cash buffer, the next deadline) sit
 // UNDER the chart as a key, never inside the plot where they would cover
 // bars: a short line in the reference's colour and dash, then its words.
-export function ReferenceKey({ items }: { items: { label: string; kind: "threshold" | "today" }[] }) {
+// "below" is the dot on the months under the threshold, "band" the tint of
+// the safety zone. `as="div"` outside a <figure>.
+export type ReferenceKeyKind = "threshold" | "today" | "below" | "band";
+
+export function ReferenceKey({
+  items,
+  as: Tag = "figcaption",
+}: {
+  items: { label: string; kind: ReferenceKeyKind }[];
+  as?: "figcaption" | "div";
+}) {
   if (items.length === 0) return null;
   return (
-    <figcaption className="flex flex-wrap gap-x-5 gap-y-1 pt-2 text-small text-text">
+    <Tag className="flex flex-wrap gap-x-5 gap-y-1 pt-2 text-small text-text">
       {items.map((it) => {
-        const ref = it.kind === "threshold" ? chartTheme.threshold : chartTheme.today;
+        const ref = it.kind === "today" ? chartTheme.today : chartTheme.threshold;
         return (
           <span key={it.label} className="inline-flex items-center gap-2">
-            <svg width="16" height="6" aria-hidden="true" className="shrink-0">
-              <line x1="0" y1="3" x2="16" y2="3" stroke={ref.stroke} strokeWidth={1.5} strokeDasharray={ref.strokeDasharray} />
+            <svg width="16" height="8" aria-hidden="true" className="shrink-0">
+              {it.kind === "below" ? (
+                <circle cx="8" cy="4" r="3.5" fill={color.negative} />
+              ) : it.kind === "band" ? (
+                <rect x="0" y="0" width="16" height="8" fill={color.negativeTint} />
+              ) : (
+                <line x1="0" y1="4" x2="16" y2="4" stroke={ref.stroke} strokeWidth={1.5} strokeDasharray={ref.strokeDasharray} />
+              )}
             </svg>
             {it.label}
           </span>
         );
       })}
-    </figcaption>
+    </Tag>
   );
 }

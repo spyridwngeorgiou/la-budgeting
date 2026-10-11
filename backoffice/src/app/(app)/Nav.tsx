@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
 import { el } from "@/lib/i18n/el";
 import { AiSpark, Badge, Brand, buttonClass, withPlus } from "@/components/ui";
+import { Suspense } from "react";
+import { PresentMode, PrintHeader } from "@/components/PresentMode";
 import { OrgSwitcher } from "./OrgSwitcher";
 import type { OrgRole } from "@/lib/domain/enums";
 
@@ -91,7 +93,7 @@ export function Nav({
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      <nav className="min-w-0 border-b border-hairline bg-canvas md:sticky md:top-0 md:flex md:h-screen md:w-rail md:shrink-0 md:flex-col md:overflow-y-auto md:border-b-0 md:border-r">
+      <nav className="present-hide print-hide min-w-0 border-b border-hairline bg-canvas md:sticky md:top-0 md:flex md:h-screen md:w-rail md:shrink-0 md:flex-col md:overflow-y-auto md:border-b-0 md:border-r">
         <Link href="/dashboard" aria-label="Kansha" className="flex min-h-11 items-center px-4 pt-5 pb-3">
           <Brand />
         </Link>
@@ -124,13 +126,17 @@ export function Nav({
       <main
         className={`min-w-0 flex-1 bg-canvas px-4 py-5 md:px-8 md:py-8 ${canCapture ? "max-md:pb-[calc(6rem+env(safe-area-inset-bottom))]" : ""}`}
       >
+        <PrintHeader />
+        <Suspense fallback={null}>
+          <PresentMode />
+        </Suspense>
         <div className="mx-auto w-full max-w-page min-w-0">{children}</div>
       </main>
       {canCapture && !capturing && (
         <Link
           href={CAPTURE_HREF}
           aria-label={el.nav.capture}
-          className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 flex h-14 w-14 items-center justify-center border border-navy bg-navy text-panel-ink transition-colors hover:border-navy-strong hover:bg-navy-strong md:hidden"
+          className="present-hide print-hide fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 flex h-14 w-14 items-center justify-center border border-navy bg-navy text-panel-ink transition-colors hover:border-navy-strong hover:bg-navy-strong md:hidden"
         >
           <Plus className="h-6 w-6" strokeWidth={1.5} aria-hidden />
         </Link>
