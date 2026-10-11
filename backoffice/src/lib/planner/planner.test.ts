@@ -11,7 +11,6 @@ import {
   weekdayMonFirst,
 } from "@/lib/dates";
 import { keyAtEnd, keyBetween, MIN_GAP, planMove, SORT_STEP } from "./sortKey";
-import { computeTimeline } from "./timeline";
 import {
   agendaDays,
   filterCalendarItems,
@@ -144,49 +143,6 @@ describe("sortKey", () => {
   });
 });
 
-describe("computeTimeline", () => {
-  it("covers whole months around the items and today", () => {
-    const t = computeTimeline(
-      [
-        { id: "p1", start: "2026-10-10", end: "2026-11-20" },
-        { id: "m1", start: null, end: "2026-12-05" },
-        { id: "u", start: null, end: null },
-      ],
-      { today: "2026-10-09" },
-    );
-    expect(t.start).toBe("2026-10-01");
-    expect(t.end).toBe("2026-12-31");
-    expect(t.totalDays).toBe(92);
-    expect(t.months.map((m) => m.key)).toEqual(["2026-10", "2026-11", "2026-12"]);
-    expect(t.months.reduce((s, m) => s + m.widthPct, 0)).toBeCloseTo(100);
-    expect(t.undated).toEqual(["u"]);
-    expect(t.bars.m1.isPoint).toBe(true);
-    expect(t.bars.p1.isPoint).toBe(false);
-    expect(t.bars.p1.leftPct).toBeCloseTo((9 / 92) * 100);
-    expect(t.bars.p1.widthPct).toBeCloseTo((42 / 92) * 100);
-    expect(t.todayPct).toBeCloseTo((8.5 / 92) * 100);
-  });
-  it("clips bars to an explicit range and drops ones outside it", () => {
-    const t = computeTimeline(
-      [
-        { id: "long", start: "2026-01-01", end: "2027-06-30" },
-        { id: "gone", start: "2025-01-01", end: "2025-02-01" },
-      ],
-      { today: "2026-10-09", from: "2026-10-01", to: "2026-10-31" },
-    );
-    expect(t.bars.long).toMatchObject({ leftPct: 0, widthPct: 100, startsBefore: true, endsAfter: true });
-    expect(t.bars.gone).toBeUndefined();
-  });
-  it("treats an inverted range as a point on its start", () => {
-    const t = computeTimeline([{ id: "x", start: "2026-10-20", end: "2026-10-10" }], { today: "2026-10-09" });
-    expect(t.bars.x.isPoint).toBe(true);
-  });
-  it("hides the today marker outside the range", () => {
-    const t = computeTimeline([], { today: "2026-10-09", from: "2027-01-01", to: "2027-01-31" });
-    expect(t.todayPct).toBeNull();
-  });
-});
-
 function item(partial: Partial<CalendarItem> & { item_key: string; starts_on: string }): CalendarItem {
   return {
     source: "task",
@@ -223,7 +179,7 @@ describe("calendar", () => {
     const byDay = groupByDay(
       [
         item({ item_key: "short", starts_on: "2026-10-05", ends_on: "2026-10-07" }),
-        item({ item_key: "long", source: "phase", starts_on: "2026-10-02", ends_on: "2026-12-31" }),
+        item({ item_key: "long", starts_on: "2026-10-02", ends_on: "2026-12-31" }),
       ],
       range,
     );
@@ -247,7 +203,7 @@ describe("calendar", () => {
     const days = agendaDays(
       [
         item({ item_key: "b", starts_on: "2026-10-20" }),
-        item({ item_key: "a", source: "phase", starts_on: "2026-09-01", ends_on: "2026-10-15" }),
+        item({ item_key: "a", starts_on: "2026-09-01", ends_on: "2026-10-15" }),
         item({ item_key: "out", starts_on: "2026-11-20" }),
       ],
       { start: "2026-10-01", end: "2026-10-31" },
@@ -294,28 +250,24 @@ describe("plannerCapabilities", () => {
   it("mirrors the RLS matrix", () => {
     expect(plannerCapabilities({ kind: "member", role: "viewer" })).toEqual({
       canWriteTasks: false,
-      canComment: true,
       canEditSchedule: false,
       canDelete: false,
       canSeeFinancial: true,
     });
     expect(plannerCapabilities({ kind: "member", role: "editor" })).toEqual({
       canWriteTasks: true,
-      canComment: true,
       canEditSchedule: true,
       canDelete: true,
       canSeeFinancial: true,
     });
     expect(plannerCapabilities({ kind: "partner", projectRole: "contributor" })).toEqual({
       canWriteTasks: true,
-      canComment: true,
       canEditSchedule: false,
       canDelete: false,
       canSeeFinancial: false,
     });
     expect(plannerCapabilities({ kind: "partner", projectRole: "guest" })).toEqual({
       canWriteTasks: false,
-      canComment: true,
       canEditSchedule: false,
       canDelete: false,
       canSeeFinancial: false,

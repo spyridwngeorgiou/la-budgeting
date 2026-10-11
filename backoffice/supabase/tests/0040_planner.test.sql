@@ -1,10 +1,11 @@
 -- Planner (0040-0042): RLS matrix, planner_guard, notes CHECK, calendar view.
+-- Phases, checklists and comments were dropped in 0093 (0093_drop_unused.test.sql).
 -- Run: supabase test db   (CI: .github/workflows/ci.yml, job "db")
 begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(30);
+select plan(20);
 
 -- A owns org A, B owns org B (handle_new_user), V is a viewer in org A.
 insert into auth.users (id, email) values
@@ -56,27 +57,6 @@ select lives_ok($$
 $$, 'owner creates a task');
 select is((select org_id from tasks where title = 'Υποβολή αδείας'), pg_temp.id('org_a'),
   'planner_guard overrides a spoofed org_id with the project''s org');
-select lives_ok($$
-  insert into task_checklist_items (org_id, project_id, task_id, body)
-  select org_id, project_id, id, 'Σχέδια' from tasks where title = 'Υποβολή αδείας'
-$$, 'owner adds a checklist item');
-select lives_ok($$
-  insert into task_comments (org_id, project_id, task_id, body)
-  select org_id, project_id, id, 'Ξεκινάμε' from tasks where title = 'Υποβολή αδείας'
-$$, 'owner comments as themselves');
-select throws_ok($$
-  insert into task_comments (org_id, project_id, task_id, author_id, body)
-  select org_id, project_id, id, '00000000-0000-0000-0000-0000000000c1', 'Πλαστό'
-  from tasks where title = 'Υποβολή αδείας'
-$$, '42501', null, 'cannot comment as someone else');
-select lives_ok($$
-  insert into project_phases (org_id, project_id, name, planned_start, planned_end)
-  values (pg_temp.id('org_a'), pg_temp.id('pa2'), 'Μελέτες', '2026-10-01', '2026-12-31')
-$$, 'owner creates a phase');
-select throws_ok($$
-  insert into tasks (org_id, project_id, phase_id, title)
-  select pg_temp.id('org_a'), pg_temp.id('pa'), id, 'Λάθος φάση' from project_phases where name = 'Μελέτες'
-$$, '23503', null, 'a task cannot use another project''s phase');
 select is((select count(*) from planner_projects())::int, 2, 'planner_projects lists own org projects');
 select is((select count(*) from planner_people(pg_temp.id('pa')))::int, 2,
   'planner_people lists the project org''s members');
@@ -86,8 +66,6 @@ reset role;
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000c1');
 
 select is((select count(*) from tasks)::int, 1, 'viewer reads tasks');
-select is((select count(*) from task_checklist_items)::int, 1, 'viewer reads checklist items');
-select is((select count(*) from project_phases)::int, 1, 'viewer reads phases');
 select throws_ok($$
   insert into tasks (org_id, project_id, title) values (pg_temp.id('org_a'), pg_temp.id('pa'), 'Viewer')
 $$, '42501', null, 'viewer cannot create tasks');
@@ -97,14 +75,12 @@ select throws_ok($$
 $$, '42501', null, 'viewer cannot create milestones');
 select is_empty($$ update tasks set title = 'hacked' returning id $$, 'viewer updates no tasks');
 select is_empty($$ delete from tasks returning id $$, 'viewer deletes no tasks');
-select is_empty($$ update task_checklist_items set done = true returning id $$, 'viewer cannot tick checklist items');
 
 -- ── Other org B: sees and reaches nothing of A's ───────────────────────────
 reset role;
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000b1');
 
 select is((select count(*) from tasks)::int, 0, 'other org sees no tasks');
-select is((select count(*) from task_comments)::int, 0, 'other org sees no comments');
 select is((select count(*) from planner_projects() where org_id = pg_temp.id('org_a'))::int, 0,
   'planner_projects hides other org projects');
 select is_empty($$ select * from planner_people(pg_temp.id('pa')) $$, 'planner_people hides other org members');
@@ -131,8 +107,6 @@ $$, '42501', null, 'planner_guard blocks moving a task to another org');
 select lives_ok($$
   update tasks set project_id = pg_temp.id('pa2') where title = 'Υποβολή αδείας'
 $$, 'editor moves a task between own projects');
-select is((select project_id from task_checklist_items where body = 'Σχέδια'), pg_temp.id('pa2'),
-  'checklist items follow their task');
 
 select ok(exists(select 1 from v_calendar_items where source = 'task' and title = 'Υποβολή αδείας' and not is_financial),
   'owner sees the task on the calendar as non-financial');

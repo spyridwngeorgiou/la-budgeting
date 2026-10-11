@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { MILESTONE_KIND, PHASE_STATUS, TASK_PRIORITY, TASK_STATUS, type TaskStatus } from "@/lib/domain/enums";
+import { MILESTONE_KIND, TASK_PRIORITY, TASK_STATUS, type TaskStatus } from "@/lib/domain/enums";
 import { keyAtEnd, planMove } from "@/lib/planner/sortKey";
 import { action, UserError, type ActionResult } from "@/lib/actions";
 
@@ -118,19 +118,17 @@ export async function updateTask(taskId: string, formData: FormData): Promise<Ac
     uuid.parse(taskId);
     const fields = readTask(formData);
     const scope = await taskScope(supabase, taskId);
-    const phaseId = optionalUuid.parse(formData.get("phase_id"));
     const milestoneId = optionalUuid.parse(formData.get("milestone_id"));
     const projectId = optionalUuid.parse(formData.get("project_id")) ?? scope.project_id;
     const moved = projectId !== scope.project_id;
 
-    // Phase and milestone belong to the old project (composite FK), so a move
-    // clears them; planner_guard refuses the move for anyone but an editor.
+    // The milestone belongs to the old project (composite FK), so a move
+    // clears it; planner_guard refuses the move for anyone but an editor.
     const { error } = await supabase
       .from("tasks")
       .update({
         ...fields,
         project_id: projectId,
-        phase_id: moved ? null : phaseId,
         milestone_id: moved ? null : milestoneId,
       })
       .eq("id", taskId);
@@ -233,137 +231,13 @@ export async function deleteTask(taskId: string, returnTo: string): Promise<Acti
   });
 }
 
-// ── Checklist ──────────────────────────────────────────────────────────────
-
-export async function addChecklistItem(taskId: string, formData: FormData) {
-  const supabase = await createClient();
-  uuid.parse(taskId);
-  const body = title.parse(formData.get("body"));
-  const scope = await taskScope(supabase, taskId);
-  const { data: last } = await supabase
-    .from("task_checklist_items")
-    .select("sort_order")
-    .eq("task_id", taskId)
-    .order("sort_order", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const { error } = await supabase.from("task_checklist_items").insert({
-    org_id: scope.org_id,
-    project_id: scope.project_id,
-    task_id: taskId,
-    body,
-    sort_order: (last?.sort_order ?? 0) + 1,
-  });
-  fail(error);
-  revalidatePlanner(scope.project_id);
-}
-
-export async function toggleChecklistItem(itemId: string, done: boolean) {
-  const supabase = await createClient();
-  uuid.parse(itemId);
-  const { data, error } = await supabase
-    .from("task_checklist_items")
-    .update({ done })
-    .eq("id", itemId)
-    .select("project_id")
-    .maybeSingle();
-  fail(error);
-  revalidatePlanner(data?.project_id);
-}
-
-export async function deleteChecklistItem(itemId: string) {
-  const supabase = await createClient();
-  uuid.parse(itemId);
-  const { data, error } = await supabase
-    .from("task_checklist_items")
-    .delete()
-    .eq("id", itemId)
-    .select("project_id")
-    .maybeSingle();
-  fail(error);
-  revalidatePlanner(data?.project_id);
-}
-
-// ── Comments ───────────────────────────────────────────────────────────────
-
-export async function addComment(taskId: string, body: string) {
-  const supabase = await createClient();
-  uuid.parse(taskId);
-  const text = z.string().trim().min(1).max(10_000).parse(body);
-  const scope = await taskScope(supabase, taskId);
-  // author_id defaults to auth.uid() and RLS insists on it.
-  const { error } = await supabase
-    .from("task_comments")
-    .insert({ org_id: scope.org_id, project_id: scope.project_id, task_id: taskId, body: text });
-  fail(error);
-  revalidatePlanner(scope.project_id);
-}
-
-export async function deleteComment(commentId: string) {
-  const supabase = await createClient();
-  uuid.parse(commentId);
-  const { data, error } = await supabase
-    .from("task_comments")
-    .delete()
-    .eq("id", commentId)
-    .select("project_id")
-    .maybeSingle();
-  fail(error);
-  revalidatePlanner(data?.project_id);
-}
-
-// ── Phases and milestones (org editors) ────────────────────────────────────
-
-const phaseFields = z.object({
-  name: title,
-  status: z.enum(PHASE_STATUS),
-  planned_start: optionalDate,
-  planned_end: optionalDate,
-  actual_start: optionalDate,
-  actual_end: optionalDate,
-  sort_order: z.coerce.number().int().min(0).max(10_000).default(0),
-});
-
-export async function savePhase(projectId: string, phaseId: string | null, formData: FormData): Promise<ActionResult> {
-  return action(async () => {
-    const supabase = await createClient();
-    uuid.parse(projectId);
-    const fields = phaseFields.parse({
-      name: formData.get("name"),
-      status: formData.get("status") ?? "planned",
-      planned_start: formData.get("planned_start"),
-      planned_end: formData.get("planned_end"),
-      actual_start: formData.get("actual_start"),
-      actual_end: formData.get("actual_end"),
-      sort_order: formData.get("sort_order") || 0,
-    });
-    dateRangeOk(fields.planned_start, fields.planned_end);
-    dateRangeOk(fields.actual_start, fields.actual_end);
-    if (phaseId) {
-      const { error } = await supabase.from("project_phases").update(fields).eq("id", uuid.parse(phaseId));
-      fail(error);
-    } else {
-      const orgId = await projectOrg(supabase, projectId);
-      const { error } = await supabase.from("project_phases").insert({ ...fields, org_id: orgId, project_id: projectId });
-      fail(error);
-    }
-    revalidatePlanner(projectId);
-  });
-}
-
-export async function deletePhase(projectId: string, phaseId: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("project_phases").delete().eq("id", uuid.parse(phaseId));
-  fail(error);
-  revalidatePlanner(projectId);
-}
+// ── Milestones (org editors) ───────────────────────────────────────────────
 
 const milestoneFields = z.object({
   title,
   description: optionalText,
   kind: z.enum(MILESTONE_KIND),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  phase_id: optionalUuid,
 });
 
 export async function saveMilestone(projectId: string, milestoneId: string | null, formData: FormData): Promise<ActionResult> {
@@ -375,7 +249,6 @@ export async function saveMilestone(projectId: string, milestoneId: string | nul
       description: formData.get("description"),
       kind: formData.get("kind") ?? "general",
       due_date: formData.get("due_date"),
-      phase_id: formData.get("phase_id"),
     });
     if (milestoneId) {
       const { error } = await supabase.from("project_milestones").update(fields).eq("id", uuid.parse(milestoneId));
@@ -391,19 +264,29 @@ export async function saveMilestone(projectId: string, milestoneId: string | nul
   });
 }
 
-export async function setMilestoneDone(projectId: string, milestoneId: string, done: boolean) {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("project_milestones")
-    .update({ done_at: done ? new Date().toISOString() : null })
-    .eq("id", uuid.parse(milestoneId));
-  fail(error);
-  revalidatePlanner(projectId);
+export async function setMilestoneDone(projectId: string, milestoneId: string, done: boolean): Promise<ActionResult> {
+  return action(async () => {
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("project_milestones")
+      .update({ done_at: done ? new Date().toISOString() : null })
+      .eq("id", uuid.parse(milestoneId));
+    fail(error);
+    revalidatePlanner(projectId);
+  });
 }
 
-export async function deleteMilestone(projectId: string, milestoneId: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("project_milestones").delete().eq("id", uuid.parse(milestoneId));
-  fail(error);
-  revalidatePlanner(projectId);
+export async function deleteMilestone(projectId: string, milestoneId: string): Promise<ActionResult> {
+  return action(async () => {
+    const supabase = await createClient();
+    // RLS lets only org editors delete; a refused delete affects zero rows.
+    const { data, error } = await supabase
+      .from("project_milestones")
+      .delete()
+      .eq("id", uuid.parse(milestoneId))
+      .select("id");
+    fail(error);
+    if (!data || data.length === 0) throw new UserError("Δεν έχετε δικαίωμα διαγραφής.");
+    revalidatePlanner(projectId);
+  });
 }

@@ -19,7 +19,6 @@ export interface TaskInitial {
   assignee_id?: string | null;
   start_date?: string | null;
   due_date?: string | null;
-  phase_id?: string | null;
   milestone_id?: string | null;
 }
 
@@ -30,14 +29,12 @@ export function TaskFields({
   initial,
   projects,
   people,
-  phases,
   milestones,
   canMoveProject = true,
 }: {
   initial?: TaskInitial;
   projects: Option[];
   people: Option[];
-  phases?: Option[];
   milestones?: Option[];
   canMoveProject?: boolean;
 }) {
@@ -110,35 +107,18 @@ export function TaskFields({
           <Input type="date" name="due_date" defaultValue={initial?.due_date ?? ""} />
         </Field>
       </div>
-      {(phases || milestones) && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {phases && (
-            <Field>
-              <Label>{t.phase}</Label>
-              <Select name="phase_id" defaultValue={initial?.phase_id ?? ""}>
-                <option value="">{t.none}</option>
-                {phases.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          )}
-          {milestones && (
-            <Field>
-              <Label>{t.milestone}</Label>
-              <Select name="milestone_id" defaultValue={initial?.milestone_id ?? ""}>
-                <option value="">{t.none}</option>
-                {milestones.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          )}
-        </div>
+      {milestones && (
+        <Field>
+          <Label>{t.milestone}</Label>
+          <Select name="milestone_id" defaultValue={initial?.milestone_id ?? ""}>
+            <option value="">{t.none}</option>
+            {milestones.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
       )}
     </div>
   );

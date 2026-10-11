@@ -23,6 +23,7 @@ import { getCurrentOrgId } from "@/lib/supabase/org";
 
 import { ProjectNoteFormModal } from "../LegacyFormModals";
 import { ProjectPlanSection } from "@/components/planner/ProjectPlanSection";
+import { plannerCapabilities } from "@/lib/planner/access";
 import { UtilityFormModal, UTILITY_KIND_LABELS } from "../LegacyFormModals";
 import { saveUtility, deleteUtility } from "./finance-actions";
 import { saveProjectNote, resolveProjectNote } from "../actions";
@@ -57,7 +58,6 @@ export async function LegacyProjectPage({ id }: { id: string }) {
     { data: noBudgetRow },
     { data: budgetLines },
     { data: revenuePlanOptions },
-    { data: capitalSources },
     { data: projectIncomeTx },
   ] = await Promise.all([
     supabase.from("v_project_rollup").select("*").eq("project_id", id).maybeSingle(),
@@ -97,11 +97,6 @@ export async function LegacyProjectPage({ id }: { id: string }) {
     getCurrentOrgId(supabase).then((orgId) =>
       supabase.from("revenue_plans").select("id, name, project_id, start_year, years").eq("org_id", orgId).order("name"),
     ),
-    supabase
-      .from("project_capital_sources")
-      .select("id, kind, contributor, amount, contributed_on, notes")
-      .eq("project_id", id)
-      .order("contributed_on"),
     // Paid income: «Τιμολογημένα» and «Έσοδα έργου μέχρι σήμερα».
     supabase
       .from("transactions")
@@ -153,10 +148,9 @@ export async function LegacyProjectPage({ id }: { id: string }) {
   const scenarioResult = inputs && scenario ? computeScenarioFromInputs(inputs, scenario) : null;
   const firstYearRent = leaseSchedule?.rows[0];
 
-  // ΚΕΦΑΛΑΙΟ: who funded the project. Its return is «IRR έργου (χωρίς
-  // ΦΠΑ)»: every project flow net of VAT and before financing -- paid, still
-  // open and expected -- plus the budget not yet committed (development.ts).
-  const capitalRows = capitalSources ?? [];
+  // Απόδοση: «IRR έργου (χωρίς ΦΠΑ)» -- every project flow net of VAT and
+  // before financing -- paid, still open and expected -- plus the budget not
+  // yet committed (development.ts).
   const revenueToDate = (projectIncomeTx ?? []).reduce((s, t) => s + Number(t.gross_amount ?? 0), 0);
   const development = computeDevelopmentResult(projectFlows.flows, {
     today,
@@ -310,8 +304,8 @@ export async function LegacyProjectPage({ id }: { id: string }) {
 
         {/* ΣΥΜΒΑΣΗ ΠΕΛΑΤΗ — the revenue baseline client_project work never
             had: the agreed contract value, billed to date (paid income
-            transactions on this project, same figure used above for
-            capital's revenueToDate), and what's left to invoice. Renders
+            transactions on this project, same figure as «Απόδοση»'s
+            revenueToDate), and what's left to invoice. Renders
             only when a contract value is actually set, so this stays
             invisible for own_development/hotel_lease projects. */}
         {project?.contract_value != null && (
@@ -339,7 +333,6 @@ export async function LegacyProjectPage({ id }: { id: string }) {
           projectId={id}
           loans={loanRows}
           loanSchedule={loanSchedule}
-          capitalSources={capitalRows}
           revenueToDate={revenueToDate}
           projectIrr={projectIrr}
         />
@@ -501,7 +494,13 @@ export async function LegacyProjectPage({ id }: { id: string }) {
         {/* ΠΛΑΝΟ ΕΡΓΟΥ -- the planner's view of this project (0040). Dated
             to-dos and milestones used to be ΚΑΤΑΣΤΑΣΗ notes; they live here
             now, and ΚΑΤΑΣΤΑΣΗ keeps the status and risk bullets. */}
-        <ProjectPlanSection projectId={id} />
+        <ProjectPlanSection
+          projectId={id}
+          canEdit={
+            access.kind === "internal" &&
+            plannerCapabilities({ kind: "member", role: access.membership.role }).canEditSchedule
+          }
+        />
 
         {/* ΚΑΤΑΣΤΑΣΗ -- always rendered now (not gated on notes.length), so
             "+ Σημείωση" is reachable even with zero open notes. Previously

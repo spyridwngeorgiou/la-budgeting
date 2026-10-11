@@ -4,7 +4,6 @@ import { useState, type ReactNode } from "react";
 import { Button, FormDrawer, type ButtonSize, type ButtonVariant } from "@/components/ui";
 import {
   BudgetFields,
-  CapitalFields,
   LoanFields,
   NoteFields,
   OpexFields,
@@ -12,7 +11,6 @@ import {
   ScenarioFields,
   UtilityFields,
   type BudgetInitial,
-  type CapitalSourceInitial,
   type LoanInitial,
   type OpexLineInitial,
   type ProjectInitial,
@@ -82,14 +80,6 @@ export function ProjectNoteFormModal({ action, initial, trigger }: { action: Act
   return (
     <LegacyModal label={trigger ?? "+ Σημείωση"} action={action}>
       <NoteFields initial={initial} />
-    </LegacyModal>
-  );
-}
-
-export function CapitalSourceFormModal({ action, initial, trigger }: { action: Action; initial?: CapitalSourceInitial; trigger?: string }) {
-  return (
-    <LegacyModal label={trigger ?? "+ Κεφάλαιο"} action={action}>
-      <CapitalFields initial={initial} />
     </LegacyModal>
   );
 }

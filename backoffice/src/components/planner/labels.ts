@@ -2,7 +2,7 @@ import { el } from "@/lib/i18n/el";
 import type { TaskPriority, TaskStatus } from "@/lib/domain/enums";
 import type { CalendarItem, CalendarSource } from "@/lib/planner/calendar";
 
-// Shared look of planner entities, so the board, the timeline and the
+// Shared look of planner entities, so the board, the project page and the
 // calendar colour the same thing the same way.
 
 // Status as a dot (one of the two places circles are allowed).
@@ -12,15 +12,6 @@ export const STATUS_DOT: Record<TaskStatus, string> = {
   waiting: "bg-accent-ink",
   review: "bg-navy",
   done: "bg-positive",
-};
-
-// Timeline bars: flat token fills, lighter while not yet done.
-export const STATUS_BAR: Record<TaskStatus, string> = {
-  todo: "bg-chip-border",
-  in_progress: "bg-warning/70",
-  waiting: "bg-accent-ink/60",
-  review: "bg-navy",
-  done: "bg-positive/60",
 };
 
 export const PRIORITY_TONE: Record<TaskPriority, "warning" | "negative" | null> = {
@@ -35,7 +26,6 @@ export const PRIORITY_TONE: Record<TaskPriority, "warning" | "negative" | null> 
 export const SOURCE_PILL: Record<CalendarSource, string> = {
   task: "border-chip-border text-ink",
   milestone: "border-navy text-ink",
-  phase: "border-accent-ink text-ink",
   project: "border-hairline text-muted",
   payment: "border-warning text-ink",
   installment: "border-warning text-ink",

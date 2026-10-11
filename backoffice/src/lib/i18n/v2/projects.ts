@@ -4,7 +4,6 @@ export const projects = {
   forms: {
     noteKind: { status: "Κατάσταση", risk: "Ρίσκο" },
     noteSeverity: { info: "Ενημέρωση", watch: "Προσοχή", urgent: "Επείγον" },
-    capitalKind: { equity: "Ίδια κεφάλαια", debt: "Δανεισμός (εκτός σκελών δανείου)", co_investor: "Συνεπενδυτής" },
     utilityKind: { electricity: "Ρεύμα (ΔΕΗ κ.λπ.)", water: "Νερό (ΕΥΔΑΠ)", internet: "Internet", phone: "Τηλέφωνο", other: "Άλλο" },
     loanState: { in_application: "Σε αίτηση", approved: "Εγκεκριμένο", disbursed: "Εκταμιευμένο", repaid: "Αποπληρωμένο" },
     opexKind: { payroll: "Μισθοδοσία", pct_of_revenue: "Ποσοστό επί τζίρου", fixed_annual: "Σταθερό ετήσιο" },

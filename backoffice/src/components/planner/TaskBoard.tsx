@@ -23,7 +23,6 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ListChecks, MessageSquare } from "lucide-react";
 import { Badge, Select, cn } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { TASK_STATUS, type TaskStatus } from "@/lib/domain/enums";
@@ -353,18 +352,6 @@ function CardBody({
         {task.due_date && (
           <span className={cn("num", overdue && "font-medium text-negative")} title={overdue ? el.planner.task.overdue : undefined}>
             {dayMonthLabel(task.due_date)}
-          </span>
-        )}
-        {task.checklist_total > 0 && (
-          <span className={cn("num", task.checklist_done === task.checklist_total && "text-positive")}>
-            <ListChecks className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
-            {task.checklist_done}/{task.checklist_total}
-          </span>
-        )}
-        {task.comment_count > 0 && (
-          <span>
-            <MessageSquare className="mr-0.5 inline h-3.5 w-3.5" aria-hidden />
-            {task.comment_count}
           </span>
         )}
         {assignee && (

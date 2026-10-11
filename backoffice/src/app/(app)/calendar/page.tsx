@@ -3,8 +3,8 @@ import { el } from "@/lib/i18n/el";
 import { plannerContext } from "../planner/context";
 import { CalendarView } from "./CalendarView";
 
-// Ημερολόγιο: payments, receipts, VAT/withholding, instalments, milestones,
-// phases and tasks of one month, with the planner's source filters and month
+// Ημερολόγιο: payments, receipts, VAT/withholding, instalments, milestones
+// and tasks of one month, with the planner's source filters and month
 // navigation (?month=, ?src=, ?fin=0, ?project=).
 export default async function CalendarPage({
   searchParams,
