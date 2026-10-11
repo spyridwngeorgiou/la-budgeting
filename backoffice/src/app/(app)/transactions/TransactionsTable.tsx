@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { AiSpark, Badge, Button, Input, Card } from "@/components/ui";
+import { AiSpark, Badge, Button, Input, PageHeader, buttonClass } from "@/components/ui";
 import { TransactionFormModal, type TransactionInitial } from "./TransactionFormModal";
 import { PartialPaymentModal } from "./PartialPaymentModal";
 import { createTransaction, updateTransaction, markPaid, deleteTransaction, getSourceDocumentUrl } from "./actions";
@@ -12,13 +12,29 @@ import { errorOf } from "@/lib/actions";
 
 const AI_ORIGINS = new Set(["ai_document", "ai_nl"]);
 
-const STATUS_TONE = { paid: "green", pending: "amber", scheduled: "neutral", cancelled: "red" } as const;
+// P15: colour only for exceptions. Paid, scheduled and cancelled rows are
+// read from the label (neutral); pending is the one to watch; overdue is
+// the exception (red, plus a 2px bar on the row).
+const STATUS_TONE = { paid: "neutral", pending: "warning", scheduled: "neutral", cancelled: "neutral" } as const;
 const STATUS_LABEL = {
   paid: el.transaction.paid,
   pending: el.transaction.pending,
   scheduled: el.transaction.scheduled,
   cancelled: el.transaction.cancelled,
 } as const;
+
+// Spec-sheet cells. Below md each row is a CSS grid (a card) and the cells
+// are blocks placed in it; from md up they are ordinary table cells.
+const TH =
+  "eyebrow sticky top-0 z-10 border-b border-rule bg-canvas px-3 py-2.5 text-left font-medium whitespace-nowrap text-muted";
+const TD = "block md:table-cell md:border-b md:border-hairline md:px-3 md:py-3 md:align-top";
+// Row actions: 32px on desktop, 44px on a phone.
+const ROW_ACTION = "max-md:min-h-11";
+
+// An amount with its sign instead of a colour: −3.200,00 € / +12.400,00 €.
+function signed(n: number) {
+  return `${n > 0 ? "+" : n < 0 ? "−" : ""}${formatMoney(Math.abs(n))}`;
+}
 
 interface Option {
   id: string;
@@ -156,147 +172,179 @@ export function TransactionsTable({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-semibold">{el.nav.transactions}</h1>
-          <p className="mt-1 text-sm text-ink-muted">Το πλήρες βιβλίο εσόδων-εξόδων. Φιλτράρετε, αναζητήστε, επεξεργαστείτε.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {exportHref && (
-            <a href={exportHref}>
-              <Button variant="secondary">Εξαγωγή CSV</Button>
-            </a>
-          )}
-          <Button onClick={() => setTarget("create")}>+ Νέα Κίνηση</Button>
-        </div>
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={el.nav.transactions}
+        meta="Το πλήρες βιβλίο εσόδων-εξόδων. Φιλτράρετε, αναζητήστε, επεξεργαστείτε."
+        actions={
+          <>
+            {exportHref && (
+              <a href={exportHref} className={buttonClass("secondary", "md", "max-md:min-h-11")}>
+                Εξαγωγή CSV
+              </a>
+            )}
+            <Button onClick={() => setTarget("create")} className="max-md:min-h-11">
+              + Νέα Κίνηση
+            </Button>
+          </>
+        }
+      />
 
       {filters}
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-6">
         <Input
           type="search"
           placeholder="Αναζήτηση σε επαφή, έργο, κατηγορία, περιγραφή, αρ. παραστατικού…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="max-w-md flex-1"
+          className="w-full max-md:min-h-11 md:max-w-md md:flex-1"
         />
-        <Card className="flex items-center gap-4 !p-2.5 text-xs">
-          <span className="text-ink-muted">
-            {summary.count} κίνησ{summary.count === 1 ? "η" : "εις"}
+        <p className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-small text-muted">
+          <span>
+            <span className="num">{summary.count}</span> κίνησ{summary.count === 1 ? "η" : "εις"}
           </span>
-          <span className="text-sage-ink">Έσοδα {formatMoney(summary.income)}</span>
-          <span className="text-red-ink">Έξοδα {formatMoney(summary.expense)}</span>
-          <span className={`font-medium ${summary.net < 0 ? "text-red-ink" : "text-ink"}`}>
-            Καθαρό {formatMoney(summary.net)}
+          <span>
+            Έσοδα <span className="num text-text">{signed(summary.income)}</span>
           </span>
-        </Card>
+          <span>
+            Έξοδα <span className="num text-text">{signed(-summary.expense)}</span>
+          </span>
+          <span>
+            Καθαρό <span className="num font-medium text-ink">{signed(summary.net)}</span>
+          </span>
+        </p>
       </div>
 
-      <div className="max-h-[70vh] overflow-auto rounded-lg border border-line">
-        <table className="w-full text-left text-sm">
-          <thead className="sticky top-0 z-10 border-b border-line-strong bg-bg text-ink-muted">
+      {/* One list, laid out by CSS: a spec-sheet table from md up (scrolling
+          inside its own frame under a sticky head), a stack of hairline
+          cards on a phone. Never rendered twice -- this can be 500 rows. */}
+      <div className="md:max-h-[70vh] md:overflow-auto">
+        <table className="block w-full border-collapse text-left text-sm md:table">
+          <thead className="hidden md:table-header-group">
             <tr>
-              <th className="p-2">{el.transaction.date}</th>
-              <th className="p-2">{el.transaction.contact}</th>
-              <th className="hidden p-2 sm:table-cell">{el.transaction.project}</th>
-              <th className="hidden p-2 md:table-cell">{el.transaction.category}</th>
-              <th className="p-2 text-right">{el.transaction.grossAmount}</th>
-              <th className="p-2">{el.transaction.status}</th>
-              <th className="p-2"></th>
+              <th scope="col" className={TH}>
+                {el.transaction.date}
+              </th>
+              <th scope="col" className={TH}>
+                {el.transaction.contact}
+              </th>
+              <th scope="col" className={TH}>
+                {el.transaction.project}
+              </th>
+              <th scope="col" className={TH}>
+                {el.transaction.category}
+              </th>
+              <th scope="col" className={`${TH} text-right`}>
+                {el.transaction.grossAmount}
+              </th>
+              <th scope="col" className={TH}>
+                {el.transaction.status}
+              </th>
+              <th scope="col" className={TH}></th>
             </tr>
           </thead>
-          <tbody>
-            {visibleTransactions.map((tx, i) => (
-              <tr
-                key={tx.id}
-                className={`border-t border-line hover:bg-sage/20 ${i % 2 === 1 ? "bg-bg/60" : ""}`}
-              >
-                <td className="p-2 whitespace-nowrap">{formatDate(tx.tx_date)}</td>
-                <td className="p-2 whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1.5">
-                    {tx.contact_name ?? "—"}
-                    {AI_ORIGINS.has(tx.origin ?? "") && (
-                      <span title="Καταχωρήθηκε μέσω AI, επιβεβαιωμένη από άνθρωπο πριν καταγραφεί">
-                        <AiSpark className="text-ai-ink" />
-                      </span>
-                    )}
-                  </span>
-                </td>
-                <td className="hidden p-2 whitespace-nowrap sm:table-cell">{tx.project_name ?? "—"}</td>
-                <td className="hidden p-2 whitespace-nowrap md:table-cell">{tx.category_name ?? "—"}</td>
-                <td
-                  className={`p-2 text-right font-mono whitespace-nowrap ${
-                    tx.direction === "income" ? "text-sage-ink" : "text-red-ink"
+          <tbody className="block border-t border-rule md:table-row-group md:border-t-0">
+            {visibleTransactions.map((tx) => {
+              const overdue = isOverdue(tx);
+              return (
+                <tr
+                  key={tx.id}
+                  className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 border-b border-hairline py-3 md:table-row md:border-b-0 md:py-0 md:hover:bg-hover ${
+                    overdue ? "border-l-2 border-l-negative pl-3 md:border-l-0 md:pl-0" : ""
                   }`}
                 >
-                  {tx.direction === "income" ? "+" : "-"}
-                  {formatMoney(tx.gross_amount)}
-                </td>
-                <td className="p-2">
-                  <div className="flex items-center gap-1.5">
-                    <Badge tone={STATUS_TONE[tx.status as keyof typeof STATUS_TONE]}>
-                      {STATUS_LABEL[tx.status as keyof typeof STATUS_LABEL]}
-                    </Badge>
-                    {isOverdue(tx) && <Badge tone="red">εκπρόθεσμη</Badge>}
-                  </div>
-                </td>
-                <td className="p-2">
-                  <div className="flex items-center justify-end gap-2">
-                    {tx.has_source_document && (
-                      <Button
-                        variant="secondary"
-                        className="!px-2 !py-1 text-xs"
-                        disabled={loadingSource === tx.id}
-                        onClick={() => handleViewSource(tx)}
-                      >
-                        {loadingSource === tx.id ? "…" : "Πρωτότυπο"}
-                      </Button>
-                    )}
-                    {(tx.status === "pending" || tx.status === "scheduled") && !tx.plan_id && (
-                      <Button
-                        variant="secondary"
-                        className="!px-2 !py-1 text-xs"
-                        onClick={() => setPaying(tx)}
-                      >
-                        Μερική πληρωμή
-                      </Button>
-                    )}
-                    {tx.status !== "paid" && (
-                      <form
-                        action={async () => {
-                          const message = errorOf(await markPaid(tx.id));
-                          if (message) window.alert(message);
-                        }}
-                      >
-                        <Button type="submit" variant="secondary" className="!px-2 !py-1 text-xs">
-                          {el.common.markPaid}
+                  <td
+                    className={`${TD} col-start-1 row-start-1 text-small text-muted md:text-sm md:text-text ${
+                      overdue ? "md:border-l-2 md:border-l-negative" : ""
+                    }`}
+                  >
+                    <span className="num">{formatDate(tx.tx_date)}</span>
+                  </td>
+                  <td className={`${TD} col-start-1 row-start-2 min-w-0 text-body text-ink md:text-sm`}>
+                    <span className="inline-flex items-center gap-1.5 md:whitespace-nowrap">
+                      {tx.contact_name ?? "—"}
+                      {AI_ORIGINS.has(tx.origin ?? "") && (
+                        <span title="Καταχωρήθηκε μέσω AI, επιβεβαιωμένη από άνθρωπο πριν καταγραφεί">
+                          <AiSpark className="text-ai" />
+                        </span>
+                      )}
+                    </span>
+                  </td>
+                  <td
+                    className={`${TD} col-span-2 col-start-1 row-start-3 text-small text-muted md:text-sm md:whitespace-nowrap md:text-text`}
+                  >
+                    <span className="md:hidden">{el.transaction.project} · </span>
+                    {tx.project_name ?? "—"}
+                  </td>
+                  <td
+                    className={`${TD} col-span-2 col-start-1 row-start-4 text-small text-muted md:text-sm md:whitespace-nowrap md:text-text`}
+                  >
+                    <span className="md:hidden">{el.transaction.category} · </span>
+                    {tx.category_name ?? "—"}
+                  </td>
+                  <td className={`${TD} num col-start-2 row-start-1 text-right text-body text-ink md:text-sm`}>
+                    {tx.direction === "income" ? "+" : "−"}
+                    {formatMoney(tx.gross_amount)}
+                  </td>
+                  <td className={`${TD} col-start-2 row-start-2 justify-self-end md:justify-self-auto`}>
+                    <div className="flex flex-wrap items-center justify-end gap-1.5 md:justify-start">
+                      <Badge tone={STATUS_TONE[tx.status as keyof typeof STATUS_TONE]}>
+                        {STATUS_LABEL[tx.status as keyof typeof STATUS_LABEL]}
+                      </Badge>
+                      {overdue && <Badge tone="negative">εκπρόθεσμη</Badge>}
+                    </div>
+                  </td>
+                  <td className={`${TD} col-span-2 col-start-1 row-start-5 pt-2 md:py-1.5`}>
+                    <div className="flex flex-wrap items-center gap-2 md:flex-nowrap md:justify-end">
+                      {tx.has_source_document && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className={ROW_ACTION}
+                          disabled={loadingSource === tx.id}
+                          onClick={() => handleViewSource(tx)}
+                        >
+                          {loadingSource === tx.id ? "…" : "Πρωτότυπο"}
                         </Button>
-                      </form>
-                    )}
-                    <Button
-                      variant="secondary"
-                      className="!px-2 !py-1 text-xs"
-                      onClick={() => setTarget(tx)}
-                    >
-                      {el.common.edit}
-                    </Button>
-                    <Button
-                      variant="danger"
-                      className="!px-2 !py-1 text-xs"
-                      disabled={deleting === tx.id}
-                      onClick={() => handleDelete(tx)}
-                    >
-                      {deleting === tx.id ? "…" : el.common.delete}
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                      )}
+                      {(tx.status === "pending" || tx.status === "scheduled") && !tx.plan_id && (
+                        <Button variant="secondary" size="sm" className={ROW_ACTION} onClick={() => setPaying(tx)}>
+                          Μερική πληρωμή
+                        </Button>
+                      )}
+                      {tx.status !== "paid" && (
+                        <form
+                          action={async () => {
+                            const message = errorOf(await markPaid(tx.id));
+                            if (message) window.alert(message);
+                          }}
+                        >
+                          <Button type="submit" variant="secondary" size="sm" className={ROW_ACTION}>
+                            {el.common.markPaid}
+                          </Button>
+                        </form>
+                      )}
+                      <Button variant="secondary" size="sm" className={ROW_ACTION} onClick={() => setTarget(tx)}>
+                        {el.common.edit}
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        className={ROW_ACTION}
+                        disabled={deleting === tx.id}
+                        onClick={() => handleDelete(tx)}
+                      >
+                        {deleting === tx.id ? "…" : el.common.delete}
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
             {visibleTransactions.length === 0 && (
-              <tr>
-                <td colSpan={7} className="p-6 text-center text-ink-muted">
+              <tr className="block md:table-row">
+                <td colSpan={7} className="block border-b border-hairline py-8 text-sm text-muted md:table-cell md:px-3">
                   {transactions.length === 0
                     ? "Δεν υπάρχουν ακόμα κινήσεις. Πατήστε «+ Νέα Κίνηση» για να ξεκινήσετε."
                     : "Καμία κίνηση δεν ταιριάζει με την αναζήτηση."}

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
+import { EmptyState, PageHeader, Stat } from "@/components/ui";
 import { AccountFormModal } from "./AccountFormModal";
 import { createAccount } from "./actions";
 import type { BalanceCheck } from "./BalanceAssertion";
@@ -44,27 +45,23 @@ export default async function AccountsPage() {
     .reduce((sum, a) => sum + Number(a.current_balance ?? 0), 0);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">{el.nav.accounts}</h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            Τράπεζες, μετρητά και μη ρευστά περιουσιακά στοιχεία, εταιρικά και προσωπικά, με τρέχον υπόλοιπο.
-          </p>
-        </div>
-        <AccountFormModal action={createAccount} />
-      </div>
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        title={el.nav.accounts}
+        meta="Τράπεζες, μετρητά και μη ρευστά περιουσιακά στοιχεία, εταιρικά και προσωπικά, με τρέχον υπόλοιπο."
+        actions={<AccountFormModal action={createAccount} />}
+      />
 
       {(accounts ?? []).length === 0 ? (
-        <p className="p-6 text-center text-sm text-ink-muted">
-          Δεν υπάρχουν ακόμα λογαριασμοί. Πατήστε «+ Νέος Λογαριασμός» για να ξεκινήσετε.
-        </p>
+        <EmptyState title="Δεν υπάρχουν ακόμα λογαριασμοί. Πατήστε «+ Νέος Λογαριασμός» για να ξεκινήσετε." />
       ) : (
         <>
-          <div className="rounded-lg border border-ink bg-ink p-4 text-white">
-            <div className="text-xs text-white/70">Σύνολο Ρευστών Διαθεσίμων</div>
-            <div className="font-mono text-2xl font-semibold tabular-nums">{formatMoney(totalLiquid)}</div>
-          </div>
+          <Stat
+            size="lg"
+            label="Σύνολο Ρευστών Διαθεσίμων"
+            value={formatMoney(totalLiquid)}
+            className="border-b border-hairline pb-5"
+          />
 
           {[
             { title: el.account.ownerValues.corporate, rows: corporate },
@@ -72,8 +69,8 @@ export default async function AccountsPage() {
           ]
             .filter((group) => group.rows.length > 0)
             .map((group) => (
-              <section key={group.title}>
-                <h2 className="mb-2 text-sm font-medium text-ink-muted">{group.title}</h2>
+              <section key={group.title} className="flex flex-col gap-3">
+                <h2 className="eyebrow text-muted">{group.title}</h2>
                 <AccountsTable
                   accounts={group.rows.map((a) => ({
                     account_id: a.account_id!,

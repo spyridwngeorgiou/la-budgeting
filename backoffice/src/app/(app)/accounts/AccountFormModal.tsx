@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Select, Label, Field } from "@/components/ui";
+import { Button, Input, Select, Label, Field, Modal } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { el } from "@/lib/i18n/el";
 import { ACCOUNT_KIND, OWNER_SCOPE } from "@/lib/domain/enums";
 import { todayAthens } from "@/lib/dates";
-import { Modal } from "@/components/Modal";
 import { errorOf } from "@/lib/actions";
 
 export function AccountFormModal({ action }: { action: (formData: FormData) => Promise<unknown> }) {
@@ -15,9 +14,15 @@ export function AccountFormModal({ action }: { action: (formData: FormData) => P
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>+ Νέος Λογαριασμός</Button>
+      <Button onClick={() => setOpen(true)} className="max-md:min-h-11">
+        + Νέος Λογαριασμός
+      </Button>
       {open && (
-        <Modal onClose={() => setOpen(false)} className="w-[calc(100%-2rem)] max-w-md rounded bg-white p-5" closeOnBackdrop={false}>
+        <Modal
+          onClose={() => setOpen(false)}
+          className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto border border-hairline bg-raised p-5 md:p-6"
+          closeOnBackdrop={false}
+        >
           <form
             action={async (formData) => {
               setError(null);
@@ -25,7 +30,7 @@ export function AccountFormModal({ action }: { action: (formData: FormData) => P
               if (message) return setError(message);
               setOpen(false);
             }}
-            className="flex flex-col gap-3"
+            className="flex flex-col gap-4"
           >
             <Field>
               <Label>{el.account.name}</Label>
@@ -51,8 +56,8 @@ export function AccountFormModal({ action }: { action: (formData: FormData) => P
                 ))}
               </Select>
             </Field>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="is_liquid" defaultChecked />
+            <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 self-start text-sm text-ink md:min-h-10">
+              <input type="checkbox" name="is_liquid" defaultChecked className="h-4 w-4 accent-navy" />
               Ρευστό διαθέσιμο
             </label>
             <Field>
@@ -68,7 +73,11 @@ export function AccountFormModal({ action }: { action: (formData: FormData) => P
                 required
               />
             </Field>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && (
+              <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+                {error}
+              </p>
+            )}
             <div className="mt-2 flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
                 {el.common.cancel}

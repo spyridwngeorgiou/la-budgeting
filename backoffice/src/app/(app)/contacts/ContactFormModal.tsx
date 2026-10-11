@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Label, Field } from "@/components/ui";
+import { Button, Input, Label, Field, Modal } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { el } from "@/lib/i18n/el";
-import { Modal } from "@/components/Modal";
 import { errorOf } from "@/lib/actions";
 
 interface Props {
@@ -19,9 +18,15 @@ export function ContactFormModal({ action, initial, trigger }: Props) {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>{trigger ?? "+ Νέα Επαφή"}</Button>
+      <Button onClick={() => setOpen(true)} className="max-md:min-h-11">
+        {trigger ?? "+ Νέα Επαφή"}
+      </Button>
       {open && (
-        <Modal onClose={() => setOpen(false)} className="w-[calc(100%-2rem)] max-w-md rounded bg-white p-5" closeOnBackdrop={false}>
+        <Modal
+          onClose={() => setOpen(false)}
+          className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto border border-hairline bg-raised p-5 md:p-6"
+          closeOnBackdrop={false}
+        >
           <form
             action={async (formData) => {
               setError(null);
@@ -33,7 +38,7 @@ export function ContactFormModal({ action, initial, trigger }: Props) {
                 setError(e instanceof Error ? e.message : "Σφάλμα");
               }
             }}
-            className="flex flex-col gap-3"
+            className="flex flex-col gap-4"
           >
             <Field>
               <Label>{el.contact.name}</Label>
@@ -51,7 +56,11 @@ export function ContactFormModal({ action, initial, trigger }: Props) {
               <Label>{el.contact.email}</Label>
               <Input type="email" name="email" defaultValue={initial?.email ?? ""} />
             </Field>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && (
+              <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+                {error}
+              </p>
+            )}
             <div className="mt-2 flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
                 {el.common.cancel}

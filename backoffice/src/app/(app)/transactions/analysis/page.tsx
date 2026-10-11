@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/format";
 import type { TxDirection, TxScope } from "@/lib/domain/enums";
-import { AiSpark } from "@/components/ui";
+import { AiSpark, FilterChip, PageHeader, buttonClass } from "@/components/ui";
 import { addMonths, currentMonthKey, monthRange, monthsBetween, shortMonthYearLabel } from "@/lib/dates";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 
@@ -156,14 +156,18 @@ export default async function AnalysisPage({
   // number this year" without making anyone read every cell -- the same job
   // a colour scale does in a spreadsheet, computed relative to each row's
   // own busiest month so a small project's pattern is as legible as a large
-  // one's.
+  // one's. One hue (the accent, through its token) for both directions: the
+  // sign on the figure says which way the money went, not a red or green.
   function cellShade(v: number | undefined, rowMax: number) {
     if (!v || rowMax === 0) return undefined;
     const intensity = Math.min(1, Math.abs(v) / rowMax);
-    return v < 0
-      ? `rgba(165,52,31,${(0.06 + intensity * 0.22).toFixed(2)})`
-      : `rgba(58,68,48,${(0.05 + intensity * 0.16).toFixed(2)})`;
+    return `color-mix(in srgb, var(--color-accent) ${Math.round(6 + intensity * 22)}%, transparent)`;
   }
+
+  // «Όλα (καθαρό)» mixes income and expense, so every figure carries its
+  // sign; a single direction is all one kind and needs none.
+  const fmt = (v: number) =>
+    direction === "all" ? `${v > 0 ? "+" : v < 0 ? "−" : ""}${formatMoney(Math.abs(v))}` : formatMoney(v);
 
   function cellHref(rowId: string | null, month: string) {
     const p = new URLSearchParams(baseParams);
@@ -191,25 +195,22 @@ export default async function AnalysisPage({
   }${scope !== "all" ? `, πεδίο ${scope === "business" ? "επιχειρηματικό" : "προσωπικό"}` : ""}. Ποιες γραμμές ξεχωρίζουν και γιατί;`;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">Ανάλυση Κινήσεων</h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            Επιλέξτε πώς θέλετε να ομαδοποιήσετε τα δεδομένα. Κάθε ποσό στον πίνακα είναι κλικάρισμα
-            — σας πάει κατευθείαν στις κινήσεις που το απαρτίζουν.
-          </p>
-        </div>
-        <Link
-          href={`/assistant?q=${encodeURIComponent(askPrompt)}`}
-          className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-ai-border bg-ai-bg px-3 py-1.5 text-sm text-ai-ink hover:bg-ai-border/40"
-        >
-          <AiSpark />
-          Ρώτα το Kansha AI γι&apos; αυτόν τον πίνακα →
-        </Link>
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Ανάλυση Κινήσεων"
+        meta="Επιλέξτε πώς θέλετε να ομαδοποιήσετε τα δεδομένα. Κάθε ποσό στον πίνακα είναι κλικάρισμα — σας πάει κατευθείαν στις κινήσεις που το απαρτίζουν."
+        actions={
+          <Link
+            href={`/assistant?q=${encodeURIComponent(askPrompt)}`}
+            className={buttonClass("ai", "md", "max-md:min-h-11 max-md:whitespace-normal")}
+          >
+            <AiSpark />
+            Ρώτα το Kansha AI γι&apos; αυτόν τον πίνακα →
+          </Link>
+        }
+      />
 
-      <div className="flex flex-wrap items-start gap-x-6 gap-y-3 rounded-md border border-line bg-surface p-3">
+      <div className="grid grid-cols-1 gap-x-8 gap-y-4 border-b border-hairline pb-4 md:flex md:flex-wrap md:items-start">
         <FilterGroup label="Ομαδοποίηση κατά" param="group_by" value={groupBy} current={params}
           options={[
             { value: "project", label: "Έργο" },
@@ -241,34 +242,42 @@ export default async function AnalysisPage({
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-ink-muted">Δεν βρέθηκαν κινήσεις για αυτά τα φίλτρα.</p>
+        <p className="border-y border-hairline py-6 text-sm text-muted">Δεν βρέθηκαν κινήσεις για αυτά τα φίλτρα.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line">
-          <table className="w-full border-collapse text-left text-xs">
-            <thead className="bg-bg text-ink-muted">
+        // The months ARE the content: the table scrolls sideways inside its
+        // own frame on a phone, the first column stays put.
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-small">
+            <thead>
               <tr>
-                <th className="sticky left-0 z-10 bg-bg p-2 whitespace-nowrap">{dim.label}</th>
+                <th scope="col" className={`${TH} sticky left-0 z-10 bg-canvas text-muted`}>
+                  {dim.label}
+                </th>
                 {months.map((m) => (
                   <th
                     key={m}
-                    className={`p-2 text-right whitespace-nowrap ${m === todayMonth ? "bg-sage text-sage-ink" : ""}`}
+                    scope="col"
+                    className={`${TH} text-right ${m === todayMonth ? "text-ink" : "text-muted"}`}
+                    aria-current={m === todayMonth ? "date" : undefined}
                   >
-                    <Link href={columnHref(m)} className="hover:underline">
+                    <Link href={columnHref(m)} className="underline-offset-4 hover:text-ink hover:underline">
                       {shortMonthYearLabel(m)}
                     </Link>
-                    {m === todayMonth && <div className="text-[10px] font-normal">σήμερα</div>}
+                    {m === todayMonth && <div className="mt-0.5 text-xs font-medium tracking-normal normal-case text-accent-ink">σήμερα</div>}
                   </th>
                 ))}
-                <th className="p-2 text-right whitespace-nowrap font-semibold">Σύνολο</th>
+                <th scope="col" className={`${TH} text-right text-ink`}>
+                  Σύνολο
+                </th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => {
                 const rowMax = Math.max(0, ...[...row.byMonth.values()].map((v) => Math.abs(v)));
                 return (
-                  <tr key={row.id ?? row.label} className="border-t border-line">
-                    <td className="sticky left-0 z-10 bg-surface p-2 font-medium whitespace-nowrap">
-                      <Link href={rowHref(row.id)} className="hover:underline">
+                  <tr key={row.id ?? row.label} className="hover:bg-hover">
+                    <td className="sticky left-0 z-10 border-b border-hairline bg-canvas px-3 py-2.5 whitespace-nowrap text-ink">
+                      <Link href={rowHref(row.id)} className="underline-offset-4 hover:underline">
                         {row.label}
                       </Link>
                     </td>
@@ -277,36 +286,33 @@ export default async function AnalysisPage({
                       return (
                         <td
                           key={m}
-                          className="p-2 text-right font-mono whitespace-nowrap"
+                          className="num border-b border-hairline px-3 py-2.5 text-right text-text"
                           style={{ backgroundColor: cellShade(v, rowMax) }}
                         >
                           {v ? (
-                            <Link
-                              href={cellHref(row.id, m)}
-                              className={`hover:underline ${v < 0 ? "text-red-ink" : ""}`}
-                            >
-                              {formatMoney(v)}
+                            <Link href={cellHref(row.id, m)} className="underline-offset-4 hover:text-ink hover:underline">
+                              {fmt(v)}
                             </Link>
                           ) : (
-                            <span className="text-ink-faint">—</span>
+                            <span className="text-muted">—</span>
                           )}
                         </td>
                       );
                     })}
-                    <td className="p-2 text-right font-mono font-semibold">{formatMoney(row.total)}</td>
+                    <td className="num border-b border-hairline px-3 py-2.5 text-right font-medium text-ink">{fmt(row.total)}</td>
                   </tr>
                 );
               })}
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-line-strong font-semibold">
-                <td className="sticky left-0 z-10 bg-bg p-2">Σύνολο</td>
+              <tr className="font-semibold text-ink">
+                <td className="sticky left-0 z-10 border-t border-ink bg-canvas px-3 py-3">Σύνολο</td>
                 {columnTotals.map((v, i) => (
-                  <td key={months[i]} className="p-2 text-right font-mono">
-                    {formatMoney(v)}
+                  <td key={months[i]} className="num border-t border-ink px-3 py-3 text-right">
+                    {fmt(v)}
                   </td>
                 ))}
-                <td className="p-2 text-right font-mono">{formatMoney(grandTotal)}</td>
+                <td className="num border-t border-ink px-3 py-3 text-right">{fmt(grandTotal)}</td>
               </tr>
             </tfoot>
           </table>
@@ -315,6 +321,9 @@ export default async function AnalysisPage({
     </div>
   );
 }
+
+// Spec-sheet head cell: uppercase 12px over the navy rule.
+const TH = "eyebrow border-b border-rule px-3 py-2.5 font-medium whitespace-nowrap";
 
 function FilterGroup({
   label,
@@ -330,28 +339,24 @@ function FilterGroup({
   options: { value: string; label: string }[];
 }) {
   return (
-    <div className="flex flex-none flex-col gap-1.5">
-      <span className="text-xs font-medium tracking-wide text-ink-muted uppercase">{label}</span>
-      <div className="flex flex-wrap gap-1">
+    <div role="group" aria-label={label} className="flex min-w-0 flex-none flex-col gap-1.5">
+      <span className="eyebrow text-muted">{label}</span>
+      <div className="flex flex-wrap gap-2">
         {options.map((o) => {
           const p = new URLSearchParams();
           for (const [k, v] of Object.entries(current)) {
             if (typeof v === "string") p.set(k, v);
           }
           p.set(param, o.value);
-          const active = value === o.value;
           return (
-            <Link
+            <FilterChip
               key={o.value}
               href={`/transactions/analysis?${p.toString()}`}
-              className={`whitespace-nowrap rounded-full border px-3 py-1 text-xs transition-colors ${
-                active
-                  ? "border-ink bg-ink text-white"
-                  : "border-line-strong bg-surface text-ink-muted hover:border-ink-faint hover:bg-bg"
-              }`}
+              active={value === o.value}
+              className="max-md:min-h-11"
             >
               {o.label}
-            </Link>
+            </FilterChip>
           );
         })}
       </div>

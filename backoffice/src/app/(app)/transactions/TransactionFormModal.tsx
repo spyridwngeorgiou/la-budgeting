@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useTransition } from "react";
-import { Button, Input, Select, Label, Field, Badge } from "@/components/ui";
+import { Button, Input, Select, Label, Field, Badge, Modal } from "@/components/ui";
 import { DuplicateWarning } from "@/components/DuplicateWarning";
 import { el } from "@/lib/i18n/el";
 import { deriveFromNet, cashOnly } from "@/lib/finance/money";
@@ -10,7 +10,10 @@ import { VAT_RATES } from "@/lib/domain/enums";
 import type { DuplicateCandidate, WriteResult } from "@/lib/ingest/duplicates";
 import { suggestForContact } from "./actions";
 import { todayAthens } from "@/lib/dates";
-import { Modal } from "@/components/Modal";
+
+// P15 dialog: raised panel, hairline frame, square, no shadow; scrolls
+// inside itself on a short screen.
+const MODAL = "max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto border border-hairline bg-raised p-5 md:p-6";
 
 interface Option {
   id: string;
@@ -121,7 +124,7 @@ export function TransactionFormModal({
   }, [netAmount, vatRate, withholding, hasInvoice]);
 
   return (
-    <Modal onClose={onClose} className="max-h-[90vh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded bg-white p-5" closeOnBackdrop={false}>
+    <Modal onClose={onClose} className={MODAL} closeOnBackdrop={false}>
       {/* onSubmit, not action={...}: React resets an action form's
           uncontrolled fields when the action returns, which would wipe
           what was typed while the duplicate warning is open. */}
@@ -130,15 +133,15 @@ export function TransactionFormModal({
           e.preventDefault();
           submit(new FormData(e.currentTarget));
         }}
-        className="flex flex-col gap-3"
+        className="flex flex-col gap-4"
       >
-        <div className="flex gap-2">
-          {(["expense", "income"] as const).map((d) => (
+        <div className="flex">
+          {(["expense", "income"] as const).map((d, i) => (
             <label
               key={d}
-              className={`flex-1 cursor-pointer rounded-md border px-3 py-2 text-center text-sm ${
-                direction === d ? "border-ink bg-ink text-white" : "border-line-strong"
-              }`}
+              className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center border px-3 py-2 text-center text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy md:min-h-10 ${
+                i > 0 ? "-ml-px" : ""
+              } ${direction === d ? "border-navy bg-navy text-panel-ink" : "border-chip-border text-text hover:border-navy hover:text-ink"}`}
             >
               <input
                 type="radio"
@@ -146,7 +149,7 @@ export function TransactionFormModal({
                 value={d}
                 checked={direction === d}
                 onChange={() => setDirection(d)}
-                className="hidden"
+                className="sr-only"
               />
               {d === "expense" ? el.transaction.expense : el.transaction.income}
             </label>
@@ -242,8 +245,9 @@ export function TransactionFormModal({
           </Select>
         </Field>
 
-        <label className="flex items-center gap-2 text-sm">
+        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 self-start text-sm text-ink md:min-h-10">
           <input
+            className="h-4 w-4 accent-navy"
             type="checkbox"
             name="has_invoice"
             checked={hasInvoice}
@@ -291,10 +295,10 @@ export function TransactionFormModal({
           </Field>
         )}
 
-        <div className="rounded bg-bg p-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-ink-muted">{el.transaction.grossAmount}</span>
-            <span className="font-mono font-medium">{formatMoney(preview.gross)}</span>
+        <div className="border-y border-hairline py-3">
+          <div className="flex items-baseline justify-between gap-4">
+            <span className="eyebrow text-muted">{el.transaction.grossAmount}</span>
+            <span className="num text-figure-sm font-light text-ink">{formatMoney(preview.gross)}</span>
           </div>
         </div>
 
@@ -355,7 +359,11 @@ export function TransactionFormModal({
           <Input name="invoice_number" defaultValue={initial?.invoice_number ?? ""} />
         </Field>
 
-        {error && <p className="text-sm text-red-ink">{error}</p>}
+        {error && (
+          <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+            {error}
+          </p>
+        )}
 
         {duplicates.length > 0 && (
           <DuplicateWarning

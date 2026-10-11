@@ -18,7 +18,8 @@ const SRC = path.resolve(import.meta.dirname, "..");
 // scene's own colours live in .ts files, which are not scanned).
 // The classic shell's own pages followed (look-and-feel pass): dashboard,
 // inbox (with its aade / documents flows), settings, assistant, login,
-// then the report tabs and the projects area.
+// then the report tabs, the projects area and the ledger pages
+// (transactions, contacts, accounts).
 const GUARDED = [
   "components/ui",
   "components/planner",
@@ -32,6 +33,9 @@ const GUARDED = [
   "app/(auth)",
   "app/(app)/reports",
   "app/(app)/projects",
+  "app/(app)/transactions",
+  "app/(app)/contacts",
+  "app/(app)/accounts",
 ];
 
 const RULES: { name: string; re: RegExp }[] = [
@@ -68,7 +72,8 @@ export function violations(): Record<string, string[]> {
   return out;
 }
 
-describe("design guard", () => {
+// Reading every guarded file takes a few seconds on a cold Windows/CI disk.
+describe("design guard", { timeout: 30_000 }, () => {
   it("scans the guarded folders", () => {
     expect(walk(path.join(SRC, "components/ui")).length).toBeGreaterThan(10);
   });

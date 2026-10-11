@@ -1,6 +1,15 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
+import { Button, Input, Select } from "@/components/ui";
+
+// P15 filter row: eyebrow labels, square chips (navy only when active),
+// controls at the shared 40px height -- 44px on a phone.
+const LABEL = "eyebrow text-muted";
+const CHIP = "inline-flex min-h-11 items-center border px-3 py-1 text-small whitespace-nowrap transition-colors md:min-h-9";
+const CHIP_ON = "border-navy bg-navy text-panel-ink";
+const CHIP_OFF = "border-chip-border text-text hover:border-navy hover:text-ink";
+const CONTROL = "max-md:min-h-11 max-md:w-full";
 
 interface Option {
   id: string;
@@ -48,7 +57,7 @@ export function TransactionFilters({ current, projects, contacts, categories, ac
   const hasAnyFilter = Object.values(current).some(Boolean);
 
   return (
-    <div className="flex flex-wrap items-end gap-x-6 gap-y-3 rounded-md border border-line bg-surface p-3">
+    <div className="grid grid-cols-1 gap-x-6 gap-y-4 border-b border-hairline pb-4 sm:grid-cols-2 md:flex md:flex-wrap md:items-end">
       <ChipGroup
         label="Κατεύθυνση"
         value={current.direction ?? ""}
@@ -70,21 +79,23 @@ export function TransactionFilters({ current, projects, contacts, categories, ac
         ]}
       />
 
-      <div className="flex flex-none flex-col gap-1.5">
-        <span className="text-xs font-medium tracking-wide text-ink-muted uppercase">Περίοδος</span>
-        <div className="flex items-center gap-1">
-          <input
+      <div className="flex min-w-0 flex-none flex-col gap-1.5">
+        <span className={LABEL}>Περίοδος</span>
+        <div className="flex items-center gap-2">
+          <Input
             type="date"
             value={current.from ?? ""}
             onChange={(e) => setParam("from", e.target.value)}
-            className="rounded-md border border-line-strong bg-surface px-2 py-1 text-xs text-ink focus:border-sage-strong focus:outline-none"
+            className="num min-w-0 flex-1 max-md:min-h-11 md:flex-none"
           />
-          <span className="text-ink-faint">–</span>
-          <input
+          <span aria-hidden="true" className="text-muted">
+            –
+          </span>
+          <Input
             type="date"
             value={current.to ?? ""}
             onChange={(e) => setParam("to", e.target.value)}
-            className="rounded-md border border-line-strong bg-surface px-2 py-1 text-xs text-ink focus:border-sage-strong focus:outline-none"
+            className="num min-w-0 flex-1 max-md:min-h-11 md:flex-none"
           />
         </div>
       </div>
@@ -95,12 +106,13 @@ export function TransactionFilters({ current, projects, contacts, categories, ac
       <EntitySelect label="Λογαριασμός" value={current.account_id ?? ""} onChange={(v) => setParam("account_id", v)} options={accounts} />
 
       {hasAnyFilter && (
-        <button
+        <Button
+          variant="ghost"
           onClick={() => router.push(pathname)}
-          className="ml-auto self-end rounded-full border border-line-strong px-3 py-1 text-xs text-ink-muted hover:bg-bg"
+          className="self-end underline underline-offset-4 max-md:min-h-11 md:ml-auto"
         >
           Καθαρισμός φίλτρων
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -118,20 +130,17 @@ function ChipGroup({
   options: { value: string; label: string }[];
 }) {
   return (
-    <div className="flex flex-none flex-col gap-1.5">
-      <span className="text-xs font-medium tracking-wide text-ink-muted uppercase">{label}</span>
-      <div className="flex flex-wrap gap-1">
+    <div role="group" aria-label={label} className="flex min-w-0 flex-none flex-col gap-1.5">
+      <span className={LABEL}>{label}</span>
+      <div className="flex flex-wrap gap-2">
         {options.map((o) => {
           const active = value === o.value;
           return (
             <button
               key={o.value}
               onClick={() => onChange(o.value)}
-              className={`whitespace-nowrap rounded-full border px-3 py-1 text-xs transition-colors ${
-                active
-                  ? "border-ink bg-ink text-white"
-                  : "border-line-strong bg-surface text-ink-muted hover:border-ink-faint hover:bg-bg"
-              }`}
+              aria-pressed={active}
+              className={`${CHIP} ${active ? CHIP_ON : CHIP_OFF}`}
             >
               {o.label}
             </button>
@@ -154,20 +163,16 @@ function EntitySelect({
   options: Option[];
 }) {
   return (
-    <div className="flex flex-none flex-col gap-1.5">
-      <span className="text-xs font-medium tracking-wide text-ink-muted uppercase">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="rounded-md border border-line-strong bg-surface px-2 py-1 text-xs text-ink focus:border-sage-strong focus:outline-none"
-      >
+    <label className="flex min-w-0 flex-none flex-col gap-1.5">
+      <span className={LABEL}>{label}</span>
+      <Select value={value} onChange={(e) => onChange(e.target.value)} className={`${CONTROL} md:max-w-56`}>
         <option value="">Όλα</option>
         {options.map((o) => (
           <option key={o.id} value={o.id}>
             {o.label}
           </option>
         ))}
-      </select>
-    </div>
+      </Select>
+    </label>
   );
 }

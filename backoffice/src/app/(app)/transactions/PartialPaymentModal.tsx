@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Select, Label, Field } from "@/components/ui";
+import { Button, Input, Select, Label, Field, Modal } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { el } from "@/lib/i18n/el";
 import { formatMoney } from "@/lib/format";
 import { recordPartialPayment } from "./actions";
 import { todayAthens } from "@/lib/dates";
-import { Modal } from "@/components/Modal";
 import { errorOf } from "@/lib/actions";
 
 interface Props {
@@ -29,10 +28,14 @@ export function PartialPaymentModal({ transactionId, label, remaining, accountId
   const left = Math.round((remaining - paid) * 100) / 100;
 
   return (
-    <Modal onClose={onClose} className="w-[calc(100%-2rem)] max-w-md rounded bg-white p-5" closeOnBackdrop={false}>
-      <h2 className="mb-1 text-base font-semibold">Μερική πληρωμή</h2>
-      <p className="mb-4 text-sm text-ink-muted">
-        {label} · υπόλοιπο <span className="font-mono">{formatMoney(remaining)}</span>
+    <Modal
+      onClose={onClose}
+      className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto border border-hairline bg-raised p-5 md:p-6"
+      closeOnBackdrop={false}
+    >
+      <h2 className="border-b border-rule pb-3 text-section font-normal text-ink">Μερική πληρωμή</h2>
+      <p className="mt-3 mb-4 text-small text-muted">
+        {label} · υπόλοιπο <span className="num text-ink">{formatMoney(remaining)}</span>
       </p>
       <form
         action={async (formData) => {
@@ -79,21 +82,25 @@ export function PartialPaymentModal({ transactionId, label, remaining, accountId
           </Select>
         </Field>
 
-        <div className="rounded bg-bg p-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-ink-muted">Καταγράφεται ως πληρωμένη</span>
-            <span className="font-mono">{formatMoney(paid)}</span>
+        <div className="border-t border-hairline text-sm">
+          <div className="flex items-baseline justify-between gap-4 border-b border-hairline py-2.5">
+            <span className="text-small text-muted">Καταγράφεται ως πληρωμένη</span>
+            <span className="num text-ink">{formatMoney(paid)}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-ink-muted">Παραμένει εκκρεμές</span>
-            <span className={`font-mono ${left < 0 ? "text-red-ink" : ""}`}>{formatMoney(Math.max(left, 0))}</span>
+          <div className="flex items-baseline justify-between gap-4 border-b border-hairline py-2.5">
+            <span className="text-small text-muted">Παραμένει εκκρεμές</span>
+            <span className={`num ${left < 0 ? "text-negative" : "text-ink"}`}>{formatMoney(Math.max(left, 0))}</span>
           </div>
           {paid > 0 && left === 0 && (
-            <p className="mt-1 text-xs text-ink-faint">Ολόκληρο το υπόλοιπο — η κίνηση θα σημειωθεί ως πληρωμένη.</p>
+            <p className="mt-2 text-xs text-muted">Ολόκληρο το υπόλοιπο — η κίνηση θα σημειωθεί ως πληρωμένη.</p>
           )}
         </div>
 
-        {error && <p className="text-sm text-red-ink">{error}</p>}
+        {error && (
+          <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+            {error}
+          </p>
+        )}
 
         <div className="mt-1 flex justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onClose}>

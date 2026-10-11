@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge, Button } from "@/components/ui";
+import { Badge, Button, EmptyState, PageHeader, Stat, StatRow } from "@/components/ui";
 import { InstallmentPlanFormModal } from "./InstallmentPlanFormModal";
 import { createInstallmentPlan, regeneratePlan, markInstallmentPaid } from "./actions";
 import { loadLookups } from "@/lib/data/lookups";
@@ -43,100 +43,98 @@ export default async function InstallmentsPage() {
   const accountOptions = (accounts ?? []).map((a) => ({ id: a.id, label: a.name }));
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">{el.nav.installments}</h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            Δόσεις προς τρίτους (π.χ. ρυθμίσεις φόρων, οφειλές) που δεν είναι δάνειο έργου.
-          </p>
-        </div>
-        <InstallmentPlanFormModal
-          action={createInstallmentPlan}
-          contacts={contactOptions}
-          projects={projectOptions}
-          categories={categoryOptions}
-          accounts={accountOptions}
-        />
-      </div>
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        title={el.nav.installments}
+        meta="Δόσεις προς τρίτους (π.χ. ρυθμίσεις φόρων, οφειλές) που δεν είναι δάνειο έργου."
+        actions={
+          <InstallmentPlanFormModal
+            action={createInstallmentPlan}
+            contacts={contactOptions}
+            projects={projectOptions}
+            categories={categoryOptions}
+            accounts={accountOptions}
+          />
+        }
+      />
 
       {(progress ?? []).length === 0 && (
-        <p className="p-6 text-center text-sm text-ink-muted">
-          Δεν υπάρχουν ακόμα σχέδια δόσεων. Πατήστε «+ Νέο Σχέδιο Δόσεων» για να δημιουργήσετε το
-          πρώτο (π.χ. ενοίκιο, δάνειο, εγγύηση σε δόσεις).
-        </p>
+        <EmptyState
+          title="Δεν υπάρχουν ακόμα σχέδια δόσεων."
+          body="Πατήστε «+ Νέο Σχέδιο Δόσεων» για να δημιουργήσετε το πρώτο (π.χ. ενοίκιο, δάνειο, εγγύηση σε δόσεις)."
+        />
       )}
 
       {(progress ?? []).map((plan) => {
         const rows = installmentsByPlan.get(plan.plan_id!) ?? [];
         return (
-          <div key={plan.plan_id} className="rounded-lg border border-line p-4">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="font-medium">{planLabels.get(plan.plan_id!) ?? plan.label}</span>
+          <section
+            key={plan.plan_id}
+            className={`flex flex-col gap-4 ${plan.overdue_count ? "border-l-2 border-negative pl-4" : ""}`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline pb-3">
+              <h2 className="min-w-0 text-section font-normal break-words text-ink">
+                {planLabels.get(plan.plan_id!) ?? plan.label}
+              </h2>
               <div className="flex items-center gap-2">
                 {plan.overdue_count ? (
-                  <Badge tone="red">{plan.overdue_count} ληξιπρόθεσμες</Badge>
+                  <Badge tone="negative">
+                    <span className="num">{plan.overdue_count}</span> ληξιπρόθεσμες
+                  </Badge>
                 ) : null}
                 <form action={regeneratePlan.bind(null, plan.plan_id!)}>
-                  <Button type="submit" variant="secondary" className="!px-2 !py-1 text-xs">
+                  <Button type="submit" variant="secondary" size="sm" className="max-md:min-h-11">
                     Ανανέωση
                   </Button>
                 </form>
               </div>
             </div>
 
-            <div className="mb-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+            <StatRow className="border-t-0 pt-0">
               <Stat label="Πληρωμένες" value={`${plan.paid_count} / ${plan.installments_total}`} />
               <Stat label="Πληρωμένο Ποσό" value={formatMoney(plan.paid_amount)} />
               <Stat label="Υπόλοιπο" value={formatMoney(plan.remaining_amount)} />
-              <Stat
-                label="Επόμενη Δόση"
-                value={plan.next_due_date ? formatDate(plan.next_due_date) : "—"}
-              />
-            </div>
+              <Stat label="Επόμενη Δόση" value={plan.next_due_date ? formatDate(plan.next_due_date) : "—"} />
+            </StatRow>
 
-            <details>
-              <summary className="cursor-pointer text-xs text-ink-muted">
-                Δόσεις ({rows.length})
+            <details className="group">
+              <summary className="eyebrow inline-flex min-h-11 cursor-pointer items-center gap-2 text-muted hover:text-ink md:min-h-9">
+                <span aria-hidden="true" className="inline-block transition-transform group-open:rotate-90">
+                  ›
+                </span>
+                Δόσεις (<span className="num">{rows.length}</span>)
               </summary>
-              <table className="mt-2 w-full text-left text-sm">
-                <tbody>
-                  {rows.map((tx) => (
-                    <tr key={tx.id} className="border-t border-line">
-                      <td className="p-1.5">#{tx.installment_no}</td>
-                      <td className="p-1.5">{formatDate(tx.due_date)}</td>
-                      <td className="p-1.5 text-right font-mono">{formatMoney(tx.gross_amount)}</td>
-                      <td className="p-1.5">
-                        <Badge tone={tx.status === "paid" ? "green" : "amber"}>
-                          {el.transaction[tx.status as "paid" | "pending" | "scheduled" | "cancelled"]}
-                        </Badge>
-                      </td>
-                      <td className="p-1.5">
-                        {tx.status !== "paid" && (
-                          <form action={markInstallmentPaid.bind(null, tx.id)}>
-                            <Button type="submit" variant="secondary" className="!px-2 !py-1 text-xs">
-                              {el.common.markPaid}
-                            </Button>
-                          </form>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full border-collapse text-left text-sm">
+                  <tbody className="border-t border-rule">
+                    {rows.map((tx) => (
+                      <tr key={tx.id} className="border-b border-hairline hover:bg-hover">
+                        <td className="num px-3 py-2 text-muted">#{tx.installment_no}</td>
+                        <td className="num px-3 py-2 text-text">{formatDate(tx.due_date)}</td>
+                        <td className="num px-3 py-2 text-right text-ink">{formatMoney(tx.gross_amount)}</td>
+                        <td className="px-3 py-2">
+                          <Badge tone={tx.status === "paid" ? "neutral" : "warning"}>
+                            {el.transaction[tx.status as "paid" | "pending" | "scheduled" | "cancelled"]}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-1.5 text-right">
+                          {tx.status !== "paid" && (
+                            <form action={markInstallmentPaid.bind(null, tx.id)}>
+                              <Button type="submit" variant="secondary" size="sm" className="max-md:min-h-11">
+                                {el.common.markPaid}
+                              </Button>
+                            </form>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </details>
-          </div>
+          </section>
         );
       })}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-xs text-ink-muted">{label}</div>
-      <div className="font-mono">{value}</div>
     </div>
   );
 }
