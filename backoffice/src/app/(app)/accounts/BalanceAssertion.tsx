@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui";
 import { formatMoney, formatDate } from "@/lib/format";
+import { okGap } from "./status";
 
 // One row of v_balance_checks (0035): a real balance on a date, and whether
 // the movements recorded for the period leading up to it explain it.
@@ -29,8 +30,6 @@ const START_LABEL = {
   opening: "Υπόλοιπο έναρξης",
   app: "Υπόλοιπο εφαρμογής (μη επιβεβαιωμένο)",
 } as const;
-
-export const okGap = (gap: number) => Math.abs(gap) < 1;
 
 // A period-breakdown line: label left, monospace figure right -- the same
 // grammar OnePagerRow uses everywhere else in the app.
@@ -111,8 +110,8 @@ function PeriodBreakdown({ check, accountId }: { check: BalanceCheck; accountId:
   );
 }
 
-// Pure display: the read-only content shown inside an expanded row on the
-// accounts table (AccountsTable.tsx). Entering a new check is a separate
+// Pure display: the read-only check history shown in the «Έλεγχος
+// υπολοίπου» drawer of an account page (accounts/[id]/CheckDrawer.tsx). Entering a new check is a separate
 // concern -- NewCheckModal -- so this never mounts a form.
 export function BalanceAssertion({
   accountId,

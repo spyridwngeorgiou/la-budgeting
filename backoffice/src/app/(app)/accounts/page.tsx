@@ -1,48 +1,48 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney } from "@/lib/format";
+import { todayAthens } from "@/lib/dates";
 import { el } from "@/lib/i18n/el";
+import type { AccountKind } from "@/lib/domain/enums";
 import { EmptyState, PageHeader, Stat } from "@/components/ui";
 import { AccountFormModal } from "./AccountFormModal";
 import { createAccount } from "./actions";
-import type { BalanceCheck } from "./BalanceAssertion";
-import { AccountsTable } from "./AccountsTable";
+import { AccountsTable, type AccountListRow } from "./AccountsTable";
+import { okGap, type AccountStatus } from "./status";
 
 export default async function AccountsPage() {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
   const [{ data: accounts }, { data: checkRows }] = await Promise.all([
     supabase.from("v_account_balances").select("*").eq("org_id", orgId).order("owner_scope").order("name"),
-    // Newest first per account; each row carries its live period breakdown (0035).
-    supabase.from("v_balance_checks").select("*").eq("org_id", orgId).order("as_of_date", { ascending: false }),
+    // Newest first: the first row per account is its latest check (0035).
+    supabase
+      .from("v_balance_checks")
+      .select("account_id, as_of_date, total_gap")
+      .eq("org_id", orgId)
+      .order("as_of_date", { ascending: false }),
   ]);
-  const checksByAccount = new Map<string, BalanceCheck[]>();
+  const latestCheck = new Map<string, { as_of_date: string; total_gap: number }>();
   for (const r of checkRows ?? []) {
-    const list = checksByAccount.get(r.account_id!) ?? [];
-    list.push({
-      id: r.id!,
-      as_of_date: r.as_of_date!,
-      asserted_balance: Number(r.asserted_balance),
-      from_import: Boolean(r.from_import),
-      period_start: r.period_start!,
-      period_start_balance: Number(r.period_start_balance),
-      period_start_source: r.period_start_source as BalanceCheck["period_start_source"],
-      period_income: Number(r.period_income),
-      period_income_n: Number(r.period_income_n),
-      period_expense: Number(r.period_expense),
-      period_expense_n: Number(r.period_expense_n),
-      expected_balance: Number(r.expected_balance),
-      period_gap: Number(r.period_gap),
-      total_gap: Number(r.total_gap),
-    });
-    checksByAccount.set(r.account_id!, list);
+    if (!latestCheck.has(r.account_id!)) latestCheck.set(r.account_id!, { as_of_date: r.as_of_date!, total_gap: Number(r.total_gap) });
   }
 
-  const corporate = (accounts ?? []).filter((a) => a.owner_scope === "corporate");
-  const personal = (accounts ?? []).filter((a) => a.owner_scope === "personal");
-  const totalLiquid = (accounts ?? [])
-    .filter((a) => a.is_liquid)
-    .reduce((sum, a) => sum + Number(a.current_balance ?? 0), 0);
+  const rows: (AccountListRow & { owner_scope: string | null })[] = (accounts ?? []).map((a) => {
+    const check = latestCheck.get(a.account_id!);
+    const status: AccountStatus = !check ? "never_counted" : okGap(check.total_gap) ? "ok" : "drift";
+    return {
+      account_id: a.account_id!,
+      name: a.name!,
+      kind: a.kind! as AccountKind,
+      is_liquid: Boolean(a.is_liquid),
+      current_balance: Number(a.current_balance ?? 0),
+      status,
+      last_check: check?.as_of_date ?? null,
+      owner_scope: a.owner_scope,
+    };
+  });
+  const totalLiquid = rows.filter((a) => a.is_liquid).reduce((sum, a) => sum + a.current_balance, 0);
+  const today = todayAthens();
 
   return (
     <div className="flex flex-col gap-8">
@@ -52,37 +52,19 @@ export default async function AccountsPage() {
         actions={<AccountFormModal action={createAccount} />}
       />
 
-      {(accounts ?? []).length === 0 ? (
+      {rows.length === 0 ? (
         <EmptyState title="Δεν υπάρχουν ακόμα λογαριασμοί. Πατήστε «+ Νέος Λογαριασμός» για να ξεκινήσετε." />
       ) : (
         <>
-          <Stat
-            size="lg"
-            label="Σύνολο Ρευστών Διαθεσίμων"
-            value={formatMoney(totalLiquid)}
-            className="border-b border-hairline pb-5"
-          />
+          <Stat size="lg" label={el.account.totalLiquid} value={formatMoney(totalLiquid)} />
 
-          {[
-            { title: el.account.ownerValues.corporate, rows: corporate },
-            { title: el.account.ownerValues.personal, rows: personal },
-          ]
+          {(["corporate", "personal"] as const)
+            .map((scope) => ({ scope, rows: rows.filter((a) => a.owner_scope === scope) }))
             .filter((group) => group.rows.length > 0)
             .map((group) => (
-              <section key={group.title} className="flex flex-col gap-3">
-                <h2 className="eyebrow text-muted">{group.title}</h2>
-                <AccountsTable
-                  accounts={group.rows.map((a) => ({
-                    account_id: a.account_id!,
-                    name: a.name!,
-                    kind: a.kind!,
-                    is_liquid: a.is_liquid!,
-                    opening_balance: Number(a.opening_balance ?? 0),
-                    opening_balance_date: a.opening_balance_date!,
-                    current_balance: Number(a.current_balance ?? 0),
-                  }))}
-                  checksByAccount={checksByAccount}
-                />
+              <section key={group.scope} className="flex flex-col gap-2">
+                <h2 className="eyebrow text-muted">{el.account.groups[group.scope]}</h2>
+                <AccountsTable accounts={group.rows} today={today} />
               </section>
             ))}
         </>
