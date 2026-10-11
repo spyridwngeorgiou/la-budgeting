@@ -5706,6 +5706,36 @@ export type Database = {
           },
         ]
       }
+      v_account_ledger: {
+        Row: {
+          account_id: string | null
+          category_id: string | null
+          description: string | null
+          direction: Database["public"]["Enums"]["tx_direction"] | null
+          gross_amount: number | null
+          org_id: string | null
+          paid_date: string | null
+          party_name: string | null
+          project_id: string | null
+          running_balance: number | null
+          scope: Database["public"]["Enums"]["tx_scope"] | null
+          signed_amount: number | null
+          transaction_id: string | null
+          tx_date: string | null
+        }
+        Relationships: []
+      }
+      v_account_ledger_monthly: {
+        Row: {
+          account_id: string | null
+          inflow: number | null
+          month: string | null
+          n: number | null
+          org_id: string | null
+          outflow: number | null
+        }
+        Relationships: []
+      }
       v_balance_checks: {
         Row: {
           account_id: string | null
