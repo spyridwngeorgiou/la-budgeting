@@ -119,6 +119,23 @@ export async function listMyOrgs(supabase: SupabaseClient) {
   });
 }
 
+// The caller's own profile row (RLS: profiles_select always includes it), or
+// null when signed out or the row is missing. One query, no org hop -- the
+// root redirect reads home_path from it on every visit to /.
+export async function getMyProfile(supabase: SupabaseClient) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session?.user) return null;
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("user_id, email, display_name, home_path")
+    .eq("user_id", session.user.id)
+    .maybeSingle();
+  return (data as { user_id: string; email: string | null; display_name: string | null; home_path: string | null } | null) ?? null;
+}
+
 export async function getSelectedOrgId(): Promise<string | null> {
   const cookieStore = await cookies();
   return cookieStore.get(ORG_COOKIE)?.value ?? null;

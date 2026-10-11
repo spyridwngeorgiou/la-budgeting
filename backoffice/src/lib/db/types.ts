@@ -3462,6 +3462,7 @@ export type Database = {
           default_discipline: Database["public"]["Enums"]["partner_discipline"] | null
           display_name: string | null
           email: string | null
+          home_path: string | null
           phone: string | null
           user_id: string
         }
@@ -3470,6 +3471,7 @@ export type Database = {
           default_discipline?: Database["public"]["Enums"]["partner_discipline"] | null
           display_name?: string | null
           email?: string | null
+          home_path?: string | null
           phone?: string | null
           user_id: string
         }
@@ -3478,6 +3480,7 @@ export type Database = {
           default_discipline?: Database["public"]["Enums"]["partner_discipline"] | null
           display_name?: string | null
           email?: string | null
+          home_path?: string | null
           phone?: string | null
           user_id?: string
         }
