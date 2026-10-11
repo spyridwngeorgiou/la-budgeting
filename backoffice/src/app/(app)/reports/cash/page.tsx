@@ -4,10 +4,12 @@ import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate, formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { Badge, Button, PageHeader, SectionHeader, Stat, StatRow, cn } from "@/components/ui";
-import { ActionForm } from "@/components/ActionForm";
+import { ArgsActionForm } from "@/components/ArgsActionForm";
+import { BarChart } from "@/components/ui/BarChart";
 import { FRAME, LINK, NUM, ROW, SUB, TABLE, TD, TH, TOUCH, ViewSwitch } from "../ui";
 import { loadLookups } from "@/lib/data/lookups";
 import { currentMonthKey, firstOfMonth, isMonthKey, monthKeyOf, monthLabel, shortMonthYearLabel } from "@/lib/dates";
+import { cashChartRows } from "@/lib/finance/reportCharts";
 import {
   FORECAST_HORIZONS,
   FORECAST_SCENARIOS,
@@ -17,7 +19,6 @@ import {
   type ForecastScenario,
   type ForecastScope,
 } from "@/lib/finance/forecastParams";
-import { CashflowChart } from "./CashflowChart";
 import { ExpectedIncomeFormModal } from "./ExpectedIncomeFormModal";
 import { saveExpectedIncome, setExpectedIncomeStatus } from "./actions";
 
@@ -68,17 +69,7 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
     null,
   );
 
-  const chartRows = rows.map((r) => {
-    const key = monthKeyOf(r.month);
-    return {
-      month: key,
-      label: shortMonthYearLabel(key),
-      inflow: Number(r.inflow),
-      outflow: Number(r.outflow),
-      running: Number(r.closing_balance),
-      isToday: key === todayMonth,
-    };
-  });
+  const chartRows = cashChartRows(rows, shortMonthYearLabel);
 
   const query = (patch: Record<string, string | null>) => {
     const p = new URLSearchParams();
@@ -148,7 +139,17 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
         />
       </StatRow>
 
-      <CashflowChart rows={chartRows} buffer={buffer} />
+      <BarChart
+        label={t.cashChartLabel}
+        data={chartRows}
+        xKey="label"
+        series={[
+          { key: "inflow", name: t.inflow, tone: "navy" },
+          { key: "outflow", name: t.outflow, tone: "accent" },
+          { key: "balance", name: t.closing, kind: "line", tone: "ink" },
+        ]}
+        threshold={{ value: buffer, label: t.buffer }}
+      />
 
       <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[3fr_2fr]">
         <div className={FRAME}>
@@ -231,7 +232,7 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
       <section className="flex min-w-0 flex-col gap-3">
         <SectionHeader
           title={t.expectedTitle}
-          actions={<ExpectedIncomeFormModal action={saveExpectedIncome.bind(null, null)} projects={lookups.projects} />}
+          actions={<ExpectedIncomeFormModal action={saveExpectedIncome} projects={lookups.projects} />}
         />
         {(expected ?? []).length === 0 ? (
           <p className="text-sm text-muted">{t.expectedEmpty}</p>
@@ -259,7 +260,8 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
                         {!e.scenario_id && (
                           <div className="flex items-center justify-end gap-1">
                             <ExpectedIncomeFormModal
-                              action={saveExpectedIncome.bind(null, e.id)}
+                              action={saveExpectedIncome}
+                              id={e.id}
                               projects={lookups.projects}
                               trigger={el.common.edit}
                               initial={{
@@ -272,16 +274,16 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
                                 notes: e.notes,
                               }}
                             />
-                            <ActionForm action={setExpectedIncomeStatus.bind(null, e.id, "received")}>
+                            <ArgsActionForm action={setExpectedIncomeStatus} args={[e.id, "received"]}>
                               <Button type="submit" variant="ghost" size="sm" className={TOUCH}>
                                 {t.expectedReceived}
                               </Button>
-                            </ActionForm>
-                            <ActionForm action={setExpectedIncomeStatus.bind(null, e.id, "cancelled")}>
+                            </ArgsActionForm>
+                            <ArgsActionForm action={setExpectedIncomeStatus} args={[e.id, "cancelled"]}>
                               <Button type="submit" variant="ghost" size="sm" className={TOUCH}>
                                 {t.expectedCancel}
                               </Button>
-                            </ActionForm>
+                            </ArgsActionForm>
                           </div>
                         )}
                       </td>
@@ -313,6 +315,7 @@ function itemHref(i: Item): string | null {
   if (i.item_key.startsWith("tx:")) return `/transactions?ids=${i.ref_id}`;
   if (i.source === "deal") return "/projects/deals";
   if (i.source === "vat") return "/reports/vat";
+  if (i.source === "withholding") return "/reports/withholding";
   if (i.source === "liability") return "/reports/net-worth";
   return null;
 }

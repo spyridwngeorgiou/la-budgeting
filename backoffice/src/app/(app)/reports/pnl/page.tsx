@@ -7,6 +7,8 @@ import { Badge, PageHeader, SectionHeader, cn } from "@/components/ui";
 import { FRAME, LINK, NUM, ROW, TABLE, TD, TH, TOUCH, ViewSwitch } from "../ui";
 import { addMonths, currentYear, firstOfMonth, isMonthKey, lastOfMonth, shortMonthLabel } from "@/lib/dates";
 import { BUSINESS_LINES, PNL_LINES, pnlTable, type PnlGroup } from "@/lib/finance/pnl";
+import { pnlChartRows, topCostRows } from "@/lib/finance/reportCharts";
+import { BarChart } from "@/components/ui/BarChart";
 
 // Αποτελέσματα. Every figure is pnl_summary() / v_pnl_lines (0067): net of
 // VAT, accrual basis, only the interest of a loan. This page only picks the
@@ -35,13 +37,17 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
 
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
-  const { data, error } = await supabase.rpc("pnl_summary", {
-    p_org: orgId,
-    p_from: from,
-    p_to: to,
-    p_group: group,
-    p_include_scheduled: withScheduled,
-  });
+  const summary = (p_from: string, p_to: string, p_group: PnlGroup) =>
+    supabase.rpc("pnl_summary", { p_org: orgId, p_from, p_to, p_group, p_include_scheduled: withScheduled });
+  // The table's own grouping, plus what the charts need: the year by month
+  // (the same rows when the table is by month), last year by month, and
+  // the year's largest cost categories.
+  const [{ data, error }, monthly, lastYear, { data: costCategories }] = await Promise.all([
+    summary(from, to, group),
+    group === "month" ? null : summary(from, to, "month"),
+    summary(`${year - 1}-01-01`, `${year - 1}-12-31`, "month"),
+    supabase.rpc("pnl_cost_categories", { p_org: orgId, p_from: from, p_to: to, p_include_scheduled: withScheduled, p_limit: 8 }),
+  ]);
   if (error) throw error;
 
   const buckets =
@@ -50,6 +56,18 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
       : BUSINESS_LINES.filter((b) => (data ?? []).some((r) => r.bucket === b));
   const table = pnlTable(data ?? [], buckets);
   const t = el.reports;
+
+  const months = Array.from({ length: 12 }, (_, i) => addMonths(`${year}-01`, i));
+  const monthTable = group === "month" ? table : pnlTable(monthly?.data ?? [], months);
+  const lastYearRows = lastYear.data ?? [];
+  const chartRows = pnlChartRows(
+    monthTable,
+    lastYearRows.length > 0 ? pnlTable(lastYearRows.map((r) => ({ ...r, bucket: `${year}${r.bucket.slice(4)}` })), months) : null,
+    months,
+    shortMonthLabel,
+  );
+  const hasMonthly = chartRows.some((r) => r.revenue !== 0 || r.cost !== 0);
+  const topCosts = topCostRows(costCategories ?? []);
 
   const query = (patch: Record<string, string | null>) => {
     const p = new URLSearchParams();
@@ -141,6 +159,22 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
         />
       </div>
 
+      {hasMonthly && (
+        <BarChart
+          label={t.pnlChartLabel}
+          data={chartRows}
+          xKey="label"
+          series={[
+            { key: "revenue", name: t.lines.revenue, tone: "navy" },
+            { key: "cost", name: t.pnlCost, tone: "accent" },
+            { key: "result", name: t.lines.result, kind: "line", tone: "ink" },
+            ...(lastYearRows.length > 0
+              ? [{ key: "lastYear", name: t.pnlLastYear, kind: "line" as const, faint: true }]
+              : []),
+          ]}
+        />
+      )}
+
       {buckets.length === 0 ? (
         <p className="border-y border-hairline py-6 text-sm text-muted">{t.pnlEmpty}</p>
       ) : (
@@ -214,6 +248,19 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
           </Link>
           : {t.unclassifiedHint}
         </p>
+      )}
+
+      {topCosts.length > 0 && (
+        <section className="flex min-w-0 flex-col gap-3">
+          <SectionHeader title={`${t.topCostsTitle} · ${year}`} />
+          <BarChart
+            label={t.topCostsLabel}
+            data={topCosts}
+            xKey="label"
+            layout="rows"
+            series={[{ key: "amount", name: t.pnlCost, tone: "accent" }]}
+          />
+        </section>
       )}
 
       {drillable && cellLine && (
