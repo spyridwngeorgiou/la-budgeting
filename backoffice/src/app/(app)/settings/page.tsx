@@ -61,7 +61,7 @@ export default async function SettingsPage() {
           </Field>
           <Button type="submit">{el.common.save}</Button>
         </ActionForm>
-        <p className="text-xs text-muted">Η σελίδα που ανοίγει μετά τη σύνδεση. Το «Αρχική» του μενού ανοίγει πάντα τον πίνακα.</p>
+        <p className="text-xs text-muted">Η σελίδα που ανοίγει μετά τη σύνδεση. Η «Επισκόπηση» μένει πάντα πρώτη στο μενού.</p>
         <div className="flex flex-col gap-3">
           <h3 className="eyebrow text-muted">Αλλαγή Κωδικού</h3>
           <ChangePasswordForm />

@@ -4,6 +4,7 @@ import {
   athensMinuteLabel,
   currentMonthKey,
   currentYear,
+  longDateLabel,
   monthRange,
   monthsBetween,
   quarterOf,
@@ -11,6 +12,13 @@ import {
   todayAthens,
   toIso,
 } from "./dates";
+
+describe("longDateLabel", () => {
+  it("names the weekday and the genitive month", () => {
+    expect(longDateLabel("2026-10-11")).toBe("Κυριακή 11 Οκτωβρίου 2026");
+    expect(longDateLabel("2027-05-03")).toBe("Δευτέρα 3 Μαΐου 2027");
+  });
+});
 
 describe("Athens 'now' around midnight", () => {
   it("is already the next day at 00:30 Athens (21:30 UTC in summer)", () => {

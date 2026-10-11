@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, AiSpark } from "@/components/ui";
+import { AiSpark } from "@/components/ui";
 
 // Opt-in (button, not auto-run on every page load) so AI spend only happens
 // when someone actually wants the summary -- consistent with how the rest
@@ -39,12 +39,21 @@ export function DashboardSummary() {
     );
   }
 
+  // One muted line until asked for: the Επισκόπηση ends quietly.
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button variant="ai" onClick={generate} disabled={loading}>
-        <AiSpark className="mr-1.5" />
-        {loading ? "Δημιουργία…" : "AI περίληψη μήνα"}
-      </Button>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+      <span className="inline-flex items-center gap-1.5">
+        <AiSpark className="text-ai" />
+        Η περίληψη του μήνα από το AI, όταν τη χρειαστείτε.
+      </span>
+      <button
+        type="button"
+        onClick={generate}
+        disabled={loading}
+        className="min-h-11 text-ai underline-offset-4 hover:underline disabled:opacity-60"
+      >
+        {loading ? "Δημιουργία…" : "Δημιουργία περίληψης →"}
+      </button>
       {error && <span role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">{error}</span>}
     </div>
   );
