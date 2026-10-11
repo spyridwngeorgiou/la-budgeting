@@ -12,15 +12,15 @@ export function Pills({
   active: string;
 }) {
   return (
-    <div className="flex items-center gap-1.5" role="group" aria-label={label}>
-      <span className="text-xs text-ink-muted">{label}:</span>
+    <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={label}>
+      <span className="eyebrow text-muted">{label}:</span>
       {options.map((o) => (
         <Link
           key={o.key}
           href={o.href}
           aria-current={o.key === active ? "true" : undefined}
-          className={`rounded border px-2 py-0.5 text-xs ${
-            o.key === active ? "border-ink bg-ink text-white" : "border-line text-ink-muted hover:border-line-strong hover:text-ink"
+          className={`inline-flex min-h-8 items-center border px-2.5 text-xs ${
+            o.key === active ? "border-navy bg-navy text-panel-ink" : "border-chip-border text-muted hover:border-navy hover:text-ink"
           }`}
         >
           {o.label}

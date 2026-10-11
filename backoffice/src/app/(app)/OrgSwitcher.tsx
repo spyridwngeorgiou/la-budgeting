@@ -13,7 +13,7 @@ export function OrgSwitcher({ orgs, currentOrgId }: { orgs: { id: string; name: 
         name="org_id"
         defaultValue={currentOrgId}
         onChange={(e) => e.currentTarget.form?.requestSubmit()}
-        className="w-full rounded-md border border-line bg-surface px-2 py-1.5 text-xs text-ink"
+        className="min-h-11 w-full border border-field-border bg-field px-2 py-1.5 text-sm text-ink focus:border-navy focus:outline-none md:min-h-9 md:text-xs"
       >
         {orgs.map((org) => (
           <option key={org.id} value={org.id}>

@@ -1,18 +1,19 @@
-import Link from "next/link";
-import { Card, Button } from "@/components/ui";
+import { ButtonLink } from "@/components/ui";
 
 export default function NotFound() {
   return (
-    <div className="flex flex-1 items-center justify-center py-16">
-      <Card className="max-w-md text-center">
-        <h1 className="text-lg font-semibold">Δεν βρέθηκε</h1>
-        <p className="mt-2 text-sm text-ink-muted">
+    <div className="flex flex-1 items-start justify-center py-16">
+      <div className="flex w-full max-w-md flex-col gap-3">
+        <h1 className="border-b border-rule pb-3 text-title font-normal text-ink">Δεν βρέθηκε</h1>
+        <p className="text-sm text-text">
           Αυτή η σελίδα ή εγγραφή δεν υπάρχει, ή δεν έχετε πρόσβαση σε αυτήν.
         </p>
-        <Link href="/dashboard">
-          <Button className="mt-4">Επιστροφή στον Πίνακα Ελέγχου</Button>
-        </Link>
-      </Card>
+        <div className="mt-2">
+          <ButtonLink href="/dashboard" variant="primary">
+            Επιστροφή στον Πίνακα Ελέγχου
+          </ButtonLink>
+        </div>
+      </div>
     </div>
   );
 }
