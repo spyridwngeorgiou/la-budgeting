@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Field, Input, Label } from "@/components/ui";
+import { Button, Field, Input, Label, Modal } from "@/components/ui";
 import { formatMoney } from "@/lib/format";
 import { assertAccountBalance } from "./actions";
 import { todayAthens } from "@/lib/dates";
-import { Modal } from "@/components/Modal";
 import { errorOf } from "@/lib/actions";
 
 // Data entry, split out from the read-only breakdown (BalanceAssertion) so
@@ -33,16 +32,20 @@ export function NewCheckModal({
       <Button
         type="button"
         variant={hasChecks ? "secondary" : "primary"}
-        className="!px-2.5 !py-1 text-xs"
+        size="sm"
+        className="max-md:min-h-11"
         onClick={() => setOpen(true)}
       >
         Νέος έλεγχος
       </Button>
       {open && (
-        <Modal onClose={() => setOpen(false)} className="w-[calc(100%-2rem)] max-w-sm rounded-lg bg-white p-5 shadow-sm">
-          <h2 className="mb-1 text-base font-semibold text-ink">Νέος έλεγχος υπολοίπου</h2>
-          <p className="mb-3 text-xs text-ink-muted">
-            Η εφαρμογή περιμένει σήμερα <span className="font-mono font-medium text-ink">{formatMoney(expectedToday)}</span>
+        <Modal
+          onClose={() => setOpen(false)}
+          className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-sm overflow-y-auto border border-hairline bg-raised p-5 md:p-6"
+        >
+          <h2 className="border-b border-rule pb-3 text-section font-normal text-ink">Νέος έλεγχος υπολοίπου</h2>
+          <p className="mt-3 mb-4 text-small text-muted">
+            Η εφαρμογή περιμένει σήμερα <span className="num text-ink">{formatMoney(expectedToday)}</span>
           </p>
           <form
             action={async (formData) => {
@@ -67,7 +70,11 @@ export function NewCheckModal({
                 <Input type="date" name="period_start" defaultValue={defaultFrom} />
               </Field>
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && (
+              <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+                {error}
+              </p>
+            )}
             <div className="mt-1 flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
                 Άκυρο

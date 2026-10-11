@@ -16,7 +16,15 @@ import baseline from "./design-guard.baseline.json";
 const SRC = path.resolve(import.meta.dirname, "..");
 // Phase 6 added the planner and the collaboration pieces (the Excalidraw
 // scene's own colours live in .ts files, which are not scanned).
-const GUARDED = ["components/ui", "components/planner", "components/collab"];
+// The P15 page pass added the ledger pages (transactions, contacts, accounts).
+const GUARDED = [
+  "components/ui",
+  "components/planner",
+  "components/collab",
+  "app/(app)/transactions",
+  "app/(app)/contacts",
+  "app/(app)/accounts",
+];
 
 const RULES: { name: string; re: RegExp }[] = [
   { name: "rounded", re: /\brounded-(?!full\b|none\b)[\w[\]-]+/g },

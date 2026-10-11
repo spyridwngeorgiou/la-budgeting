@@ -36,9 +36,13 @@ export const okGap = (gap: number) => Math.abs(gap) < 1;
 // grammar OnePagerRow uses everywhere else in the app.
 function BreakdownRow({ label, value, emphasis, tone }: { label: string; value: string; emphasis?: boolean; tone?: string }) {
   return (
-    <div className={`flex items-baseline justify-between gap-3 py-0.5 ${emphasis ? "font-semibold text-ink" : "text-ink-muted"}`}>
+    <div
+      className={`flex items-baseline justify-between gap-3 border-b border-hairline py-1.5 text-small ${
+        emphasis ? "font-medium text-ink" : "text-muted"
+      }`}
+    >
       <span>{label}</span>
-      <span className={`font-mono text-sm tabular-nums ${tone ?? ""}`}>{value}</span>
+      <span className={`num text-sm ${tone ?? (emphasis ? "text-ink" : "text-text")}`}>{value}</span>
     </div>
   );
 }
@@ -49,26 +53,26 @@ function BreakdownRow({ label, value, emphasis, tone }: { label: string; value: 
 function GapHeadline({ gap, isCash, gapPeriods }: { gap: number; isCash: boolean; gapPeriods: BalanceCheck[] }) {
   if (okGap(gap)) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-sage-strong/50 bg-sage/30 px-3 py-2.5">
-        <Badge tone="green">Συμφωνεί</Badge>
-        <span className="text-sm text-sage-ink">Δεν λείπουν κινήσεις</span>
+      <div className="flex items-center gap-2">
+        <Badge tone="neutral">Συμφωνεί</Badge>
+        <span className="text-sm text-text">Δεν λείπουν κινήσεις</span>
       </div>
     );
   }
   const where = isCash ? "στο ταμείο" : "στην τράπεζα";
   return (
-    <div className="rounded-lg border border-red-ink/30 bg-red-bg px-3 py-2.5">
+    <div className="border-l-2 border-negative pl-3">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-sm font-semibold text-red-ink">{gap < 0 ? "Λείπουν έξοδα" : "Λείπουν έσοδα"}</span>
-        <span className="font-mono text-lg font-bold tabular-nums text-red-ink">{formatMoney(Math.abs(gap))}</span>
+        <span className="text-sm font-medium text-negative">{gap < 0 ? "Λείπουν έξοδα" : "Λείπουν έσοδα"}</span>
+        <span className="num text-figure-sm font-light text-negative">{formatMoney(Math.abs(gap))}</span>
       </div>
-      <p className="mt-0.5 text-xs text-red-ink/80">
+      <p className="mt-1 text-small text-text">
         {gap < 0
           ? `Υπάρχουν ${formatMoney(Math.abs(gap))} λιγότερα ${where} από όσα δείχνει η εφαρμογή — κάποια πληρωμή δεν έχει περαστεί.`
           : `Υπάρχουν ${formatMoney(gap)} περισσότερα ${where} από όσα δείχνει η εφαρμογή — κάποια είσπραξη δεν έχει περαστεί (ή περάστηκε πληρωμή που δεν έγινε).`}
       </p>
       {gapPeriods.length > 0 && (
-        <p className="mt-1.5 text-xs font-medium text-red-ink">
+        <p className="mt-1.5 text-small font-medium text-negative">
           Η διαφορά προέκυψε: {gapPeriods.map((c) => `${formatDate(c.period_start)} → ${formatDate(c.as_of_date)}`).join(", ")}
         </p>
       )}
@@ -78,9 +82,9 @@ function GapHeadline({ gap, isCash, gapPeriods }: { gap: number; isCash: boolean
 
 function PeriodBreakdown({ check, accountId }: { check: BalanceCheck; accountId: string }) {
   return (
-    <div className="rounded-lg border border-line bg-bg/60 px-3 py-2.5">
-      <div className="mb-1.5 flex items-center justify-between border-b border-line pb-1.5">
-        <span className="text-xs font-semibold text-ink">
+    <div className="flex flex-col">
+      <div className="flex items-center justify-between gap-3 border-b border-hairline pb-1.5">
+        <span className="num text-small font-medium text-ink">
           {formatDate(check.period_start)} → {formatDate(check.as_of_date)}
         </span>
         {check.from_import && <Badge tone="neutral">από Excel</Badge>}
@@ -89,17 +93,17 @@ function PeriodBreakdown({ check, accountId }: { check: BalanceCheck; accountId:
       <BreakdownRow label={`+ Έσοδα (${check.period_income_n})`} value={formatMoney(check.period_income)} />
       <BreakdownRow label={`− Έξοδα (${check.period_expense_n})`} value={formatMoney(check.period_expense)} />
       <BreakdownRow label="= Αναμενόμενο υπόλοιπο" value={formatMoney(check.expected_balance)} emphasis />
-      <div className="my-1 border-t border-line" />
+      <div aria-hidden="true" className="h-3" />
       <BreakdownRow label="Πραγματικό υπόλοιπο" value={formatMoney(check.asserted_balance)} emphasis />
       <BreakdownRow
         label="Διαφορά περιόδου"
         value={okGap(check.period_gap) ? "0,00 €" : `${check.period_gap > 0 ? "+" : "−"}${formatMoney(Math.abs(check.period_gap))}`}
         emphasis
-        tone={okGap(check.period_gap) ? "text-sage-ink" : "text-red-ink"}
+        tone={okGap(check.period_gap) ? "text-ink" : "text-negative"}
       />
       <Link
         href={`/transactions?account_id=${accountId}&from=${check.period_start}&to=${check.as_of_date}`}
-        className="mt-1.5 inline-block text-xs text-ink-muted underline hover:text-ink"
+        className="mt-1 inline-flex min-h-11 items-center self-start text-small text-muted underline underline-offset-4 hover:text-ink md:min-h-8"
       >
         Κινήσεις της περιόδου →
       </Link>
@@ -124,7 +128,7 @@ export function BalanceAssertion({
 
   if (!latest) {
     return (
-      <div className="rounded-lg border border-amber-ink/30 bg-amber-bg px-3 py-2.5 text-xs text-amber-ink">
+      <div className="border-l-2 border-warning pl-3 text-small text-text">
         Δεν έχει γίνει έλεγχος. Βάλτε το πραγματικό υπόλοιπο από {isCash ? "την καταμέτρηση του ταμείου" : "το e-banking"} για να
         δείτε αν λείπουν κινήσεις.
       </div>
@@ -141,7 +145,7 @@ export function BalanceAssertion({
           <PeriodBreakdown key={c.id} check={c} accountId={accountId} />
         ))}
       {checks.some((c, i) => i > 0 && okGap(c.period_gap)) && (
-        <button type="button" onClick={() => setShowHistory(!showHistory)} className="self-start text-xs text-ink-faint underline hover:text-ink">
+        <button type="button" onClick={() => setShowHistory(!showHistory)} className="inline-flex min-h-11 items-center self-start text-small text-muted underline underline-offset-4 hover:text-ink md:min-h-8">
           {showHistory
             ? "Απόκρυψη παλαιότερων ελέγχων"
             : `Παλαιότεροι έλεγχοι χωρίς διαφορά (${checks.filter((c, i) => i > 0 && okGap(c.period_gap)).length})`}

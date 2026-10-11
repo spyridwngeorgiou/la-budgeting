@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { el } from "@/lib/i18n/el";
-import { Button } from "@/components/ui";
+import { PageHeader, buttonClass } from "@/components/ui";
 import { ContactFormModal } from "./ContactFormModal";
 import { ContactsTable } from "./ContactsTable";
 import { createContact } from "./actions";
@@ -12,21 +12,19 @@ export default async function ContactsPage() {
   const { data: rollup } = await supabase.from("v_contact_rollup").select("*").eq("org_id", orgId).order("name");
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">{el.nav.contacts}</h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            Προμηθευτές, πελάτες και συνεργάτες, με σύνολο εσόδων/εξόδων και υπόλοιπο ανά επαφή.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <a href="/api/contacts/export">
-            <Button variant="secondary">Εξαγωγή CSV</Button>
-          </a>
-          <ContactFormModal action={createContact} />
-        </div>
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={el.nav.contacts}
+        meta="Προμηθευτές, πελάτες και συνεργάτες, με σύνολο εσόδων/εξόδων και υπόλοιπο ανά επαφή."
+        actions={
+          <>
+            <a href="/api/contacts/export" className={buttonClass("secondary", "md", "max-md:min-h-11")}>
+              Εξαγωγή CSV
+            </a>
+            <ContactFormModal action={createContact} />
+          </>
+        }
+      />
 
       <ContactsTable rollup={rollup ?? []} />
     </div>

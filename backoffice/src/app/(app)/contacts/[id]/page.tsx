@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Card } from "@/components/ui";
+import { PageHeader, Stat, StatRow } from "@/components/ui";
 
 export default async function ContactDetailPage({
   params,
@@ -25,53 +25,38 @@ export default async function ContactDetailPage({
   if (!rollup) notFound();
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">{rollup.name}</h1>
-      {rollup.afm && <p className="text-sm text-ink-muted">ΑΦΜ: {rollup.afm}</p>}
+    <div className="flex flex-col gap-8">
+      <PageHeader title={rollup.name} meta={rollup.afm ? <span className="num">ΑΦΜ: {rollup.afm}</span> : undefined} />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Card>
-          <div className="text-xs text-ink-muted">{el.contact.totalIncome}</div>
-          <div className="font-mono text-lg">{formatMoney(rollup.total_income)}</div>
-        </Card>
-        <Card>
-          <div className="text-xs text-ink-muted">{el.contact.totalExpense}</div>
-          <div className="font-mono text-lg">{formatMoney(rollup.total_expense)}</div>
-        </Card>
-        <Card>
-          <div className="text-xs text-ink-muted">{el.contact.outstanding}</div>
-          <div className="font-mono text-lg">{formatMoney(rollup.outstanding)}</div>
-        </Card>
-        <Card>
-          <div className="text-xs text-ink-muted">{el.contact.netBalance}</div>
-          <div className="font-mono text-lg">{formatMoney(rollup.net_balance)}</div>
-        </Card>
-      </div>
+      <StatRow>
+        <Stat label={el.contact.totalIncome} value={formatMoney(rollup.total_income)} />
+        <Stat label={el.contact.totalExpense} value={formatMoney(rollup.total_expense)} />
+        <Stat label={el.contact.outstanding} value={formatMoney(rollup.outstanding)} />
+        <Stat label={el.contact.netBalance} value={formatMoney(rollup.net_balance)} />
+      </StatRow>
 
-      <section>
-        <h2 className="mb-2 text-sm font-medium text-ink-muted">{el.nav.transactions}</h2>
-        <div className="overflow-x-auto rounded-lg border border-line">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-bg text-ink-muted">
+      <section className="flex flex-col gap-3">
+        <h2 className="eyebrow text-muted">{el.nav.transactions}</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-sm">
+            <thead>
               <tr>
-                <th className="p-2">{el.transaction.date}</th>
-                <th className="p-2">{el.transaction.project}</th>
-                <th className="p-2">{el.transaction.description}</th>
-                <th className="p-2 text-right">{el.transaction.grossAmount}</th>
+                <th scope="col" className={TH}>{el.transaction.date}</th>
+                <th scope="col" className={TH}>{el.transaction.project}</th>
+                <th scope="col" className={TH}>{el.transaction.description}</th>
+                <th scope="col" className={`${TH} text-right`}>{el.transaction.grossAmount}</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="text-text">
               {(transactions ?? []).map((tx) => {
                 const project = Array.isArray(tx.projects) ? tx.projects[0] : tx.projects;
                 return (
-                  <tr key={tx.id} className="border-t border-line">
-                    <td className="p-2">{formatDate(tx.tx_date)}</td>
-                    <td className="p-2">{project?.display_name ?? "—"}</td>
-                    <td className="p-2">{tx.description ?? "—"}</td>
-                    <td
-                      className={`p-2 text-right font-mono ${tx.direction === "income" ? "text-sage-ink" : ""}`}
-                    >
-                      {tx.direction === "income" ? "+" : "-"}
+                  <tr key={tx.id} className="hover:bg-hover">
+                    <td className={`${TD} num`}>{formatDate(tx.tx_date)}</td>
+                    <td className={TD}>{project?.display_name ?? "—"}</td>
+                    <td className={`${TD} min-w-40`}>{tx.description ?? "—"}</td>
+                    <td className={`${TD} num text-right text-ink`}>
+                      {tx.direction === "income" ? "+" : "−"}
                       {formatMoney(tx.gross_amount)}
                     </td>
                   </tr>
@@ -84,3 +69,7 @@ export default async function ContactDetailPage({
     </div>
   );
 }
+
+// Spec-sheet table: uppercase 12px head over the navy rule, hairline rows.
+const TH = "eyebrow border-b border-rule px-3 py-2.5 font-medium whitespace-nowrap text-muted";
+const TD = "border-b border-hairline px-3 py-3 align-top";
