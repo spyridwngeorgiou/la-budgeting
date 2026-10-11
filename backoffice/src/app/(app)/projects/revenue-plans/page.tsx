@@ -1,11 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
-import { Button, Term } from "@/components/ui";
+import { PageHeader, SectionHeader, Term } from "@/components/ui";
 import { computeRevenuePlan } from "@/lib/finance/revenuePlan";
-import { createRevenuePlan } from "./actions";
 import { AiCreateForm } from "./AiCreateForm";
+import { ManualPlanForm } from "./ManualPlanForm";
 import { RevenuePlansGrid, type RevenuePlanRow } from "./RevenuePlansGrid";
 import { aiEnabled } from "@/lib/ai/client";
-import { currentYear } from "@/lib/dates";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 
 export default async function RevenuePlansPage() {
@@ -46,68 +45,35 @@ export default async function RevenuePlansPage() {
   });
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Εκτιμήσεις Εσόδων</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Αναλύσεις εσόδων τύπου ξενοδοχείου/φιλοξενίας (τύποι δωματίων × πληρότητα ×{" "}
-          <Term title="ADR (Average Daily Rate) — μέση τιμή δωματίου ανά διανυκτέρευση.">ADR</Term> ανά μήνα), με
-          σύγκριση έναντι πραγματικών εσόδων όταν η ανάλυση συνδέεται με έργο.
-        </p>
-      </div>
+    <div className="flex flex-col gap-10">
+      <PageHeader
+        title="Εκτιμήσεις Εσόδων"
+        meta={
+          <span className="block max-w-prose">
+            Αναλύσεις εσόδων τύπου ξενοδοχείου/φιλοξενίας (τύποι δωματίων × πληρότητα ×{" "}
+            <Term title="ADR (Average Daily Rate) — μέση τιμή δωματίου ανά διανυκτέρευση.">ADR</Term> ανά μήνα), με
+            σύγκριση έναντι πραγματικών εσόδων όταν η ανάλυση συνδέεται με έργο.
+          </span>
+        }
+      />
 
-      <section className="flex flex-col gap-3 rounded-md border border-line-strong bg-surface p-4">
-        <h2 className="text-sm font-semibold text-ink">Νέα Ανάλυση Εσόδων</h2>
+      <section className="flex flex-col gap-4">
+        <SectionHeader title="Νέα Ανάλυση Εσόδων" />
 
         {aiEnabled() ? (
           <AiCreateForm />
         ) : (
-          <p className="rounded-md border border-amber-ink/40 bg-amber-bg p-3 text-sm text-amber-ink">
+          <p className="max-w-prose border-l-2 border-warning pl-3 text-sm text-text">
             Ο βοηθός AI δεν είναι ενεργοποιημένος -- μπορείτε ακόμα να φτιάξετε μια ανάλυση χειροκίνητα
             παρακάτω.
           </p>
         )}
 
-        <details className="rounded-md border border-line bg-bg p-3">
-          <summary className="cursor-pointer text-sm font-medium text-ink-muted">
-            ή ξεκίνα μια κενή ανάλυση χειροκίνητα
-          </summary>
-          <form action={createRevenuePlan} className="mt-3 flex flex-wrap items-end gap-3">
-            <div className="flex flex-col">
-              <label className="mb-1 text-xs font-medium text-ink-muted">Όνομα</label>
-              <input name="name" required className="rounded-md border border-line-strong px-3 py-2 text-sm" />
-            </div>
-            <div className="flex flex-col">
-              <label className="mb-1 text-xs font-medium text-ink-muted">Έτος Έναρξης</label>
-              <input
-                name="start_year"
-                type="number"
-                defaultValue={currentYear()}
-                required
-                className="w-28 rounded-md border border-line-strong px-3 py-2 text-sm"
-              />
-            </div>
-            <div className="flex flex-col">
-              <label className="mb-1 text-xs font-medium text-ink-muted">Έτη</label>
-              <input
-                name="years"
-                type="number"
-                min={1}
-                max={10}
-                defaultValue={3}
-                required
-                className="w-20 rounded-md border border-line-strong px-3 py-2 text-sm"
-              />
-            </div>
-            <Button type="submit" variant="secondary">
-              Δημιουργία
-            </Button>
-          </form>
-        </details>
+        <ManualPlanForm />
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold text-ink">Υπάρχουσες Αναλύσεις</h2>
+      <section className="flex flex-col gap-4">
+        <SectionHeader title="Υπάρχουσες Αναλύσεις" />
         <RevenuePlansGrid plans={planRows} />
       </section>
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Button, FormModal, type ButtonSize, type ButtonVariant } from "@/components/ui";
+import { Button, FormDrawer, type ButtonSize, type ButtonVariant } from "@/components/ui";
 import {
   BudgetFields,
   CapitalFields,
@@ -23,12 +23,14 @@ import {
 
 export { UTILITY_KIND_LABELS } from "./fields";
 
-// The project page's edit dialogs: a button and a centred modal around the
-// field sets in ./fields.tsx; these replace the nine *FormModal files.
+// The project page's edit dialogs: a button and a side drawer (a full
+// screen sheet on phones) around the field sets in ./fields.tsx; these
+// replace the nine *FormModal files.
 
 type Action = (formData: FormData) => Promise<unknown>;
 
-const PANEL = "max-h-[90vh] w-[calc(100%-2rem)] max-w-md overflow-y-auto border border-hairline bg-raised p-5";
+// The drawer's title when none is given: the button's label without «+ ».
+const titleOf = (label: string) => label.replace(/^\+\s*/, "");
 
 function LegacyModal({
   label,
@@ -48,13 +50,13 @@ function LegacyModal({
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant={variant} size={size} onClick={() => setOpen(true)}>
+      <Button variant={variant} size={size} onClick={() => setOpen(true)} className="max-md:min-h-11">
         {label}
       </Button>
       {open && (
-        <FormModal onClose={() => setOpen(false)} title={title} action={action} className={PANEL}>
+        <FormDrawer onClose={() => setOpen(false)} title={title ?? titleOf(label)} action={action}>
           {children}
-        </FormModal>
+        </FormDrawer>
       )}
     </>
   );

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge, Card, Button, Select, AiSpark } from "@/components/ui";
+import { Badge, Button, ButtonLink, MetaList, PageHeader, Select, AiSpark } from "@/components/ui";
 import { OnePagerSection, OnePagerRow, StatusNotes, type ProjectNote } from "@/components/onepager";
 import { computeScenarioFromInputs, loadProjectFlows, loadScenarioInputs } from "@/lib/finance/projectModel";
 import { computeDevelopmentResult } from "@/lib/finance/development";
@@ -18,7 +18,7 @@ import { BudgetFormModal } from "../LegacyFormModals";
 import { saveProjectBudget } from "./finance-actions";
 import { ProjectFormModal } from "../LegacyFormModals";
 import { updateProject } from "../actions";
-import { addMonths, currentMonthKey, currentYear, firstOfMonth, todayAthens } from "@/lib/dates";
+import { addMonths, currentMonthKey, firstOfMonth, todayAthens } from "@/lib/dates";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 
 import { ProjectNoteFormModal } from "../LegacyFormModals";
@@ -28,7 +28,10 @@ import { saveUtility, deleteUtility } from "./finance-actions";
 import { saveProjectNote, resolveProjectNote } from "../actions";
 import { setScenarioRevenuePlan } from "./scenario-actions";
 import { AiCreateForm } from "../revenue-plans/AiCreateForm";
-import { createRevenuePlan } from "../revenue-plans/actions";
+import { ManualPlanForm } from "../revenue-plans/ManualPlanForm";
+
+// 44px touch targets on phones for the page's buttons.
+const TAP = "max-md:min-h-11";
 
 // Σύνοψη Έργου -- the one-pager, modelled on the layout the Q004 workbook
 // already proved works: blocks of label / figure / explanatory note, bold
@@ -171,23 +174,23 @@ export async function LegacyProjectPage({ id }: { id: string }) {
   const monthlyRent = firstYearRent?.monthlyAmount ?? 0;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">{rollup.display_name}</h1>
-          <p className="text-sm text-ink-muted">
-            {[
+    <div className="flex flex-col gap-10">
+      <PageHeader
+        eyebrow={el.nav.projects}
+        title={rollup.display_name}
+        meta={
+          <MetaList
+            items={[
               rollup.code,
               project?.units ? `${project.units} μονάδες` : null,
               lease ? `μίσθωση ${lease.term_years} ετών` : null,
               project?.opening_date ? `άνοιγμα ${formatDate(project.opening_date)}` : null,
               project?.phase,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+            ]}
+          />
+        }
+        actions={
+          <>
           <ProjectFormModal
             action={updateProject.bind(null, id)}
             trigger="Επεξεργασία Έργου"
@@ -213,25 +216,26 @@ export async function LegacyProjectPage({ id }: { id: string }) {
                 : undefined
             }
           />
-          <Link href={`/transactions?project_id=${id}`}>
-            <Button variant="secondary">{el.nav.transactions}</Button>
-          </Link>
-          <Link href={`/planner?project=${id}`}>
-            <Button variant="secondary">{el.nav.planner}</Button>
-          </Link>
+          <ButtonLink href={`/transactions?project_id=${id}`} className={TAP}>
+            {el.nav.transactions}
+          </ButtonLink>
+          <ButtonLink href={`/planner?project=${id}`} className={TAP}>
+            {el.nav.planner}
+          </ButtonLink>
           {lease?.kind === "indexed_rent" && <LeaseSyncButton leaseId={lease.id} />}
-          <Link href={`/projects/${id}/compare`}>
-            <Button variant="secondary">Σύγκριση σεναρίων</Button>
-          </Link>
-          <Link href={`/collab/${id}`}>
-            <Button variant="secondary">{el.collab.navLabel}</Button>
-          </Link>
-        </div>
-      </div>
+          <ButtonLink href={`/projects/${id}/compare`} className={TAP}>
+            Σύγκριση σεναρίων
+          </ButtonLink>
+          <ButtonLink href={`/collab/${id}`} className={TAP}>
+            {el.collab.navLabel}
+          </ButtonLink>
+          </>
+        }
+      >
+        {aiEnabled() && <ProjectHealthCheck projectId={id} />}
+      </PageHeader>
 
-      {aiEnabled() && <ProjectHealthCheck projectId={id} />}
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-x-12 gap-y-10 lg:grid-cols-2">
         {/* ΕΠΕΝΔΥΣΗ — the capex budget, line by line */}
         <OnePagerSection title="ΕΠΕΝΔΥΣΗ" subtitle={budget?.notes ?? undefined}>
           {hasBudget ? (
@@ -242,9 +246,9 @@ export async function LegacyProjectPage({ id }: { id: string }) {
               <OnePagerRow label="ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ" amount={budgetTotal} emphasis />
             </>
           ) : (
-            <div className="flex flex-col gap-2 py-2">
-              <Badge tone="amber">Χωρίς προϋπολογισμό</Badge>
-              <p className="text-sm text-ink-muted">
+            <div className="flex flex-col items-start gap-2 border-b border-hairline py-3">
+              <Badge tone="warning">Χωρίς προϋπολογισμό</Badge>
+              <p className="text-sm text-muted">
                 Δεν έχει καταχωρηθεί προϋπολογισμός για αυτό το έργο.
               </p>
             </div>
@@ -272,6 +276,7 @@ export async function LegacyProjectPage({ id }: { id: string }) {
               label="Υπόλοιπο προϋπολογισμού"
               amount={Number(rollup.remaining_budget ?? 0)}
               negative={Number(rollup.remaining_budget ?? 0) < 0}
+              alert={Number(rollup.remaining_budget ?? 0) < 0}
               emphasis
             />
           )}
@@ -324,6 +329,7 @@ export async function LegacyProjectPage({ id }: { id: string }) {
               label="Υπόλοιπο προς τιμολόγηση"
               amount={Number(project.contract_value) - revenueToDate}
               negative={Number(project.contract_value) - revenueToDate < 0}
+              alert={Number(project.contract_value) - revenueToDate < 0}
               emphasis
             />
           </OnePagerSection>
@@ -347,75 +353,49 @@ export async function LegacyProjectPage({ id }: { id: string }) {
             then -- as a clearly separate, secondary concern -- which one of
             them currently feeds the ΛΕΙΤΟΥΡΓΙΑ model below. */}
         <OnePagerSection title="Αναλύσεις Εσόδων">
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 pt-2">
             {aiEnabled() && <AiCreateForm projectId={id} />}
 
-            <details className="rounded-md border border-line bg-bg p-3">
-              <summary className="cursor-pointer text-sm font-medium text-ink-muted">
-                ή ξεκίνα μια κενή ανάλυση χειροκίνητα
-              </summary>
-              <form action={createRevenuePlan} className="mt-3 flex flex-wrap items-end gap-3">
-                <input type="hidden" name="project_id" value={id} />
-                <div className="flex flex-col">
-                  <label className="mb-1 text-xs font-medium text-ink-muted">Όνομα</label>
-                  <input name="name" required className="rounded-md border border-line-strong px-3 py-2 text-sm" />
-                </div>
-                <div className="flex flex-col">
-                  <label className="mb-1 text-xs font-medium text-ink-muted">Έτος Έναρξης</label>
-                  <input
-                    name="start_year"
-                    type="number"
-                    defaultValue={currentYear()}
-                    required
-                    className="w-28 rounded-md border border-line-strong px-3 py-2 text-sm"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="mb-1 text-xs font-medium text-ink-muted">Έτη</label>
-                  <input
-                    name="years"
-                    type="number"
-                    min={1}
-                    max={10}
-                    defaultValue={3}
-                    required
-                    className="w-20 rounded-md border border-line-strong px-3 py-2 text-sm"
-                  />
-                </div>
-                <Button type="submit" variant="secondary">
-                  Δημιουργία
-                </Button>
-              </form>
-            </details>
+            <ManualPlanForm projectId={id} />
 
             {linkedPlans.length === 0 ? (
-              <p className="text-sm text-ink-faint">Καμία ανάλυση εσόδων ακόμα για αυτό το έργο.</p>
+              <p className="text-sm text-muted">Καμία ανάλυση εσόδων ακόμα για αυτό το έργο.</p>
             ) : (
-              <div className="flex flex-col gap-1.5">
+              <ul className="flex flex-col border-t border-hairline">
                 {linkedPlans.map((p) => (
-                  <Link
-                    key={p.id}
-                    href={`/projects/revenue-plans/${p.id}`}
-                    className="flex items-center justify-between rounded-lg border border-line px-3 py-2 text-sm transition-colors hover:border-line-strong hover:bg-bg"
-                  >
-                    <span>{p.name}</span>
-                    <span className="text-xs text-ink-muted">
-                      {p.start_year}–{p.start_year + p.years - 1}
-                      {scenario?.revenue_plan_id === p.id && " · ενεργή στη ΛΕΙΤΟΥΡΓΙΑ"}
-                    </span>
-                  </Link>
+                  <li key={p.id}>
+                    <Link
+                      href={`/projects/revenue-plans/${p.id}`}
+                      className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-hairline py-2 text-sm text-ink hover:bg-hover"
+                    >
+                      <span className="underline-offset-4 hover:underline">{p.name}</span>
+                      <span className="text-small text-muted">
+                        <span className="num">
+                          {p.start_year}–{p.start_year + p.years - 1}
+                        </span>
+                        {scenario?.revenue_plan_id === p.id && " · ενεργή στη ΛΕΙΤΟΥΡΓΙΑ"}
+                      </span>
+                    </Link>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
 
             {scenario && (
               <form
                 action={setScenarioRevenuePlan.bind(null, id, scenario.id)}
-                className="flex flex-wrap items-end gap-3 border-t border-line/60 pt-3"
+                className="flex flex-wrap items-end gap-3"
               >
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-ink-muted">Ποια τροφοδοτεί τη ΛΕΙΤΟΥΡΓΙΑ παρακάτω</label>
-                  <Select name="revenue_plan_id" defaultValue={scenario.revenue_plan_id ?? ""}>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <label htmlFor="scenario-revenue-plan" className="text-small text-muted">
+                    Ποια τροφοδοτεί τη ΛΕΙΤΟΥΡΓΙΑ παρακάτω
+                  </label>
+                  <Select
+                    id="scenario-revenue-plan"
+                    name="revenue_plan_id"
+                    defaultValue={scenario.revenue_plan_id ?? ""}
+                    className="max-w-full max-md:min-h-11"
+                  >
                     <option value="">— Καμία (σταθερός ετήσιος τζίρος) —</option>
                     {(revenuePlanOptions ?? []).map((p) => (
                       <option key={p.id} value={p.id}>
@@ -425,7 +405,7 @@ export async function LegacyProjectPage({ id }: { id: string }) {
                     ))}
                   </Select>
                 </div>
-                <Button type="submit" variant="secondary">
+                <Button type="submit" variant="secondary" className={TAP}>
                   Ενημέρωση
                 </Button>
               </form>
@@ -465,13 +445,17 @@ export async function LegacyProjectPage({ id }: { id: string }) {
             attributed to this property automatically (0027 + v_property_monthly_cost). */}
         <OnePagerSection title="ΠΑΡΟΧΕΣ" subtitle="Ρεύμα, νερό, internet — αριθμοί παροχής για αυτόματη αντιστοίχιση πληρωμών.">
           {(utilities ?? []).map((u) => (
-            <div key={u.id} className="flex flex-wrap items-center gap-2 border-t border-line py-1.5 text-sm first:border-t-0">
-              <span className="w-28 text-ink-muted">{UTILITY_KIND_LABELS[u.kind]}</span>
-              <span className="flex-1">
+            <div
+              key={u.id}
+              className="flex flex-col gap-2 border-b border-hairline py-3 text-sm md:flex-row md:flex-wrap md:items-center md:gap-x-3"
+            >
+              <span className="text-muted md:w-28">{UTILITY_KIND_LABELS[u.kind]}</span>
+              <span className="min-w-0 flex-1 break-words text-ink">
                 {u.provider && <span>{u.provider} · </span>}
-                <span className="font-mono">{u.supply_number ?? "—"}</span>
-                {u.rf_code && <span className="ml-2 font-mono text-xs text-ink-faint">{u.rf_code}</span>}
+                <span className="num">{u.supply_number ?? "—"}</span>
+                {u.rf_code && <span className="num ml-2 text-small text-muted">{u.rf_code}</span>}
               </span>
+              <span className="flex flex-wrap items-center gap-2">
               <UtilityFormModal
                 action={saveUtility.bind(null, id, u.id)}
                 trigger="Επεξεργασία"
@@ -486,16 +470,17 @@ export async function LegacyProjectPage({ id }: { id: string }) {
                 }}
               />
               <form action={deleteUtility.bind(null, id, u.id)}>
-                <Button type="submit" variant="danger" className="!px-2 !py-1 text-xs">
+                <Button type="submit" variant="danger" size="sm" className={TAP}>
                   {el.common.delete}
                 </Button>
               </form>
+              </span>
             </div>
           ))}
           {(utilities ?? []).length === 0 && (
-            <p className="py-1 text-sm text-ink-muted">Δεν έχουν καταχωρηθεί παροχές.</p>
+            <p className="border-b border-hairline py-3 text-sm text-muted">Δεν έχουν καταχωρηθεί παροχές.</p>
           )}
-          <div className="pt-2">
+          <div className="pt-3">
             <UtilityFormModal action={saveUtility.bind(null, id, null)} />
           </div>
         </OnePagerSection>
@@ -539,14 +524,14 @@ export async function LegacyProjectPage({ id }: { id: string }) {
                   }}
                 />
                 <form action={resolveProjectNote.bind(null, id, n.id)}>
-                  <Button type="submit" variant="secondary" className="!px-2 !py-1 text-xs">
+                  <Button type="submit" variant="secondary" size="sm" className={TAP}>
                     Επίλυση
                   </Button>
                 </form>
               </>
             )}
             footer={
-              <div className="pt-1">
+              <div>
                 <ProjectNoteFormModal action={saveProjectNote.bind(null, id, null)} />
               </div>
             }
@@ -557,17 +542,17 @@ export async function LegacyProjectPage({ id }: { id: string }) {
       <PartnersPanel projectId={id} isAdmin={isOrgAdmin} />
 
       {leaseSchedule && leaseSchedule.diagnostics.length > 0 && (
-        <Card className="border-amber-ink/40 bg-amber-bg">
-          <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-amber-ink">
+        <aside className="flex max-w-prose flex-col gap-1.5 border-l-2 border-warning pl-4">
+          <div className="eyebrow flex items-center gap-1.5 text-warning">
             <AiSpark />
             Σημειώσεις μοντέλου
           </div>
-          <ul className="list-disc pl-4 text-xs text-amber-ink">
+          <ul className="list-disc pl-4 text-small text-text">
             {leaseSchedule.diagnostics.map((d) => (
               <li key={d}>{d}</li>
             ))}
           </ul>
-        </Card>
+        </aside>
       )}
     </div>
   );

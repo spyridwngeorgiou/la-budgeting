@@ -31,6 +31,7 @@ const GUARDED = [
   "app/(app)/assistant",
   "app/(auth)",
   "app/(app)/reports",
+  "app/(app)/projects",
 ];
 
 const RULES: { name: string; re: RegExp }[] = [
