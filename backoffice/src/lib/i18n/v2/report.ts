@@ -1,5 +1,5 @@
 // Texts of the report building blocks (components/ui/ReportSection,
-// BandChart), presentation mode and print (components/PresentMode).
+// BandChart).
 export const report = {
   chart: {
     lowest: "χαμηλότερο",
@@ -11,17 +11,5 @@ export const report = {
     source: "Πηγή: Kansha",
     updated: "ενημερώθηκε",
     dataUntil: "δεδομένα έως",
-  },
-  present: {
-    start: "Παρουσίαση",
-    exit: "Έξοδος παρουσίασης",
-    prev: "Προηγούμενη",
-    next: "Επόμενη",
-    nav: "Πλοήγηση παρουσίασης",
-    of: "από",
-  },
-  print: {
-    button: "Εκτύπωση / PDF",
-    confidential: "Εμπιστευτικό",
   },
 } as const;

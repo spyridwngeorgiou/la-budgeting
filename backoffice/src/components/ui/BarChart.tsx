@@ -152,7 +152,7 @@ export function BarChart({
   ];
 
   return (
-    <figure aria-label={label} className={cn("w-full min-w-0 print-avoid-break", className)}>
+    <figure aria-label={label} className={cn("w-full min-w-0", className)}>
       <div className={rows ? undefined : CHART_HEIGHT_CLASS} style={style}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart

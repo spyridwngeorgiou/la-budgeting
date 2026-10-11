@@ -40,7 +40,7 @@ export function ProjectHealthCheck({ projectId }: { projectId: string }) {
   }
 
   return (
-    <div className="present-hide print-hide flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3">
       <Button variant="ai" onClick={generate} disabled={loading}>
         <AiSpark className="mr-1.5" />
         {loading ? "Ανάλυση…" : "AI Έλεγχος Υγείας Έργου"}

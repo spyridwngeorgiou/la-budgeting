@@ -358,7 +358,7 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
           <SectionHeader
             title={t.expectedTitle}
             actions={
-              <span className="present-hide print-hide">
+              <span>
                 <ExpectedIncomeFormModal action={saveExpectedIncome} projects={lookups.projects} />
               </span>
             }
@@ -390,7 +390,7 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
                       </Td>
                       <Td className="py-1.5">
                         {!e.scenario_id && (
-                          <div className="present-hide print-hide flex items-center justify-end gap-1">
+                          <div className="flex items-center justify-end gap-1">
                             <ExpectedIncomeFormModal
                               action={saveExpectedIncome}
                               id={e.id}

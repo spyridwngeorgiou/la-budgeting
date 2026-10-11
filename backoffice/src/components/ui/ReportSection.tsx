@@ -19,13 +19,11 @@ import { Stat, StatRow } from "./Stat";
 //     <ReportFooter dataUntil="2026-10-11" />
 //   </ReportSection>
 //
-// Server components (PhoneDetails is the one small client piece). Print
-// keeps each block whole (print-avoid-break) and starts a new page per
-// ReportSection after the first.
+// Server components (PhoneDetails is the one small client piece).
 
 export function ReportSection({ children, className = "", label }: { children: ReactNode; className?: string; label?: string }) {
   return (
-    <article aria-label={label} className={cn("report-section flex min-w-0 flex-col gap-8", className)}>
+    <article aria-label={label} className={cn("flex min-w-0 flex-col gap-8", className)}>
       {children}
     </article>
   );
@@ -57,7 +55,7 @@ export function KpiBand({
   className?: string;
 }) {
   return (
-    <StatRow className={cn("print-avoid-break", className)}>
+    <StatRow className={cn(className)}>
       {items?.map((it, i) => <Stat key={i} label={it.label} value={it.value} sub={it.sub} size={size} />)}
       {children}
     </StatRow>
@@ -78,19 +76,19 @@ export function ReportChart({
   title: ReactNode;
   caption?: ReactNode;
   keyItems?: { label: string; kind: ReferenceKeyKind }[];
-  // Small controls beside the title (a horizon switch); hidden in print.
+  // Small controls beside the title (a horizon switch).
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
   return (
-    <section className={cn("print-avoid-break flex min-w-0 flex-col gap-3", className)}>
+    <section className={cn("flex min-w-0 flex-col gap-3", className)}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2 border-b border-hairline pb-2">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2 className="text-body font-medium text-ink">{title}</h2>
           {caption && <p className="text-small text-muted">{caption}</p>}
         </div>
-        {actions && <div className="print-hide flex flex-wrap items-center gap-2">{actions}</div>}
+        {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
       {children}
       {keyItems && <ReferenceKey as="div" items={keyItems} />}
