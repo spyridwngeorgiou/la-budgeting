@@ -73,7 +73,7 @@ export function UploadForm() {
         const message = errorOf(await uploadDocument(formData));
         if (message) setError(message);
       }}
-      className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4 shadow-sm"
+      className="flex flex-col gap-3"
     >
       {/* Two separate inputs on purpose: `capture` makes phones open the
           camera directly, which also makes picking a PDF impossible -- so
@@ -106,55 +106,55 @@ export function UploadForm() {
             setDragging(false);
             choose(e.dataTransfer.files?.[0]);
           }}
-          className={`flex min-h-64 flex-col items-center justify-center gap-4 rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors ${
-            dragging ? "border-ai-strong bg-ai-bg" : "border-ai-border bg-ai-bg/30"
+          className={`flex min-h-64 flex-col items-center justify-center gap-4 border border-dashed px-4 py-10 text-center transition-colors sm:px-6 ${
+            dragging ? "border-ai bg-ai-tint" : "border-ai-border"
           }`}
         >
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-ai-bg text-ai-strong">
-            <Upload className="h-7 w-7" />
+          <span className="flex h-12 w-12 items-center justify-center border border-ai-border text-ai">
+            <Upload className="h-6 w-6" strokeWidth={1.5} />
           </span>
           <div className="flex flex-col gap-1">
-            <p className="text-lg font-semibold text-ink">
+            <p className="text-section font-normal text-ink">
               {dragging ? "Αφήστε το αρχείο εδώ" : "Σύρετε εδώ το παραστατικό"}
             </p>
-            <p className="text-sm text-ink-muted">ή επιλέξτε από τη συσκευή σας</p>
+            <p className="text-sm text-muted">ή επιλέξτε από τη συσκευή σας</p>
           </div>
           <div className="flex w-full max-w-md flex-col gap-2 sm:flex-row sm:justify-center">
             <button
               type="button"
               onClick={() => fileInput.current?.click()}
-              className="flex items-center justify-center gap-2 rounded-md bg-ai-strong px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-ai-ink"
+              className="flex min-h-11 items-center justify-center gap-2 border border-navy bg-navy px-5 py-2.5 text-sm font-medium text-panel-ink transition-colors hover:border-navy-strong hover:bg-navy-strong"
             >
-              <FileText className="h-5 w-5" />
+              <FileText className="h-5 w-5" strokeWidth={1.5} />
               Επιλογή αρχείου
             </button>
             <button
               type="button"
               onClick={() => cameraInput.current?.click()}
-              className="flex items-center justify-center gap-2 rounded-md border border-ai-border bg-white px-5 py-3 text-sm font-semibold text-ai-ink transition-colors hover:bg-ai-bg"
+              className="flex min-h-11 items-center justify-center gap-2 border border-ai-border px-5 py-2.5 text-sm font-medium text-ai transition-colors hover:bg-ai-tint"
             >
-              <Camera className="h-5 w-5" />
+              <Camera className="h-5 w-5" strokeWidth={1.5} />
               Φωτογραφία με κάμερα
             </button>
           </div>
-          <p className="text-xs text-ink-faint">PDF, JPG, PNG ή WEBP · έως 10 MB · ένα παραστατικό ανά αρχείο</p>
+          <p className="text-xs text-muted">PDF, JPG, PNG ή WEBP · έως 10 MB · ένα παραστατικό ανά αρχείο</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3 rounded-lg border-2 border-ai-border bg-ai-bg/30 p-4">
+        <div className="flex flex-col gap-3 border-y border-ai-border py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm">
-              {isPdf ? <FileText className="h-6 w-6 text-red-ink" /> : <ImageIcon className="h-6 w-6 text-ai-strong" />}
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-hairline bg-field">
+              {isPdf ? <FileText className="h-6 w-6 text-muted" strokeWidth={1.5} /> : <ImageIcon className="h-6 w-6 text-muted" strokeWidth={1.5} />}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium">{file.name}</div>
-              <div className="text-xs text-ink-muted">
+              <div className="truncate text-sm text-ink">{file.name}</div>
+              <div className="text-xs text-muted">
                 {isPdf ? "PDF" : "Εικόνα"} · {formatSize(file.size)}
               </div>
             </div>
             <button
               type="button"
               onClick={() => choose(null)}
-              className="rounded p-1 text-ink-muted hover:bg-bg hover:text-ink"
+              className="flex h-11 w-11 items-center justify-center text-muted hover:bg-hover hover:text-ink"
               aria-label="Αφαίρεση αρχείου"
             >
               <X className="h-4 w-4" />
@@ -162,12 +162,16 @@ export function UploadForm() {
           </div>
           {preview && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={preview} alt="Προεπισκόπηση" className="max-h-80 rounded-lg border border-line object-contain" />
+            <img src={preview} alt="Προεπισκόπηση" className="max-h-80 border border-hairline object-contain" />
           )}
         </div>
       )}
 
-      {error && <p className="text-sm text-red-ink">{error}</p>}
+      {error && (
+        <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+          {error}
+        </p>
+      )}
 
       <SubmitButton
         variant={file ? "aiSolid" : "ai"}
@@ -178,7 +182,7 @@ export function UploadForm() {
         <AiSpark className="mr-1.5" />
         Ανάλυση με AI
       </SubmitButton>
-      <p className="text-xs text-ink-faint">
+      <p className="text-xs text-muted">
         Τίποτα δεν καταχωρείται αυτόματα — θα δείτε τα στοιχεία που διάβασε το AI και θα τα εγκρίνετε.
       </p>
     </form>

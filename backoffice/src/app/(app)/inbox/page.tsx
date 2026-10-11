@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge } from "@/components/ui";
+import { Badge, PageHeader } from "@/components/ui";
+import { specRow, specTable, specTd, specTh } from "@/components/specTable";
 import { UploadChooser } from "./UploadChooser";
 
 const STATUS_TONE = { staged: "amber", committed: "green", undone: "neutral", discarded: "neutral" } as const;
@@ -22,52 +23,49 @@ export default async function InboxPage() {
   ]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">{el.nav.inbox}</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Ό,τι μπαίνει στην εφαρμογή ξεκινά από εδώ. Ένα αντίγραφο κίνησης τράπεζας αντιστοιχίζεται με τις
-          εκκρεμείς κινήσεις, το ελέγχετε και το οριστικοποιείτε — με δυνατότητα αναίρεσης.
-        </p>
-      </div>
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        title={el.nav.inbox}
+        meta="Ό,τι μπαίνει στην εφαρμογή ξεκινά από εδώ. Ένα αντίγραφο κίνησης τράπεζας αντιστοιχίζεται με τις εκκρεμείς κινήσεις, το ελέγχετε και το οριστικοποιείτε — με δυνατότητα αναίρεσης."
+      />
 
       <UploadChooser accounts={(accounts ?? []).map((a) => ({ id: a.id, label: a.name }))} />
 
       {(batches ?? []).length === 0 ? (
-        <p className="p-6 text-center text-sm text-ink-muted">Δεν έχει ανέβει ακόμα κανένα αρχείο.</p>
+        <p className="border-y border-hairline py-6 text-sm text-muted">Δεν έχει ανέβει ακόμα κανένα αρχείο.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-bg text-ink-muted">
+        <div className="overflow-x-auto">
+          <table className={specTable}>
+            <thead>
               <tr>
-                <th className="p-2">Αρχείο</th>
-                <th className="hidden p-2 sm:table-cell">Λογαριασμός</th>
-                <th className="hidden p-2 sm:table-cell">Περίοδος</th>
-                <th className="hidden p-2 text-right md:table-cell">Γραμμές</th>
-                <th className="p-2">Κατάσταση</th>
-                <th className="hidden p-2 md:table-cell">Ημ/νία</th>
+                <th scope="col" className={specTh}>Αρχείο</th>
+                <th scope="col" className={`${specTh} hidden sm:table-cell`}>Λογαριασμός</th>
+                <th scope="col" className={`${specTh} hidden sm:table-cell`}>Περίοδος</th>
+                <th scope="col" className={`${specTh} hidden text-right md:table-cell`}>Γραμμές</th>
+                <th scope="col" className={specTh}>Κατάσταση</th>
+                <th scope="col" className={`${specTh} hidden text-right md:table-cell`}>Ημ/νία</th>
               </tr>
             </thead>
             <tbody>
               {(batches ?? []).map((b) => {
                 const account = Array.isArray(b.accounts) ? b.accounts[0] : b.accounts;
                 return (
-                  <tr key={b.id} className="border-t border-line">
-                    <td className="p-2">
-                      <Link href={`/inbox/${b.id}`} className="hover:underline">
+                  <tr key={b.id} className={specRow}>
+                    <td className={`${specTd} text-ink`}>
+                      <Link href={`/inbox/${b.id}`} className="underline-offset-4 hover:underline">
                         {b.filename ?? el.ingest.source[b.source]}
                       </Link>
-                      <div className="text-xs text-ink-muted">{el.ingest.source[b.source]}</div>
+                      <div className="text-xs text-muted">{el.ingest.source[b.source]}</div>
                     </td>
-                    <td className="hidden p-2 sm:table-cell">{account?.name ?? "—"}</td>
-                    <td className="hidden p-2 sm:table-cell">
+                    <td className={`${specTd} hidden sm:table-cell`}>{account?.name ?? "—"}</td>
+                    <td className={`${specTd} num hidden sm:table-cell`}>
                       {b.period_start ? `${formatDate(b.period_start)} – ${formatDate(b.period_end)}` : "—"}
                     </td>
-                    <td className="hidden p-2 text-right md:table-cell">{b.row_count}</td>
-                    <td className="p-2">
+                    <td className={`${specTd} num hidden text-right md:table-cell`}>{b.row_count}</td>
+                    <td className={specTd}>
                       <Badge tone={STATUS_TONE[b.status]}>{el.ingest.batchStatus[b.status]}</Badge>
                     </td>
-                    <td className="hidden p-2 md:table-cell">{formatDate(b.created_at)}</td>
+                    <td className={`${specTd} num hidden text-right md:table-cell`}>{formatDate(b.created_at)}</td>
                   </tr>
                 );
               })}

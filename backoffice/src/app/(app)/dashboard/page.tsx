@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
+import { PageHeader, SectionHeader } from "@/components/ui";
+import { specTd as TD, specTh as TH } from "@/components/specTable";
 import { aiEnabled } from "@/lib/ai/client";
 import { DashboardSummary } from "./DashboardSummary";
 import { AskAssistantCard } from "./AskAssistantCard";
@@ -206,129 +208,135 @@ export default async function DashboardPage() {
   ].filter((x): x is { label: string; href: string } => Boolean(x));
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold">{el.nav.dashboard}</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Ρευστότητα, έργα και ΦΠΑ με μια ματιά. Κάθε ποσό είναι κλικάρισμα στις κινήσεις που το
-          απαρτίζουν.
-        </p>
-      </div>
+    <div className="flex flex-col gap-10">
+      <PageHeader
+        title={el.nav.dashboard}
+        meta="Ρευστότητα, έργα και ΦΠΑ με μια ματιά. Κάθε ποσό είναι κλικάρισμα στις κινήσεις που το απαρτίζουν."
+      />
 
-      <section>
-        <h2 className="mb-2 text-sm font-medium text-ink-muted">Χρειάζεται Προσοχή</h2>
+      <section className="flex flex-col">
+        <SectionHeader title="Χρειάζεται Προσοχή" />
         {worklist.length === 0 ? (
-          <div className="rounded-md border border-sage-strong/50 bg-sage/30 px-3 py-2 text-sm text-sage-ink">
-            Τίποτα δεν χρειάζεται προσοχή αυτή τη στιγμή.
-          </div>
+          <p className="border-b border-hairline py-3 text-sm text-muted">Τίποτα δεν χρειάζεται προσοχή αυτή τη στιγμή.</p>
         ) : (
-          <div className="flex flex-col gap-1.5">
+          <ul className="flex flex-col">
             {worklist.map((item) => (
-              <Link
-                key={item.href + item.label}
-                href={item.href}
-                className="flex items-center justify-between gap-2 rounded-md border border-red-ink/40 bg-red-bg px-3 py-2 text-sm text-red-ink transition-colors hover:bg-red-bg/70"
-              >
-                <span>{item.label}</span>
-                <span>→</span>
-              </Link>
+              <li key={item.href + item.label} className="border-b border-hairline">
+                <Link
+                  href={item.href}
+                  className="flex min-h-11 items-center justify-between gap-3 border-l-2 border-negative py-2.5 pr-2 pl-4 text-sm text-ink transition-colors hover:bg-hover"
+                >
+                  <span>{item.label}</span>
+                  <span aria-hidden="true" className="shrink-0 text-muted">
+                    →
+                  </span>
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </section>
 
       {aiEnabled() && <DashboardSummary />}
       {aiEnabled() && <AskAssistantCard />}
 
-      <section>
-        <h2 className="mb-2 text-sm font-medium text-ink-muted">Ρευστότητα</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <section className="flex flex-col">
+        <SectionHeader title="Ρευστότητα" />
+        <div className="grid grid-cols-2 sm:grid-cols-3">
           {(accounts ?? []).map((a) => (
             <Link
               key={a.account_id}
               href={`/transactions?account_id=${a.account_id}`}
-              className="rounded-lg border border-line p-3 transition-colors hover:border-line-strong hover:bg-surface"
+              className="flex min-w-0 flex-col gap-1 border-b border-hairline py-4 pr-4 pl-1 transition-colors hover:bg-hover"
             >
-              <div className="text-xs text-ink-muted">{a.name}</div>
-              <div className="font-mono text-lg">{formatMoney(a.current_balance)}</div>
+              <span className="truncate text-small text-muted">{a.name}</span>
+              <span className="num text-figure-sm font-light text-ink">{formatMoney(a.current_balance)}</span>
             </Link>
           ))}
-          <div className="rounded-lg border border-ink bg-ink p-3 text-white">
-            <div className="text-xs text-white/70">Σύνολο Ρευστών</div>
-            <div className="font-mono text-lg">{formatMoney(liquidTotal)}</div>
+          <div className="flex min-w-0 flex-col gap-1 border-b border-ink py-4 pr-4 pl-1">
+            <span className="eyebrow text-ink">Σύνολο Ρευστών</span>
+            <span className="num text-figure-sm font-light text-ink">{formatMoney(liquidTotal)}</span>
           </div>
           {forecastEnd && (
             <Link
               href="/reports/cash?months=6"
-              className="rounded-lg border border-line p-3 transition-colors hover:border-line-strong hover:bg-surface"
+              className={`flex min-w-0 flex-col gap-1 border-b border-hairline py-4 pr-4 transition-colors hover:bg-hover ${
+                forecastEnd.below_buffer ? "border-l-2 border-l-negative pl-3" : "pl-1"
+              }`}
             >
-              <div className="text-xs text-ink-muted">Πρόβλεψη σε 6 μήνες ({monthLabel(monthKeyOf(forecastEnd.month))})</div>
-              <div className={`font-mono text-lg ${forecastEnd.below_buffer ? "text-red-ink" : ""}`}>
+              <span className="text-small text-muted">Πρόβλεψη σε 6 μήνες ({monthLabel(monthKeyOf(forecastEnd.month))})</span>
+              <span className={`num text-figure-sm font-light ${forecastEnd.below_buffer ? "text-negative" : "text-ink"}`}>
                 {formatMoney(forecastEnd.closing_balance)}
-              </div>
+              </span>
             </Link>
           )}
         </div>
-        <p className="mt-1 text-xs text-ink-faint">
+        <p className="mt-2 text-xs text-muted">
           Το σύνολο μετρά μόνο ρευστούς λογαριασμούς· χρυσός και crypto εμφανίζονται στην Καθαρή θέση.
         </p>
       </section>
 
       {dueDates && dueDates.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-sm font-medium text-ink-muted">Προσεχείς Υποχρεώσεις</h2>
+        <section className="flex flex-col gap-3">
+          <SectionHeader title="Προσεχείς Υποχρεώσεις" />
           <DueDatesCalendar dueDates={dueDates} todayIso={todayIso} />
         </section>
       )}
 
-      <section>
-        <h2 className="mb-2 text-sm font-medium text-ink-muted">Χαρτοφυλάκιο Έργων</h2>
+      <section className="flex flex-col gap-3">
+        <SectionHeader title="Χαρτοφυλάκιο Έργων" />
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="text-ink-muted">
+          <table className="w-full border-collapse text-sm">
+            <thead>
               <tr>
-                <th className="py-1 pr-4">Έργο</th>
-                <th className="hidden py-1 pr-4 sm:table-cell">{el.project.budget}</th>
-                <th className="py-1 pr-4">Δαπανηθέντα</th>
-                <th className="py-1 pr-4">Εκκρεμούν</th>
-                <th className="hidden py-1 pr-4 sm:table-cell">+ ΦΠΑ</th>
+                <th scope="col" className={TH}>
+                  Έργο
+                </th>
+                <th scope="col" className={`${TH} hidden text-right sm:table-cell`}>
+                  {el.project.budget}
+                </th>
+                <th scope="col" className={`${TH} text-right`}>
+                  Δαπανηθέντα
+                </th>
+                <th scope="col" className={`${TH} text-right`}>
+                  Εκκρεμούν
+                </th>
+                <th scope="col" className={`${TH} hidden text-right sm:table-cell`}>
+                  + ΦΠΑ
+                </th>
               </tr>
             </thead>
             <tbody>
               {(projects ?? []).map((p) => (
-                <tr key={p.project_id} className="border-t border-line">
-                  <td className="py-1.5 pr-4">
-                    <Link href={`/projects/${p.project_id}`} className="hover:underline">
+                <tr key={p.project_id} className="hover:bg-hover">
+                  <td className={`${TD} text-ink`}>
+                    <Link href={`/projects/${p.project_id}`} className="underline-offset-4 hover:underline">
                       {p.display_name}
                     </Link>
                   </td>
-                  <td className="hidden py-1.5 pr-4 font-mono sm:table-cell">
-                    {noBudget.has(p.project_id) ? (
-                      <span className="text-ink-faint">—</span>
-                    ) : (
-                      formatMoney(p.total_budget)
-                    )}
+                  <td className={`${TD} num hidden text-right sm:table-cell`}>
+                    {noBudget.has(p.project_id) ? <span className="text-muted">—</span> : formatMoney(p.total_budget)}
                   </td>
-                  <td className="py-1.5 pr-4 font-mono">
+                  <td className={`${TD} num text-right`}>
                     <Link
                       href={`/transactions?project_id=${p.project_id}&direction=expense&status=paid`}
-                      className="hover:underline"
+                      className="underline-offset-4 hover:underline"
                     >
                       {formatMoney(p.spent)}
                     </Link>
                   </td>
-                  <td className="py-1.5 pr-4 font-mono">
+                  <td className={`${TD} num text-right`}>
                     <Link
                       href={`/transactions?project_id=${p.project_id}&direction=expense&status=pending`}
-                      className="hover:underline"
+                      className="underline-offset-4 hover:underline"
                     >
                       {formatMoney(p.pending)}
                     </Link>
                   </td>
-                  <td className="hidden py-1.5 pr-4 font-mono sm:table-cell">
+                  <td className={`${TD} num hidden text-right sm:table-cell`}>
                     <Link
                       href={`/transactions?project_id=${p.project_id}&direction=expense`}
-                      className="hover:underline"
+                      className="underline-offset-4 hover:underline"
                     >
                       {formatMoney(p.vat_on_expenses)}
                     </Link>
@@ -340,29 +348,33 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section>
-        <h2 className="mb-2 text-sm font-medium text-ink-muted">
-          Θέση ΦΠΑ <span className="font-normal text-ink-faint">— σύνολο όλων των περιόδων</span>
-        </h2>
+      <section className="flex flex-col">
+        <SectionHeader
+          title={
+            <>
+              Θέση ΦΠΑ <span className="text-small text-muted">— σύνολο όλων των περιόδων</span>
+            </>
+          }
+        />
         {currentVat ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat
+          <div className="grid grid-cols-2 sm:grid-cols-4">
+            <VatStat
               label="ΦΠΑ Εκροών (σύνολο)"
               value={formatMoney(vatIncomeTotal)}
               href={`/transactions?direction=income&from=${earliestPeriod}`}
             />
-            <Stat
+            <VatStat
               label="ΦΠΑ Εισροών (σύνολο)"
               value={formatMoney(vatExpenseTotal)}
               href={`/transactions?direction=expense&from=${earliestPeriod}`}
             />
-            <Stat label="Τρέχον Πιστωτικό" value={formatMoney(Math.abs(currentVat.credit_balance ?? 0))} />
-            <Stat label="Συνολικά Οφειλόμενο Τώρα" value={formatMoney(currentVat.payable_after_credit)} />
+            <VatStat label="Τρέχον Πιστωτικό" value={formatMoney(Math.abs(currentVat.credit_balance ?? 0))} />
+            <VatStat label="Συνολικά Οφειλόμενο Τώρα" value={formatMoney(currentVat.payable_after_credit)} />
           </div>
         ) : (
-          <p className="text-sm text-ink-muted">Δεν υπάρχουν ακόμα κινήσεις.</p>
+          <p className="py-3 text-sm text-muted">Δεν υπάρχουν ακόμα κινήσεις.</p>
         )}
-        <p className="mt-2 text-xs text-ink-faint">
+        <p className="mt-2 text-xs text-muted">
           Οι δύο πρώτες τιμές είναι το άθροισμα όλων των μηνών· το πιστωτικό/οφειλόμενο είναι η
           τρέχουσα θέση (ήδη συνυπολογίζει τη μεταφορά πιστωτικού από κάθε προηγούμενο μήνα). Για
           ανάλυση ανά μήνα δείτε τη σελίδα ΦΠΑ.
@@ -372,22 +384,20 @@ export default async function DashboardPage() {
   );
 }
 
-function Stat({ label, value, href }: { label: string; value: string; href?: string }) {
+function VatStat({ label, value, href }: { label: string; value: string; href?: string }) {
   const content = (
     <>
-      <div className="text-xs text-ink-muted">{label}</div>
-      <div className="font-mono text-lg">{value}</div>
+      <span className="eyebrow text-muted">{label}</span>
+      <span className="num text-figure-sm font-light text-ink">{value}</span>
     </>
   );
+  const cls = "flex min-w-0 flex-col gap-1.5 border-b border-hairline py-4 pr-4 pl-1";
   if (href) {
     return (
-      <Link
-        href={href}
-        className="block rounded-lg border border-line p-3 transition-colors hover:border-line-strong hover:bg-surface"
-      >
+      <Link href={href} className={`${cls} transition-colors hover:bg-hover`}>
         {content}
       </Link>
     );
   }
-  return <div className="rounded-lg border border-line p-3">{content}</div>;
+  return <div className={cls}>{content}</div>;
 }

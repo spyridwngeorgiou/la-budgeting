@@ -36,8 +36,8 @@ export function CommitBar({
   };
 
   return (
-    <div className="flex flex-col items-end gap-2">
-      <div className="flex flex-wrap justify-end gap-2">
+    <div className="flex flex-col items-start gap-2 sm:items-end">
+      <div className="flex flex-wrap gap-2 sm:justify-end">
         {(status === "staged" || status === "undone") && (
           <>
             <Button type="button" variant="secondary" disabled={pending} onClick={() => run(() => discardBatch(batchId))}>
@@ -65,15 +65,19 @@ export function CommitBar({
         )}
       </div>
       {pendingCount > 0 && status !== "committed" && (
-        <p className="text-xs text-amber-ink">{pendingCount} γραμμή/ές χρειάζονται απόφαση πριν την οριστικοποίηση.</p>
+        <p className="border-l-2 border-warning pl-2 text-xs text-warning">{pendingCount} γραμμή/ές χρειάζονται απόφαση πριν την οριστικοποίηση.</p>
       )}
       {touched && (
-        <p className="max-w-md text-right text-xs text-amber-ink">
+        <p className="max-w-md border-l-2 border-warning pl-2 text-xs text-warning sm:text-right">
           {touched.length} κίνηση/εις άλλαξαν μετά την εισαγωγή. Η αναίρεση θα επαναφέρει μόνο όσα έκανε η εισαγωγή·
           οι μεταγενέστερες αλλαγές σε άλλα πεδία μένουν.
         </p>
       )}
-      {error && <p className="text-sm text-red-ink">{error}</p>}
+      {error && (
+        <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

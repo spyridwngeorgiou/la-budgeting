@@ -16,7 +16,20 @@ import baseline from "./design-guard.baseline.json";
 const SRC = path.resolve(import.meta.dirname, "..");
 // Phase 6 added the planner and the collaboration pieces (the Excalidraw
 // scene's own colours live in .ts files, which are not scanned).
-const GUARDED = ["components/ui", "components/planner", "components/collab"];
+// The classic shell's own pages followed (look-and-feel pass): dashboard,
+// inbox (with its aade / documents flows), settings, assistant, login.
+const GUARDED = [
+  "components/ui",
+  "components/planner",
+  "components/collab",
+  "app/(app)/dashboard",
+  "app/(app)/inbox",
+  "app/(app)/aade",
+  "app/(app)/documents",
+  "app/(app)/settings",
+  "app/(app)/assistant",
+  "app/(auth)",
+];
 
 const RULES: { name: string; re: RegExp }[] = [
   { name: "rounded", re: /\brounded-(?!full\b|none\b)[\w[\]-]+/g },

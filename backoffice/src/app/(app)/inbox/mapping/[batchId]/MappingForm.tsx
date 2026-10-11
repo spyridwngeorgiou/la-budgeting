@@ -62,20 +62,20 @@ export function MappingForm({
         const formData = new FormData(e.currentTarget);
         startTransition(() => action(formData));
       }}
-      className="flex flex-col gap-4"
+      className="flex flex-col gap-5"
     >
-      <div className="max-h-80 overflow-auto rounded-lg border border-line">
-        <table className="text-xs">
+      <div className="max-h-80 overflow-auto border-y border-hairline">
+        <table className="border-collapse text-xs">
           <tbody>
             {preview.map((row, r) => (
               <tr
                 key={r}
                 onClick={() => setHeaderRow(r + 1)}
-                className={`cursor-pointer border-t border-line ${r + 1 === headerRow ? "bg-sage font-semibold" : r + 1 < headerRow ? "text-ink-faint" : ""}`}
+                className={`cursor-pointer border-b hover:bg-hover ${r + 1 === headerRow ? "border-b-rule bg-hover font-medium text-ink" : r + 1 < headerRow ? "border-hairline text-muted" : "border-hairline text-text"}`}
               >
-                <td className="px-2 py-1 text-ink-muted">{r + 1}</td>
+                <td className="num px-2 py-1.5 text-right text-muted">{r + 1}</td>
                 {Array.from({ length: width }, (_, c) => (
-                  <td key={c} className="max-w-56 truncate px-2 py-1 whitespace-nowrap">
+                  <td key={c} className="max-w-56 truncate px-2 py-1.5 whitespace-nowrap">
                     {row[c] ?? ""}
                   </td>
                 ))}
@@ -84,7 +84,7 @@ export function MappingForm({
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-ink-muted">Πατήστε τη γραμμή της επικεφαλίδας (τώρα: γραμμή {headerRow}).</p>
+      <p className="text-xs text-muted">Πατήστε τη γραμμή της επικεφαλίδας (τώρα: γραμμή {headerRow}).</p>
       <input type="hidden" name="header_row" value={headerRow} />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -141,7 +141,11 @@ export function MappingForm({
         <Input name="profile_name" defaultValue={defaultName} required />
       </Field>
 
-      {state && "error" in state && <p className="text-sm text-red-ink">{state.error}</p>}
+      {state && "error" in state && (
+        <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+          {state.error}
+        </p>
+      )}
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>
           {pending ? "Ανάγνωση…" : "Αποθήκευση μορφής και συνέχεια"}

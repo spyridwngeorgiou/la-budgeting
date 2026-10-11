@@ -28,8 +28,8 @@ export function DashboardSummary() {
 
   if (text) {
     return (
-      <div className="rounded-md border border-ai-border bg-ai-bg p-3 text-sm text-ink">
-        <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-ai-ink">
+      <div className="border-l-2 border-ai-border py-1 pl-4 text-sm text-ink">
+        <div className="eyebrow mb-1.5 flex items-center gap-1.5 text-ai">
           <AiSpark />
           Περίληψη AI
         </div>
@@ -39,12 +39,12 @@ export function DashboardSummary() {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Button variant="ai" onClick={generate} disabled={loading}>
         <AiSpark className="mr-1.5" />
         {loading ? "Δημιουργία…" : "AI περίληψη μήνα"}
       </Button>
-      {error && <span className="text-sm text-red-ink">{error}</span>}
+      {error && <span role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">{error}</span>}
     </div>
   );
 }

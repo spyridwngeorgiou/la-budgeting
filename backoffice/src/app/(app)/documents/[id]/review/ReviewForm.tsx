@@ -90,11 +90,11 @@ export function ReviewForm({
   const allTouched = [...amberFields].every((f) => touched.has(f));
 
   if (status !== "pending") {
-    return <p className="text-sm text-ink-muted">Αυτό το πρόχειρο έχει ήδη διεκπεραιωθεί.</p>;
+    return <p className="border-y border-hairline py-6 text-sm text-muted">Αυτό το πρόχειρο έχει ήδη διεκπεραιωθεί.</p>;
   }
 
   return (
-    <div className="flex flex-col gap-4 md:flex-row">
+    <div className="flex flex-col gap-6 md:flex-row">
       {imageUrl && (
         <div className="md:w-1/2">
           {/* On a phone, a tall portrait receipt photo at full natural height
@@ -105,21 +105,21 @@ export function ReviewForm({
           <img
             src={imageUrl}
             alt="Παραστατικό"
-            className="max-h-[45vh] w-full rounded-lg border border-line object-contain md:max-h-none md:object-fill"
+            className="max-h-[45vh] w-full border border-hairline object-contain md:max-h-none md:object-fill"
           />
         </div>
       )}
 
       <div className="flex flex-1 flex-col gap-3">
-        <h1 className="text-xl font-semibold">Έλεγχος Πρόχειρης Κίνησης</h1>
+        <h1 className="border-b border-rule pb-4 text-title font-normal text-ink">Έλεγχος Πρόχειρης Κίνησης</h1>
         {queueIds.length > 0 && (
-          <p className="text-xs text-ink-muted">
+          <p className="text-xs text-muted">
             {queueIds.length} ακόμα κίνηση{queueIds.length > 1 ? "εις" : ""} από αυτή την περιγραφή σε αναμονή ελέγχου.
           </p>
         )}
 
         {needsReviewReasons.length > 0 && (
-          <div className="rounded-lg border border-amber-ink/40 bg-amber-bg p-3 text-sm text-amber-ink">
+          <div className="border-l-2 border-warning py-1 pl-4 text-sm text-warning">
             <ul className="list-disc pl-4">
               {needsReviewReasons.map((r) => (
                 <li key={r}>{r}</li>
@@ -129,7 +129,7 @@ export function ReviewForm({
         )}
 
         {extraction.notes_for_human && (
-          <p className="text-xs text-ink-muted">Σημείωση AI: {extraction.notes_for_human}</p>
+          <p className="text-xs text-muted">Σημείωση AI: {extraction.notes_for_human}</p>
         )}
 
         {/* onSubmit, not action={...}: React resets an action form's
@@ -142,12 +142,12 @@ export function ReviewForm({
           }}
           className="flex flex-col gap-3"
         >
-          <div className="flex gap-2">
+          <div className="flex">
             {(["expense", "income"] as const).map((d) => (
               <label
                 key={d}
-                className={`flex-1 cursor-pointer rounded-md border px-3 py-2 text-center text-sm ${
-                  direction === d ? "border-ink bg-ink text-white" : "border-line-strong"
+                className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center border px-3 py-2 text-center text-sm not-first:-ml-px ${
+                  direction === d ? "relative border-navy bg-navy text-panel-ink" : "border-chip-border text-ink hover:bg-hover"
                 }`}
               >
                 <input type="radio" name="direction" value={d} checked={direction === d} onChange={() => setDirection(d)} className="hidden" />
@@ -187,7 +187,7 @@ export function ReviewForm({
             <Label className="flex items-center gap-2">
               Επαφή
               {extraction.issuer_name && (
-                <span className="text-xs text-ai-ink" title={`AI: ${extraction.issuer_name}`}>
+                <span className="text-xs text-ai" title={`AI: ${extraction.issuer_name}`}>
                   (AI: {extraction.issuer_name})
                 </span>
               )}
@@ -196,7 +196,7 @@ export function ReviewForm({
               name="contact_id"
               defaultValue={proposed.contact_id ?? ""}
               onBlur={() => setTouched((t) => new Set(t).add("contact_id"))}
-              className={amberFields.has("contact_id") ? "border-amber-ink/70" : ""}
+              className={amberFields.has("contact_id") ? "border-warning" : ""}
             >
               <option value="">—</option>
               {contacts.map((c) => (
@@ -212,13 +212,13 @@ export function ReviewForm({
             <Field>
               <Label className="flex items-center gap-2">
                 Έργο
-                {extraction.project_mention && <span className="text-xs text-ai-ink">(AI: {extraction.project_mention})</span>}
+                {extraction.project_mention && <span className="text-xs text-ai">(AI: {extraction.project_mention})</span>}
               </Label>
               <Select
                 name="project_id"
                 defaultValue={proposed.project_id ?? ""}
                 onBlur={() => setTouched((t) => new Set(t).add("project_id"))}
-                className={amberFields.has("project_id") ? "border-amber-ink/70" : ""}
+                className={amberFields.has("project_id") ? "border-warning" : ""}
               >
                 <option value="">—</option>
                 {projects.map((p) => (
@@ -278,12 +278,12 @@ export function ReviewForm({
             )}
           </div>
 
-          <div className="rounded bg-bg p-3 text-sm">
+          <div className="border-y border-ink py-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-ai-ink" title={extraction.gross.evidence ?? undefined}>
+              <span className="text-ai" title={extraction.gross.evidence ?? undefined}>
                 Σύνολο (AI: {formatMoney(extraction.gross.value)})
               </span>
-              <span className="font-mono font-medium">{formatMoney(preview.gross)}</span>
+              <span className="num font-medium text-ink">{formatMoney(preview.gross)}</span>
             </div>
           </div>
 
@@ -325,7 +325,11 @@ export function ReviewForm({
             </Field>
           </div>
 
-          {error && <p className="text-sm text-red-ink">{error}</p>}
+          {error && (
+            <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+              {error}
+            </p>
+          )}
 
           {duplicates.length > 0 && (
             <DuplicateWarning
@@ -340,7 +344,7 @@ export function ReviewForm({
             />
           )}
 
-          <div className="mt-2 flex justify-end gap-2">
+          <div className="mt-2 flex flex-wrap justify-end gap-2">
             <Button type="button" variant="secondary" onClick={() => discardDraft(draftId, queueIds)}>
               Απόρριψη
             </Button>
@@ -349,7 +353,7 @@ export function ReviewForm({
             </Button>
           </div>
           {!allTouched && (
-            <p className="text-right text-xs text-amber-700">
+            <p className="text-right text-xs text-warning">
               Ελέγξτε τα πεδία με κίτρινο περίγραμμα πριν καταχωρήσετε.
             </p>
           )}

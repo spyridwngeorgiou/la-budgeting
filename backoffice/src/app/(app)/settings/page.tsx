@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrg, getCurrentMembership } from "@/lib/supabase/org";
 import { el } from "@/lib/i18n/el";
-import { Card, Badge } from "@/components/ui";
+import { Badge, PageHeader, SectionHeader } from "@/components/ui";
 import { updateOwnAfm, updateOrgSettings, updateTaxRiskSettings } from "./actions";
-import { Button, Input, Select, Label, Field } from "@/components/ui";
+import { Button, Input, Select, Label, Field, buttonClass } from "@/components/ui";
 import { ChangePasswordForm } from "./ChangePasswordForm";
 import { monthlyBudgetCents } from "@/lib/ai/client";
 import { ORG_ROLE } from "@/lib/domain/enums";
@@ -35,16 +35,14 @@ export default async function SettingsPage() {
   const profileFor = (userId: string) => memberProfiles?.find((p) => p.user_id === userId);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">{el.nav.settings}</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Στοιχεία της επιχείρησης, όριο δαπάνης AI, κωδικός πρόσβασης, και εξαγωγή δεδομένων.
-        </p>
-      </div>
+    <div className="flex flex-col gap-10">
+      <PageHeader
+        title={el.nav.settings}
+        meta="Στοιχεία της επιχείρησης, όριο δαπάνης AI, κωδικός πρόσβασης, και εξαγωγή δεδομένων."
+      />
 
-      <Card className="max-w-md">
-        <h2 className="mb-3 text-sm font-medium text-ink-muted">Στοιχεία Επιχείρησης</h2>
+      <section className="flex w-full max-w-md flex-col gap-4">
+        <SectionHeader title="Στοιχεία Επιχείρησης" />
         <ActionForm action={updateOwnAfm} className="flex flex-col gap-3">
           <Field>
             <Label>Επωνυμία</Label>
@@ -55,7 +53,7 @@ export default async function SettingsPage() {
             <Input name="own_afm" defaultValue={org?.own_afm ?? ""} pattern="[0-9]{9}" maxLength={9} required />
           </Field>
           {org?.own_afm === "000000000" && (
-            <p className="text-xs text-amber-ink">
+            <p className="border-l-2 border-warning pl-3 text-xs text-warning">
               Προσοχή: εικονικό ΑΦΜ. Χρειάζεται το πραγματικό πριν από οποιαδήποτε εισαγωγή AADE,
               ώστε να καθορίζεται σωστά η κατεύθυνση (έσοδο/έξοδο) κάθε κίνησης.
             </p>
@@ -64,18 +62,18 @@ export default async function SettingsPage() {
             <Button type="submit">{el.common.save}</Button>
           </div>
         </ActionForm>
-      </Card>
+      </section>
 
-      <Card className="max-w-md">
-        <h2 className="mb-3 text-sm font-medium text-ink-muted">Ομάδα</h2>
-        <div className="flex flex-col gap-2">
+      <section className="flex w-full max-w-md flex-col gap-4">
+        <SectionHeader title="Ομάδα" />
+        <div className="flex flex-col">
           {(memberRows ?? []).map((m) => {
             const profile = profileFor(m.user_id);
             return (
-              <div key={m.user_id} className="flex flex-wrap items-center justify-between gap-2 border-t border-line/60 py-2 first:border-0 first:pt-0">
-                <span className="text-sm">{profile?.display_name || profile?.email || m.user_id}</span>
+              <div key={m.user_id} className="flex min-h-11 flex-wrap items-center justify-between gap-2 border-b border-hairline py-2">
+                <span className="min-w-0 text-sm break-words text-ink">{profile?.display_name || profile?.email || m.user_id}</span>
                 {isAdmin ? (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <ActionForm action={updateMemberRole.bind(null, m.user_id)} className="flex items-center gap-1.5">
                       <Select name="role" defaultValue={m.role} className="!py-1 text-xs">
                         {ORG_ROLE.map((r) => (
@@ -103,9 +101,9 @@ export default async function SettingsPage() {
         </div>
 
         {isAdmin && (
-          <ActionForm action={inviteMember} className="mt-4 flex flex-col gap-3 border-t border-line pt-4">
-            <h3 className="text-xs font-medium tracking-wide text-ink-muted uppercase">Νέο Μέλος</h3>
-            <div className="grid grid-cols-2 gap-3">
+          <ActionForm action={inviteMember} className="mt-2 flex flex-col gap-3">
+            <h3 className="eyebrow text-muted">Νέο Μέλος</h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field>
                 <Label>Email</Label>
                 <Input type="email" name="email" required />
@@ -130,31 +128,31 @@ export default async function SettingsPage() {
             </div>
           </ActionForm>
         )}
-      </Card>
+      </section>
 
-      <Card className="max-w-md">
-        <h2 className="mb-3 text-sm font-medium text-ink-muted">Όριο Δαπάνης AI</h2>
-        <p className="mb-3 text-xs text-ink-muted">
+      <section className="flex w-full max-w-md flex-col gap-4">
+        <SectionHeader title="Όριο Δαπάνης AI" />
+        <p className="text-xs text-muted">
           Μηνιαίο όριο δαπάνης για όλες τις λειτουργίες AI (βοηθός, ανάγνωση παραστατικών, εκτιμήσεις
           εσόδων). Όταν εξαντληθεί, οι λειτουργίες AI μπλοκάρουν με σαφές μήνυμα μέχρι τον επόμενο μήνα.
         </p>
-        <ActionForm action={updateOrgSettings} className="flex items-end gap-3">
+        <ActionForm action={updateOrgSettings} className="flex flex-wrap items-end gap-3">
           <Field>
             <Label>Όριο (€ / μήνα)</Label>
             <Input type="number" name="ai_monthly_budget_euros" step="1" min="1" defaultValue={currentBudgetEuros} required />
           </Field>
           <Button type="submit">{el.common.save}</Button>
         </ActionForm>
-      </Card>
+      </section>
 
-      <Card className="max-w-md">
-        <h2 className="mb-3 text-sm font-medium text-ink-muted">Φορολογικός Κίνδυνος Παραστατικών</h2>
-        <p className="mb-3 text-xs text-ink-muted">
+      <section className="flex w-full max-w-md flex-col gap-4">
+        <SectionHeader title="Φορολογικός Κίνδυνος Παραστατικών" />
+        <p className="text-xs text-muted">
           Επιχειρηματικές δαπάνες πάνω από το όριο χωρίς παραστατικό (ή πληρωμένες με μετρητά) δεν
           εκπίπτουν. Χρησιμοποιείται από τον έλεγχο «Δαπάνες χωρίς παραστατικό» στους Ελέγχους Ποιότητας.
           Επιβεβαιώστε όριο και συντελεστή με τον λογιστή σας.
         </p>
-        <ActionForm action={updateTaxRiskSettings} className="flex items-end gap-3">
+        <ActionForm action={updateTaxRiskSettings} className="flex flex-wrap items-end gap-3">
           <Field>
             <Label>Όριο (€)</Label>
             <Input type="number" name="uninvoiced_threshold_eur" step="1" min="0" defaultValue={Number(settings.uninvoiced_threshold_eur ?? 500)} required />
@@ -165,25 +163,27 @@ export default async function SettingsPage() {
           </Field>
           <Button type="submit">{el.common.save}</Button>
         </ActionForm>
-      </Card>
+      </section>
 
       {isAdmin && <CaptureAnalytics />}
 
-      <Card className="max-w-md">
-        <h2 className="mb-3 text-sm font-medium text-ink-muted">Αλλαγή Κωδικού</h2>
+      <section className="flex w-full max-w-md flex-col gap-4">
+        <SectionHeader title="Αλλαγή Κωδικού" />
         <ChangePasswordForm />
-      </Card>
+      </section>
 
-      <Card className="max-w-md">
-        <h2 className="mb-3 text-sm font-medium text-ink-muted">Εξαγωγή Δεδομένων</h2>
-        <p className="mb-3 text-xs text-ink-muted">
+      <section className="flex w-full max-w-md flex-col gap-4">
+        <SectionHeader title="Εξαγωγή Δεδομένων" />
+        <p className="text-xs text-muted">
           Οι κινήσεις σας δεν είναι κλειδωμένες σε αυτή την εφαρμογή -- κατεβάστε τις οποτεδήποτε σε
           CSV, ανοίγει σε Excel/Google Sheets.
         </p>
-        <a href="/api/transactions/export">
-          <Button variant="secondary">Εξαγωγή Κινήσεων (CSV)</Button>
-        </a>
-      </Card>
+        <div>
+          <a href="/api/transactions/export" className={buttonClass("secondary")}>
+            Εξαγωγή Κινήσεων (CSV)
+          </a>
+        </div>
+      </section>
     </div>
   );
 }

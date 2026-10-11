@@ -47,7 +47,7 @@ const t = el.ingest.review;
 function Evidence({ value, evidence }: { value?: string | number | null; evidence?: string | null }) {
   if (value == null && !evidence) return null;
   return (
-    <span className="text-xs text-ai-ink" title={evidence ?? undefined}>
+    <span className="text-xs text-ai" title={evidence ?? undefined}>
       ({t.aiRead}: {typeof value === "number" ? formatMoney(value) : (value ?? "—")}
       {evidence ? ` · ${t.evidence} «${evidence}»` : ""})
     </span>
@@ -81,7 +81,7 @@ export function CaptureReview({
         <Modal
           onClose={() => setOpen(false)}
           title={`${t.editTitle} · ${el.ingest.row} ${rowNo}`}
-          className="w-[calc(100%-2rem)] max-w-5xl rounded bg-white p-5"
+          className="w-[calc(100%-2rem)] max-w-5xl border border-hairline bg-raised p-4 sm:p-6"
           closeOnBackdrop={false}
         >
           <CaptureForm
@@ -157,12 +157,12 @@ function CaptureForm({
       {documentUrl && (
         <div className="flex flex-col gap-1 md:w-1/2">
           {isPdf ? (
-            <iframe src={documentUrl} title={t.document} className="h-[70vh] w-full rounded-lg border border-line" />
+            <iframe src={documentUrl} title={t.document} className="h-[70vh] w-full border border-hairline" />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={documentUrl} alt={t.document} className="max-h-[45vh] w-full rounded-lg border border-line object-contain md:max-h-[70vh]" />
+            <img src={documentUrl} alt={t.document} className="max-h-[45vh] w-full border border-hairline object-contain md:max-h-[70vh]" />
           )}
-          <a href={documentUrl} target="_blank" rel="noreferrer" className="text-xs text-ink-muted underline">
+          <a href={documentUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-8 items-center text-xs text-muted underline underline-offset-4 hover:text-ink">
             {t.openDocument}
           </a>
         </div>
@@ -179,24 +179,24 @@ function CaptureForm({
         className="flex flex-1 flex-col gap-3"
       >
         {needsReview.length > 0 && (
-          <ul className="list-disc rounded-lg border border-amber-ink/40 bg-amber-bg p-3 pl-7 text-sm text-amber-ink">
+          <ul className="list-disc border-l-2 border-warning py-1 pr-2 pl-8 text-sm text-warning">
             {needsReview.map((r) => (
               <li key={r}>{r}</li>
             ))}
           </ul>
         )}
         {e?.notes_for_human && (
-          <p className="text-xs text-ink-muted">
+          <p className="text-xs text-muted">
             {t.aiNote}: {e.notes_for_human}
           </p>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex">
           {(["expense", "income"] as const).map((d) => (
             <label
               key={d}
-              className={`flex-1 cursor-pointer rounded-md border px-3 py-2 text-center text-sm ${
-                direction === d ? "border-ink bg-ink text-white" : "border-line-strong"
+              className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center border px-3 py-2 text-center text-sm not-first:-ml-px ${
+                direction === d ? "relative border-navy bg-navy text-panel-ink" : "border-chip-border text-ink hover:bg-hover"
               }`}
             >
               <input type="radio" name="direction" value={d} checked={direction === d} onChange={() => setDirection(d)} className="hidden" />
@@ -235,7 +235,7 @@ function CaptureForm({
           <Label className="flex flex-wrap items-center gap-2">
             {t.contact} <Evidence value={e?.issuer_name} />
           </Label>
-          <Select name="contact_id" defaultValue={values.contact_id ?? ""} className={values.contact_id ? "" : "border-amber-ink/70"}>
+          <Select name="contact_id" defaultValue={values.contact_id ?? ""} className={values.contact_id ? "" : "border-warning"}>
             <option value="">—</option>
             {lookups.contacts.map((c) => (
               <option key={c.id} value={c.id}>
@@ -251,7 +251,7 @@ function CaptureForm({
             <Label className="flex flex-wrap items-center gap-2">
               {t.project} <Evidence value={e?.project_mention} />
             </Label>
-            <Select name="project_id" defaultValue={values.project_id ?? ""} className={values.project_id ? "" : "border-amber-ink/70"}>
+            <Select name="project_id" defaultValue={values.project_id ?? ""} className={values.project_id ? "" : "border-warning"}>
               <option value="">—</option>
               {lookups.projects.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -331,12 +331,12 @@ function CaptureForm({
           )}
         </div>
 
-        <div className="rounded bg-bg p-3 text-sm">
+        <div className="border-y border-ink py-3 text-sm">
           <div className="flex flex-wrap justify-between gap-2">
             <span className="flex flex-wrap items-center gap-2">
               {t.total} <Evidence value={e?.gross.value} evidence={e?.gross.evidence} />
             </span>
-            <span className="font-mono font-medium">{formatMoney(preview.gross)}</span>
+            <span className="num font-medium text-ink">{formatMoney(preview.gross)}</span>
           </div>
         </div>
 
@@ -389,7 +389,7 @@ function CaptureForm({
         </Field>
 
         {error && (
-          <p role="alert" className="text-sm text-red-ink">
+          <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
             {error}
           </p>
         )}
@@ -406,7 +406,7 @@ function CaptureForm({
           />
         )}
 
-        <div className="mt-2 flex justify-end gap-2">
+        <div className="mt-2 flex flex-wrap justify-end gap-2">
           <Button type="button" variant="secondary" onClick={onDone}>
             {el.common.cancel}
           </Button>
