@@ -80,6 +80,8 @@ export function TransactionsTable({
   categories,
   accounts,
   filters,
+  pager,
+  pageTotalsOnly = false,
   exportHref,
   startCreating = false,
 }: {
@@ -89,6 +91,10 @@ export function TransactionsTable({
   categories: Option[];
   accounts: Option[];
   filters?: React.ReactNode;
+  // «Σελίδα 2 από 14» with previous / next links (server-built).
+  pager?: React.ReactNode;
+  // More than one page: the sums are this page's, and say so.
+  pageTotalsOnly?: boolean;
   exportHref?: string;
   startCreating?: boolean;
 }) {
@@ -102,7 +108,7 @@ export function TransactionsTable({
   const [loadingSource, setLoadingSource] = useState<string | null>(null);
 
   // Filtered client-side over the page's already-loaded rows -- instant as
-  // you type, no round trip, since this is at most a few hundred rows.
+  // you type, no round trip (one page: 50 rows).
   const visibleTransactions = useMemo(() => {
     const q = normalize(search.trim());
     if (!q) return transactions;
@@ -203,6 +209,7 @@ export function TransactionsTable({
           className="w-full max-md:min-h-11 md:max-w-md md:flex-1"
         />
         <p className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-small text-muted">
+          {pageTotalsOnly && <span className="eyebrow">Σύνολα της σελίδας</span>}
           <span>
             <span className="num">{summary.count}</span> κίνησ{summary.count === 1 ? "η" : "εις"}
           </span>
@@ -220,7 +227,7 @@ export function TransactionsTable({
 
       {/* One list, laid out by CSS: a spec-sheet table from md up (scrolling
           inside its own frame under a sticky head), a stack of hairline
-          cards on a phone. Never rendered twice -- this can be 500 rows. */}
+          cards on a phone. Never rendered twice. */}
       <div className="md:max-h-[70vh] md:overflow-auto">
         <table className="block w-full border-collapse text-left text-body md:table">
           <thead className="hidden md:table-header-group">
@@ -356,6 +363,8 @@ export function TransactionsTable({
           </tbody>
         </table>
       </div>
+
+      {pager}
 
       {target && (
         <TransactionFormModal
