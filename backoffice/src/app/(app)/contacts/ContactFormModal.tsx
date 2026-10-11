@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Label, Field, Modal } from "@/components/ui";
+import { Button, Input, Label, Field, Modal, Notice } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { el } from "@/lib/i18n/el";
 import { errorOf } from "@/lib/actions";
@@ -18,7 +18,7 @@ export function ContactFormModal({ action, initial, trigger }: Props) {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} className="max-md:min-h-11">
+      <Button onClick={() => setOpen(true)}>
         {trigger ?? "+ Νέα Επαφή"}
       </Button>
       {open && (
@@ -57,9 +57,9 @@ export function ContactFormModal({ action, initial, trigger }: Props) {
               <Input type="email" name="email" defaultValue={initial?.email ?? ""} />
             </Field>
             {error && (
-              <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
+              <Notice tone="negative" role="alert">
                 {error}
-              </p>
+              </Notice>
             )}
             <div className="mt-2 flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>

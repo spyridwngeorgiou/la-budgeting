@@ -48,7 +48,7 @@ function LegacyModal({
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant={variant} size={size} onClick={() => setOpen(true)} className="max-md:min-h-11">
+      <Button variant={variant} size={size} onClick={() => setOpen(true)}>
         {label}
       </Button>
       {open && (

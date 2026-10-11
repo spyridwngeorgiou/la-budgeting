@@ -38,7 +38,6 @@ export function DealFormModal({
       <Button
         variant={initial ? "secondary" : "primary"}
         size={initial ? "sm" : "md"}
-        className="max-md:min-h-11"
         onClick={() => setOpen(true)}
       >
         {trigger ?? `+ ${t.add}`}

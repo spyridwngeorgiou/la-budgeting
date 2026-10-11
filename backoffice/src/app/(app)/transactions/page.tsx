@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { el } from "@/lib/i18n/el";
 import { formatDate, formatMoney } from "@/lib/format";
-import { AiSpark, Notice, buttonClass } from "@/components/ui";
+import { AiSpark, FilterChip, Notice, buttonClass } from "@/components/ui";
 import { TransactionsTable } from "./TransactionsTable";
 import { TransactionFilters } from "./TransactionFilters";
 import { TX_STATUS, TX_DIRECTION, type TxStatus, type TxDirection } from "@/lib/domain/enums";
@@ -246,24 +246,22 @@ export default async function TransactionsPage({
         {["", "paid", "pending", "scheduled"].map((s) => {
           const on = status === s || (!status && !s);
           return (
-            <a
+            <FilterChip
               key={s || "all"}
               // Keeps the project / account / date filters already applied
               // (it used to reset to ?status= alone).
               href={withParams("/transactions", { ...params }, { status: s || null, page: null })}
-              aria-current={on ? "true" : undefined}
-              className={`inline-flex min-h-11 items-center border px-3 py-1 text-small whitespace-nowrap transition-colors md:min-h-9 ${
-                on ? "border-navy bg-navy text-panel-ink" : "border-chip-border text-text hover:border-navy hover:text-ink"
-              }`}
+              active={on}
+              className="max-md:min-h-11"
             >
               {s ? el.transaction[s as "paid" | "pending" | "scheduled"] : "Όλα"}
-            </a>
+            </FilterChip>
           );
         })}
         <Link
           key="ask-ai"
           href={`/assistant?q=${encodeURIComponent(askPrompt)}`}
-          className={buttonClass("ai", "md", "ml-auto max-md:min-h-11 max-md:w-full max-md:whitespace-normal")}
+          className={buttonClass("ai", "md", "ml-auto max-md:w-full max-md:whitespace-normal")}
         >
           <AiSpark />
           Ρώτα το Kansha AI γι&apos; αυτόν τον πίνακα →

@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { legacyInboxHref } from "@/lib/ingest/legacy";
 import { createClient } from "@/lib/supabase/server";
-import { Badge, Button, Notice, PageHeader } from "@/components/ui";
+import { Button, Notice, PageHeader, StatusDot } from "@/components/ui";
 import { ReviewTable } from "./ReviewTable";
 import { commitBatch } from "../actions";
 import { el } from "@/lib/i18n/el";
@@ -51,7 +51,7 @@ export default async function AadeBatchReviewPage({
         }
         actions={
           batch.status === "committed" ? (
-            <Badge tone="green">Ολοκληρώθηκε</Badge>
+            <StatusDot tone="positive" label="Ολοκληρώθηκε" />
           ) : (
             <ActionForm action={commitBatch.bind(null, batchId)}>
               <Button type="submit">Οριστικοποίηση Εισαγωγής</Button>
@@ -61,7 +61,7 @@ export default async function AadeBatchReviewPage({
       />
 
       {failedRows.length > 0 && (
-        <div role="alert" className="border-l-2 border-negative py-1 pl-4 text-body text-negative">
+        <Notice as="div" tone="negative" role="alert">
           <p className="eyebrow">
             {failedRows.length} {el.ingest.commitFailedRows}
           </p>
@@ -73,7 +73,7 @@ export default async function AadeBatchReviewPage({
               </li>
             ))}
           </ul>
-        </div>
+        </Notice>
       )}
 
       <ReviewTable

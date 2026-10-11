@@ -123,11 +123,11 @@ export function CommentsPanel({
             </button>
           ) : (
             <>
-              <Button type="button" variant="secondary" size="sm" className="max-md:min-h-11" onClick={onStartPlacing}>
+              <Button type="button" variant="secondary" size="sm" onClick={onStartPlacing}>
                 📍 {el.collab.comments.pin}
               </Button>
               {canAnchorToSelection && (
-                <Button type="button" variant="secondary" size="sm" className="max-md:min-h-11" onClick={onAnchorToSelection}>
+                <Button type="button" variant="secondary" size="sm" onClick={onAnchorToSelection}>
                   {el.collab.comments.anchoredToSelection}
                 </Button>
               )}
@@ -136,7 +136,7 @@ export function CommentsPanel({
           <Button
             type="button"
             size="sm"
-            className="ml-auto max-md:min-h-11"
+            className="ml-auto"
             disabled={!draft.trim() || busy}
             onClick={() => void submit()}
           >

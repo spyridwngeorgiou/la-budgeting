@@ -23,7 +23,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Badge, Select, cn } from "@/components/ui";
+import { Badge, Select, cn, Notice } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { TASK_STATUS, type TaskStatus } from "@/lib/domain/enums";
 import { dayMonthLabel } from "@/lib/dates";
@@ -163,9 +163,9 @@ export function TaskBoard({
   return (
     <div className="flex flex-col gap-3">
       {error && (
-        <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
+        <Notice tone="negative" role="alert">
           {error}
-        </p>
+        </Notice>
       )}
 
       {/* Phones: pick the column, one at a time. */}

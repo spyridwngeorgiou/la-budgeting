@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/format";
 import type { TxDirection, TxScope } from "@/lib/domain/enums";
-import { AiSpark, FilterChip, PageHeader, buttonClass } from "@/components/ui";
+import { AiSpark, FilterChip, LINK_CLASS, PageHeader, SpecTable, Td, Th, Tr, buttonClass } from "@/components/ui";
 import { addMonths, currentMonthKey, monthRange, monthsBetween, shortMonthYearLabel } from "@/lib/dates";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 
@@ -202,7 +202,7 @@ export default async function AnalysisPage({
         actions={
           <Link
             href={`/assistant?q=${encodeURIComponent(askPrompt)}`}
-            className={buttonClass("ai", "md", "max-md:min-h-11 max-md:whitespace-normal")}
+            className={buttonClass("ai", "md", "max-md:whitespace-normal")}
           >
             <AiSpark />
             Ρώτα το Kansha AI γι&apos; αυτόν τον πίνακα →
@@ -246,84 +246,73 @@ export default async function AnalysisPage({
       ) : (
         // The months ARE the content: the table scrolls sideways inside its
         // own frame on a phone, the first column stays put.
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-small">
-            <thead>
-              <tr>
-                <th scope="col" className={`${TH} sticky left-0 z-10 bg-canvas text-muted`}>
-                  {dim.label}
-                </th>
-                {months.map((m) => (
-                  <th
-                    key={m}
-                    scope="col"
-                    className={`${TH} text-right ${m === todayMonth ? "text-ink" : "text-muted"}`}
-                    aria-current={m === todayMonth ? "date" : undefined}
+        <SpecTable label="Ανάλυση κινήσεων ανά μήνα" stickyFirst tableClassName="text-small">
+          <thead>
+            <tr>
+              <Th>{dim.label}</Th>
+              {months.map((m) => (
+                <Th key={m} numeric aria-current={m === todayMonth ? "date" : undefined}>
+                  <Link
+                    href={columnHref(m)}
+                    className={`underline-offset-4 hover:text-ink hover:underline ${m === todayMonth ? "text-ink" : ""}`}
                   >
-                    <Link href={columnHref(m)} className="underline-offset-4 hover:text-ink hover:underline">
-                      {shortMonthYearLabel(m)}
+                    {shortMonthYearLabel(m)}
+                  </Link>
+                  {m === todayMonth && <div className="mt-0.5 text-small font-medium tracking-normal normal-case text-accent-ink">σήμερα</div>}
+                </Th>
+              ))}
+              <Th numeric>
+                <span className="text-ink">Σύνολο</span>
+              </Th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const rowMax = Math.max(0, ...[...row.byMonth.values()].map((v) => Math.abs(v)));
+              return (
+                <Tr key={row.id ?? row.label}>
+                  <Td className="whitespace-nowrap">
+                    <Link href={rowHref(row.id)} className={LINK_CLASS}>
+                      {row.label}
                     </Link>
-                    {m === todayMonth && <div className="mt-0.5 text-small font-medium tracking-normal normal-case text-accent-ink">σήμερα</div>}
-                  </th>
-                ))}
-                <th scope="col" className={`${TH} text-right text-ink`}>
-                  Σύνολο
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => {
-                const rowMax = Math.max(0, ...[...row.byMonth.values()].map((v) => Math.abs(v)));
-                return (
-                  <tr key={row.id ?? row.label} className="hover:bg-hover">
-                    <td className="sticky left-0 z-10 border-b border-hairline bg-canvas px-3 py-2.5 whitespace-nowrap text-ink">
-                      <Link href={rowHref(row.id)} className="underline-offset-4 hover:underline">
-                        {row.label}
-                      </Link>
-                    </td>
-                    {months.map((m) => {
-                      const v = row.byMonth.get(m);
-                      return (
-                        <td
-                          key={m}
-                          className="num border-b border-hairline px-3 py-2.5 text-right text-text"
-                          style={{ backgroundColor: cellShade(v, rowMax) }}
-                        >
-                          {v ? (
-                            <Link href={cellHref(row.id, m)} className="underline-offset-4 hover:text-ink hover:underline">
-                              {fmt(v)}
-                            </Link>
-                          ) : (
-                            <span className="text-muted">—</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                    <td className="num border-b border-hairline px-3 py-2.5 text-right font-medium text-ink">{fmt(row.total)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="font-semibold text-ink">
-                <td className="sticky left-0 z-10 border-t border-ink bg-canvas px-3 py-3">Σύνολο</td>
-                {columnTotals.map((v, i) => (
-                  <td key={months[i]} className="num border-t border-ink px-3 py-3 text-right">
-                    {fmt(v)}
-                  </td>
-                ))}
-                <td className="num border-t border-ink px-3 py-3 text-right">{fmt(grandTotal)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+                  </Td>
+                  {months.map((m) => {
+                    const v = row.byMonth.get(m);
+                    return (
+                      <Td key={m} numeric style={{ backgroundColor: cellShade(v, rowMax) }}>
+                        {v ? (
+                          <Link href={cellHref(row.id, m)} className="underline-offset-4 hover:text-ink hover:underline">
+                            {fmt(v)}
+                          </Link>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </Td>
+                    );
+                  })}
+                  <Td numeric strong className="font-medium">
+                    {fmt(row.total)}
+                  </Td>
+                </Tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <Tr total>
+              <Td>Σύνολο</Td>
+              {columnTotals.map((v, i) => (
+                <Td key={months[i]} numeric>
+                  {fmt(v)}
+                </Td>
+              ))}
+              <Td numeric>{fmt(grandTotal)}</Td>
+            </Tr>
+          </tfoot>
+        </SpecTable>
       )}
     </div>
   );
 }
-
-// Spec-sheet head cell: uppercase 12px over the navy rule.
-const TH = "eyebrow border-b border-rule px-3 py-2.5 font-medium whitespace-nowrap";
 
 function FilterGroup({
   label,

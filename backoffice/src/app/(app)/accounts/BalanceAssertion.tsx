@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Badge } from "@/components/ui";
+import { Badge, Notice, Stat } from "@/components/ui";
 import { formatMoney, formatDate } from "@/lib/format";
 import { okGap } from "./status";
 
@@ -60,11 +60,11 @@ function GapHeadline({ gap, isCash, gapPeriods }: { gap: number; isCash: boolean
   }
   const where = isCash ? "στο ταμείο" : "στην τράπεζα";
   return (
-    <div className="border-l-2 border-negative pl-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-body font-medium text-negative">{gap < 0 ? "Λείπουν έξοδα" : "Λείπουν έσοδα"}</span>
-        <span className="num text-figure-sm font-light text-negative">{formatMoney(Math.abs(gap))}</span>
-      </div>
+    <Notice tone="negative" as="div">
+      <Stat
+        label={gap < 0 ? "Λείπουν έξοδα" : "Λείπουν έσοδα"}
+        value={<span className="text-negative">{formatMoney(Math.abs(gap))}</span>}
+      />
       <p className="mt-1 text-small text-text">
         {gap < 0
           ? `Υπάρχουν ${formatMoney(Math.abs(gap))} λιγότερα ${where} από όσα δείχνει η εφαρμογή — κάποια πληρωμή δεν έχει περαστεί.`
@@ -75,7 +75,7 @@ function GapHeadline({ gap, isCash, gapPeriods }: { gap: number; isCash: boolean
           Η διαφορά προέκυψε: {gapPeriods.map((c) => `${formatDate(c.period_start)} → ${formatDate(c.as_of_date)}`).join(", ")}
         </p>
       )}
-    </div>
+    </Notice>
   );
 }
 
@@ -127,10 +127,10 @@ export function BalanceAssertion({
 
   if (!latest) {
     return (
-      <div className="border-l-2 border-warning pl-3 text-small text-text">
+      <Notice tone="warning" size="small">
         Δεν έχει γίνει έλεγχος. Βάλτε το πραγματικό υπόλοιπο από {isCash ? "την καταμέτρηση του ταμείου" : "το e-banking"} για να
         δείτε αν λείπουν κινήσεις.
-      </div>
+      </Notice>
     );
   }
 

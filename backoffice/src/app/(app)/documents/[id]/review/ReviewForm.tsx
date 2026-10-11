@@ -119,13 +119,13 @@ export function ReviewForm({
         )}
 
         {needsReviewReasons.length > 0 && (
-          <div className="border-l-2 border-warning py-1 pl-4 text-body text-warning">
+          <Notice as="div" tone="warning">
             <ul className="list-disc pl-4">
               {needsReviewReasons.map((r) => (
                 <li key={r}>{r}</li>
               ))}
             </ul>
-          </div>
+          </Notice>
         )}
 
         {extraction.notes_for_human && (
@@ -326,9 +326,9 @@ export function ReviewForm({
           </div>
 
           {error && (
-            <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
+            <Notice tone="negative" role="alert">
               {error}
-            </p>
+            </Notice>
           )}
 
           {duplicates.length > 0 && (

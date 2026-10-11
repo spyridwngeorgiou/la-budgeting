@@ -2,17 +2,11 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney, formatPercentPoints } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Button, Field, Input, PageHeader, SectionHeader, Stat } from "@/components/ui";
+import { Button, Field, Input, PageHeader, SectionHeader, SpecTable, Stat, Td, Th, Tr } from "@/components/ui";
 import { computeRevenuePlan, type RoomType, type Assumption } from "@/lib/finance/revenuePlan";
 import { addRoomType, deleteRoomType, deleteRevenuePlan } from "../actions";
 import { YearTable } from "./YearTable";
 import { todayAthens } from "@/lib/dates";
-
-// P15 spec table cells; 44px buttons on phones.
-const TH = "eyebrow border-b border-rule px-3 py-2.5 font-medium whitespace-nowrap text-muted";
-const TD = "border-b border-hairline px-3 py-3";
-const TF = "border-t border-ink px-3 py-3 font-medium text-ink";
-const TAP = "max-md:min-h-11";
 
 export default async function RevenuePlanDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -112,7 +106,7 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
         }
         actions={
           <form action={deleteRevenuePlan.bind(null, plan.id)}>
-            <Button type="submit" variant="danger" className={TAP}>
+            <Button type="submit" variant="danger">
               Διαγραφή Ανάλυσης
             </Button>
           </form>
@@ -128,14 +122,13 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
       )}
 
       {plan.project_id && actualComparison.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-body">
+        <SpecTable label="Πραγματικά vs Πρόβλεψη">
             <thead>
               <tr>
-                <th scope="col" className={TH}>Πραγματικά vs Πρόβλεψη</th>
-                <th scope="col" className={`${TH} text-right`}>Πρόβλεψη</th>
-                <th scope="col" className={`${TH} text-right`}>Πραγματικό</th>
-                <th scope="col" className={`${TH} text-right`}>Διαφορά</th>
+                <Th>Πραγματικά vs Πρόβλεψη</Th>
+                <Th numeric>Πρόβλεψη</Th>
+                <Th numeric>Πραγματικό</Th>
+                <Th numeric>Διαφορά</Th>
               </tr>
             </thead>
             <tbody>
@@ -143,63 +136,62 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
                 const diffPct = r.planned > 0 ? Math.round(((r.actual - r.planned) / r.planned) * 100) : null;
                 const current = r.monthKey === todayMonthKey;
                 return (
-                  <tr key={r.monthKey} aria-current={current ? "date" : undefined} className="hover:bg-hover">
-                    <td className={`${TD} capitalize ${current ? "border-l-2 border-l-navy font-medium text-ink" : "text-text"}`}>
-                      {r.label}
-                    </td>
-                    <td className={`${TD} num text-right whitespace-nowrap text-text`}>{formatMoney(r.planned)}</td>
-                    <td className={`${TD} num text-right whitespace-nowrap text-ink`}>{formatMoney(r.actual)}</td>
-                    <td className={`${TD} num text-right whitespace-nowrap ${diffPct != null ? "text-ink" : "text-muted"}`}>
+                  <Tr key={r.monthKey} aria-current={current ? "date" : undefined}>
+                    <Td className={`capitalize ${current ? "border-l-2 border-l-navy font-medium text-ink" : ""}`}>{r.label}</Td>
+                    <Td numeric>{formatMoney(r.planned)}</Td>
+                    <Td numeric strong>
+                      {formatMoney(r.actual)}
+                    </Td>
+                    <Td numeric className={diffPct != null ? "text-ink" : "text-muted"}>
                       {formatPercentPoints(diffPct, { signed: true })}
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 );
               })}
             </tbody>
-          </table>
-        </div>
+        </SpecTable>
       )}
 
       {result.summary.length > 0 && (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-max border-collapse text-left text-body">
+        <SpecTable label="Έσοδα ανά τύπο δωματίου" stickyFirst tableClassName="min-w-max">
             <thead>
               <tr>
-                <th scope="col" className={TH}>Τύπος Δωματίου</th>
+                <Th>Τύπος Δωματίου</Th>
                 {years.map((y) => (
-                  <th key={y} scope="col" className={`${TH} text-right`}>
+                  <Th key={y} numeric>
                     Έτος {y}
-                  </th>
+                  </Th>
                 ))}
-                <th scope="col" className={`${TH} text-right`}>Σύνολο</th>
+                <Th numeric>Σύνολο</Th>
               </tr>
             </thead>
             <tbody>
               {result.summary.map((s) => (
-                <tr key={s.roomTypeId} className="hover:bg-hover">
-                  <td className={`${TD} text-ink`}>{s.roomTypeName}</td>
+                <Tr key={s.roomTypeId}>
+                  <Td strong>{s.roomTypeName}</Td>
                   {years.map((y) => (
-                    <td key={y} className={`${TD} num text-right whitespace-nowrap text-text`}>
+                    <Td key={y} numeric>
                       {formatMoney(s.byYear[y - 1] ?? 0)}
-                    </td>
+                    </Td>
                   ))}
-                  <td className={`${TD} num text-right font-medium whitespace-nowrap text-ink`}>{formatMoney(s.total)}</td>
-                </tr>
+                  <Td numeric strong className="font-medium">
+                    {formatMoney(s.total)}
+                  </Td>
+                </Tr>
               ))}
             </tbody>
             <tfoot>
-              <tr>
-                <td className={TF}>Σύνολο</td>
+              <Tr total>
+                <Td>Σύνολο</Td>
                 {result.yearTotals.map((y) => (
-                  <td key={y.yearNumber} className={`${TF} num text-right whitespace-nowrap`}>
+                  <Td key={y.yearNumber} numeric>
                     {formatMoney(y.annualRevenue)}
-                  </td>
+                  </Td>
                 ))}
-                <td className={`${TF} num text-right whitespace-nowrap`}>{formatMoney(result.grandTotal)}</td>
-              </tr>
+                <Td numeric>{formatMoney(result.grandTotal)}</Td>
+              </Tr>
             </tfoot>
-          </table>
-        </div>
+        </SpecTable>
       )}
 
       <div className="flex flex-col gap-10">
@@ -214,7 +206,7 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
               }
               actions={
                 <form action={deleteRoomType.bind(null, plan.id, rt.id)}>
-                  <Button type="submit" variant="secondary" size="sm" className={TAP}>
+                  <Button type="submit" variant="secondary" size="sm">
                     Αφαίρεση
                   </Button>
                 </form>
@@ -245,7 +237,7 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
           <Field label="Αριθμός Δωματίων" htmlFor="room-type-units">
             <Input id="room-type-units" name="unit_count" type="number" min={1} required className="num w-24" />
           </Field>
-          <Button type="submit" className={TAP}>
+          <Button type="submit">
             Προσθήκη
           </Button>
         </form>

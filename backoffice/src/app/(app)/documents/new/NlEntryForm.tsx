@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { submitNlEntry } from "../actions";
 import { SubmitButton } from "@/components/SubmitButton";
-import { Button, AiSpark } from "@/components/ui";
+import { AiSpark, Button, Notice } from "@/components/ui";
 import { errorOf } from "@/lib/actions";
 
 // Minimal ambient typing for the Web Speech API -- not in lib.dom.d.ts, and
@@ -99,9 +99,9 @@ export function NlEntryForm({ rows = 3 }: { rows?: number }) {
         )}
       </div>
       {error && (
-        <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
+        <Notice tone="negative" role="alert">
           {error}
-        </p>
+        </Notice>
       )}
       <SubmitButton variant={text.trim() ? "aiSolid" : "ai"} className="w-full py-3 text-body" pendingLabel="Ανάλυση περιγραφής…" disabled={!text.trim()}>
         <AiSpark className="mr-1.5" />

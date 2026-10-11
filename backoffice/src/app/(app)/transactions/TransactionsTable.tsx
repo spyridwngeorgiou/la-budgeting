@@ -3,7 +3,21 @@
 import { useMemo, useState } from "react";
 import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { AiSpark, Badge, Button, Input, PageHeader, buttonClass } from "@/components/ui";
+import {
+  AiSpark,
+  Badge,
+  Button,
+  Input,
+  Menu,
+  MenuItem,
+  PageHeader,
+  SpecTable,
+  StatusDot,
+  Td,
+  Th,
+  Tr,
+  buttonClass,
+} from "@/components/ui";
 import { TransactionFormModal, type TransactionInitial } from "./TransactionFormModal";
 import { PartialPaymentModal } from "./PartialPaymentModal";
 import { createTransaction, updateTransaction, markPaid, deleteTransaction, getSourceDocumentUrl } from "./actions";
@@ -23,13 +37,11 @@ const STATUS_LABEL = {
   cancelled: el.transaction.cancelled,
 } as const;
 
-// Spec-sheet cells. Below md each row is a CSS grid (a card) and the cells
-// are blocks placed in it; from md up they are ordinary table cells.
-const TH =
-  "eyebrow sticky top-0 z-10 border-b border-rule bg-canvas px-3 py-2.5 text-left font-medium whitespace-nowrap text-muted";
-const TD = "block md:table-cell md:border-b md:border-hairline md:px-3 md:py-3 md:align-top";
-// Row actions: 32px on desktop, 44px on a phone.
-const ROW_ACTION = "max-md:min-h-11";
+// Spec-sheet cells (SpecTable's Th/Td). Below md each row is a CSS grid
+// (a card) and the cells are blocks placed in it, without the table's
+// rules and padding; from md up they are ordinary spec-table cells.
+const TH = "sticky top-0 z-10 bg-canvas";
+const CARD = "block max-md:border-b-0 max-md:p-0 md:table-cell";
 
 // An amount with its sign instead of a colour: −3.200,00 € / +12.400,00 €.
 function signed(n: number) {
@@ -187,11 +199,11 @@ export function TransactionsTable({
         actions={
           <>
             {exportHref && (
-              <a href={exportHref} className={buttonClass("secondary", "md", "max-md:min-h-11")}>
+              <a href={exportHref} className={buttonClass("secondary", "md")}>
                 Εξαγωγή CSV
               </a>
             )}
-            <Button onClick={() => setTarget("create")} className="max-md:min-h-11">
+            <Button onClick={() => setTarget("create")}>
               + Νέα Κίνηση
             </Button>
           </>
@@ -229,48 +241,38 @@ export function TransactionsTable({
           inside its own frame under a sticky head), a stack of hairline
           cards on a phone. Never rendered twice. */}
       <div className="md:max-h-[70vh] md:overflow-auto">
-        <table className="block w-full border-collapse text-left text-body md:table">
+        <SpecTable frame="none" tableClassName="block md:table">
           <thead className="hidden md:table-header-group">
             <tr>
-              <th scope="col" className={TH}>
-                {el.transaction.date}
-              </th>
-              <th scope="col" className={TH}>
-                {el.transaction.contact}
-              </th>
-              <th scope="col" className={TH}>
-                {el.transaction.project}
-              </th>
-              <th scope="col" className={TH}>
-                {el.transaction.category}
-              </th>
-              <th scope="col" className={`${TH} text-right`}>
+              <Th className={TH}>{el.transaction.date}</Th>
+              <Th className={TH}>{el.transaction.contact}</Th>
+              <Th className={TH}>{el.transaction.project}</Th>
+              <Th className={TH}>{el.transaction.category}</Th>
+              <Th numeric className={TH}>
                 {el.transaction.grossAmount}
-              </th>
-              <th scope="col" className={TH}>
-                {el.transaction.status}
-              </th>
-              <th scope="col" className={TH}></th>
+              </Th>
+              <Th className={TH}>{el.transaction.status}</Th>
+              <Th className={TH}></Th>
             </tr>
           </thead>
           <tbody className="block border-t border-rule md:table-row-group md:border-t-0">
             {visibleTransactions.map((tx) => {
               const overdue = isOverdue(tx);
               return (
-                <tr
+                <Tr
                   key={tx.id}
-                  className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 border-b border-hairline py-3 md:table-row md:border-b-0 md:py-0 md:hover:bg-hover ${
+                  className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 border-b border-hairline py-3 md:table-row md:border-b-0 md:py-0 ${
                     overdue ? "border-l-2 border-l-negative pl-3 md:border-l-0 md:pl-0" : ""
                   }`}
                 >
-                  <td
-                    className={`${TD} col-start-1 row-start-1 text-small text-muted md:text-body md:text-text ${
+                  <Td
+                    className={`${CARD} col-start-1 row-start-1 max-md:text-small max-md:text-muted ${
                       overdue ? "md:border-l-2 md:border-l-negative" : ""
                     }`}
                   >
                     <span className="num">{formatDate(tx.tx_date)}</span>
-                  </td>
-                  <td className={`${TD} col-start-1 row-start-2 min-w-0 text-body text-ink md:text-body`}>
+                  </Td>
+                  <Td className={`${CARD} col-start-1 row-start-2 min-w-0 max-md:text-ink md:text-ink`}>
                     <span className="inline-flex items-center gap-1.5 md:whitespace-nowrap">
                       {tx.contact_name ?? "—"}
                       {AI_ORIGINS.has(tx.origin ?? "") && (
@@ -279,38 +281,34 @@ export function TransactionsTable({
                         </span>
                       )}
                     </span>
-                  </td>
-                  <td
-                    className={`${TD} col-span-2 col-start-1 row-start-3 text-small text-muted md:text-body md:whitespace-nowrap md:text-text`}
-                  >
+                  </Td>
+                  <Td className={`${CARD} col-span-2 col-start-1 row-start-3 max-md:text-small max-md:text-muted md:whitespace-nowrap`}>
                     <span className="md:hidden">{el.transaction.project} · </span>
                     {tx.project_name ?? "—"}
-                  </td>
-                  <td
-                    className={`${TD} col-span-2 col-start-1 row-start-4 text-small text-muted md:text-body md:whitespace-nowrap md:text-text`}
-                  >
+                  </Td>
+                  <Td className={`${CARD} col-span-2 col-start-1 row-start-4 max-md:text-small max-md:text-muted md:whitespace-nowrap`}>
                     <span className="md:hidden">{el.transaction.category} · </span>
                     {tx.category_name ?? "—"}
-                  </td>
-                  <td className={`${TD} num col-start-2 row-start-1 text-right text-body text-ink md:text-body`}>
+                  </Td>
+                  <Td numeric className={`${CARD} col-start-2 row-start-1 max-md:text-ink md:text-ink`}>
                     {tx.direction === "income" ? "+" : "−"}
                     {formatMoney(tx.gross_amount)}
-                  </td>
-                  <td className={`${TD} col-start-2 row-start-2 justify-self-end md:justify-self-auto`}>
+                  </Td>
+                  <Td className={`${CARD} col-start-2 row-start-2 justify-self-end md:justify-self-auto`}>
                     <div className="flex flex-wrap items-center justify-end gap-1.5 md:justify-start">
-                      <Badge tone={STATUS_TONE[tx.status as keyof typeof STATUS_TONE]}>
-                        {STATUS_LABEL[tx.status as keyof typeof STATUS_LABEL]}
-                      </Badge>
+                      <StatusDot
+                        tone={STATUS_TONE[tx.status as keyof typeof STATUS_TONE]}
+                        label={STATUS_LABEL[tx.status as keyof typeof STATUS_LABEL]}
+                      />
                       {overdue && <Badge tone="negative">εκπρόθεσμη</Badge>}
                     </div>
-                  </td>
-                  <td className={`${TD} col-span-2 col-start-1 row-start-5 pt-2 md:py-1.5`}>
+                  </Td>
+                  <Td className={`${CARD} col-span-2 col-start-1 row-start-5 max-md:pt-2 md:py-1.5`}>
                     <div className="flex flex-wrap items-center gap-2 md:flex-nowrap md:justify-end">
                       {tx.has_source_document && (
                         <Button
                           variant="secondary"
                           size="sm"
-                          className={ROW_ACTION}
                           disabled={loadingSource === tx.id}
                           onClick={() => handleViewSource(tx)}
                         >
@@ -318,7 +316,7 @@ export function TransactionsTable({
                         </Button>
                       )}
                       {(tx.status === "pending" || tx.status === "scheduled") && !tx.plan_id && (
-                        <Button variant="secondary" size="sm" className={ROW_ACTION} onClick={() => setPaying(tx)}>
+                        <Button variant="secondary" size="sm" onClick={() => setPaying(tx)}>
                           Μερική πληρωμή
                         </Button>
                       )}
@@ -329,39 +327,35 @@ export function TransactionsTable({
                             if (message) window.alert(message);
                           }}
                         >
-                          <Button type="submit" variant="secondary" size="sm" className={ROW_ACTION}>
+                          <Button type="submit" variant="secondary" size="sm">
                             {el.common.markPaid}
                           </Button>
                         </form>
                       )}
-                      <Button variant="secondary" size="sm" className={ROW_ACTION} onClick={() => setTarget(tx)}>
+                      <Button variant="secondary" size="sm" onClick={() => setTarget(tx)}>
                         {el.common.edit}
                       </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        className={ROW_ACTION}
-                        disabled={deleting === tx.id}
-                        onClick={() => handleDelete(tx)}
-                      >
-                        {deleting === tx.id ? "…" : el.common.delete}
-                      </Button>
+                      <Menu label="Ενέργειες">
+                        <MenuItem tone="danger" disabled={deleting === tx.id} onClick={() => handleDelete(tx)}>
+                          {deleting === tx.id ? "…" : el.common.delete}
+                        </MenuItem>
+                      </Menu>
                     </div>
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               );
             })}
             {visibleTransactions.length === 0 && (
               <tr className="block md:table-row">
-                <td colSpan={7} className="block border-b border-hairline py-8 text-body text-muted md:table-cell md:px-3">
+                <Td colSpan={7} className="block py-8 max-md:px-0 max-md:text-muted md:table-cell md:text-muted">
                   {transactions.length === 0
                     ? "Δεν υπάρχουν ακόμα κινήσεις. Πατήστε «+ Νέα Κίνηση» για να ξεκινήσετε."
                     : "Καμία κίνηση δεν ταιριάζει με την αναζήτηση."}
-                </td>
+                </Td>
               </tr>
             )}
           </tbody>
-        </table>
+        </SpecTable>
       </div>
 
       {pager}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui";
+import { Button, Notice } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { DuplicateCandidate } from "@/lib/ingest/duplicates";
@@ -18,7 +18,7 @@ export function DuplicateWarning({
   onCancel: () => void;
 }) {
   return (
-    <div role="alert" className="border-l-2 border-warning py-1 pl-4 text-body text-text">
+    <Notice as="div" tone="warning" role="alert">
       <p className="eyebrow text-warning">{el.ingest.possibleDuplicate}</p>
       <p className="mt-1">{el.ingest.possibleDuplicateHint}</p>
       <ul className="mt-3 flex flex-col border-t border-hairline">
@@ -41,6 +41,6 @@ export function DuplicateWarning({
           {el.ingest.saveAnyway}
         </Button>
       </div>
-    </div>
+    </Notice>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Badge, Button, Field, Input, Label, Select } from "@/components/ui";
+import { Badge, Button, Field, Input, Label, Notice, Select } from "@/components/ui";
 import { Modal } from "@/components/ui";
 import { DuplicateWarning } from "@/components/DuplicateWarning";
 import { formatMoney, formatPercent } from "@/lib/format";
@@ -179,11 +179,11 @@ function CaptureForm({
         className="flex flex-1 flex-col gap-3"
       >
         {needsReview.length > 0 && (
-          <ul className="list-disc border-l-2 border-warning py-1 pr-2 pl-8 text-body text-warning">
+          <Notice as="ul" tone="warning">
             {needsReview.map((r) => (
               <li key={r}>{r}</li>
             ))}
-          </ul>
+          </Notice>
         )}
         {e?.notes_for_human && (
           <p className="text-small text-muted">
@@ -389,9 +389,9 @@ function CaptureForm({
         </Field>
 
         {error && (
-          <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
+          <Notice tone="negative" role="alert">
             {error}
-          </p>
+          </Notice>
         )}
         {duplicates.length > 0 && (
           <DuplicateWarning

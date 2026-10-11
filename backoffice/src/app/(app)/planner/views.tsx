@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { EmptyState, Toolbar } from "@/components/ui";
+import { EmptyState, Notice, Toolbar } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { loadBoardTasks, loadPlannerPeople } from "@/lib/planner/queries";
 import { TaskBoard } from "@/components/planner/TaskBoard";
@@ -48,7 +48,7 @@ export async function BoardView({ ctx }: { ctx: Ctx }) {
           <PlannerFilters projects={projectOptions} people={peopleOptions} meId={ctx.userId} showArchived />
         </Suspense>
       </Toolbar>
-      {!caps.canWriteTasks && <p className="border-l-2 border-navy pl-3 text-small text-muted">{el.planner.readOnly}</p>}
+      {!caps.canWriteTasks && <Notice size="small">{el.planner.readOnly}</Notice>}
       {projects.length === 0 ? (
         <EmptyState title={el.planner.noProjects} />
       ) : (

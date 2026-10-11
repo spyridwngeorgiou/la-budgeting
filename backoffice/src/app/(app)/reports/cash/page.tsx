@@ -3,10 +3,25 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate, formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge, Button, PageHeader, SectionHeader, Stat, StatRow, cn } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  LINK_CLASS,
+  NUM_CLASS,
+  PageHeader,
+  SUB_CLASS,
+  SectionHeader,
+  SpecTable,
+  Stat,
+  StatRow,
+  Td,
+  Th,
+  Tr,
+  ViewSwitch,
+  cn,
+} from "@/components/ui";
 import { ArgsActionForm } from "@/components/ArgsActionForm";
 import { BarChart } from "@/components/ui/BarChart";
-import { FRAME, LINK, NUM, ROW, SUB, TABLE, TD, TH, TOUCH, ViewSwitch } from "../ui";
 import { loadLookups } from "@/lib/data/lookups";
 import { currentMonthKey, firstOfMonth, isMonthKey, monthKeyOf, monthLabel, shortMonthYearLabel } from "@/lib/dates";
 import { cashChartRows } from "@/lib/finance/reportCharts";
@@ -152,40 +167,32 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
       />
 
       <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[3fr_2fr]">
-        <div className={FRAME}>
-          <table className={TABLE}>
-            <thead>
-              <tr>
-                <th scope="col" className={TH}>
-                  {t.month}
-                </th>
-                <th scope="col" className={cn(TH, "hidden text-right md:table-cell")}>
-                  {t.opening}
-                </th>
-                <th scope="col" className={cn(TH, "text-right")}>
-                  {t.inflow}
-                </th>
-                <th scope="col" className={cn(TH, "text-right")}>
-                  {t.outflow}
-                </th>
-                <th scope="col" className={cn(TH, "hidden text-right sm:table-cell")}>
-                  {t.net}
-                </th>
-                <th scope="col" className={cn(TH, "text-right")}>
-                  {t.closing}
-                </th>
-              </tr>
-            </thead>
+        <SpecTable label={t.cashTitle} stickyFirst>
+          <thead>
+            <tr>
+              {/* Same inset as the body's first cells, which carry the 2px marker. */}
+              <Th className="border-l-2 border-l-transparent !pl-3">{t.month}</Th>
+              <Th numeric className="hidden md:table-cell">
+                {t.opening}
+              </Th>
+              <Th numeric>{t.inflow}</Th>
+              <Th numeric>{t.outflow}</Th>
+              <Th numeric className="hidden sm:table-cell">
+                {t.net}
+              </Th>
+              <Th numeric>{t.closing}</Th>
+            </tr>
+          </thead>
             <tbody>
               {rows.map((r) => {
                 const key = monthKeyOf(r.month);
                 const isSelected = key === selected;
                 return (
-                  <tr key={key} aria-current={isSelected ? "true" : undefined} className={isSelected ? "bg-hover" : "hover:bg-hover"}>
-                    <td className={cn(TD, "border-l-2 text-ink", isSelected ? "border-l-navy" : "border-l-transparent")}>
+                  <Tr key={key} aria-current={isSelected ? "true" : undefined} className={isSelected ? "bg-hover" : undefined}>
+                    <Td strong className={cn("border-l-2 !pl-3", isSelected ? "!bg-hover border-l-navy" : "border-l-transparent")}>
                       <Link
                         href={query({ month: key === todayMonth ? null : key })}
-                        className={cn(LINK, "inline-flex items-center whitespace-nowrap max-md:min-h-11", isSelected && "font-medium")}
+                        className={cn(LINK_CLASS, "inline-flex items-center whitespace-nowrap max-md:min-h-11", isSelected && "font-medium")}
                         scroll={false}
                       >
                         {shortMonthYearLabel(key)}
@@ -195,25 +202,30 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
                           <Badge tone="red">{t.belowBuffer}</Badge>
                         </span>
                       )}
-                    </td>
-                    <td className={cn(TD, NUM, "hidden md:table-cell")}>{formatMoney(r.opening_balance)}</td>
-                    <td className={cn(TD, NUM)}>
+                    </Td>
+                    <Td numeric className="hidden md:table-cell">
+                      {formatMoney(r.opening_balance)}
+                    </Td>
+                    <Td numeric>
                       {formatMoney(r.inflow)}
                       {Number(r.uncertain_inflow) > 0 && (
-                        <span className="block text-small text-muted">
+                        <span className={SUB_CLASS}>
                           {t.uncertainPart} {formatMoney(r.uncertain_inflow)}
                         </span>
                       )}
-                    </td>
-                    <td className={cn(TD, NUM)}>{formatMoney(r.outflow)}</td>
-                    <td className={cn(TD, NUM, "hidden sm:table-cell")}>{formatMoney(r.net)}</td>
-                    <td className={cn(TD, NUM, "font-medium text-ink")}>{formatMoney(r.closing_balance)}</td>
-                  </tr>
+                    </Td>
+                    <Td numeric>{formatMoney(r.outflow)}</Td>
+                    <Td numeric className="hidden sm:table-cell">
+                      {formatMoney(r.net)}
+                    </Td>
+                    <Td numeric strong className="font-medium">
+                      {formatMoney(r.closing_balance)}
+                    </Td>
+                  </Tr>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+          </tbody>
+        </SpecTable>
 
         <section className="flex min-w-0 flex-col gap-4">
           <SectionHeader title={`${t.breakdown}: ${monthLabel(selected)}`} />
@@ -237,26 +249,29 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
         {(expected ?? []).length === 0 ? (
           <p className="text-body text-muted">{t.expectedEmpty}</p>
         ) : (
-          <div className={FRAME}>
-            <table className={TABLE}>
-              <tbody>
+          <SpecTable label={t.expectedTitle}>
+            <tbody>
                 {(expected ?? []).map((e) => {
                   const project = Array.isArray(e.projects) ? e.projects[0] : e.projects;
                   const probability = e.probability ?? (e.certainty === "certain" ? 1 : 0.5);
                   return (
-                    <tr key={e.id} className={ROW}>
-                      <td className="min-w-40 py-2.5 pr-3 align-middle text-ink">
+                    <Tr key={e.id} className="[&>td]:align-middle">
+                      <Td strong className="min-w-40">
                         {e.source}
                         {e.direction === "expense" && <span className="ml-1 text-small text-muted">({el.transaction.expense})</span>}
                         {project && <span className="ml-1 text-small text-muted">· {project.display_name}</span>}
                         {e.scenario_id && <span className="ml-1 text-small text-muted">· {t.expectedFromScenario}</span>}
-                      </td>
-                      <td className="py-2.5 pr-3 align-middle whitespace-nowrap text-muted">
+                      </Td>
+                      <Td className="whitespace-nowrap text-muted">
                         {e.expected_month ? monthLabel(monthKeyOf(e.expected_month)) : "—"}
-                      </td>
-                      <td className={cn("py-2.5 pr-3 align-middle text-ink", NUM)}>{formatMoney(e.amount)}</td>
-                      <td className={cn("py-2.5 pr-3 align-middle text-small text-muted", NUM)}>{Math.round(probability * 100)}%</td>
-                      <td className="py-1.5 align-middle">
+                      </Td>
+                      <Td numeric strong>
+                        {formatMoney(e.amount)}
+                      </Td>
+                      <Td numeric className="text-small text-muted">
+                        {Math.round(probability * 100)}%
+                      </Td>
+                      <Td className="py-1.5">
                         {!e.scenario_id && (
                           <div className="flex items-center justify-end gap-1">
                             <ExpectedIncomeFormModal
@@ -275,24 +290,23 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
                               }}
                             />
                             <ArgsActionForm action={setExpectedIncomeStatus} args={[e.id, "received"]}>
-                              <Button type="submit" variant="ghost" size="sm" className={TOUCH}>
+                              <Button type="submit" variant="ghost" size="sm">
                                 {t.expectedReceived}
                               </Button>
                             </ArgsActionForm>
                             <ArgsActionForm action={setExpectedIncomeStatus} args={[e.id, "cancelled"]}>
-                              <Button type="submit" variant="ghost" size="sm" className={TOUCH}>
+                              <Button type="submit" variant="ghost" size="sm">
                                 {t.expectedCancel}
                               </Button>
                             </ArgsActionForm>
                           </div>
                         )}
-                      </td>
-                    </tr>
+                      </Td>
+                    </Tr>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+            </tbody>
+          </SpecTable>
         )}
       </section>
     </div>
@@ -337,26 +351,26 @@ function ItemList({ title, items }: { title: string; items: Item[] }) {
           return (
             <li
               key={i.item_key}
-              className={cn(ROW, "flex items-start justify-between gap-3 py-2.5", i.is_overdue && "border-l-2 border-l-negative pl-3")}
+              className={cn("flex items-start justify-between gap-3 border-b border-hairline py-2.5", i.is_overdue && "border-l-2 border-l-negative pl-3")}
             >
               <span className="min-w-0 text-ink">
                 {href ? (
-                  <Link href={href} className={LINK}>
+                  <Link href={href} className={LINK_CLASS}>
                     {i.label || sourceLabel}
                   </Link>
                 ) : (
                   i.label || sourceLabel
                 )}
-                <span className={SUB}>
+                <span className={SUB_CLASS}>
                   {sourceLabel} · {formatDate(i.due_date)}
                   {i.is_overdue && <span className="text-negative"> · {t.overdue}</span>}
                   {Number(i.probability) < 1 && ` · ${Math.round(Number(i.probability) * 100)}%`}
                 </span>
               </span>
-              <span className={cn("shrink-0 text-ink", NUM)}>
+              <span className={cn("shrink-0 text-ink", NUM_CLASS)}>
                 {formatMoney(i.weighted_amount)}
                 {Number(i.weighted_amount) !== Number(i.amount) && (
-                  <span className="block text-small text-muted">{formatMoney(i.amount)}</span>
+                  <span className={SUB_CLASS}>{formatMoney(i.amount)}</span>
                 )}
               </span>
             </li>

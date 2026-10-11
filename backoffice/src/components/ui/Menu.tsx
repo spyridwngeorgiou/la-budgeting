@@ -64,7 +64,10 @@ export function Menu({
           id={id}
           role="menu"
           onClick={(e) => {
-            if ((e.target as HTMLElement).closest("[role=menuitem]")) setOpen(false);
+            // Close after the browser has run the click's default action: a
+            // MenuItem type="submit" inside a <form> in the menu must submit
+            // before the menu (and the form with it) leaves the DOM.
+            if ((e.target as HTMLElement).closest("[role=menuitem]")) setTimeout(() => setOpen(false), 0);
           }}
           className={cn(
             "absolute top-full z-30 mt-1 flex min-w-52 flex-col border border-hairline bg-field py-1",

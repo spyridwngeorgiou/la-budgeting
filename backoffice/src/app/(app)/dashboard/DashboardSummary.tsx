@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AiSpark } from "@/components/ui";
+import { AiSpark, Notice } from "@/components/ui";
 
 // Opt-in (button, not auto-run on every page load) so AI spend only happens
 // when someone actually wants the summary -- consistent with how the rest
@@ -54,7 +54,7 @@ export function DashboardSummary() {
       >
         {loading ? "Δημιουργία…" : "Δημιουργία περίληψης →"}
       </button>
-      {error && <span role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">{error}</span>}
+      {error && <Notice as="span" tone="negative" role="alert">{error}</Notice>}
     </div>
   );
 }

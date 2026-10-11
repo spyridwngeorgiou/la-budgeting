@@ -6,6 +6,7 @@ import { saveScenario, saveOpexLine, deleteOpexLine } from "./scenario-actions";
 import { ScenarioFormModal } from "../LegacyFormModals";
 import { OpexLineFormModal } from "../LegacyFormModals";
 import { SendToCashSection } from "./FinanceSections";
+import { RowDeleteMenu } from "@/components/RowDeleteMenu";
 
 // The base scenario's blocks of the project one-pager: its assumptions
 // (editable), the reference operating year (ΛΕΙΤΟΥΡΓΙΑ) and the cash flow
@@ -113,11 +114,9 @@ export function ScenarioSections({
                           note: l.note,
                         }}
                       />
-                      <form action={deleteOpexLine.bind(null, id, l.id)}>
-                        <Button type="submit" variant="danger" size="sm" className="max-md:min-h-11">
-                          Διαγραφή
-                        </Button>
-                      </form>
+                      <RowDeleteMenu action={deleteOpexLine.bind(null, id, l.id)} label="Ενέργειες" plain>
+                        Διαγραφή
+                      </RowDeleteMenu>
                     </div>
                   </div>
                 ))}

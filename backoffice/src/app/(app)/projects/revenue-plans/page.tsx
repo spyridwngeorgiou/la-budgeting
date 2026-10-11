@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { PageHeader, SectionHeader, Term } from "@/components/ui";
+import { Notice, PageHeader, SectionHeader, Term } from "@/components/ui";
 import { computeRevenuePlan } from "@/lib/finance/revenuePlan";
 import { AiCreateForm } from "./AiCreateForm";
 import { ManualPlanForm } from "./ManualPlanForm";
@@ -63,10 +63,10 @@ export default async function RevenuePlansPage() {
         {aiEnabled() ? (
           <AiCreateForm />
         ) : (
-          <p className="max-w-prose border-l-2 border-warning pl-3 text-body text-text">
+          <Notice tone="warning" className="max-w-prose">
             Ο βοηθός AI δεν είναι ενεργοποιημένος -- μπορείτε ακόμα να φτιάξετε μια ανάλυση χειροκίνητα
             παρακάτω.
-          </p>
+          </Notice>
         )}
 
         <ManualPlanForm />

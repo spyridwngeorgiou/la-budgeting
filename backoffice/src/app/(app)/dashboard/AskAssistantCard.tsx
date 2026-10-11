@@ -15,7 +15,7 @@ export function AskAssistantCard() {
         placeholder="Ρωτήστε τον βοηθό — π.χ. Ποιος μας χρωστάει και πόσα;"
         className="min-w-0 flex-1"
       />
-      <Button type="submit" variant="ai" className="shrink-0 max-md:min-h-11">
+      <Button type="submit" variant="ai" className="shrink-0">
         Ρωτήστε →
       </Button>
     </form>

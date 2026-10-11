@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db/types";
-import { Button, AiSpark, Select, Textarea, buttonClass } from "@/components/ui";
+import { AiSpark, Button, buttonClass, Notice, Select, Textarea } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { canvasPreview, canvasSpecSummary, canvasSpecToSkeletons, validateCanvasSpec } from "@/lib/ai/collab/skeletons";
 import { PROPOSAL_COLUMNS, plannerProposalSchema, type ProposalView } from "@/lib/ai/collab/proposals";
@@ -294,7 +294,7 @@ export function AiPanel({
         </Select>
         <button
           type="button"
-          className={buttonClass("ai", "sm", "shrink-0 max-md:min-h-11")}
+          className={buttonClass("ai", "sm", "shrink-0")}
           disabled={busy || threadId === null}
           onClick={() => {
             setThreadId(null);
@@ -307,7 +307,7 @@ export function AiPanel({
         {threadId && canDeleteThread && (
           <button
             type="button"
-            className={buttonClass("danger", "sm", "shrink-0 max-md:min-h-11")}
+            className={buttonClass("danger", "sm", "shrink-0")}
             disabled={busy}
             onClick={() => void deleteThread()}
             title={t.deleteThread}
@@ -360,7 +360,7 @@ export function AiPanel({
               type="button"
               disabled={busy}
               onClick={() => void send(q.prompt)}
-              className={buttonClass("ai", "sm", "max-md:min-h-11")}
+              className={buttonClass("ai", "sm", "")}
             >
               {q.label}
             </button>
@@ -388,11 +388,11 @@ export function AiPanel({
             className="min-h-11 flex-1 resize-none px-2 py-1.5 text-field sm:text-body"
           />
           {busy ? (
-            <Button type="button" variant="secondary" className="max-md:min-h-11" onClick={() => abortRef.current?.abort()}>
+            <Button type="button" variant="secondary" onClick={() => abortRef.current?.abort()}>
               {t.stop}
             </Button>
           ) : (
-            <Button type="submit" variant="ai" className="max-md:min-h-11" disabled={!input.trim()}>
+            <Button type="submit" variant="ai" disabled={!input.trim()}>
               <AiSpark />
               {t.send}
             </Button>
@@ -483,9 +483,9 @@ function ProposalCard({
             )}
           </svg>
         ) : (
-          <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
+          <Notice tone="negative" role="alert">
             {p.invalid}
-          </p>
+          </Notice>
         ))}
 
       {planner && (
@@ -503,9 +503,9 @@ function ProposalCard({
         </ul>
       )}
       {proposal.kind !== "canvas" && !planner && (
-        <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
+        <Notice tone="negative" role="alert">
           {p.invalid}
-        </p>
+        </Notice>
       )}
 
       <div className="mt-2 flex flex-wrap items-center gap-2 text-small">
@@ -514,10 +514,10 @@ function ProposalCard({
         ) : proposal.kind === "canvas" ? (
           rights.canEdit ? (
             <>
-              <Button variant="primary" size="sm" className="max-md:min-h-11" disabled={pending || !canvas || !canPlace} onClick={() => run("place")}>
+              <Button variant="primary" size="sm" disabled={pending || !canvas || !canPlace} onClick={() => run("place")}>
                 {p.place}
               </Button>
-              <Button variant="secondary" size="sm" className="max-md:min-h-11" disabled={pending} onClick={() => run("reject")}>
+              <Button variant="secondary" size="sm" disabled={pending} onClick={() => run("reject")}>
                 {p.reject}
               </Button>
             </>
@@ -526,10 +526,10 @@ function ProposalCard({
           )
         ) : canApprove ? (
           <>
-            <Button variant="primary" size="sm" className="max-md:min-h-11" disabled={pending || !planner} onClick={() => run("approve")}>
+            <Button variant="primary" size="sm" disabled={pending || !planner} onClick={() => run("approve")}>
               {p.approve}
             </Button>
-            <Button variant="secondary" size="sm" className="max-md:min-h-11" disabled={pending} onClick={() => run("reject")}>
+            <Button variant="secondary" size="sm" disabled={pending} onClick={() => run("reject")}>
               {p.reject}
             </Button>
           </>

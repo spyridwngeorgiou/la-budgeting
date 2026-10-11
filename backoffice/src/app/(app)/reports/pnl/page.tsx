@@ -3,8 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate, formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge, PageHeader, SectionHeader, cn } from "@/components/ui";
-import { FRAME, LINK, NUM, ROW, TABLE, TD, TH, TOUCH, ViewSwitch } from "../ui";
+import { Badge, LINK_CLASS, Notice, PageHeader, SectionHeader, SpecTable, Td, Th, Tr, ViewSwitch, cn } from "@/components/ui";
 import { addMonths, currentYear, firstOfMonth, isMonthKey, lastOfMonth, shortMonthLabel } from "@/lib/dates";
 import { BUSINESS_LINES, PNL_LINES, pnlTable, type PnlGroup } from "@/lib/finance/pnl";
 import { pnlChartRows, topCostRows } from "@/lib/finance/reportCharts";
@@ -178,76 +177,71 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
       {buckets.length === 0 ? (
         <p className="border-y border-hairline py-6 text-body text-muted">{t.pnlEmpty}</p>
       ) : (
-        <div className={FRAME}>
-          <table className={TABLE}>
-            <thead>
-              <tr>
-                <th scope="col" className={cn(TH, "sticky left-0 z-10")} />
-                {buckets.map((b) => (
-                  <th key={b} scope="col" className={cn(TH, "text-right")}>
-                    {bucketLabel(b)}
-                  </th>
-                ))}
-                <th scope="col" className={cn(TH, "text-right")}>
-                  {t.total}
-                </th>
-              </tr>
-            </thead>
+        <SpecTable label={t.pnlTitle} stickyFirst>
+          <thead>
+            <tr>
+              <Th />
+              {buckets.map((b) => (
+                <Th key={b} numeric>
+                  {bucketLabel(b)}
+                </Th>
+              ))}
+              <Th numeric>{t.total}</Th>
+            </tr>
+          </thead>
             <tbody>
               {table.rows.map((row) => {
                 const isSum = row.line === "gross_profit" || row.line === "result";
                 if (!isSum && row.total === 0 && row.line !== "revenue") return null;
                 // Subtotal rows sit over an ink rule, like the spec sheet's totals.
-                const td = cn(TD, isSum && "border-t border-t-ink font-medium text-ink");
                 return (
-                  <tr key={row.line} className="hover:bg-hover">
-                    <td className={cn(td, "sticky left-0 z-[1] bg-canvas whitespace-nowrap text-ink")}>
+                  <Tr key={row.line} total={isSum}>
+                    <Td strong className="whitespace-nowrap">
                       {t.lines[row.line]}
                       {row.line === "unclassified" && row.total !== 0 && (
                         <span className="ml-1.5">
                           <Badge tone="amber">!</Badge>
                         </span>
                       )}
-                    </td>
+                    </Td>
                     {buckets.map((b, i) => {
                       const v = row.values[i];
                       const cell = v === 0 ? <span className="text-muted">—</span> : formatMoney(v);
                       const active = cellLine === row.line && cellBucket === b;
                       return (
-                        <td key={b} className={cn(td, NUM, active && "bg-hover outline outline-1 -outline-offset-1 outline-navy")}>
+                        <Td key={b} numeric className={cn(active && "bg-hover outline outline-1 -outline-offset-1 outline-navy")}>
                           {isSum || v === 0 ? (
                             cell
                           ) : (
-                            <Link href={query({ cell: b, line: row.line })} scroll={false} className={LINK}>
+                            <Link href={query({ cell: b, line: row.line })} scroll={false} className={LINK_CLASS}>
                               {cell}
                             </Link>
                           )}
-                        </td>
+                        </Td>
                       );
                     })}
-                    <td className={cn(td, NUM, "text-ink")}>
+                    <Td numeric strong>
                       {isSum || row.total === 0 ? (
                         formatMoney(row.total)
                       ) : (
-                        <Link href={query({ line: row.line })} scroll={false} className={LINK}>
+                        <Link href={query({ line: row.line })} scroll={false} className={LINK_CLASS}>
                           {formatMoney(row.total)}
                         </Link>
                       )}
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+          </tbody>
+        </SpecTable>
       )}
       {table.rows.some((r) => r.line === "unclassified" && r.total !== 0) && (
-        <p className="-mt-3 border-l-2 border-warning pl-3 text-small text-muted">
+        <Notice tone="warning" size="small" className="-mt-3">
           <Link href="/reports/quality" className="text-ink underline underline-offset-4">
             {t.lines.unclassified}
           </Link>
           : {t.unclassifiedHint}
-        </p>
+        </Notice>
       )}
 
       {topCosts.length > 0 && (
@@ -272,12 +266,12 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
                 {drill.length > 0 && drill.length <= 100 && (
                   <Link
                     href={`/transactions?ids=${drill.map((d) => d.id).join(",")}`}
-                    className={cn("inline-flex items-center text-ink underline underline-offset-4", TOUCH)}
+                    className="inline-flex items-center text-ink underline underline-offset-4 max-md:min-h-11"
                   >
                     {t.pnlOpenInTransactions}
                   </Link>
                 )}
-                <Link href={query({})} scroll={false} className={cn("inline-flex items-center text-ink underline underline-offset-4", TOUCH)}>
+                <Link href={query({})} scroll={false} className="inline-flex items-center text-ink underline underline-offset-4 max-md:min-h-11">
                   {el.common.close}
                 </Link>
               </div>
@@ -286,24 +280,24 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
           {drill.length === 0 ? (
             <p className="text-body text-muted">{t.noItems}</p>
           ) : (
-            <div className={FRAME}>
-              <table className={TABLE}>
-                <tbody>
-                  {drill.map((d) => (
-                    <tr key={d.id} className={ROW}>
-                      <td className="num py-2.5 pr-3 whitespace-nowrap text-muted">{formatDate(d.tx_date)}</td>
-                      <td className="w-full py-2.5 pr-3 text-ink">
-                        <Link href={`/transactions?ids=${d.id}`} className={LINK}>
+            <SpecTable label={t.drillDown}>
+              <tbody>
+                {drill.map((d) => (
+                  <Tr key={d.id}>
+                    <Td className="num whitespace-nowrap text-muted">{formatDate(d.tx_date)}</Td>
+                    <Td strong className="w-full">
+                        <Link href={`/transactions?ids=${d.id}`} className={LINK_CLASS}>
                           {d.label}
                         </Link>
                         {d.scheduled && <span className="ml-1 text-small text-muted">({t.pnlScheduledTag})</span>}
-                      </td>
-                      <td className={cn("py-2.5 text-ink", NUM)}>{formatMoney(d.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                    </Td>
+                    <Td numeric strong>
+                      {formatMoney(d.amount)}
+                    </Td>
+                  </Tr>
+                ))}
+              </tbody>
+            </SpecTable>
           )}
           {drillTruncated && <p className="text-small text-muted">{t.pnlDrillTruncated}</p>}
         </section>

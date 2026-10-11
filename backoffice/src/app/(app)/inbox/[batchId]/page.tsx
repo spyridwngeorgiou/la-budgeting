@@ -5,8 +5,7 @@ import { getCurrentOrgId } from "@/lib/supabase/org";
 import { toCents } from "@/lib/finance/money";
 import { formatDate, formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge, PageHeader } from "@/components/ui";
-import { specRow, specTable, specTd, specTh } from "@/components/specTable";
+import { Badge, Notice, PageHeader, SpecTable, Stat, StatusDot, SUB_CLASS, Td, Th, Tr } from "@/components/ui";
 import { loadLookups } from "@/lib/data/lookups";
 import type { Extraction } from "@/lib/ai/schemas";
 import type { AiRowMeta } from "@/lib/ingest/adapters/aiShared";
@@ -136,7 +135,7 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
             <>
               <p>
                 {subtitle.filter(Boolean).join(" · ")} · {rows?.length ?? 0} γραμμές{" "}
-                <Badge tone={STATUS_TONE[batch.status]}>{el.ingest.batchStatus[batch.status]}</Badge>
+                <StatusDot tone={STATUS_TONE[batch.status]} label={el.ingest.batchStatus[batch.status]} />
               </p>
               {meta.legacy && <p>{el.ingest.review.legacy}</p>}
             </>
@@ -156,176 +155,179 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
             against what the ledger says the account held the day before. */}
         {opening !== null && (
           <div className="grid grid-cols-1 gap-y-4 border-b border-hairline pb-4 text-body sm:grid-cols-3 sm:gap-x-0 sm:[&>*:not(:first-child)]:border-l sm:[&>*:not(:first-child)]:border-hairline sm:[&>*:not(:first-child)]:pl-6">
-            <div>
-              <div className="eyebrow text-muted">Υπόλοιπο έναρξης (αντίγραφο)</div>
-              <div className="num mt-1 text-figure-sm font-light text-ink">{formatMoney(opening)}</div>
-              {ledgerOk !== null && (
-                <div className={`mt-1 text-small ${ledgerOk ? "text-muted" : "border-l-2 border-warning pl-2 text-warning"}`}>
-                  Σύστημα: {formatMoney(ledgerOpening.data as number)} {ledgerOk ? "✓" : "— διαφέρει"}
-                </div>
-              )}
-            </div>
-            <div>
-              <div className="eyebrow text-muted">Σ κινήσεων</div>
-              <div className="num mt-1 text-figure-sm font-light text-ink">{formatMoney(signedSum / 100)}</div>
-            </div>
-            <div>
-              <div className="eyebrow text-muted">Υπόλοιπο λήξης</div>
-              <div className="num mt-1 text-figure-sm font-light text-ink">{formatMoney(closing)}</div>
-              {arithmeticOk !== null && (
-                <div className={`mt-1 text-small ${arithmeticOk && statement?.balanceConsistent !== false ? "text-muted" : "border-l-2 border-negative pl-2 text-negative"}`}>
-                  {arithmeticOk && statement?.balanceConsistent !== false ? "Η αριθμητική του αντιγράφου συμφωνεί ✓" : "Η αριθμητική δεν συμφωνεί"}
-                </div>
-              )}
-            </div>
+            <Stat
+              label="Υπόλοιπο έναρξης (αντίγραφο)"
+              value={formatMoney(opening)}
+              sub={
+                ledgerOk === null ? undefined : ledgerOk ? (
+                  <>Σύστημα: {formatMoney(ledgerOpening.data as number)} ✓</>
+                ) : (
+                  <Notice as="span" tone="warning" size="small">
+                    Σύστημα: {formatMoney(ledgerOpening.data as number)} — διαφέρει
+                  </Notice>
+                )
+              }
+            />
+            <Stat label="Σ κινήσεων" value={formatMoney(signedSum / 100)} />
+            <Stat
+              label="Υπόλοιπο λήξης"
+              value={formatMoney(closing)}
+              sub={
+                arithmeticOk === null ? undefined : arithmeticOk && statement?.balanceConsistent !== false ? (
+                  "Η αριθμητική του αντιγράφου συμφωνεί ✓"
+                ) : (
+                  <Notice as="span" tone="negative" size="small">
+                    Η αριθμητική δεν συμφωνεί
+                  </Notice>
+                )
+              }
+            />
           </div>
         )}
 
         {(meta.warnings ?? []).length > 0 && (
-          <ul className="list-disc border-l-2 border-warning py-1 pr-2 pl-8 text-body text-warning">
+          <Notice as="ul" tone="warning">
             {meta.warnings!.map((w) => (
               <li key={w}>{w}</li>
             ))}
-          </ul>
+          </Notice>
         )}
 
         {isDocuments && (rows?.length ?? 0) > 1 && <BulkAssignBar />}
 
-        <div className="overflow-x-auto">
-          <table className={specTable}>
-            <thead>
-              <tr>
-                {isDocuments && <th scope="col" className={specTh} />}
-                <th scope="col" className={`${specTh} text-right`}>#</th>
-                <th scope="col" className={specTh}>Ημ/νία</th>
-                <th scope="col" className={specTh}>{isDocuments ? el.ingest.review.counterparty : "Περιγραφή"}</th>
-                <th scope="col" className={`${specTh} text-right`}>Ποσό</th>
-                {isDocuments && <th scope="col" className={specTh}>{el.ingest.review.assignment}</th>}
-                <th scope="col" className={specTh}>Απόφαση</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(rows ?? []).map((r) => {
-                const options: MatchOption[] = [...(r.ingest_row_matches ?? [])]
-                  .sort((a, b) => a.rank - b.rank)
-                  .map((m) => ({
-                    decision: decisionForKind(m.kind),
-                    transactionIds: m.transaction_ids,
-                    label: m.transaction_ids.map((id) => txLabel.get(id) ?? "—").join(" + "),
-                    score: m.score,
-                    reasons: (m.reasons ?? []) as MatchOption["reasons"],
-                  }));
-                const rowMeta = (r.meta ?? {}) as { ai?: AiRowMeta; aade_dedup_status?: AadeDedupStatus };
-                const rowEditable = editable && !r.committed_transaction_id;
-                const doc = r.document_id ? documentLinks.get(r.document_id) : undefined;
-                return (
-                  <tr key={r.id} className={specRow}>
-                    {isDocuments && (
-                      <td className={specTd}>{rowEditable && r.decision !== "skip" && <RowCheckbox rowId={r.id} />}</td>
+        <SpecTable label="Γραμμές αρχείου">
+          <thead>
+            <tr>
+              {isDocuments && <Th />}
+              <Th numeric>#</Th>
+              <Th>Ημ/νία</Th>
+              <Th>{isDocuments ? el.ingest.review.counterparty : "Περιγραφή"}</Th>
+              <Th numeric>Ποσό</Th>
+              {isDocuments && <Th>{el.ingest.review.assignment}</Th>}
+              <Th>Απόφαση</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {(rows ?? []).map((r) => {
+              const options: MatchOption[] = [...(r.ingest_row_matches ?? [])]
+                .sort((a, b) => a.rank - b.rank)
+                .map((m) => ({
+                  decision: decisionForKind(m.kind),
+                  transactionIds: m.transaction_ids,
+                  label: m.transaction_ids.map((id) => txLabel.get(id) ?? "—").join(" + "),
+                  score: m.score,
+                  reasons: (m.reasons ?? []) as MatchOption["reasons"],
+                }));
+              const rowMeta = (r.meta ?? {}) as { ai?: AiRowMeta; aade_dedup_status?: AadeDedupStatus };
+              const rowEditable = editable && !r.committed_transaction_id;
+              const doc = r.document_id ? documentLinks.get(r.document_id) : undefined;
+              return (
+                <Tr key={r.id}>
+                  {isDocuments && (
+                    <Td>{rowEditable && r.decision !== "skip" && <RowCheckbox rowId={r.id} />}</Td>
+                  )}
+                  <Td numeric className="text-muted">{r.row_no}</Td>
+                  <Td className="num">{formatDate(r.tx_date)}</Td>
+                  <Td strong>
+                    {isDocuments ? (
+                      <>
+                        <div>{r.counterparty_name ?? "—"}</div>
+                        <div className={SUB_CLASS}>
+                          {[r.counterparty_afm, r.invoice_number, r.mydata_mark && `ΜΑΡΚ ${r.mydata_mark}`].filter(Boolean).join(" · ")}
+                        </div>
+                        {r.description && <div className="text-small text-muted">{r.description}</div>}
+                      </>
+                    ) : (
+                      <>
+                        <div className="whitespace-pre-line">{r.description ?? "—"}</div>
+                        {r.reference && <div className="text-small text-muted">{r.reference}</div>}
+                      </>
                     )}
-                    <td className={`${specTd} num text-right text-muted`}>{r.row_no}</td>
-                    <td className={`${specTd} num`}>{formatDate(r.tx_date)}</td>
-                    <td className={`${specTd} text-ink`}>
-                      {isDocuments ? (
-                        <>
-                          <div>{r.counterparty_name ?? "—"}</div>
-                          <div className="text-small text-muted">
-                            {[r.counterparty_afm, r.invoice_number, r.mydata_mark && `ΜΑΡΚ ${r.mydata_mark}`].filter(Boolean).join(" · ")}
-                          </div>
-                          {r.description && <div className="text-small text-muted">{r.description}</div>}
-                        </>
+                    {r.dedup_status === "dup_external_key" && <Badge tone="neutral">Ήδη εισηγμένη σε προηγούμενο αρχείο</Badge>}
+                    {rowMeta.aade_dedup_status && rowMeta.aade_dedup_status !== "new" && (
+                      <Badge tone="neutral">{el.ingest.aadeDedup[rowMeta.aade_dedup_status]}</Badge>
+                    )}
+                    {(rowMeta.ai?.needs_review_reasons ?? []).map((reason) => (
+                      <Notice key={reason} as="div" tone="warning" size="small" className="mt-1">
+                        {reason}
+                      </Notice>
+                    ))}
+                    {r.parse_errors.map((e) => (
+                      <Notice key={e} as="div" tone="negative" size="small" className="mt-1">
+                        {e}
+                      </Notice>
+                    ))}
+                  </Td>
+                  <Td numeric strong>
+                    {r.amount === null ? "—" : `${r.direction === "expense" ? "−" : "+"}${formatMoney(r.amount)}`}
+                  </Td>
+                  {isDocuments && (
+                    <Td>
+                      {r.decision === "skip" && !rowEditable ? (
+                        <span className="text-small text-muted">—</span>
                       ) : (
-                        <>
-                          <div className="whitespace-pre-line">{r.description ?? "—"}</div>
-                          {r.reference && <div className="text-small text-muted">{r.reference}</div>}
-                        </>
-                      )}
-                      {r.dedup_status === "dup_external_key" && <Badge tone="neutral">Ήδη εισηγμένη σε προηγούμενο αρχείο</Badge>}
-                      {rowMeta.aade_dedup_status && rowMeta.aade_dedup_status !== "new" && (
-                        <Badge tone="neutral">{el.ingest.aadeDedup[rowMeta.aade_dedup_status]}</Badge>
-                      )}
-                      {(rowMeta.ai?.needs_review_reasons ?? []).map((reason) => (
-                        <div key={reason} className="mt-1 border-l-2 border-warning pl-2 text-small text-warning">
-                          {reason}
+                        <div className="flex min-w-44 flex-col gap-1">
+                          <AssignSelect rowId={r.id} field="project_id" value={r.project_id} />
+                          <AssignSelect rowId={r.id} field="category_id" value={r.category_id} />
+                          <AssignSelect rowId={r.id} field="account_id" value={r.account_id} />
                         </div>
-                      ))}
-                      {r.parse_errors.map((e) => (
-                        <div key={e} className="mt-1 border-l-2 border-negative pl-2 text-small text-negative">
-                          {e}
-                        </div>
-                      ))}
-                    </td>
-                    <td className={`${specTd} num text-right text-ink`}>
-                      {r.amount === null ? "—" : `${r.direction === "expense" ? "−" : "+"}${formatMoney(r.amount)}`}
-                    </td>
-                    {isDocuments && (
-                      <td className={specTd}>
-                        {r.decision === "skip" && !rowEditable ? (
-                          <span className="text-small text-muted">—</span>
-                        ) : (
-                          <div className="flex min-w-44 flex-col gap-1">
-                            <AssignSelect rowId={r.id} field="project_id" value={r.project_id} />
-                            <AssignSelect rowId={r.id} field="category_id" value={r.category_id} />
-                            <AssignSelect rowId={r.id} field="account_id" value={r.account_id} />
-                          </div>
-                        )}
-                      </td>
-                    )}
-                    <td className={specTd}>
-                      <div className="flex flex-col items-start gap-1">
-                        <RowDecision
-                          batchId={batch.id}
+                      )}
+                    </Td>
+                  )}
+                  <Td>
+                    <div className="flex flex-col items-start gap-1">
+                      <RowDecision
+                        batchId={batch.id}
+                        rowId={r.id}
+                        decision={r.decision}
+                        targets={r.decision_targets}
+                        options={options}
+                        editable={rowEditable}
+                      />
+                      {isAi && rowEditable && (
+                        <CaptureReview
                           rowId={r.id}
-                          decision={r.decision}
-                          targets={r.decision_targets}
-                          options={options}
-                          editable={rowEditable}
+                          rowNo={r.row_no}
+                          values={{
+                            direction: r.direction,
+                            tx_date: r.tx_date,
+                            due_date: r.due_date,
+                            status: r.status,
+                            paid_on: r.paid_on,
+                            scope: r.scope,
+                            counterparty_name: r.counterparty_name,
+                            counterparty_afm: r.counterparty_afm,
+                            contact_id: r.contact_id,
+                            project_id: r.project_id,
+                            category_id: r.category_id,
+                            account_id: r.account_id,
+                            has_invoice: r.has_invoice,
+                            net_amount: r.net_amount,
+                            vat_rate: r.vat_rate,
+                            withholding_amount: r.withholding_amount,
+                            amount: r.amount,
+                            invoice_number: r.invoice_number,
+                            mydata_mark: r.mydata_mark,
+                            description: r.description,
+                          }}
+                          extraction={(r.raw ?? null) as unknown as Extraction | null}
+                          needsReview={rowMeta.ai?.needs_review_reasons ?? []}
+                          documentUrl={doc?.url ?? null}
+                          documentMime={doc?.mime ?? null}
                         />
-                        {isAi && rowEditable && (
-                          <CaptureReview
-                            rowId={r.id}
-                            rowNo={r.row_no}
-                            values={{
-                              direction: r.direction,
-                              tx_date: r.tx_date,
-                              due_date: r.due_date,
-                              status: r.status,
-                              paid_on: r.paid_on,
-                              scope: r.scope,
-                              counterparty_name: r.counterparty_name,
-                              counterparty_afm: r.counterparty_afm,
-                              contact_id: r.contact_id,
-                              project_id: r.project_id,
-                              category_id: r.category_id,
-                              account_id: r.account_id,
-                              has_invoice: r.has_invoice,
-                              net_amount: r.net_amount,
-                              vat_rate: r.vat_rate,
-                              withholding_amount: r.withholding_amount,
-                              amount: r.amount,
-                              invoice_number: r.invoice_number,
-                              mydata_mark: r.mydata_mark,
-                              description: r.description,
-                            }}
-                            extraction={(r.raw ?? null) as unknown as Extraction | null}
-                            needsReview={rowMeta.ai?.needs_review_reasons ?? []}
-                            documentUrl={doc?.url ?? null}
-                            documentMime={doc?.mime ?? null}
-                          />
-                        )}
-                        {isAi && !rowEditable && doc && (
-                          <a href={doc.url} target="_blank" rel="noreferrer" className="text-small text-muted underline underline-offset-4 hover:text-ink">
-                            {el.ingest.review.openDocument}
-                          </a>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      )}
+                      {isAi && !rowEditable && doc && (
+                        <a href={doc.url} target="_blank" rel="noreferrer" className="text-small text-muted underline underline-offset-4 hover:text-ink">
+                          {el.ingest.review.openDocument}
+                        </a>
+                      )}
+                    </div>
+                  </Td>
+                </Tr>
+              );
+            })}
+          </tbody>
+        </SpecTable>
       </div>
     </ReviewProvider>
   );

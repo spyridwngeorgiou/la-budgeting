@@ -8,7 +8,7 @@ import { fillText } from "@/lib/collab/text";
 import { BOARD_TEMPLATES, type BoardTemplate } from "@/lib/collab/templates";
 import { canTrashBoard, trashDaysLeft } from "@/lib/collab/trash";
 import { SubmitButton } from "@/components/SubmitButton";
-import { Button, Drawer, Input, Label, MenuItem, SectionHeader, cn } from "@/components/ui";
+import { Button, Drawer, Input, Label, Menu, MenuItem, SectionHeader, cn } from "@/components/ui";
 import { createBoard, deleteBoardForever, renameBoard, restoreBoard, trashBoard } from "@/app/(collab)/collab/[projectId]/actions";
 import { ToastStack, useConfirm, useToasts } from "../feedback";
 
@@ -76,7 +76,7 @@ export function ProjectBoards({
   };
 
   const newBoardButton = (
-    <Button type="button" size="sm" className="max-md:min-h-11" onClick={() => setCreating(true)}>
+    <Button type="button" size="sm" onClick={() => setCreating(true)}>
       + {el.collab.newBoard}
     </Button>
   );
@@ -134,7 +134,7 @@ export function ProjectBoards({
                           className="min-w-0 flex-1 max-md:min-h-11 max-md:text-field"
                           onKeyDown={(e) => e.key === "Escape" && setRenaming(null)}
                         />
-                        <Button type="submit" className="max-md:min-h-11">
+                        <Button type="submit">
                           {el.collab.project.renameSave}
                         </Button>
                       </form>
@@ -221,35 +221,33 @@ export function ProjectBoards({
                         </p>
                       </div>
                       {may && (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button
                             type="button"
                             variant="secondary"
                             size="sm"
-                            className="max-md:min-h-11"
                             disabled={pending}
                             onClick={() => run(() => restoreBoard(projectId, b.id), el.collab.trash.restored)}
                           >
                             {el.collab.trash.restore}
                           </Button>
-                          <Button
-                            type="button"
-                            variant="danger"
-                            size="sm"
-                            className="max-md:min-h-11"
-                            disabled={pending}
-                            onClick={async () => {
-                              if (
-                                await confirm({
-                                  message: fillText(el.collab.trash.confirmForever, { title: b.title }),
-                                  confirmLabel: el.collab.trash.deleteForever,
-                                })
-                              )
-                                run(() => deleteBoardForever(projectId, b.id));
-                            }}
-                          >
-                            {el.collab.trash.deleteForever}
-                          </Button>
+                          <Menu label="Ενέργειες">
+                            <MenuItem
+                              tone="danger"
+                              disabled={pending}
+                              onClick={async () => {
+                                if (
+                                  await confirm({
+                                    message: fillText(el.collab.trash.confirmForever, { title: b.title }),
+                                    confirmLabel: el.collab.trash.deleteForever,
+                                  })
+                                )
+                                  run(() => deleteBoardForever(projectId, b.id));
+                              }}
+                            >
+                              {el.collab.trash.deleteForever}
+                            </MenuItem>
+                          </Menu>
                         </div>
                       )}
                     </li>
@@ -310,10 +308,10 @@ function NewBoardDialog({ projectId, onClose }: { projectId: string; onClose: ()
           </div>
         </fieldset>
         <div className="sticky bottom-0 -mx-5 mt-2 flex justify-end gap-2 border-t border-hairline bg-raised px-5 py-4 md:-mx-8 md:px-8">
-          <Button type="button" variant="secondary" className="max-md:min-h-11" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose}>
             {el.common.cancel}
           </Button>
-          <SubmitButton className="max-md:min-h-11" pendingLabel={el.collab.project.creating}>
+          <SubmitButton pendingLabel={el.collab.project.creating}>
             {el.collab.project.create}
           </SubmitButton>
         </div>

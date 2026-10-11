@@ -14,6 +14,7 @@ import {
   cancelPartnerInvite,
 } from "./partner-actions";
 import { ActionForm } from "@/components/ActionForm";
+import { RowDeleteMenu } from "@/components/RowDeleteMenu";
 
 // Server component, rendered per request -- "now" is the request time.
 function isExpired(iso: string) {
@@ -73,7 +74,7 @@ export async function PartnersPanel({ projectId, isAdmin }: { projectId: string;
       <SectionHeader
         title={el.partner.panelTitle}
         actions={
-          <ButtonLink href={`/collab/${projectId}`} variant="secondary" size="sm" className={ACTION}>
+          <ButtonLink href={`/collab/${projectId}`} variant="secondary" size="sm">
             {el.collab.navLabel} →
           </ButtonLink>
         }
@@ -115,20 +116,18 @@ export async function PartnersPanel({ projectId, isAdmin }: { projectId: string;
                       ))}
                     </Select>
                     <input type="hidden" name="discipline" value={m.discipline ?? ""} />
-                    <SubmitButton variant="secondary" className={ACTION}>
+                    <SubmitButton variant="secondary">
                       {el.partner.update}
                     </SubmitButton>
                   </ActionForm>
                   <ActionForm action={resendPartnerAccess.bind(null, projectId, m.user_id)}>
-                    <SubmitButton variant="ghost" className={ACTION}>
+                    <SubmitButton variant="ghost">
                       {el.partner.resend}
                     </SubmitButton>
                   </ActionForm>
-                  <ActionForm action={removePartner.bind(null, projectId, m.user_id)}>
-                    <SubmitButton variant="danger" className={ACTION}>
-                      {el.partner.remove}
-                    </SubmitButton>
-                  </ActionForm>
+                  <RowDeleteMenu action={removePartner.bind(null, projectId, m.user_id)} label="Ενέργειες">
+                    {el.partner.remove}
+                  </RowDeleteMenu>
                 </div>
               )}
             </li>
@@ -151,15 +150,13 @@ export async function PartnersPanel({ projectId, isAdmin }: { projectId: string;
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <ActionForm action={resendPartnerInvite.bind(null, projectId, inv.id)}>
-                  <SubmitButton variant="ghost" className={ACTION}>
+                  <SubmitButton variant="ghost">
                     {el.partner.resend}
                   </SubmitButton>
                 </ActionForm>
-                <ActionForm action={cancelPartnerInvite.bind(null, projectId, inv.id)}>
-                  <SubmitButton variant="danger" className={ACTION}>
-                    {el.partner.cancelInvite}
-                  </SubmitButton>
-                </ActionForm>
+                <RowDeleteMenu action={cancelPartnerInvite.bind(null, projectId, inv.id)} label="Ενέργειες">
+                  {el.partner.cancelInvite}
+                </RowDeleteMenu>
               </div>
             </li>
           );
@@ -210,7 +207,7 @@ export async function PartnersPanel({ projectId, isAdmin }: { projectId: string;
             </Field>
           </div>
           <div className="flex justify-end">
-            <SubmitButton className={ACTION}>{el.partner.invite}</SubmitButton>
+            <SubmitButton>{el.partner.invite}</SubmitButton>
           </div>
         </ActionForm>
       )}

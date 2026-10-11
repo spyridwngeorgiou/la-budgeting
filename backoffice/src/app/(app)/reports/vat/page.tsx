@@ -2,12 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge, Button, PageHeader, buttonClass, cn } from "@/components/ui";
+import { Badge, Button, PageHeader, SpecTable, Td, Th, Tr, buttonClass, cn } from "@/components/ui";
 import { toggleVatFiled } from "./actions";
 import { ArgsActionForm } from "@/components/ArgsActionForm";
 import { BarChart } from "@/components/ui/BarChart";
 import { vatChartRows } from "@/lib/finance/reportCharts";
-import { FRAME, NUM, TABLE, TD, TH, TOUCH } from "../ui";
 import { addMonths, currentMonthKey, firstOfMonth, monthKeyOf, quarterOf, shortMonthYearLabel, todayAthens } from "@/lib/dates";
 
 export default async function VatPage() {
@@ -56,7 +55,7 @@ export default async function VatPage() {
           </span>
         }
         actions={
-          <a href="/api/vat/export" className={buttonClass("secondary", "md", TOUCH)}>
+          <a href="/api/vat/export" className={buttonClass("secondary", "md")}>
             Εξαγωγή CSV
           </a>
         }
@@ -78,40 +77,32 @@ export default async function VatPage() {
           ]}
           marker={chart.nextDeadline ? { x: chart.nextDeadline.x, label: `${t.vatNextDeadline} ${formatDate(chart.nextDeadline.deadline)}` } : undefined}
         />
-        <div className={FRAME}>
-          <table className={TABLE}>
-            <thead>
-              <tr>
-                <th scope="col" className={TH}>
-                  {el.vat.period}
-                </th>
-                <th scope="col" className={cn(TH, "hidden text-right sm:table-cell")}>
-                  {el.vat.vatIncome}
-                </th>
-                <th scope="col" className={cn(TH, "hidden text-right sm:table-cell")}>
-                  {el.vat.vatExpense}
-                </th>
-                <th scope="col" className={cn(TH, "hidden text-right lg:table-cell")}>
-                  {t.vatIssued}
-                </th>
-                <th scope="col" className={cn(TH, "hidden text-right lg:table-cell")}>
-                  {t.vatScheduled}
-                </th>
-                <th scope="col" className={cn(TH, "hidden text-right md:table-cell")}>
-                  {el.vat.credit}
-                </th>
-                <th scope="col" className={cn(TH, "text-right")}>
-                  {el.vat.payable}
-                </th>
-                <th scope="col" className={cn(TH, "hidden md:table-cell")}>
-                  {el.vat.deadline}
-                </th>
-                <th scope="col" className={TH}>
-                  {el.vat.filed}
-                </th>
-                <th scope="col" className={TH} />
-              </tr>
-            </thead>
+        <SpecTable label={el.nav.vat}>
+          <thead>
+            <tr>
+              {/* Same inset as the body's first cells, which carry the 2px marker. */}
+              <Th className="border-l-2 border-l-transparent !pl-3">{el.vat.period}</Th>
+              <Th numeric className="hidden sm:table-cell">
+                {el.vat.vatIncome}
+              </Th>
+              <Th numeric className="hidden sm:table-cell">
+                {el.vat.vatExpense}
+              </Th>
+              <Th numeric className="hidden lg:table-cell">
+                {t.vatIssued}
+              </Th>
+              <Th numeric className="hidden lg:table-cell">
+                {t.vatScheduled}
+              </Th>
+              <Th numeric className="hidden md:table-cell">
+                {el.vat.credit}
+              </Th>
+              <Th numeric>{el.vat.payable}</Th>
+              <Th className="hidden md:table-cell">{el.vat.deadline}</Th>
+              <Th>{el.vat.filed}</Th>
+              <Th />
+            </tr>
+          </thead>
             <tbody>
               {(positions ?? []).map((p) => {
                 const filing = filingByPeriod.get(p.period_start!);
@@ -120,8 +111,8 @@ export default async function VatPage() {
                 const isCurrent =
                   todayMonth >= startMonth && todayMonth <= addMonths(startMonth, Number(p.period_months ?? 1) - 1);
                 return (
-                  <tr key={p.period_start} aria-current={isCurrent ? "true" : undefined} className={isCurrent ? "bg-hover" : "hover:bg-hover"}>
-                    <td className={cn(TD, "border-l-2 text-ink", isCurrent ? "border-l-navy" : "border-l-transparent")}>
+                  <Tr key={p.period_start} aria-current={isCurrent ? "true" : undefined} className={isCurrent ? "bg-hover" : undefined}>
+                    <Td strong className={cn("border-l-2 !pl-3", isCurrent ? "border-l-navy" : "border-l-transparent")}>
                       <span className="whitespace-nowrap">
                         {Number(p.period_months ?? 1) === 3
                           ? `${el.reports.quarter} ${quarterOf(p.period_start!)}/${p.period_start!.slice(0, 4)}`
@@ -129,30 +120,41 @@ export default async function VatPage() {
                       </span>
                       {p.is_locked && <span className="ml-1.5 text-small text-muted">{el.reports.vatLocked}</span>}
                       {isCurrent && <span className="ml-1.5 text-small font-medium text-navy">τρέχουσα περίοδος</span>}
-                    </td>
-                    <td className={cn(TD, NUM, "hidden sm:table-cell")}>{formatMoney(p.vat_income)}</td>
-                    <td className={cn(TD, NUM, "hidden sm:table-cell")}>{formatMoney(p.vat_expense)}</td>
-                    <td className={cn(TD, NUM, "hidden lg:table-cell")}>{formatMoney(p.net_issued)}</td>
-                    <td className={cn(TD, NUM, "hidden text-muted lg:table-cell")}>{formatMoney(p.net_scheduled)}</td>
-                    <td className={cn(TD, NUM, "hidden md:table-cell")}>{formatMoney(Math.abs(p.credit_balance ?? 0))}</td>
-                    <td className={cn(TD, NUM, "font-medium text-ink")}>{formatMoney(p.payable_after_credit)}</td>
-                    <td className={cn(TD, "num hidden whitespace-nowrap text-muted md:table-cell")}>{formatDate(p.filing_deadline)}</td>
-                    <td className={TD}>
+                    </Td>
+                    <Td numeric className="hidden sm:table-cell">
+                      {formatMoney(p.vat_income)}
+                    </Td>
+                    <Td numeric className="hidden sm:table-cell">
+                      {formatMoney(p.vat_expense)}
+                    </Td>
+                    <Td numeric className="hidden lg:table-cell">
+                      {formatMoney(p.net_issued)}
+                    </Td>
+                    <Td numeric className="hidden text-muted lg:table-cell">
+                      {formatMoney(p.net_scheduled)}
+                    </Td>
+                    <Td numeric className="hidden md:table-cell">
+                      {formatMoney(Math.abs(p.credit_balance ?? 0))}
+                    </Td>
+                    <Td numeric strong className="font-medium">
+                      {formatMoney(p.payable_after_credit)}
+                    </Td>
+                    <Td className="num hidden whitespace-nowrap text-muted md:table-cell">{formatDate(p.filing_deadline)}</Td>
+                    <Td>
                       <Badge tone={filed ? "neutral" : "amber"}>{filed ? el.vat.filed : el.vat.notFiled}</Badge>
-                    </td>
-                    <td className={cn(TD, "py-1.5 text-right")}>
+                    </Td>
+                    <Td className="py-1.5 text-right">
                       <ArgsActionForm action={toggleVatFiled} args={[p.period_start!, filed]}>
-                        <Button type="submit" variant="ghost" size="sm" className={TOUCH}>
+                        <Button type="submit" variant="ghost" size="sm">
                           {filed ? "Αναίρεση" : "Σήμανση ως υποβλήθηκε"}
                         </Button>
                       </ArgsActionForm>
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+          </tbody>
+        </SpecTable>
         </>
       )}
     </div>

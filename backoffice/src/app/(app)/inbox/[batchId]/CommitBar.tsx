@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Button } from "@/components/ui";
+import { Button, Notice } from "@/components/ui";
 import { commitIngest, discardBatch, undoIngest } from "../actions";
 
 // «Οριστικοποίηση» / «Αναίρεση». The batch version loaded with the page goes
@@ -65,18 +65,18 @@ export function CommitBar({
         )}
       </div>
       {pendingCount > 0 && status !== "committed" && (
-        <p className="border-l-2 border-warning pl-2 text-small text-warning">{pendingCount} γραμμή/ές χρειάζονται απόφαση πριν την οριστικοποίηση.</p>
+        <Notice tone="warning" size="small">{pendingCount} γραμμή/ές χρειάζονται απόφαση πριν την οριστικοποίηση.</Notice>
       )}
       {touched && (
-        <p className="max-w-md border-l-2 border-warning pl-2 text-small text-warning sm:text-right">
+        <Notice tone="warning" size="small" className="max-w-md sm:text-right">
           {touched.length} κίνηση/εις άλλαξαν μετά την εισαγωγή. Η αναίρεση θα επαναφέρει μόνο όσα έκανε η εισαγωγή·
           οι μεταγενέστερες αλλαγές σε άλλα πεδία μένουν.
-        </p>
+        </Notice>
       )}
       {error && (
-        <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
+        <Notice tone="negative" role="alert">
           {error}
-        </p>
+        </Notice>
       )}
     </div>
   );

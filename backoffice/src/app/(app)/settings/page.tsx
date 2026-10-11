@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrg, getCurrentMembership, getMyProfile } from "@/lib/supabase/org";
 import { el } from "@/lib/i18n/el";
-import { Badge, PageHeader, SectionHeader } from "@/components/ui";
+import { Badge, Notice, PageHeader, SectionHeader } from "@/components/ui";
 import { setHomePath, updateOwnAfm, updateOrgSettings, updateTaxRiskSettings } from "./actions";
 import { HOME_PATHS, resolveHomePath } from "@/lib/homePath";
 import { Button, Input, Select, Label, Field, buttonClass } from "@/components/ui";
@@ -11,6 +11,7 @@ import { ORG_ROLE } from "@/lib/domain/enums";
 import { updateMemberRole, removeMember, inviteMember } from "./team-actions";
 import { CaptureAnalytics } from "./CaptureAnalytics";
 import { ActionForm } from "@/components/ActionForm";
+import { RowDeleteMenu } from "@/components/RowDeleteMenu";
 
 const ROLE_LABELS: Record<string, string> = { viewer: "Θεατής", editor: "Συντάκτης", admin: "Διαχειριστής", owner: "Ιδιοκτήτης" };
 
@@ -80,10 +81,10 @@ export default async function SettingsPage() {
             <Input name="own_afm" defaultValue={org?.own_afm ?? ""} pattern="[0-9]{9}" maxLength={9} required />
           </Field>
           {org?.own_afm === "000000000" && (
-            <p className="border-l-2 border-warning pl-3 text-small text-warning">
+            <Notice tone="warning" size="small">
               Προσοχή: εικονικό ΑΦΜ. Χρειάζεται το πραγματικό πριν από οποιαδήποτε εισαγωγή AADE,
               ώστε να καθορίζεται σωστά η κατεύθυνση (έσοδο/έξοδο) κάθε κίνησης.
-            </p>
+            </Notice>
           )}
           <div className="flex justify-end">
             <Button type="submit">{el.common.save}</Button>
@@ -109,15 +110,13 @@ export default async function SettingsPage() {
                           </option>
                         ))}
                       </Select>
-                      <Button type="submit" variant="secondary" className="!px-2 !py-1 text-small">
+                      <Button type="submit" variant="secondary" size="sm">
                         Ενημέρωση
                       </Button>
                     </ActionForm>
-                    <ActionForm action={removeMember.bind(null, m.user_id)}>
-                      <Button type="submit" variant="danger" className="!px-2 !py-1 text-small">
-                        Αφαίρεση
-                      </Button>
-                    </ActionForm>
+                    <RowDeleteMenu action={removeMember.bind(null, m.user_id)} label="Ενέργειες">
+                      Αφαίρεση
+                    </RowDeleteMenu>
                   </div>
                 ) : (
                   <Badge tone="neutral">{ROLE_LABELS[m.role]}</Badge>

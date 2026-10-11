@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, AiSpark } from "@/components/ui";
+import { Button, AiSpark, Notice } from "@/components/ui";
 
 export function ProjectHealthCheck({ projectId }: { projectId: string }) {
   const [text, setText] = useState<string | null>(null);
@@ -41,11 +41,15 @@ export function ProjectHealthCheck({ projectId }: { projectId: string }) {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Button variant="ai" onClick={generate} disabled={loading} className="max-md:min-h-11">
+      <Button variant="ai" onClick={generate} disabled={loading}>
         <AiSpark className="mr-1.5" />
         {loading ? "Ανάλυση…" : "AI Έλεγχος Υγείας Έργου"}
       </Button>
-      {error && <span className="border-l-2 border-negative pl-3 text-body text-negative">{error}</span>}
+      {error && (
+        <Notice as="span" tone="negative">
+          {error}
+        </Notice>
+      )}
     </div>
   );
 }

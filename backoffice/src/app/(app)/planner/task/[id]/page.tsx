@@ -56,9 +56,11 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
               </Link>
             )}
             {task.due_date && (
-              <span className={overdue ? "border-l-2 border-negative pl-2 font-medium text-negative" : "num"}>
-                {el.planner.task.due}: {formatDate(task.due_date)}
-                {overdue && ` · ${el.planner.task.overdue}`}
+              <span className="inline-flex flex-wrap items-center gap-1.5">
+                <span className={overdue ? "num text-negative" : "num"}>
+                  {el.planner.task.due}: {formatDate(task.due_date)}
+                </span>
+                {overdue && <Badge tone="negative">{el.planner.task.overdue}</Badge>}
               </span>
             )}
             {task.completed_at && (

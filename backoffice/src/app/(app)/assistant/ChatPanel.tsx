@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, Notice } from "@/components/ui";
 import { errorOf } from "@/lib/actions";
 import { createNdjsonParser, TOOL_LABEL, type ChatEvent } from "@/lib/ai/chatProtocol";
 import type { ChangeCard } from "@/lib/ai/changeCards";
@@ -217,9 +217,9 @@ export function ChatPanel({
           Νέα συζήτηση
         </Button>
         {listError && (
-          <p role="alert" className="border-l-2 border-negative pl-2 text-small text-negative">
+          <Notice tone="negative" size="small" role="alert">
             {listError}
-          </p>
+          </Notice>
         )}
         <nav aria-label="Συζητήσεις" className="flex-1 overflow-y-auto">
           {conversations.length === 0 ? (
@@ -265,14 +265,9 @@ export function ChatPanel({
               </p>
               <div className="flex flex-wrap justify-center gap-2">
                 {SUGGESTIONS.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => send(s)}
-                    className="inline-flex min-h-9 items-center border border-ai-border px-3 py-1.5 text-small text-ai hover:bg-ai-tint"
-                  >
+                  <Button key={s} type="button" variant="ai" size="sm" onClick={() => send(s)}>
                     {s}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -356,9 +351,9 @@ function MessageView({ message: m, canReview }: { message: UiMessage; canReview:
           <ChangeCardView key={p.id} initial={p} canReview={canReview} />
         ))}
         {m.error && (
-          <div role="alert" className="border-l-2 border-negative py-1 pl-3 text-body text-negative">
+          <Notice as="div" tone="negative" role="alert">
             {m.error}
-          </div>
+          </Notice>
         )}
         {m.sources.length > 0 && (
           <div className="text-small text-muted">

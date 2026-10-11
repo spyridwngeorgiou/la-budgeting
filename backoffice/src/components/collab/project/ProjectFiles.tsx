@@ -207,7 +207,7 @@ export function ProjectFiles({
         </ul>
       )}
       {files.length > PREVIEW_COUNT && !showAll && (
-        <Button type="button" variant="ghost" className="w-full max-md:min-h-11" onClick={() => setShowAll(true)}>
+        <Button type="button" variant="ghost" className="w-full" onClick={() => setShowAll(true)}>
           {t.showAll} <span className="num text-muted">({files.length})</span>
         </Button>
       )}

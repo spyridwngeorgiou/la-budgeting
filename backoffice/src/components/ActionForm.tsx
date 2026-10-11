@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import type { ActionResult } from "@/lib/actions";
 import { useAction } from "@/lib/useAction";
+import { Notice } from "@/components/ui";
 
 // A <form> for server components whose server action returns ActionResult:
 // the server page passes the action (bound or not) and its fields as
@@ -21,9 +22,9 @@ export function ActionForm({
     <form action={formAction} className={className}>
       {children}
       {error && (
-        <p role="alert" className="basis-full border-l-2 border-negative pl-3 text-body text-negative">
+        <Notice tone="negative" role="alert" className="basis-full">
           {error}
-        </p>
+        </Notice>
       )}
     </form>
   );

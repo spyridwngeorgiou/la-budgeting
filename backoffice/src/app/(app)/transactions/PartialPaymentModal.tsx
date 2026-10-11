@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Select, Label, Field, Modal } from "@/components/ui";
+import { Button, Input, Select, Label, Field, Modal, Notice } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { el } from "@/lib/i18n/el";
 import { formatMoney } from "@/lib/format";
@@ -97,9 +97,9 @@ export function PartialPaymentModal({ transactionId, label, remaining, accountId
         </div>
 
         {error && (
-          <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
+          <Notice tone="negative" role="alert">
             {error}
-          </p>
+          </Notice>
         )}
 
         <div className="mt-1 flex justify-end gap-2">

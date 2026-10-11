@@ -1,6 +1,6 @@
 import { OnePagerRow, OnePagerSection } from "@/components/onepager";
 import { ActionForm } from "@/components/ActionForm";
-import { Button, Select, Input, Term } from "@/components/ui";
+import { Button, Select, Input, Notice, SpecTable, Td, Term, Th, Tr } from "@/components/ui";
 import { formatDate, formatMoney, formatPercent } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import type { DevelopmentResult } from "@/lib/finance/development";
@@ -37,45 +37,38 @@ export function BudgetLineRows({ rows }: { rows: BudgetLineRow[] }) {
   // figures right-aligned; scrolls inside its frame on a phone.
   return (
     <div className="mt-4 flex flex-col gap-2">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-body">
-          <caption className="eyebrow pb-2 text-left text-muted">{t.title}</caption>
-          <thead>
-            <tr>
-              <th scope="col" className="border-b border-rule py-2 pr-3 text-left">
-                <span className="sr-only">{t.title}</span>
-              </th>
-              <th scope="col" className="eyebrow border-b border-rule py-2 pr-3 text-right font-medium text-muted">
-                {el.project.budget}
-              </th>
-              <th scope="col" className="eyebrow border-b border-rule py-2 pr-3 text-right font-medium text-muted">
-                {t.spent}
-              </th>
-              <th scope="col" className="eyebrow border-b border-rule py-2 text-right font-medium text-muted">
-                {t.left}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((r) => {
-              const remaining = Number(r.remaining ?? 0);
-              const code = (r.line_code ?? "other") as keyof typeof t;
-              return (
-                <tr key={r.line_code}>
-                  <td className="border-b border-hairline py-2 pr-3 text-text">{r.label || (t[code] as string) || r.line_code}</td>
-                  <td className="num border-b border-hairline py-2 pr-3 text-right text-ink">{formatMoney(r.budget ?? 0)}</td>
-                  <td className="num border-b border-hairline py-2 pr-3 text-right text-text" title={t.spent}>
-                    {formatMoney(Number(r.paid ?? 0) + Number(r.committed ?? 0))}
-                  </td>
-                  <td className={`num border-b border-hairline py-2 text-right ${remaining < 0 ? "text-negative" : "text-ink"}`} title={t.left}>
-                    {formatMoney(remaining)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <SpecTable label={t.title} caption={t.title}>
+        <thead>
+          <tr>
+            <Th>
+              <span className="sr-only">{t.title}</span>
+            </Th>
+            <Th numeric>{el.project.budget}</Th>
+            <Th numeric>{t.spent}</Th>
+            <Th numeric>{t.left}</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {visible.map((r) => {
+            const remaining = Number(r.remaining ?? 0);
+            const code = (r.line_code ?? "other") as keyof typeof t;
+            return (
+              <Tr key={r.line_code}>
+                <Td>{r.label || (t[code] as string) || r.line_code}</Td>
+                <Td numeric strong>
+                  {formatMoney(r.budget ?? 0)}
+                </Td>
+                <Td numeric title={t.spent}>
+                  {formatMoney(Number(r.paid ?? 0) + Number(r.committed ?? 0))}
+                </Td>
+                <Td numeric className={remaining < 0 ? "text-negative" : "text-ink"} title={t.left}>
+                  {formatMoney(remaining)}
+                </Td>
+              </Tr>
+            );
+          })}
+        </tbody>
+      </SpecTable>
       {visible.some((r) => r.line_code === "contingency") && <p className="text-small text-muted">{t.contingencyNote}</p>}
     </div>
   );
@@ -116,7 +109,11 @@ export function DevelopmentSection({ result, truncated }: { result: DevelopmentR
         note={result.peakFundingDate ? `${t.peakNote} · ${formatDate(result.peakFundingDate)}` : null}
       />
       <ProjectIrrRow irr={result.irr} />
-      {truncated && <p className="mt-2 border-l-2 border-warning pl-3 text-small text-text">{t.truncated}</p>}
+      {truncated && (
+        <Notice tone="warning" size="small" className="mt-2">
+          {t.truncated}
+        </Notice>
+      )}
     </OnePagerSection>
   );
 }
@@ -152,7 +149,7 @@ export function SendToCashSection({
           {t.probability}
           <Input type="number" name="probability_pct" min="1" max="100" step="5" defaultValue={80} className="num w-24 max-md:min-h-11" />
         </label>
-        <Button type="submit" variant="secondary" className="max-md:min-h-11">
+        <Button type="submit" variant="secondary">
           {sentCount > 0 ? t.resend : t.send}
         </Button>
       </ActionForm>
@@ -175,7 +172,7 @@ export function SendToCashSection({
 export function LeaseSyncButton({ leaseId }: { leaseId: string }) {
   return (
     <ActionForm action={syncLeaseScheduleAction.bind(null, leaseId)}>
-      <Button type="submit" variant="secondary" className="max-md:min-h-11">
+      <Button type="submit" variant="secondary">
         {el.projectFinance.syncLease}
       </Button>
     </ActionForm>

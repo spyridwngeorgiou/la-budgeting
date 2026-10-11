@@ -3,10 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate, formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge, Button, PageHeader, Stat, type Tone } from "@/components/ui";
+import { Badge, Button, PageHeader, SpecTable, Stat, SUB_CLASS, Td, Th, Tr, type Tone } from "@/components/ui";
 import { ActionForm } from "@/components/ActionForm";
 import { loadLookups } from "@/lib/data/lookups";
 import type { DealStage } from "@/lib/domain/enums";
+import { RowDeleteMenu } from "@/components/RowDeleteMenu";
 import { DealFormModal } from "./DealFormModal";
 import { closeDeal, deleteDeal, saveDeal } from "./actions";
 
@@ -19,11 +20,6 @@ const STAGE_TONE: Record<DealStage, Tone> = {
   closed: "positive",
   lost: "negative",
 };
-
-// P15 spec table cells; 44px buttons on phones.
-const TH = "eyebrow border-b border-rule px-3 py-2.5 font-medium text-muted";
-const TD = "border-b border-hairline px-3 py-3";
-const TAP = "max-md:min-h-11";
 
 // Μεσιτεία: the deals list. What each open deal contributes to the cash
 // forecast is read back from v_cash_forecast_items (its stage weight lives
@@ -73,19 +69,18 @@ export default async function DealsPage() {
         <p className="border-y border-hairline py-6 text-body text-muted">{t.empty}</p>
       ) : (
         // Spec table; scrolls inside its frame on a phone.
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-body">
+        <SpecTable label={t.title}>
             <thead>
               <tr>
-                <th scope="col" className={TH}>{t.property}</th>
-                <th scope="col" className={`${TH} hidden md:table-cell`}>{t.client}</th>
-                <th scope="col" className={`${TH} text-right`}>{t.price}</th>
-                <th scope="col" className={`${TH} text-right`}>{t.commission}</th>
-                <th scope="col" className={TH}>{t.stage}</th>
-                <th scope="col" className={`${TH} hidden sm:table-cell`}>{t.expectedClose}</th>
-                <th scope="col" className={TH}>
+                <Th>{t.property}</Th>
+                <Th className="hidden md:table-cell">{t.client}</Th>
+                <Th numeric>{t.price}</Th>
+                <Th numeric>{t.commission}</Th>
+                <Th>{t.stage}</Th>
+                <Th className="hidden sm:table-cell">{t.expectedClose}</Th>
+                <Th>
                   <span className="sr-only">{el.common.edit}</span>
-                </th>
+                </Th>
               </tr>
             </thead>
             <tbody>
@@ -95,18 +90,18 @@ export default async function DealsPage() {
                 const weighted = weightedByDeal.get(d.id);
                 const isOpen = d.stage !== "closed" && d.stage !== "lost";
                 return (
-                  <tr key={d.id} className="align-top hover:bg-hover">
-                    <td className={`${TD} min-w-40 text-ink`}>
+                  <Tr key={d.id}>
+                    <Td strong className="min-w-40">
                       {d.property_label}
-                      {d.notes && <div className="text-small text-muted">{d.notes}</div>}
-                    </td>
-                    <td className={`${TD} hidden text-text md:table-cell`}>{contact?.name ?? t.noClient}</td>
-                    <td className={`${TD} num text-right whitespace-nowrap text-ink`}>{formatMoney(d.price)}</td>
-                    <td className={`${TD} num text-right whitespace-nowrap text-ink`}>
+                      {d.notes && <span className={SUB_CLASS}>{d.notes}</span>}
+                    </Td>
+                    <Td className="hidden md:table-cell">{contact?.name ?? t.noClient}</Td>
+                    <Td numeric strong>{formatMoney(d.price)}</Td>
+                    <Td numeric strong>
                       {formatMoney(commission)}
-                      {weighted != null && <div className="text-small text-muted">{formatMoney(weighted)} στην πρόβλεψη</div>}
-                    </td>
-                    <td className={TD}>
+                      {weighted != null && <span className={SUB_CLASS}>{formatMoney(weighted)} στην πρόβλεψη</span>}
+                    </Td>
+                    <Td>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <Badge tone={STAGE_TONE[d.stage]}>{t.stages[d.stage]}</Badge>
                         {d.stage === "closed" && d.transaction_id && (
@@ -115,11 +110,11 @@ export default async function DealsPage() {
                           </Link>
                         )}
                       </div>
-                    </td>
-                    <td className={`${TD} num hidden whitespace-nowrap text-text sm:table-cell`}>
+                    </Td>
+                    <Td className="num hidden whitespace-nowrap sm:table-cell">
                       {formatDate(d.stage === "closed" ? d.closed_on : d.expected_close_date)}
-                    </td>
-                    <td className={TD}>
+                    </Td>
+                    <Td>
                       <div className="flex flex-wrap items-center justify-end gap-2">
                         {isOpen && (
                           <>
@@ -141,27 +136,24 @@ export default async function DealsPage() {
                               }}
                             />
                             <ActionForm action={closeDeal.bind(null, d.id)}>
-                              <Button type="submit" variant="secondary" size="sm" className={TAP} title={t.closeConfirm}>
+                              <Button type="submit" variant="secondary" size="sm" title={t.closeConfirm}>
                                 {t.close}
                               </Button>
                             </ActionForm>
                           </>
                         )}
                         {d.stage !== "closed" && (
-                          <ActionForm action={deleteDeal.bind(null, d.id)}>
-                            <Button type="submit" variant="danger" size="sm" className={TAP}>
-                              {el.common.delete}
-                            </Button>
-                          </ActionForm>
+                          <RowDeleteMenu action={deleteDeal.bind(null, d.id)} label="Ενέργειες">
+                            {el.common.delete}
+                          </RowDeleteMenu>
                         )}
                       </div>
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 );
               })}
             </tbody>
-          </table>
-        </div>
+        </SpecTable>
       )}
       <p className="max-w-prose text-small text-muted">{t.closeConfirm}</p>
     </div>

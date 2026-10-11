@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { el } from "@/lib/i18n/el";
 import { TASK_STATUS } from "@/lib/domain/enums";
 import { todayAthens } from "@/lib/dates";
+import { Badge } from "@/components/ui";
 import { OnePagerSection } from "@/components/onepager";
 import { STATUS_DOT } from "./labels";
 import { ProjectMilestones } from "./ProjectMilestones";
@@ -46,9 +47,9 @@ export async function ProjectPlanSection({ projectId, canEdit }: { projectId: st
               </span>
             ))}
           {overdue > 0 && (
-            <span className="border-l-2 border-negative pl-2 text-small font-medium text-negative">
+            <Badge tone="negative">
               {overdue} {el.planner.task.overdue}
-            </span>
+            </Badge>
           )}
         </div>
         <ProjectMilestones projectId={projectId} milestones={milestones ?? []} today={today} canEdit={canEdit} />

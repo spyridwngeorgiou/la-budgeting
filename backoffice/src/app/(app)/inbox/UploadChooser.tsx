@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { formatBytes } from "@/lib/format";
 import { Camera, FileSpreadsheet, FileText, Landmark, Upload, X } from "lucide-react";
-import { AiSpark, Button, Select } from "@/components/ui";
+import { AiSpark, Button, Notice, Select } from "@/components/ui";
 import { errorOf } from "@/lib/actions";
 import { el } from "@/lib/i18n/el";
 import {
@@ -235,9 +235,9 @@ export function UploadChooser({
             </Select>
           )}
           {kind === "aade" && afmMissing && (
-            <p className="border-l-2 border-warning pl-3 text-body text-warning">
+            <Notice tone="warning">
               Ορίστε πρώτα το πραγματικό ΑΦΜ της επιχείρησης στις Ρυθμίσεις — χρειάζεται για την κατεύθυνση κάθε κίνησης.
-            </p>
+            </Notice>
           )}
 
           <Button type="button" onClick={submit} disabled={pending} className="w-full py-3 text-body">
@@ -254,9 +254,9 @@ export function UploadChooser({
       )}
 
       {error && (
-        <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
+        <Notice tone="negative" role="alert">
           {error}
-        </p>
+        </Notice>
       )}
     </div>
   );

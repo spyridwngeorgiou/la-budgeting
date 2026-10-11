@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate, formatMoney } from "@/lib/format";
-import { Badge, Button, Input, PageHeader, Stat, cn } from "@/components/ui";
+import { Badge, Button, Input, Notice, PageHeader, Stat, cn } from "@/components/ui";
 import { markInvoiceReceived } from "./actions";
 import { currentYear, monthKeyOf, monthLabel } from "@/lib/dates";
 import { el } from "@/lib/i18n/el";
@@ -85,7 +85,7 @@ const CHECKS = [
         {r.risk_kind === "no_invoice" && (
           <ArgsActionForm action={markInvoiceReceived} args={[r.transaction_id]} className="flex items-center gap-1">
             <Input name="invoice_number" placeholder="Αρ. παραστατικού" className="w-40" />
-            <Button type="submit" variant="secondary" size="sm" className="max-md:min-h-11">
+            <Button type="submit" variant="secondary" size="sm">
               Ήρθε
             </Button>
           </ArgsActionForm>
@@ -314,7 +314,7 @@ const CHECKS = [
         </Link>
         <Badge tone="amber">{r.kind === "loan" ? "δάνειο" : "μίσθωση"}</Badge>
         <ArgsActionForm action={syncStaleSchedule} args={[r.kind ?? "loan", r.source_id ?? ""]}>
-          <Button type="submit" variant="secondary" size="sm" className="max-md:min-h-11">
+          <Button type="submit" variant="secondary" size="sm">
             Συγχρονισμός
           </Button>
         </ArgsActionForm>
@@ -451,7 +451,7 @@ export default async function QualityPage() {
       />
 
       {exposure.gross > 0 && (
-        <section className="flex flex-col gap-4 border-l-2 border-warning py-1 pl-4">
+        <Notice tone="warning" as="section" className="flex flex-col gap-4">
           <h2 className="text-body text-ink">Εκτιμώμενη φορολογική απώλεια από δαπάνες χωρίς παραστατικό</h2>
           <div className="flex flex-wrap gap-x-10 gap-y-4">
             <Stat label="Δαπάνες" value={formatMoney(exposure.gross)} />
@@ -461,7 +461,7 @@ export default async function QualityPage() {
           <p className="text-small text-muted">
             Εκτίμηση με το όριο και τον συντελεστή των Ρυθμίσεων — επιβεβαιώστε με τον λογιστή.
           </p>
-        </section>
+        </Notice>
       )}
 
       <div className="flex flex-col border-t border-hairline">

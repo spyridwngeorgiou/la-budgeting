@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useTransition } from "react";
-import { Button, Input, Select, Label, Field, Badge, Modal } from "@/components/ui";
+import { Button, Input, Select, Label, Field, Badge, Modal, Notice } from "@/components/ui";
 import { DuplicateWarning } from "@/components/DuplicateWarning";
 import { el } from "@/lib/i18n/el";
 import { deriveFromNet, cashOnly } from "@/lib/finance/money";
@@ -360,9 +360,9 @@ export function TransactionFormModal({
         </Field>
 
         {error && (
-          <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
+          <Notice tone="negative" role="alert">
             {error}
-          </p>
+          </Notice>
         )}
 
         {duplicates.length > 0 && (

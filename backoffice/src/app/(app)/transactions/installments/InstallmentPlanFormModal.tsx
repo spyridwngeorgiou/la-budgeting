@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { formatPercent } from "@/lib/format";
-import { Button, Input, Select, Label, Field, Modal } from "@/components/ui";
+import { Button, Input, Select, Label, Field, Modal, Notice } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { el } from "@/lib/i18n/el";
 import { VAT_RATES } from "@/lib/domain/enums";
@@ -28,7 +28,7 @@ export function InstallmentPlanFormModal({ action, contacts, projects, categorie
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} className="max-md:min-h-11">
+      <Button onClick={() => setOpen(true)}>
         + Νέο Σχέδιο Δόσεων
       </Button>
       {open && (
@@ -174,9 +174,9 @@ export function InstallmentPlanFormModal({ action, contacts, projects, categorie
             </Field>
 
             {error && (
-              <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
+              <Notice tone="negative" role="alert">
                 {error}
-              </p>
+              </Notice>
             )}
 
             <div className="mt-2 flex justify-end gap-2">

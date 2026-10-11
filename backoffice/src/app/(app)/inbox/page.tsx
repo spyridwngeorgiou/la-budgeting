@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/supabase/access";
 import { getCurrentOrgId } from "@/lib/supabase/org";
@@ -7,8 +6,7 @@ import { formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { toChangeCard } from "@/lib/ai/changeCards";
 import { loadInboxCounts } from "@/lib/data/inboxCount";
-import { AiSpark, Badge, ButtonLink, PageHeader } from "@/components/ui";
-import { specRow, specTable, specTd, specTh } from "@/components/specTable";
+import { AiSpark, ButtonLink, LINK_CLASS, PageHeader, SpecTable, StatusDot, SUB_CLASS, Td, Th, Tr } from "@/components/ui";
 import { ChangeCardView } from "../assistant/ChangeCardView";
 import { CHANGE_COLUMNS } from "../assistant/PendingChanges";
 import { CommitBar } from "./[batchId]/CommitBar";
@@ -77,9 +75,8 @@ export default async function InboxPage() {
         title={el.nav.inbox}
         meta="Ό,τι περιμένει εσάς: κινήσεις προς έλεγχο, προτάσεις του AI για έγκριση και οι πρόσφατες καταχωρίσεις, με δυνατότητα αναίρεσης."
         actions={
-          <ButtonLink href="/inbox/new" variant="primary" className="gap-1.5">
-            <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
-            {el.nav.capture}
+          <ButtonLink href="/inbox/new" variant="primary">
+            {`+ ${el.nav.capture}`}
           </ButtonLink>
         }
       />
@@ -94,36 +91,34 @@ export default async function InboxPage() {
             </Link>
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className={specTable}>
-              <thead>
-                <tr>
-                  <th scope="col" className={specTh}>Αρχείο</th>
-                  <th scope="col" className={`${specTh} hidden sm:table-cell`}>Λογαριασμός</th>
-                  <th scope="col" className={`${specTh} text-right`}>Γραμμές</th>
-                  <th scope="col" className={`${specTh} hidden text-right md:table-cell`}>Ημ/νία</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stagedBatches.map((b) => {
-                  const account = Array.isArray(b.accounts) ? b.accounts[0] : b.accounts;
-                  return (
-                    <tr key={b.id} className={specRow}>
-                      <td className={`${specTd} text-ink`}>
-                        <Link href={`/inbox/${b.id}`} className="underline-offset-4 hover:underline">
-                          {b.filename ?? el.ingest.source[b.source]}
-                        </Link>
-                        <div className="text-small text-muted">{el.ingest.source[b.source]}</div>
-                      </td>
-                      <td className={`${specTd} hidden sm:table-cell`}>{account?.name ?? "—"}</td>
-                      <td className={`${specTd} num text-right`}>{b.row_count}</td>
-                      <td className={`${specTd} num hidden text-right md:table-cell`}>{formatDate(b.created_at)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <SpecTable label="Προς έλεγχο">
+            <thead>
+              <tr>
+                <Th>Αρχείο</Th>
+                <Th className="hidden sm:table-cell">Λογαριασμός</Th>
+                <Th numeric>Γραμμές</Th>
+                <Th numeric className="hidden md:table-cell">Ημ/νία</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {stagedBatches.map((b) => {
+                const account = Array.isArray(b.accounts) ? b.accounts[0] : b.accounts;
+                return (
+                  <Tr key={b.id}>
+                    <Td strong>
+                      <Link href={`/inbox/${b.id}`} className={LINK_CLASS}>
+                        {b.filename ?? el.ingest.source[b.source]}
+                      </Link>
+                      <span className={SUB_CLASS}>{el.ingest.source[b.source]}</span>
+                    </Td>
+                    <Td className="hidden sm:table-cell">{account?.name ?? "—"}</Td>
+                    <Td numeric>{b.row_count}</Td>
+                    <Td numeric className="hidden md:table-cell">{formatDate(b.created_at)}</Td>
+                  </Tr>
+                );
+              })}
+            </tbody>
+          </SpecTable>
         )}
       </section>
 
@@ -189,7 +184,7 @@ export default async function InboxPage() {
                     <span className="flex flex-wrap items-center gap-1.5 text-small text-muted">
                       {el.ingest.source[b.source]} · <span className="num">{b.row_count}</span> γραμμές
                       {when ? ` · ${formatDate(when)}` : ""}
-                      <Badge tone={STATUS_TONE[b.status]}>{el.ingest.batchStatus[b.status]}</Badge>
+                      <StatusDot tone={STATUS_TONE[b.status]} label={el.ingest.batchStatus[b.status]} />
                     </span>
                   </div>
                   {canReview && b.status === "committed" && !legacy && (

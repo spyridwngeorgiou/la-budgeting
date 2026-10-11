@@ -18,7 +18,7 @@ export default async function ContactsPage() {
         meta="Προμηθευτές, πελάτες και συνεργάτες, με σύνολο εσόδων/εξόδων και υπόλοιπο ανά επαφή."
         actions={
           <>
-            <a href="/api/contacts/export" className={buttonClass("secondary", "md", "max-md:min-h-11")}>
+            <a href="/api/contacts/export" className={buttonClass("secondary", "md")}>
               Εξαγωγή CSV
             </a>
             <ContactFormModal action={createContact} />

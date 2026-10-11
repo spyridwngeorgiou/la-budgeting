@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Select, Label, Field, Modal } from "@/components/ui";
+import { Button, Input, Select, Label, Field, Modal, Notice } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { el } from "@/lib/i18n/el";
 import { ACCOUNT_KIND, OWNER_SCOPE } from "@/lib/domain/enums";
@@ -14,7 +14,7 @@ export function AccountFormModal({ action }: { action: (formData: FormData) => P
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} className="max-md:min-h-11">
+      <Button onClick={() => setOpen(true)}>
         + Νέος Λογαριασμός
       </Button>
       {open && (
@@ -74,9 +74,9 @@ export function AccountFormModal({ action }: { action: (formData: FormData) => P
               />
             </Field>
             {error && (
-              <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
+              <Notice tone="negative" role="alert">
                 {error}
-              </p>
+              </Notice>
             )}
             <div className="mt-2 flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>

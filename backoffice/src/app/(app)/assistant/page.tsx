@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { PageHeader } from "@/components/ui";
+import { PageHeader, buttonClass } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { getAccessContext } from "@/lib/supabase/access";
 import { createClient } from "@/lib/supabase/server";
@@ -44,15 +44,13 @@ export default async function AssistantPage({
         }
         actions={
           canReview && (
-          <Link
-            href={showChanges ? "/assistant" : "/assistant?panel=changes"}
-            aria-expanded={showChanges}
-            className={`inline-flex min-h-10 items-center border px-3 py-1.5 text-body whitespace-nowrap ${
-              showChanges ? "border-ai bg-ai-tint text-ai" : "border-chip-border text-muted hover:border-navy hover:text-ink"
-            }`}
-          >
-            {el.nav.pending} ({pending})
-          </Link>
+            <Link
+              href={showChanges ? "/assistant" : "/assistant?panel=changes"}
+              aria-expanded={showChanges}
+              className={buttonClass(showChanges ? "ai" : "secondary", "md", showChanges ? "bg-ai-tint" : "")}
+            >
+              {el.nav.pending} ({pending})
+            </Link>
           )
         }
       />

@@ -1,4 +1,4 @@
-import { Button, Term } from "@/components/ui";
+import { Button, SpecTable, TD_CLASS, Td, Term, Th, Tr } from "@/components/ui";
 import type { MonthCell } from "@/lib/finance/revenuePlan";
 import { saveYearAssumptions } from "../actions";
 
@@ -11,8 +11,9 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 const compactEur = new Intl.NumberFormat("el-GR", { maximumFractionDigits: 0 });
 
 // The P15 spec table with the inputs in its cells; the 12 months ARE the
-// columns, so it scrolls inside its frame on a phone.
-const TH = "eyebrow border-b border-rule p-1.5 font-medium text-muted";
+// columns, so it scrolls inside its frame on a phone. Cells keep the grid's
+// tight padding (p-1.5 / p-1, important over the spec padding) so the
+// inputs fit the fixed month columns.
 const INPUT =
   "num min-h-9 w-full border border-field-border bg-field px-1 py-1 text-center text-ink focus:border-navy focus:outline-none";
 
@@ -35,8 +36,7 @@ export function YearTable({
 
   return (
     <form action={saveYearAssumptions.bind(null, planId, roomTypeId, yearNumber)} className="flex flex-col gap-3">
-      <div className="overflow-x-auto">
-        <table className="w-full table-fixed border-collapse text-small">
+      <SpecTable label={`Έτος ${yearNumber} (${calendarYear})`} tableClassName="table-fixed text-small">
           <colgroup>
             <col className="w-28" />
             {MONTHS.map((m) => (
@@ -46,26 +46,24 @@ export function YearTable({
           </colgroup>
           <thead>
             <tr>
-              <th scope="col" className={`${TH} text-left`}>
+              <Th className="p-1.5!">
                 Έτος {yearNumber} <span className="num font-normal">({calendarYear})</span>
-              </th>
+              </Th>
               {MONTH_LABELS.map((m) => (
-                <th key={m} scope="col" className={`${TH} text-center`}>
+                <Th key={m} className="p-1.5! text-center">
                   {m}
-                </th>
+                </Th>
               ))}
-              <th scope="col" className={`${TH} text-center`}>
-                Σύνολο
-              </th>
+              <Th className="p-1.5! text-center">Σύνολο</Th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <th scope="row" className="border-b border-hairline p-1.5 text-left font-normal text-text">
+            <Tr>
+              <th scope="row" className={`${TD_CLASS} p-1.5! text-left font-normal`}>
                 Πληρότητα %
               </th>
               {MONTHS.map((month) => (
-                <td key={month} className="border-b border-hairline p-1">
+                <Td key={month} className="p-1!">
                   <input
                     type="number"
                     name={`occ_${month}`}
@@ -76,16 +74,16 @@ export function YearTable({
                     defaultValue={Math.round((byMonth.get(month)?.occupancyPct ?? 0) * 1000) / 10}
                     className={INPUT}
                   />
-                </td>
+                </Td>
               ))}
-              <td className="border-b border-hairline" />
-            </tr>
-            <tr>
-              <th scope="row" className="border-b border-hairline p-1.5 text-left font-normal text-text">
+              <Td className="p-1.5!" />
+            </Tr>
+            <Tr>
+              <th scope="row" className={`${TD_CLASS} p-1.5! text-left font-normal`}>
                 <Term title="ADR (Average Daily Rate) — μέση τιμή δωματίου ανά διανυκτέρευση.">ADR</Term> (€)
               </th>
               {MONTHS.map((month) => (
-                <td key={month} className="border-b border-hairline p-1">
+                <Td key={month} className="p-1!">
                   <input
                     type="number"
                     name={`adr_${month}`}
@@ -95,37 +93,36 @@ export function YearTable({
                     defaultValue={byMonth.get(month)?.adr ?? 0}
                     className={INPUT}
                   />
-                </td>
+                </Td>
               ))}
-              <td className="border-b border-hairline" />
-            </tr>
-            <tr className="text-muted">
-              <th scope="row" className="border-b border-hairline p-1.5 text-left font-normal">
+              <Td className="p-1.5!" />
+            </Tr>
+            <Tr>
+              <th scope="row" className={`${TD_CLASS} p-1.5! text-left font-normal text-muted`}>
                 Διανυκτ.
               </th>
               {MONTHS.map((month) => (
-                <td key={month} className="num border-b border-hairline p-1.5 text-center">
+                <Td key={month} className="num p-1.5! text-center text-muted">
                   {byMonth.get(month)?.nightsSold ?? 0}
-                </td>
+                </Td>
               ))}
-              <td className="num border-b border-hairline p-1.5 text-center font-medium text-text">{annualNights}</td>
-            </tr>
-            <tr className="text-ink">
-              <th scope="row" className="border-t border-ink p-1.5 text-left font-medium">
+              <Td className="num p-1.5! text-center font-medium">{annualNights}</Td>
+            </Tr>
+            <Tr total>
+              <th scope="row" className={`${TD_CLASS} p-1.5! text-left font-medium`}>
                 Έσοδα
               </th>
               {MONTHS.map((month) => (
-                <td key={month} className="num border-t border-ink p-1.5 text-center">
+                <Td key={month} className="num p-1.5! text-center font-normal!">
                   {compactEur.format(byMonth.get(month)?.revenue ?? 0)}€
-                </td>
+                </Td>
               ))}
-              <td className="num border-t border-ink p-1.5 text-center font-medium">{compactEur.format(annualRevenue)}€</td>
-            </tr>
+              <Td className="num p-1.5! text-center">{compactEur.format(annualRevenue)}€</Td>
+            </Tr>
           </tbody>
-        </table>
-      </div>
+      </SpecTable>
       <div className="flex justify-end">
-        <Button type="submit" variant="secondary" className="max-md:min-h-11">
+        <Button type="submit" variant="secondary">
           Αποθήκευση Έτους {yearNumber}
         </Button>
       </div>

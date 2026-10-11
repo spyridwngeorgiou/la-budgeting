@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { aiEnabled } from "@/lib/ai/client";
 import { el } from "@/lib/i18n/el";
-import { AiSpark, ButtonLink, PageHeader } from "@/components/ui";
+import { AiSpark, ButtonLink, Notice, PageHeader } from "@/components/ui";
 import { UploadChooser } from "../UploadChooser";
 import { NlEntryForm } from "../../documents/new/NlEntryForm";
 
@@ -55,9 +55,9 @@ export default async function NewCapturePage() {
             <NlEntryForm rows={5} />
           </>
         ) : (
-          <p className="border-l-2 border-warning py-1 pl-4 text-body text-warning">
+          <Notice tone="warning">
             Ο βοηθός AI δεν είναι ακόμα ενεργοποιημένος. Χρειάζεται ANTHROPIC_API_KEY και AI_ENABLED=true.
-          </p>
+          </Notice>
         )}
       </section>
 

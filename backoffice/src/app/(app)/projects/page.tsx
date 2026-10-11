@@ -34,10 +34,10 @@ export default async function ProjectsPage() {
         }
         actions={
           <>
-            <ButtonLink href="/projects/revenue-plans" className="max-md:min-h-11">
+            <ButtonLink href="/projects/revenue-plans">
               {el.nav.revenuePlans}
             </ButtonLink>
-            <ButtonLink href="/collab" className="max-md:min-h-11">
+            <ButtonLink href="/collab">
               {el.collab.navLabel}
             </ButtonLink>
             <ProjectFormModal action={createProject} />

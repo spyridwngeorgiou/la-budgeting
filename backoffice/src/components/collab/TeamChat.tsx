@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { el } from "@/lib/i18n/el";
 import { fillText } from "@/lib/collab/text";
 import { assistantQuestion, type MentionPerson } from "@/lib/collab/mentions";
-import { AiSpark, Button, MenuItem, Textarea, cn } from "@/components/ui";
+import { AiSpark, Button, MenuItem, Notice, Textarea, cn } from "@/components/ui";
 import { MentionText, MentionTextarea } from "./MentionTextarea";
 import { COLLAB_FILE_TYPES, isAllowedCollabFile, isImageType } from "./boardFiles";
 import type { TeamChatState, TeamMessage } from "./useTeamChat";
@@ -200,7 +200,7 @@ export function TeamChat({
           </ul>
         )}
         {progress && (
-          <p className="border-l-2 border-navy pl-3 text-small text-muted">{fillText(el.collab.fileLibrary.uploading, progress)}</p>
+          <Notice tone="info" size="small">{fillText(el.collab.fileLibrary.uploading, progress)}</Notice>
         )}
         <form
           className="flex items-end gap-2"
@@ -254,7 +254,7 @@ export function TeamChat({
             type="button"
             variant="ai"
             size="sm"
-            className="self-start max-md:min-h-11"
+            className="self-start"
             disabled={!draft.trim()}
             onClick={() => {
               const q = assistantQuestion(draft) ?? draft.trim();
@@ -340,10 +340,10 @@ function MessageRow({
                 autoFocus
               />
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="secondary" size="sm" className="max-md:min-h-11" onClick={onCancelEdit}>
+                <Button type="button" variant="secondary" size="sm" onClick={onCancelEdit}>
                   {el.common.cancel}
                 </Button>
-                <Button type="button" size="sm" className="max-md:min-h-11" onClick={onSaveEdit}>
+                <Button type="button" size="sm" onClick={onSaveEdit}>
                   {el.common.save}
                 </Button>
               </div>
