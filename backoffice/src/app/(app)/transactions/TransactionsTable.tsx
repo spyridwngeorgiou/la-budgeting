@@ -81,6 +81,7 @@ export function TransactionsTable({
   accounts,
   filters,
   exportHref,
+  startCreating = false,
 }: {
   transactions: TxRow[];
   contacts: Option[];
@@ -89,11 +90,12 @@ export function TransactionsTable({
   accounts: Option[];
   filters?: React.ReactNode;
   exportHref?: string;
+  startCreating?: boolean;
 }) {
   // Exactly one modal instance for the whole table, whichever row (or
   // "create") is active -- not one per row. `key` forces a clean remount
   // when switching targets, so stale form state never leaks between rows.
-  const [target, setTarget] = useState<"create" | TxRow | null>(null);
+  const [target, setTarget] = useState<"create" | TxRow | null>(startCreating ? "create" : null);
   const [paying, setPaying] = useState<TxRow | null>(null);
   const [search, setSearch] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);

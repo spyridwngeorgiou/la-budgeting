@@ -1,4 +1,4 @@
 {
-  "$comment": "Size budget checked by budgets.test.ts. appPagesMax may only go DOWN. It is 32 since the v2 redesign was removed: its /money and /projects/[id]/[tab] pages went, the root redirect moved back to src/app/page.tsx (outside (app)), and the classic /projects/[id]/compare came back as its own page.",
-  "appPagesMax": 32
+  "$comment": "Size budget checked by budgets.test.ts. appPagesMax may only go DOWN. It is 32 since the v2 redesign was removed: its /money and /projects/[id]/[tab] pages went, the root redirect moved back to src/app/page.tsx (outside (app)), and the classic /projects/[id]/compare came back as its own page. Raised by 1 to 33 for /inbox/new («＋ Καταχώριση»: photo, file, text/voice and manual entry on one screen, owner-approved plan section 4).",
+  "appPagesMax": 33
 }

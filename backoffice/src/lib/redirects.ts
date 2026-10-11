@@ -41,4 +41,9 @@ export const LEGACY_REDIRECTS: {
   { source: "/projects/:id/scenarios", destination: "/projects/:id" },
   { source: "/projects/:id/plan", destination: "/projects/:id" },
   { source: "/projects/:id/collab", destination: "/projects/:id" },
+  // «＋ Καταχώριση»: the old capture screens (photo / text, AADE upload)
+  // are one page now. /aade/[batchId] and /documents/[id]/review stay for
+  // old links (they forward to their inbox batch).
+  { source: "/documents/new", destination: "/inbox/new" },
+  { source: "/aade", destination: "/inbox/new" },
 ];

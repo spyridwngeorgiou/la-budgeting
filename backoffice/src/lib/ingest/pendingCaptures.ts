@@ -41,6 +41,6 @@ export async function loadPendingCaptures(
   const [first, ...rest] = (data ?? []).map((d) => d.id);
   return {
     count: count ?? 0,
-    href: first ? `/documents/${first}/review${rest.length > 0 ? `?queue=${rest.join(",")}` : ""}` : "/documents/new",
+    href: first ? `/documents/${first}/review${rest.length > 0 ? `?queue=${rest.join(",")}` : ""}` : "/inbox/new",
   };
 }
