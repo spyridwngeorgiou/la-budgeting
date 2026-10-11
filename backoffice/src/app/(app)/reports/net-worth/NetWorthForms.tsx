@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Field, Input, Label, Select } from "@/components/ui";
-import { FormModal } from "@/components/Modal";
+import { Button, Field, FormDrawer, Input, Label, Select } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { ASSET_STATE, LIABILITY_KIND, LIABILITY_STATE } from "@/lib/domain/enums";
 import type { ActionResult } from "@/lib/actions";
@@ -23,7 +22,7 @@ function OwnerSelect({ value }: { value?: string }) {
 
 function Trigger({ edit, label, onClick }: { edit: boolean; label: string; onClick: () => void }) {
   return (
-    <Button variant="secondary" className="!px-2 !py-1 text-xs" onClick={onClick}>
+    <Button variant="secondary" size="sm" className="max-md:min-h-11" onClick={onClick}>
       {edit ? el.common.edit : `+ ${label}`}
     </Button>
   );
@@ -47,12 +46,12 @@ export function AssetFormModal({ action, initial }: { action: Action; initial?: 
     <>
       <Trigger edit={!!initial} label={t.addAsset} onClick={() => setOpen(true)} />
       {open && (
-        <FormModal onClose={() => setOpen(false)} title={initial ? t.editAsset : t.addAsset} action={action}>
+        <FormDrawer onClose={() => setOpen(false)} title={initial ? t.editAsset : t.addAsset} action={action}>
           <Field>
             <Label>{t.name}</Label>
             <Input name="name" defaultValue={initial?.name} required />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field>
               <Label>{t.category}</Label>
               <Input name="category" defaultValue={initial?.category ?? ""} placeholder={t.categoryHint} />
@@ -62,7 +61,7 @@ export function AssetFormModal({ action, initial }: { action: Action; initial?: 
               <Input type="date" name="valuation_date" defaultValue={initial?.valuation_date ?? ""} />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field>
               <Label>{t.value} (€)</Label>
               <Input type="number" step="0.01" min="0" name="estimated_value" defaultValue={initial?.estimated_value} required />
@@ -79,7 +78,7 @@ export function AssetFormModal({ action, initial }: { action: Action; initial?: 
               />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <OwnerSelect value={initial?.owner_scope} />
             <Field>
               <Label>{t.assetState}</Label>
@@ -96,7 +95,7 @@ export function AssetFormModal({ action, initial }: { action: Action; initial?: 
             <Label>{t.notes}</Label>
             <Input name="notes" defaultValue={initial?.notes ?? ""} />
           </Field>
-        </FormModal>
+        </FormDrawer>
       )}
     </>
   );
@@ -120,8 +119,8 @@ export function LiabilityFormModal({ action, initial }: { action: Action; initia
     <>
       <Trigger edit={!!initial} label={t.addLiability} onClick={() => setOpen(true)} />
       {open && (
-        <FormModal onClose={() => setOpen(false)} title={initial ? t.editLiability : t.addLiability} action={action}>
-          <div className="grid grid-cols-2 gap-3">
+        <FormDrawer onClose={() => setOpen(false)} title={initial ? t.editLiability : t.addLiability} action={action}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field>
               <Label>{t.lender}</Label>
               <Input name="lender" defaultValue={initial?.lender} required />
@@ -137,7 +136,7 @@ export function LiabilityFormModal({ action, initial }: { action: Action; initia
               </Select>
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field>
               <Label>{t.principal} (€)</Label>
               <Input type="number" step="0.01" min="0" name="principal" defaultValue={initial?.principal} required />
@@ -154,7 +153,7 @@ export function LiabilityFormModal({ action, initial }: { action: Action; initia
               />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field>
               <Label>{t.maturity}</Label>
               <Input type="date" name="maturity_date" defaultValue={initial?.maturity_date ?? ""} />
@@ -175,7 +174,7 @@ export function LiabilityFormModal({ action, initial }: { action: Action; initia
             <Label>{t.terms}</Label>
             <Input name="terms" defaultValue={initial?.terms ?? ""} />
           </Field>
-        </FormModal>
+        </FormDrawer>
       )}
     </>
   );

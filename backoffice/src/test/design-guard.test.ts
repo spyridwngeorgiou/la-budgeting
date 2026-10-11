@@ -17,7 +17,8 @@ const SRC = path.resolve(import.meta.dirname, "..");
 // Phase 6 added the planner and the collaboration pieces (the Excalidraw
 // scene's own colours live in .ts files, which are not scanned).
 // The classic shell's own pages followed (look-and-feel pass): dashboard,
-// inbox (with its aade / documents flows), settings, assistant, login.
+// inbox (with its aade / documents flows), settings, assistant, login,
+// then the report tabs and the projects area.
 const GUARDED = [
   "components/ui",
   "components/planner",
@@ -29,6 +30,7 @@ const GUARDED = [
   "app/(app)/settings",
   "app/(app)/assistant",
   "app/(auth)",
+  "app/(app)/reports",
 ];
 
 const RULES: { name: string; re: RegExp }[] = [

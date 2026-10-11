@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate, formatMoney } from "@/lib/format";
-import { Badge, Button, Input } from "@/components/ui";
+import { Badge, Button, Input, PageHeader, Stat, cn } from "@/components/ui";
 import { markInvoiceReceived } from "./actions";
 import { currentYear } from "@/lib/dates";
 import { el } from "@/lib/i18n/el";
@@ -23,12 +23,12 @@ const CHECKS = [
       drift: number | null; days_since_count: number | null; issue: string | null;
     }) => (
       <Row key={r.account_id}>
-        <Link href="/accounts" className="flex-1 hover:underline">
+        <Link href="/accounts" className="min-w-0 flex-1 text-ink underline-offset-4 hover:underline">
           {r.account_name}
         </Link>
         {r.issue === "drift" && (
           <>
-            <span className="text-xs text-ink-muted">μέτρηση {formatDate(r.counted_on)}</span>
+            <span className="text-xs text-muted">μέτρηση {formatDate(r.counted_on)}</span>
             <Badge tone={Math.abs(Number(r.drift)) >= 50 ? "red" : "amber"}>
               {Number(r.drift) > 0 ? "+" : ""}
               {formatMoney(r.drift)} {Number(r.drift) > 0 ? "περισσότερα από την εφαρμογή" : "λιγότερα από την εφαρμογή"}
@@ -49,11 +49,11 @@ const CHECKS = [
       last_tx_date: string | null; transaction_ids: string[] | null;
     }) => (
       <Row key={r.counterparty_name}>
-        <Link href={`/transactions?ids=${(r.transaction_ids ?? []).join(",")}`} className="flex-1 hover:underline">
+        <Link href={`/transactions?ids=${(r.transaction_ids ?? []).join(",")}`} className="min-w-0 flex-1 text-ink underline-offset-4 hover:underline">
           {r.counterparty_name}
         </Link>
-        <span className="text-xs text-ink-muted">τελευταία {formatDate(r.last_tx_date)}</span>
-        <span className="font-mono">{formatMoney(r.gross_amount)}</span>
+        <span className="text-xs text-muted">τελευταία {formatDate(r.last_tx_date)}</span>
+        <span className="num">{formatMoney(r.gross_amount)}</span>
         <Badge tone="amber">{r.n}×</Badge>
       </Row>
     ),
@@ -69,23 +69,23 @@ const CHECKS = [
     }) => (
       <Row key={r.transaction_id}>
         <span>{formatDate(r.paid_on)}</span>
-        <span className="flex-1">
+        <span className="min-w-0 flex-1 text-ink">
           {r.contact_name ?? r.description ?? "—"}
-          {r.project_name && <span className="text-ink-faint"> · {r.project_name}</span>}
+          {r.project_name && <span className="text-muted"> · {r.project_name}</span>}
         </span>
-        <span className="font-mono">{formatMoney(r.gross_amount)}</span>
+        <span className="num">{formatMoney(r.gross_amount)}</span>
         {r.risk_kind === "no_invoice" ? (
           <Badge tone="amber">χωρίς παραστατικό</Badge>
         ) : (
           <Badge tone="red">μετρητά &gt; όριο</Badge>
         )}
-        <span className="text-xs text-ink-muted">
+        <span className="text-xs text-muted">
           χάνονται ~{formatMoney(Number(r.lost_deduction_est ?? 0) + Number(r.lost_input_vat_est ?? 0))}
         </span>
         {r.risk_kind === "no_invoice" && (
           <form action={markInvoiceReceived.bind(null, r.transaction_id)} className="flex items-center gap-1">
-            <Input name="invoice_number" placeholder="Αρ. παραστατικού" className="!h-7 w-32 !py-0 text-xs" />
-            <Button type="submit" variant="secondary" className="!px-2 !py-1 text-xs">
+            <Input name="invoice_number" placeholder="Αρ. παραστατικού" className="w-40" />
+            <Button type="submit" variant="secondary" size="sm" className="max-md:min-h-11">
               Ήρθε
             </Button>
           </form>
@@ -104,8 +104,8 @@ const CHECKS = [
     }) => (
       <Row key={r.transaction_id}>
         <span>{formatDate(r.tx_date)}</span>
-        <span className="flex-1">{r.contact_name ?? r.description ?? "—"}</span>
-        <span className="font-mono">{formatMoney(r.gross_amount)}</span>
+        <span className="min-w-0 flex-1 text-ink">{r.contact_name ?? r.description ?? "—"}</span>
+        <span className="num">{formatMoney(r.gross_amount)}</span>
         <span className="flex gap-1">
           {r.missing_project && <Badge tone="amber">χωρίς έργο</Badge>}
           {r.missing_account && <Badge tone="amber">χωρίς λογαριασμό</Badge>}
@@ -124,9 +124,9 @@ const CHECKS = [
     }) => (
       <Row key={r.transaction_id}>
         <span>{formatDate(r.tx_date)}</span>
-        <span className="flex-1">{r.contact_name ?? r.description ?? "—"}</span>
-        <span className="font-mono">
-          {formatMoney(r.vat_amount)} <span className="text-ink-faint">αντί</span>{" "}
+        <span className="min-w-0 flex-1 text-ink">{r.contact_name ?? r.description ?? "—"}</span>
+        <span className="num">
+          {formatMoney(r.vat_amount)} <span className="text-muted">αντί</span>{" "}
           {formatMoney(r.expected_vat)}
         </span>
       </Row>
@@ -142,9 +142,9 @@ const CHECKS = [
     }) => (
       <Row key={r.transaction_id}>
         <span>{formatDate(r.tx_date)}</span>
-        <span className="flex-1">{r.contact_name ?? r.description ?? "—"}</span>
-        <span className="font-mono">
-          {formatMoney(r.gross_amount)} <span className="text-ink-faint">αντί</span>{" "}
+        <span className="min-w-0 flex-1 text-ink">{r.contact_name ?? r.description ?? "—"}</span>
+        <span className="num">
+          {formatMoney(r.gross_amount)} <span className="text-muted">αντί</span>{" "}
           {formatMoney(r.expected_gross)}
         </span>
       </Row>
@@ -159,9 +159,9 @@ const CHECKS = [
       contact_names: (string | null)[] | null; amounts: (number | null)[] | null; n: number | null;
     }) => (
       <Row key={r.fingerprint}>
-        <span className="flex-1">{(r.contact_names ?? []).filter(Boolean).join(", ") || "—"}</span>
+        <span className="min-w-0 flex-1 text-ink">{(r.contact_names ?? []).filter(Boolean).join(", ") || "—"}</span>
         <span>{(r.tx_dates ?? []).map((d) => formatDate(d)).join(", ")}</span>
-        <span className="font-mono">{formatMoney((r.amounts ?? [])[0])}</span>
+        <span className="num">{formatMoney((r.amounts ?? [])[0])}</span>
         <Badge tone="amber">{r.n}× ίδια</Badge>
       </Row>
     ),
@@ -175,8 +175,8 @@ const CHECKS = [
       contact_names: (string | null)[] | null; n: number | null;
     }) => (
       <Row key={r.invoice_number}>
-        <span className="font-mono">{r.invoice_number}</span>
-        <span className="flex-1">{(r.contact_names ?? []).filter(Boolean).join(", ") || "—"}</span>
+        <span className="num">{r.invoice_number}</span>
+        <span className="min-w-0 flex-1 text-ink">{(r.contact_names ?? []).filter(Boolean).join(", ") || "—"}</span>
         <span>{(r.tx_dates ?? []).map((d) => formatDate(d)).join(", ")}</span>
         <Badge tone="amber">{r.n}×</Badge>
       </Row>
@@ -192,9 +192,9 @@ const CHECKS = [
     }) => (
       <Row key={r.transaction_id}>
         <span>{formatDate(r.tx_date)}</span>
-        <span className="flex-1">{r.contact_name}</span>
-        <span className="font-mono text-xs">
-          κίνηση: {r.counterparty_afm} <span className="text-ink-faint">/</span> επαφή: {r.contact_afm}
+        <span className="min-w-0 flex-1 text-ink">{r.contact_name}</span>
+        <span className="num text-xs">
+          κίνηση: {r.counterparty_afm} <span className="text-muted">/</span> επαφή: {r.contact_afm}
         </span>
       </Row>
     ),
@@ -209,8 +209,8 @@ const CHECKS = [
     }) => (
       <Row key={r.transaction_id}>
         <span>{formatDate(r.tx_date)}</span>
-        <span className="flex-1">{r.contact_name ?? r.description ?? "—"}</span>
-        <span className="font-mono">{formatMoney(r.gross_amount)}</span>
+        <span className="min-w-0 flex-1 text-ink">{r.contact_name ?? r.description ?? "—"}</span>
+        <span className="num">{formatMoney(r.gross_amount)}</span>
       </Row>
     ),
   },
@@ -224,8 +224,8 @@ const CHECKS = [
     }) => (
       <Row key={r.transaction_id}>
         <span>{formatDate(r.tx_date)}</span>
-        <span className="flex-1">{r.contact_name ?? r.description ?? "—"}</span>
-        <span className="font-mono text-red-ink">{formatMoney(r.gross_amount)}</span>
+        <span className="min-w-0 flex-1 text-ink">{r.contact_name ?? r.description ?? "—"}</span>
+        <span className="num text-negative">{formatMoney(r.gross_amount)}</span>
       </Row>
     ),
   },
@@ -239,8 +239,8 @@ const CHECKS = [
     }) => (
       <Row key={r.transaction_id}>
         <span>{formatDate(r.tx_date)}</span>
-        <span className="flex-1">{r.contact_name ?? r.description ?? "—"}</span>
-        <span className="font-mono">{formatMoney(r.withholding_amount)}</span>
+        <span className="min-w-0 flex-1 text-ink">{r.contact_name ?? r.description ?? "—"}</span>
+        <span className="num">{formatMoney(r.withholding_amount)}</span>
       </Row>
     ),
   },
@@ -250,10 +250,10 @@ const CHECKS = [
     why: "Χωρίς ΑΦΜ, μια επαφή δεν μπορεί να ταυτοποιηθεί αυτόματα σε μελλοντική εισαγωγή AADE.",
     render: (r: { contact_id: string; name: string | null; phone: string | null }) => (
       <Row key={r.contact_id}>
-        <Link href={`/contacts/${r.contact_id}`} className="flex-1 hover:underline">
+        <Link href={`/contacts/${r.contact_id}`} className="min-w-0 flex-1 text-ink underline-offset-4 hover:underline">
           {r.name}
         </Link>
-        <span className="text-ink-faint">{r.phone ?? ""}</span>
+        <span className="text-muted">{r.phone ?? ""}</span>
       </Row>
     ),
   },
@@ -263,8 +263,8 @@ const CHECKS = [
     why: "Το ίδιο ΑΦΜ υπάρχει σε περισσότερες από μία επαφές — πιθανόν ο ίδιος προμηθευτής/πελάτης καταχωρήθηκε δύο φορές.",
     render: (r: { afm: string | null; contact_names: (string | null)[] | null; n: number | null }) => (
       <Row key={r.afm}>
-        <span className="font-mono">{r.afm}</span>
-        <span className="flex-1">{(r.contact_names ?? []).join(", ")}</span>
+        <span className="num">{r.afm}</span>
+        <span className="min-w-0 flex-1 text-ink">{(r.contact_names ?? []).join(", ")}</span>
         <Badge tone="amber">{r.n}×</Badge>
       </Row>
     ),
@@ -279,10 +279,10 @@ const CHECKS = [
     }) => (
       <Row key={r.transaction_id}>
         <span>{formatDate(r.tx_date)}</span>
-        <Link href={`/transactions?ids=${r.transaction_id}`} className="flex-1 hover:underline">
-          {r.contact_name ?? "—"} <span className="text-ink-faint">· {r.project_name ?? "—"}</span>
+        <Link href={`/transactions?ids=${r.transaction_id}`} className="min-w-0 flex-1 text-ink underline-offset-4 hover:underline">
+          {r.contact_name ?? "—"} <span className="text-muted">· {r.project_name ?? "—"}</span>
         </Link>
-        <span className="font-mono">{formatMoney(r.gross_amount)}</span>
+        <span className="num">{formatMoney(r.gross_amount)}</span>
       </Row>
     ),
   },
@@ -296,10 +296,10 @@ const CHECKS = [
     }) => (
       <Row key={r.transaction_id}>
         <span>{formatDate(r.tx_date)}</span>
-        <Link href={`/transactions?ids=${r.transaction_id}`} className="flex-1 hover:underline">
-          {r.description ?? "—"} <span className="text-ink-faint">· {r.project_name ?? "—"}</span>
+        <Link href={`/transactions?ids=${r.transaction_id}`} className="min-w-0 flex-1 text-ink underline-offset-4 hover:underline">
+          {r.description ?? "—"} <span className="text-muted">· {r.project_name ?? "—"}</span>
         </Link>
-        <span className="font-mono">{formatMoney(r.gross_amount)}</span>
+        <span className="num">{formatMoney(r.gross_amount)}</span>
       </Row>
     ),
   },
@@ -309,12 +309,12 @@ const CHECKS = [
     why: "Το δάνειο ή η μίσθωση άλλαξε (ή δεν έχει συγχρονιστεί ποτέ) μετά την τελευταία εγγραφή των δόσεων στις κινήσεις, οπότε η πρόβλεψη ταμείου δεν δείχνει τις σωστές πληρωμές. Ο συγχρονισμός ξαναγράφει μόνο τις απλήρωτες δόσεις.",
     render: (r: { kind: string | null; source_id: string | null; project_id: string | null; label: string | null }) => (
       <Row key={`${r.kind}:${r.source_id}`}>
-        <Link href={r.project_id ? `/projects/${r.project_id}` : "/projects"} className="flex-1 hover:underline">
+        <Link href={r.project_id ? `/projects/${r.project_id}` : "/projects"} className="min-w-0 flex-1 text-ink underline-offset-4 hover:underline">
           {r.label ?? "—"}
         </Link>
         <Badge tone="amber">{r.kind === "loan" ? "δάνειο" : "μίσθωση"}</Badge>
         <ActionForm action={syncStaleSchedule.bind(null, r.kind ?? "loan", r.source_id ?? "")}>
-          <Button type="submit" variant="secondary" className="!px-2 !py-1 text-xs">
+          <Button type="submit" variant="secondary" size="sm" className="max-md:min-h-11">
             Συγχρονισμός
           </Button>
         </ActionForm>
@@ -331,11 +331,14 @@ const CHECKS = [
     }) => (
       <Row key={`${r.source}:${r.ref_id}:${r.due_date}`}>
         <span>{formatDate(r.due_date)}</span>
-        <span className="flex-1">
+        <span className="min-w-0 flex-1 text-ink">
           {r.label || "—"}{" "}
-          <span className="text-ink-faint">· {el.reports.sources[r.source as keyof typeof el.reports.sources] ?? r.source}</span>
+          <span className="text-muted">· {el.reports.sources[r.source as keyof typeof el.reports.sources] ?? r.source}</span>
         </span>
-        <span className={`font-mono ${r.direction === "income" ? "text-sage-ink" : ""}`}>{formatMoney(r.amount)}</span>
+        <span className="num">
+          {r.direction === "income" ? "+" : "−"}
+          {formatMoney(Math.abs(Number(r.amount ?? 0)))}
+</span>
       </Row>
     ),
   },
@@ -345,7 +348,7 @@ const CHECKS = [
     why: "Χωρίς προϋπολογισμό, το έργο δεν έχει σημείο αναφοράς για «πόσο απομένει» ή «πόσο υπερβήκαμε».",
     render: (r: { project_id: string; display_name: string | null }) => (
       <Row key={r.project_id}>
-        <Link href={`/projects/${r.project_id}`} className="flex-1 hover:underline">
+        <Link href={`/projects/${r.project_id}`} className="min-w-0 flex-1 text-ink underline-offset-4 hover:underline">
           {r.display_name}
         </Link>
       </Row>
@@ -387,65 +390,75 @@ export default async function QualityPage() {
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold">Έλεγχοι Ποιότητας</h1>
-        <Badge tone={totalIssues === 0 ? "green" : "amber"}>
-          {totalIssues === 0 ? "Όλα εντάξει" : `${totalIssues} ευρήματα`}
-        </Badge>
-      </div>
-      <p className="text-sm text-ink-muted">
-        Αυτόματοι έλεγχοι πάνω στα δεδομένα σας, ώστε να εντοπίζονται λάθη πριν γίνουν πρόβλημα
-        στο ΦΠΑ ή στα οικονομικά των έργων.
-      </p>
+    <div className="flex min-w-0 flex-col gap-6">
+      <PageHeader
+        title={
+          <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+            Έλεγχοι Ποιότητας
+            <Badge tone={totalIssues === 0 ? "neutral" : "amber"}>
+              {totalIssues === 0 ? "Όλα εντάξει" : `${totalIssues} ευρήματα`}
+            </Badge>
+          </span>
+        }
+        meta={
+          <span className="block max-w-3xl">
+            Αυτόματοι έλεγχοι πάνω στα δεδομένα σας, ώστε να εντοπίζονται λάθη πριν γίνουν πρόβλημα
+            στο ΦΠΑ ή στα οικονομικά των έργων.
+          </span>
+        }
+      />
 
       {exposure.gross > 0 && (
-        <div className="rounded-lg border border-line bg-amber-bg p-4 text-sm">
-          <div className="font-semibold">Εκτιμώμενη φορολογική απώλεια από δαπάνες χωρίς παραστατικό</div>
-          <div className="mt-1 flex flex-wrap gap-x-6 gap-y-1">
-            <span>
-              Δαπάνες: <span className="font-mono">{formatMoney(exposure.gross)}</span>
-            </span>
-            <span>
-              Χαμένος φόρος + ΦΠΑ: <span className="font-mono font-semibold">{formatMoney(exposure.lost)}</span>
-            </span>
-            <span>
-              Φέτος: <span className="font-mono">{formatMoney(exposure.lostThisYear)}</span>
-            </span>
+        <section className="flex flex-col gap-4 border-l-2 border-warning py-1 pl-4">
+          <h2 className="text-body text-ink">Εκτιμώμενη φορολογική απώλεια από δαπάνες χωρίς παραστατικό</h2>
+          <div className="flex flex-wrap gap-x-10 gap-y-4">
+            <Stat label="Δαπάνες" value={formatMoney(exposure.gross)} />
+            <Stat label="Χαμένος φόρος + ΦΠΑ" value={<span className="font-normal">{formatMoney(exposure.lost)}</span>} />
+            <Stat label="Φέτος" value={formatMoney(exposure.lostThisYear)} />
           </div>
-          <p className="mt-1 text-xs text-ink-muted">
+          <p className="text-small text-muted">
             Εκτίμηση με το όριο και τον συντελεστή των Ρυθμίσεων — επιβεβαιώστε με τον λογιστή.
           </p>
-        </div>
+        </section>
       )}
 
-      {results.map((check) => (
-        <div key={check.view} className="rounded-lg border border-line bg-surface p-4">
-          <div className="mb-1 flex items-center gap-2">
-            <h2 className="text-sm font-semibold">{check.title}</h2>
-            <Badge tone={check.count === 0 ? "green" : "amber"}>{check.count}</Badge>
-          </div>
-          <p className="mb-2 text-xs text-ink-muted">{check.why}</p>
-          {check.count > 0 && (
-            <div className="flex flex-col gap-1 text-sm">
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              {(check.rows as any[]).map((r) => check.render(r as never))}
-              {check.count > check.rows.length && (
-                <p className="text-xs text-ink-faint">
-                  … και {check.count - check.rows.length} ακόμα
-                </p>
-              )}
+      <div className="flex flex-col border-t border-hairline">
+        {results.map((check) => (
+          <section
+            key={check.view}
+            className={cn(
+              "flex min-w-0 flex-col gap-2 border-b border-hairline py-5 pr-1",
+              check.count > 0 ? "border-l-2 border-l-warning pl-4" : "border-l-2 border-l-transparent pl-4",
+            )}
+          >
+            <div className="flex items-baseline gap-3">
+              <h2 className="text-body text-ink">{check.title}</h2>
+              <Badge tone={check.count === 0 ? "neutral" : "amber"} className="num">
+                {check.count}
+              </Badge>
             </div>
-          )}
-        </div>
-      ))}
+            <p className="max-w-3xl text-small text-muted">{check.why}</p>
+            {check.count > 0 && (
+              <div className="mt-1 flex flex-col border-t border-hairline text-sm">
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                {(check.rows as any[]).map((r) => check.render(r as never))}
+                {check.count > check.rows.length && (
+                  <p className="pt-2 text-xs text-muted">
+                    … και {check.count - check.rows.length} ακόμα
+                  </p>
+                )}
+              </div>
+            )}
+          </section>
+        ))}
+      </div>
     </div>
   );
 }
 
 function Row({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 border-t border-line py-1.5 first:border-t-0">
+    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-hairline py-2 text-text">
       {children}
     </div>
   );

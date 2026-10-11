@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Field, Input, Label, Select } from "@/components/ui";
-import { FormModal } from "@/components/Modal";
+import { Button, Field, FormDrawer, Input, Label, Select } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import type { ActionResult } from "@/lib/actions";
 
@@ -31,16 +30,16 @@ export function ExpectedIncomeFormModal({
   const t = el.reports;
   return (
     <>
-      <Button variant="secondary" className="!px-2 !py-1 text-xs" onClick={() => setOpen(true)}>
+      <Button variant="secondary" size="sm" className="max-md:min-h-11" onClick={() => setOpen(true)}>
         {trigger ?? `+ ${t.expectedAdd}`}
       </Button>
       {open && (
-        <FormModal onClose={() => setOpen(false)} title={initial ? t.expectedEdit : t.expectedAdd} action={action}>
+        <FormDrawer onClose={() => setOpen(false)} title={initial ? t.expectedEdit : t.expectedAdd} action={action}>
           <Field>
             <Label>{t.expectedSource}</Label>
             <Input name="source" defaultValue={initial?.source} required />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field>
               <Label>{t.expectedAmount} (€)</Label>
               <Input type="number" step="0.01" min="0" name="amount" defaultValue={initial?.amount} required />
@@ -50,7 +49,7 @@ export function ExpectedIncomeFormModal({
               <Input type="month" name="expected_month" defaultValue={initial?.expected_month?.slice(0, 7) ?? ""} required />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field>
               <Label>{t.probability} %</Label>
               <Input
@@ -85,7 +84,7 @@ export function ExpectedIncomeFormModal({
             <Label>{el.netWorth.notes}</Label>
             <Input name="notes" defaultValue={initial?.notes ?? ""} />
           </Field>
-        </FormModal>
+        </FormDrawer>
       )}
     </>
   );

@@ -3,9 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate, formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Pills } from "@/components/Pills";
-import { Badge, Card } from "@/components/ui";
+import { Badge, Button, PageHeader, SectionHeader, Stat, StatRow, cn } from "@/components/ui";
 import { ActionForm } from "@/components/ActionForm";
+import { FRAME, LINK, NUM, ROW, SUB, TABLE, TD, TH, TOUCH, ViewSwitch } from "../ui";
 import { loadLookups } from "@/lib/data/lookups";
 import { currentMonthKey, firstOfMonth, isMonthKey, monthKeyOf, monthLabel, shortMonthYearLabel } from "@/lib/dates";
 import {
@@ -98,72 +98,81 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
   const outflowItems = (items ?? []).filter((i) => i.direction === "expense");
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">{t.cashTitle}</h1>
-        <p className="mt-1 max-w-3xl text-sm text-ink-muted">{t.cashIntro}</p>
+    <div className="flex min-w-0 flex-col gap-6">
+      <PageHeader title={t.cashTitle} meta={<span className="block max-w-3xl">{t.cashIntro}</span>} />
+
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
+          <ViewSwitch
+            label={t.scenario}
+            options={FORECAST_SCENARIOS.map((s) => ({ key: s, label: t.scenarios[s], href: query({ scenario: s === "base" ? null : s }) }))}
+            active={scenario}
+          />
+          <ViewSwitch
+            label={t.scope}
+            options={[
+              { key: "all", label: t.scopeAll, href: query({ scope: null }) },
+              { key: "corporate", label: el.account.ownerValues.corporate, href: query({ scope: "corporate" }) },
+              { key: "personal", label: el.account.ownerValues.personal, href: query({ scope: "personal" }) },
+            ]}
+            active={scope ?? "all"}
+          />
+          <ViewSwitch
+            label={t.horizon}
+            options={FORECAST_HORIZONS.map((h) => ({ key: String(h), label: `${h} ${t.months}`, href: query({ months: h === 12 ? null : String(h) }) }))}
+            active={String(months)}
+          />
+        </div>
+        <p className="text-small text-muted">{t.scenarioHint[scenario as ForecastScenario]}</p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
-        <Pills
-          label={t.scenario}
-          options={FORECAST_SCENARIOS.map((s) => ({ key: s, label: t.scenarios[s], href: query({ scenario: s === "base" ? null : s }) }))}
-          active={scenario}
+      <StatRow>
+        <Stat label={t.liquidNow} value={formatMoney(first?.opening_balance ?? 0)} />
+        <Stat label={t.buffer} value={formatMoney(buffer)} />
+        <Stat
+          label={t.lowestClose}
+          value={
+            <span className={lowest && Number(lowest.closing_balance) < buffer ? "text-negative" : undefined}>
+              {lowest ? formatMoney(lowest.closing_balance) : "—"}
+            </span>
+          }
+          sub={lowest ? monthLabel(monthKeyOf(lowest.month)) : undefined}
         />
-        <Pills
-          label={t.scope}
-          options={[
-            { key: "all", label: t.scopeAll, href: query({ scope: null }) },
-            { key: "corporate", label: el.account.ownerValues.corporate, href: query({ scope: "corporate" }) },
-            { key: "personal", label: el.account.ownerValues.personal, href: query({ scope: "personal" }) },
-          ]}
-          active={scope ?? "all"}
+        <Stat
+          label={t.firstBelow}
+          value={
+            <span className={firstBelow ? "text-negative" : undefined}>
+              {firstBelow ? monthLabel(monthKeyOf(firstBelow.month)) : t.noneBelow}
+            </span>
+          }
         />
-        <Pills
-          label={t.horizon}
-          options={FORECAST_HORIZONS.map((h) => ({ key: String(h), label: `${h} ${t.months}`, href: query({ months: h === 12 ? null : String(h) }) }))}
-          active={String(months)}
-        />
-      </div>
-      <p className="-mt-2 text-xs text-ink-faint">{t.scenarioHint[scenario as ForecastScenario]}</p>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-        <Card>
-          <div className="text-xs text-ink-muted">{t.liquidNow}</div>
-          <div className="font-mono text-lg">{formatMoney(first?.opening_balance ?? 0)}</div>
-        </Card>
-        <Card>
-          <div className="text-xs text-ink-muted">{t.buffer}</div>
-          <div className="font-mono text-lg">{formatMoney(buffer)}</div>
-        </Card>
-        <Card>
-          <div className="text-xs text-ink-muted">{t.lowestClose}</div>
-          <div className={`font-mono text-lg ${lowest && Number(lowest.closing_balance) < buffer ? "text-red-ink" : ""}`}>
-            {lowest ? formatMoney(lowest.closing_balance) : "—"}
-          </div>
-          {lowest && <div className="text-xs text-ink-faint">{monthLabel(monthKeyOf(lowest.month))}</div>}
-        </Card>
-        <Card className={firstBelow ? "border-red-ink/40 bg-red-bg" : undefined}>
-          <div className="text-xs text-ink-muted">{t.firstBelow}</div>
-          <div className={`font-mono text-lg ${firstBelow ? "text-red-ink" : ""}`}>
-            {firstBelow ? monthLabel(monthKeyOf(firstBelow.month)) : t.noneBelow}
-          </div>
-        </Card>
-      </div>
+      </StatRow>
 
       <CashflowChart rows={chartRows} buffer={buffer} />
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
-        <div className="overflow-x-auto rounded-lg border border-line">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-bg text-ink-muted">
+      <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-[3fr_2fr]">
+        <div className={FRAME}>
+          <table className={TABLE}>
+            <thead>
               <tr>
-                <th className="p-2">{t.month}</th>
-                <th className="hidden p-2 text-right md:table-cell">{t.opening}</th>
-                <th className="p-2 text-right">{t.inflow}</th>
-                <th className="p-2 text-right">{t.outflow}</th>
-                <th className="hidden p-2 text-right sm:table-cell">{t.net}</th>
-                <th className="p-2 text-right">{t.closing}</th>
+                <th scope="col" className={TH}>
+                  {t.month}
+                </th>
+                <th scope="col" className={cn(TH, "hidden text-right md:table-cell")}>
+                  {t.opening}
+                </th>
+                <th scope="col" className={cn(TH, "text-right")}>
+                  {t.inflow}
+                </th>
+                <th scope="col" className={cn(TH, "text-right")}>
+                  {t.outflow}
+                </th>
+                <th scope="col" className={cn(TH, "hidden text-right sm:table-cell")}>
+                  {t.net}
+                </th>
+                <th scope="col" className={cn(TH, "text-right")}>
+                  {t.closing}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -171,9 +180,13 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
                 const key = monthKeyOf(r.month);
                 const isSelected = key === selected;
                 return (
-                  <tr key={key} className={`border-t border-line ${isSelected ? "bg-sage/40" : ""}`}>
-                    <td className="p-2">
-                      <Link href={query({ month: key === todayMonth ? null : key })} className="hover:underline" scroll={false}>
+                  <tr key={key} aria-current={isSelected ? "true" : undefined} className={isSelected ? "bg-hover" : "hover:bg-hover"}>
+                    <td className={cn(TD, "border-l-2 text-ink", isSelected ? "border-l-navy" : "border-l-transparent")}>
+                      <Link
+                        href={query({ month: key === todayMonth ? null : key })}
+                        className={cn(LINK, "inline-flex items-center whitespace-nowrap max-md:min-h-11", isSelected && "font-medium")}
+                        scroll={false}
+                      >
                         {shortMonthYearLabel(key)}
                       </Link>
                       {r.below_buffer && (
@@ -182,20 +195,18 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
                         </span>
                       )}
                     </td>
-                    <td className="hidden p-2 text-right font-mono md:table-cell">{formatMoney(r.opening_balance)}</td>
-                    <td className="p-2 text-right font-mono text-sage-ink">
+                    <td className={cn(TD, NUM, "hidden md:table-cell")}>{formatMoney(r.opening_balance)}</td>
+                    <td className={cn(TD, NUM)}>
                       {formatMoney(r.inflow)}
                       {Number(r.uncertain_inflow) > 0 && (
-                        <div className="text-[10px] font-normal text-ink-faint">
+                        <span className="block text-xs text-muted">
                           {t.uncertainPart} {formatMoney(r.uncertain_inflow)}
-                        </div>
+                        </span>
                       )}
                     </td>
-                    <td className="p-2 text-right font-mono">{formatMoney(r.outflow)}</td>
-                    <td className={`hidden p-2 text-right font-mono sm:table-cell ${Number(r.net) < 0 ? "text-red-ink" : ""}`}>
-                      {formatMoney(r.net)}
-                    </td>
-                    <td className="p-2 text-right font-mono font-medium">{formatMoney(r.closing_balance)}</td>
+                    <td className={cn(TD, NUM)}>{formatMoney(r.outflow)}</td>
+                    <td className={cn(TD, NUM, "hidden sm:table-cell")}>{formatMoney(r.net)}</td>
+                    <td className={cn(TD, NUM, "font-medium text-ink")}>{formatMoney(r.closing_balance)}</td>
                   </tr>
                 );
               })}
@@ -203,15 +214,13 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
           </table>
         </div>
 
-        <section className="rounded-lg border border-line p-3">
-          <h2 className="text-sm font-medium">
-            {t.breakdown}: {monthLabel(selected)}
-          </h2>
-          <p className="mb-2 text-xs text-ink-faint">{t.breakdownHint}</p>
+        <section className="flex min-w-0 flex-col gap-3">
+          <SectionHeader title={`${t.breakdown}: ${monthLabel(selected)}`} />
+          <p className="text-small text-muted">{t.breakdownHint}</p>
           {(items ?? []).length === 0 ? (
-            <p className="text-sm text-ink-muted">{t.noItems}</p>
+            <p className="text-sm text-muted">{t.noItems}</p>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-6">
               <ItemList title={t.inflow} items={inflowItems} />
               <ItemList title={t.outflow} items={outflowItems} />
             </div>
@@ -219,65 +228,69 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
         </section>
       </div>
 
-      <section className="rounded-lg border border-line p-3">
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-medium">{t.expectedTitle}</h2>
-          <ExpectedIncomeFormModal action={saveExpectedIncome.bind(null, null)} projects={lookups.projects} />
-        </div>
+      <section className="flex min-w-0 flex-col gap-3">
+        <SectionHeader
+          title={t.expectedTitle}
+          actions={<ExpectedIncomeFormModal action={saveExpectedIncome.bind(null, null)} projects={lookups.projects} />}
+        />
         {(expected ?? []).length === 0 ? (
-          <p className="text-sm text-ink-muted">{t.expectedEmpty}</p>
+          <p className="text-sm text-muted">{t.expectedEmpty}</p>
         ) : (
-          <table className="w-full text-left text-sm">
-            <tbody>
-              {(expected ?? []).map((e) => {
-                const project = Array.isArray(e.projects) ? e.projects[0] : e.projects;
-                const probability = e.probability ?? (e.certainty === "certain" ? 1 : 0.5);
-                return (
-                  <tr key={e.id} className="border-t border-line first:border-0">
-                    <td className="py-1.5 pr-2">
-                      {e.source}
-                      {e.direction === "expense" && <span className="ml-1 text-xs text-ink-faint">({el.transaction.expense})</span>}
-                      {project && <span className="ml-1 text-xs text-ink-muted">· {project.display_name}</span>}
-                      {e.scenario_id && <span className="ml-1 text-xs text-ink-faint">· {t.expectedFromScenario}</span>}
-                    </td>
-                    <td className="py-1.5 pr-2 text-ink-muted">{e.expected_month ? monthLabel(monthKeyOf(e.expected_month)) : "—"}</td>
-                    <td className="py-1.5 pr-2 text-right font-mono">{formatMoney(e.amount)}</td>
-                    <td className="py-1.5 pr-2 text-right text-xs text-ink-muted">{Math.round(probability * 100)}%</td>
-                    <td className="py-1.5">
-                      {!e.scenario_id && (
-                        <div className="flex items-center justify-end gap-1.5">
-                          <ExpectedIncomeFormModal
-                            action={saveExpectedIncome.bind(null, e.id)}
-                            projects={lookups.projects}
-                            trigger={el.common.edit}
-                            initial={{
-                              source: e.source,
-                              amount: Number(e.amount),
-                              expected_month: e.expected_month,
-                              probability: e.probability,
-                              project_id: e.project_id,
-                              owner_scope: e.owner_scope as ForecastScope,
-                              notes: e.notes,
-                            }}
-                          />
-                          <ActionForm action={setExpectedIncomeStatus.bind(null, e.id, "received")}>
-                            <button type="submit" className="text-xs text-ink-muted underline">
-                              {t.expectedReceived}
-                            </button>
-                          </ActionForm>
-                          <ActionForm action={setExpectedIncomeStatus.bind(null, e.id, "cancelled")}>
-                            <button type="submit" className="text-xs text-ink-muted underline">
-                              {t.expectedCancel}
-                            </button>
-                          </ActionForm>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className={FRAME}>
+            <table className={TABLE}>
+              <tbody>
+                {(expected ?? []).map((e) => {
+                  const project = Array.isArray(e.projects) ? e.projects[0] : e.projects;
+                  const probability = e.probability ?? (e.certainty === "certain" ? 1 : 0.5);
+                  return (
+                    <tr key={e.id} className={ROW}>
+                      <td className="min-w-40 py-2.5 pr-3 align-middle text-ink">
+                        {e.source}
+                        {e.direction === "expense" && <span className="ml-1 text-xs text-muted">({el.transaction.expense})</span>}
+                        {project && <span className="ml-1 text-xs text-muted">· {project.display_name}</span>}
+                        {e.scenario_id && <span className="ml-1 text-xs text-muted">· {t.expectedFromScenario}</span>}
+                      </td>
+                      <td className="py-2.5 pr-3 align-middle whitespace-nowrap text-muted">
+                        {e.expected_month ? monthLabel(monthKeyOf(e.expected_month)) : "—"}
+                      </td>
+                      <td className={cn("py-2.5 pr-3 align-middle text-ink", NUM)}>{formatMoney(e.amount)}</td>
+                      <td className={cn("py-2.5 pr-3 align-middle text-xs text-muted", NUM)}>{Math.round(probability * 100)}%</td>
+                      <td className="py-1.5 align-middle">
+                        {!e.scenario_id && (
+                          <div className="flex items-center justify-end gap-1">
+                            <ExpectedIncomeFormModal
+                              action={saveExpectedIncome.bind(null, e.id)}
+                              projects={lookups.projects}
+                              trigger={el.common.edit}
+                              initial={{
+                                source: e.source,
+                                amount: Number(e.amount),
+                                expected_month: e.expected_month,
+                                probability: e.probability,
+                                project_id: e.project_id,
+                                owner_scope: e.owner_scope as ForecastScope,
+                                notes: e.notes,
+                              }}
+                            />
+                            <ActionForm action={setExpectedIncomeStatus.bind(null, e.id, "received")}>
+                              <Button type="submit" variant="ghost" size="sm" className={TOUCH}>
+                                {t.expectedReceived}
+                              </Button>
+                            </ActionForm>
+                            <ActionForm action={setExpectedIncomeStatus.bind(null, e.id, "cancelled")}>
+                              <Button type="submit" variant="ghost" size="sm" className={TOUCH}>
+                                {t.expectedCancel}
+                              </Button>
+                            </ActionForm>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </div>
@@ -310,34 +323,37 @@ function ItemList({ title, items }: { title: string; items: Item[] }) {
   const total = items.reduce((s, i) => s + Number(i.weighted_amount), 0);
   return (
     <div>
-      <div className="mb-1 flex justify-between text-xs font-medium text-ink-muted">
-        <span>{title}</span>
-        <span className="font-mono">{formatMoney(total)}</span>
+      <div className="flex justify-between gap-3 border-b border-rule pb-2">
+        <span className="eyebrow text-muted">{title}</span>
+        <span className="num text-sm text-ink">{formatMoney(total)}</span>
       </div>
-      <ul className="flex flex-col gap-1 text-sm">
+      <ul className="flex flex-col text-sm">
         {items.map((i) => {
           const href = itemHref(i);
           const sourceLabel = t.sources[i.source as keyof typeof t.sources] ?? i.source;
           return (
-            <li key={i.item_key} className="flex items-start justify-between gap-2">
-              <span className="min-w-0">
+            <li
+              key={i.item_key}
+              className={cn(ROW, "flex items-start justify-between gap-3 py-2.5", i.is_overdue && "border-l-2 border-l-negative pl-3")}
+            >
+              <span className="min-w-0 text-ink">
                 {href ? (
-                  <Link href={href} className="hover:underline">
+                  <Link href={href} className={LINK}>
                     {i.label || sourceLabel}
                   </Link>
                 ) : (
                   i.label || sourceLabel
                 )}
-                <span className="block text-xs text-ink-faint">
+                <span className={SUB}>
                   {sourceLabel} · {formatDate(i.due_date)}
-                  {i.is_overdue && <span className="text-red-ink"> · {t.overdue}</span>}
+                  {i.is_overdue && <span className="text-negative"> · {t.overdue}</span>}
                   {Number(i.probability) < 1 && ` · ${Math.round(Number(i.probability) * 100)}%`}
                 </span>
               </span>
-              <span className="shrink-0 text-right font-mono">
+              <span className={cn("shrink-0 text-ink", NUM)}>
                 {formatMoney(i.weighted_amount)}
                 {Number(i.weighted_amount) !== Number(i.amount) && (
-                  <span className="block text-[10px] text-ink-faint">{formatMoney(i.amount)}</span>
+                  <span className="block text-xs text-muted">{formatMoney(i.amount)}</span>
                 )}
               </span>
             </li>
