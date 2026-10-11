@@ -28,6 +28,8 @@ interface SearchParams {
   from?: string;
   to?: string;
   ids?: string;
+  // «＋ Καταχώριση» → Χειροκίνητα: open the new-movement form at once.
+  new?: string;
 }
 
 export default async function TransactionsPage({
@@ -276,6 +278,7 @@ export default async function TransactionsPage({
       accounts={accountOptions}
       filters={filterBar}
       exportHref={exportHref}
+      startCreating={params.new === "1"}
     />
   );
 }

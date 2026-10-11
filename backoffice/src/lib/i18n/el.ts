@@ -24,6 +24,8 @@ export const el = {
     planner: "Πλάνο",
     reports: "Αναφορές",
     pending: "Εκκρεμότητες",
+    calendar: "Ημερολόγιο",
+    capture: "Καταχώριση",
   },
   // Section tabs (SubNav). Pages keep their own headings.
   tabs: {

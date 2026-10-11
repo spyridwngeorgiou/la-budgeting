@@ -6,7 +6,7 @@ import { OP_LABEL, STATUS_LABEL, tableLabel, toChangeCard, type ChangeOperation,
 import { el } from "@/lib/i18n/el";
 import { ChangeCardView } from "./ChangeCardView";
 
-const CHANGE_COLUMNS =
+export const CHANGE_COLUMNS =
   "id, status, operation, table_name, action, reason, before, after, changed_fields, conflict, untrusted_context, error, result, created_at";
 
 // «Εκκρεμότητες» panel of /assistant: the AI's proposed writes waiting for

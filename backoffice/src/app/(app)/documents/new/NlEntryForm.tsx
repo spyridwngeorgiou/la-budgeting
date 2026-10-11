@@ -25,7 +25,7 @@ interface SpeechRecognitionLike extends EventTarget {
   onerror: (() => void) | null;
 }
 
-export function NlEntryForm() {
+export function NlEntryForm({ rows = 3 }: { rows?: number }) {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
@@ -83,7 +83,7 @@ export function NlEntryForm() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="π.χ. Πλήρευσα 80 ευρώ στον υδραυλικό για το Q003, μετρητά, χωρίς απόδειξη. Μπορείτε να περιγράψετε περισσότερες από μία κινήσεις μαζί -- θα καταχωρηθούν ξεχωριστά."
-          rows={3}
+          rows={rows}
           required
           className="min-w-0 flex-1 border border-field-border bg-field px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-navy focus:outline-none"
         />

@@ -1,4 +1,4 @@
 {
-  "$comment": "Size budget checked by budgets.test.ts. appPagesMax may only go DOWN, unless the owner approves a new page. It was 32 after the v2 redesign was removed: its /money and /projects/[id]/[tab] pages went, the root redirect moved back to src/app/page.tsx (outside (app)), and the classic /projects/[id]/compare came back as its own page. Owner-approved additions (2026-10-11 plan): /calendar (Ημερολόγιο, out of /planner?view=calendar), /accounts/[id] (per-account ledger), /inbox/new (one capture screen).",
-  "appPagesMax": 34
+  "$comment": "Size budget checked by budgets.test.ts. appPagesMax may only go DOWN, unless the owner approves a new page. It was 32 after the v2 redesign was removed. 2026-10-11 owner-approved plan: +/calendar (Ημερολόγιο), +/accounts/[id] (per-account ledger), +/inbox/new (one capture screen), while /documents/new and /aade became redirects to /inbox/new: net 33.",
+  "appPagesMax": 33
 }
