@@ -32,6 +32,9 @@ const fail = (msg) => {
   process.exit(1);
 };
 const tail = (s, re, n = 30) => s.split(/\r?\n/).filter((l) => re.test(l)).slice(0, n).join("\n");
+// Git Bash rewrites "/dashboard" into "C:/Program Files/Git/dashboard" before
+// node sees it; undo that so `npm run smoke -- staging /x` works from any shell.
+const unmangle = (p) => p.replace(/\\/g, "/").replace(/^[A-Za-z]:\/.*?\/Git(?=\/)/, "");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function check() {
@@ -99,7 +102,7 @@ async function smoke(envName, paths, { gapMs = 0 } = {}) {
     const chunks = ("base64-" + Buffer.from(JSON.stringify(session)).toString("base64url")).match(/.{1,3180}/g);
     const cookie = chunks.length === 1 ? `${name}=${chunks[0]}` : chunks.map((c, i) => `${name}.${i}=${c}`).join("; ");
 
-    const list = (paths.length ? paths : [...DEFAULT_PATHS, ...(proj ? [`/projects/${proj.id}`] : [])]).map((p) => p.replace("{project}", proj?.id ?? ""));
+    const list = (paths.length ? paths : [...DEFAULT_PATHS, ...(proj ? [`/projects/${proj.id}`] : [])]).map((p) => unmangle(p).replace("{project}", proj?.id ?? ""));
     for (const p of list) {
       const t0 = Date.now();
       const r = await fetch(env.url + p, { headers: { cookie }, redirect: "manual" });
