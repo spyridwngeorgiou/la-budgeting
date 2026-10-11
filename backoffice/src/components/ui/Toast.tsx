@@ -66,7 +66,7 @@ function ToastView({ item, onDismiss }: { item: ToastItem; onDismiss: () => void
   return (
     <div
       className={cn(
-        "pointer-events-auto flex max-w-xl min-w-0 items-center gap-4 bg-panel py-2 pr-2 pl-4 text-sm text-panel-ink",
+        "pointer-events-auto flex max-w-xl min-w-0 items-center gap-4 bg-panel py-2 pr-2 pl-4 text-body text-panel-ink",
         item.tone === "negative" && "border-l-2 border-negative-tint",
       )}
     >

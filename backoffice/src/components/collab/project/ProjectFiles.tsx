@@ -117,7 +117,7 @@ export function ProjectFiles({
           onClick={() => input.current?.click()}
           disabled={!!progress}
           className={cn(
-            "flex min-h-20 w-full flex-col items-center justify-center gap-1 border border-dashed px-3 py-3 text-center text-sm text-text transition-colors hover:border-navy hover:bg-hover disabled:opacity-60",
+            "flex min-h-20 w-full flex-col items-center justify-center gap-1 border border-dashed px-3 py-3 text-center text-body text-text transition-colors hover:border-navy hover:bg-hover disabled:opacity-60",
             over ? "border-navy bg-hover" : "border-chip-border bg-field",
           )}
         >
@@ -130,7 +130,7 @@ export function ProjectFiles({
               <span>
                 {t.dropHere} <span className="font-medium text-ink underline underline-offset-4">{t.choose}</span>
               </span>
-              <span className="text-xs text-muted">{t.allowed}</span>
+              <span className="text-small text-muted">{t.allowed}</span>
             </>
           )}
         </button>
@@ -148,7 +148,7 @@ export function ProjectFiles({
       />
 
       {files.length === 0 ? (
-        <p className="border-b border-hairline pb-4 text-sm text-muted">{el.collab.noFiles}</p>
+        <p className="border-b border-hairline pb-4 text-body text-muted">{el.collab.noFiles}</p>
       ) : (
         <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3">
           {visible.map((f) => {
@@ -181,11 +181,11 @@ export function ProjectFiles({
                     >
                       {name}
                     </a>
-                    <p className="truncate text-xs text-muted">
+                    <p className="truncate text-small text-muted">
                       <span className="num">{formatBytes(f.size_bytes)}</span> ·{" "}
                       <span className="num">{dateFmt.format(new Date(f.created_at))}</span>
                     </p>
-                    <p className="truncate text-xs text-muted">
+                    <p className="truncate text-small text-muted">
                       {f.board_id ? `${t.onBoard}${boardTitles[f.board_id] ? ` «${boardTitles[f.board_id]}»` : ""}` : t.shared}
                     </p>
                   </div>
@@ -207,7 +207,7 @@ export function ProjectFiles({
         </ul>
       )}
       {files.length > PREVIEW_COUNT && !showAll && (
-        <Button type="button" variant="ghost" className="w-full max-md:min-h-11" onClick={() => setShowAll(true)}>
+        <Button type="button" variant="ghost" className="w-full" onClick={() => setShowAll(true)}>
           {t.showAll} <span className="num text-muted">({files.length})</span>
         </Button>
       )}

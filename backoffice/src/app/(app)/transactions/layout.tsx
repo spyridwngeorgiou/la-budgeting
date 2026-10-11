@@ -4,7 +4,7 @@ import { SECTION_TABS } from "@/lib/navigation";
 
 export default function TransactionsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <Tabs tabs={SECTION_TABS.transactions} label={el.nav.transactions} />
       {children}
     </div>

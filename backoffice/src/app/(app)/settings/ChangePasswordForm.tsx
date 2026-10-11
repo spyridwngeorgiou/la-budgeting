@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Input, Label, Field } from "@/components/ui";
+import { Field, Input, Label, Notice } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { changePassword } from "./actions";
 import { errorOf } from "@/lib/actions";
@@ -36,11 +36,11 @@ export function ChangePasswordForm() {
         <Input type="password" name="confirm_password" minLength={8} required autoComplete="new-password" />
       </Field>
       {error && (
-        <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+        <Notice tone="negative" role="alert">
           {error}
-        </p>
+        </Notice>
       )}
-      {success && <p className="border-l-2 border-positive pl-3 text-sm text-positive">Ο κωδικός άλλαξε επιτυχώς.</p>}
+      {success && <Notice tone="positive">Ο κωδικός άλλαξε επιτυχώς.</Notice>}
       <div className="flex justify-end">
         <SubmitButton>Αλλαγή Κωδικού</SubmitButton>
       </div>

@@ -3,8 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Badge, Button } from "@/components/ui";
-import { Modal } from "@/components/Modal";
+import { Badge, Button, Modal, Notice, SpecTable, StatusDot, Td, Th, Tr } from "@/components/ui";
 import { formatFieldValue, STATUS_LABEL, type ChangeCard } from "@/lib/ai/changeCards";
 import { approveChange, rejectChange } from "./change-actions";
 
@@ -45,85 +44,87 @@ export function ChangeCardView({ initial, canReview }: { initial: ChangeCard; ca
   }
 
   return (
-    <div className="border-l-2 border-ai-border py-2 pl-3 text-sm text-ink" data-change-id={card.id}>
+    <div className="border-l-2 border-ai-border py-2 pl-3 text-body text-ink" data-change-id={card.id}>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Badge tone={isDelete ? "red" : "ai"}>{card.title}</Badge>
-        <Badge tone={STATUS_TONE[card.status] ?? "neutral"}>{STATUS_LABEL[card.status] ?? card.status}</Badge>
+        {card.status === "conflict" || card.status === "failed" ? (
+          <Badge tone={STATUS_TONE[card.status]}>{STATUS_LABEL[card.status] ?? card.status}</Badge>
+        ) : (
+          <StatusDot tone={STATUS_TONE[card.status] ?? "neutral"} label={STATUS_LABEL[card.status] ?? card.status} />
+        )}
       </div>
       {card.reason && <p className="mb-2 text-muted">{card.reason}</p>}
       {card.untrusted && open && (
-        <p className="mb-2 border-l-2 border-warning pl-2 text-xs text-warning">
+        <Notice tone="warning" size="small" className="mb-2">
           Η πρόταση έγινε αφού ο βοηθός διάβασε ελεύθερο κείμενο από τα δεδομένα (περιγραφές, σημειώσεις). Ελέγξτε
           τη με προσοχή.
-        </p>
+        </Notice>
       )}
 
       {card.status === "conflict" && card.conflict.length > 0 ? (
-        <div className="mb-3 overflow-x-auto">
-          <p className="mb-1 border-l-2 border-warning pl-2 text-xs text-warning">
+        <div className="mb-3">
+          <Notice tone="warning" size="small" className="mb-1">
             Η εγγραφή άλλαξε μετά την πρόταση. Συγκρίνετε πριν εγκρίνετε.
-          </p>
-          <table className="w-full border-collapse text-left text-xs">
+          </Notice>
+          <SpecTable label="Σύγκριση πεδίων" tableClassName="text-small">
             <thead>
               <tr>
-                <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Πεδίο</th>
-                <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Τότε</th>
-                <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Τώρα</th>
-                <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Προτείνεται</th>
+                <Th>Πεδίο</Th>
+                <Th>Τότε</Th>
+                <Th>Τώρα</Th>
+                <Th>Προτείνεται</Th>
               </tr>
             </thead>
             <tbody>
               {card.conflict.map((c) => (
-                <tr key={c.field}>
-                  <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0 text-ink">{c.field}</td>
-                  <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0 num text-muted">{formatFieldValue(c.before)}</td>
-                  <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0 num text-warning">{formatFieldValue(c.current)}</td>
-                  <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0 num text-ink">{isDelete ? "(διαγραφή)" : formatFieldValue(c.after)}</td>
-                </tr>
+                <Tr key={c.field}>
+                  <Td strong>{c.field}</Td>
+                  <Td className="num text-muted">{formatFieldValue(c.before)}</Td>
+                  <Td className="num text-warning">{formatFieldValue(c.current)}</Td>
+                  <Td strong className="num">{isDelete ? "(διαγραφή)" : formatFieldValue(c.after)}</Td>
+                </Tr>
               ))}
             </tbody>
-          </table>
+          </SpecTable>
         </div>
       ) : (
-        <div className="mb-3 overflow-x-auto">
-          <table className="w-full border-collapse text-left text-xs">
-            <thead>
+        <SpecTable label="Πεδία αλλαγής" className="mb-3" tableClassName="text-small">
+          <thead>
+            <tr>
+              <Th>Πεδίο</Th>
+              {card.operation !== "insert" && card.operation !== "action" && <Th>Πριν</Th>}
+              {!isDelete && <Th>Μετά</Th>}
+            </tr>
+          </thead>
+          <tbody>
+            {card.fields.length === 0 ? (
               <tr>
-                <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Πεδίο</th>
-                {card.operation !== "insert" && card.operation !== "action" && <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Πριν</th>}
-                {!isDelete && <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Μετά</th>}
+                <Td className="text-muted" colSpan={3}>
+                  Καμία διαφορά σε επιτρεπτά πεδία.
+                </Td>
               </tr>
-            </thead>
-            <tbody>
-              {card.fields.length === 0 ? (
-                <tr>
-                  <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0 text-muted" colSpan={3}>
-                    Καμία διαφορά σε επιτρεπτά πεδία.
-                  </td>
-                </tr>
-              ) : (
-                card.fields.map((f) => (
-                  <tr key={f.field}>
-                    <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0 text-ink">{f.field}</td>
-                    {card.operation !== "insert" && card.operation !== "action" && (
-                      <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0 num text-muted">{formatFieldValue(f.before)}</td>
-                    )}
-                    {!isDelete && <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0 num text-ink">{formatFieldValue(f.after)}</td>}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+            ) : (
+              card.fields.map((f) => (
+                <Tr key={f.field}>
+                  <Td strong>{f.field}</Td>
+                  {card.operation !== "insert" && card.operation !== "action" && (
+                    <Td className="num text-muted">{formatFieldValue(f.before)}</Td>
+                  )}
+                  {!isDelete && <Td strong className="num">{formatFieldValue(f.after)}</Td>}
+                </Tr>
+              ))
+            )}
+          </tbody>
+        </SpecTable>
       )}
 
       {(error || card.error) && (
-        <p role="alert" className="mb-2 border-l-2 border-negative pl-2 text-xs text-negative">
+        <Notice tone="negative" size="small" role="alert" className="mb-2">
           {error ?? card.error}
-        </p>
+        </Notice>
       )}
       {card.resultHref && (
-        <Link href={card.resultHref} className="mb-2 inline-flex min-h-8 items-center text-xs font-medium text-ink underline underline-offset-4">
+        <Link href={card.resultHref} className="mb-2 inline-flex min-h-8 items-center text-small font-medium text-ink underline underline-offset-4">
           Άνοιγμα →
         </Link>
       )}
@@ -144,11 +145,11 @@ export function ChangeCardView({ initial, canReview }: { initial: ChangeCard; ca
           )}
         </div>
       )}
-      {!canReview && open && <p className="text-xs text-muted">Την έγκριση κάνει χρήστης με δικαίωμα επεξεργασίας.</p>}
+      {!canReview && open && <p className="text-small text-muted">Την έγκριση κάνει χρήστης με δικαίωμα επεξεργασίας.</p>}
 
       {confirmForce && (
         <Modal onClose={() => setConfirmForce(false)} title="Έγκριση παρά τη σύγκρουση">
-          <p className="mb-4 text-sm text-text">
+          <p className="mb-4 text-body text-text">
             Οι τιμές «Τώρα» θα αντικατασταθούν από τις προτεινόμενες. Συνέχεια;
           </p>
           <div className="flex justify-end gap-2">

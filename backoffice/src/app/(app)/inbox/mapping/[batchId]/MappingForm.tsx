@@ -1,7 +1,7 @@
 "use client";
 
 import { startTransition, useActionState, useState } from "react";
-import { Button, Field, Input, Label, Select } from "@/components/ui";
+import { Button, Field, Input, Label, Notice, Select, SpecTable } from "@/components/ui";
 import type { ProfileField } from "@/lib/ingest/profiles/types";
 import { saveMappingAndStage, type InboxResult } from "../../actions";
 
@@ -64,27 +64,25 @@ export function MappingForm({
       }}
       className="flex flex-col gap-5"
     >
-      <div className="max-h-80 overflow-auto border-y border-hairline">
-        <table className="border-collapse text-xs">
-          <tbody>
-            {preview.map((row, r) => (
-              <tr
-                key={r}
-                onClick={() => setHeaderRow(r + 1)}
-                className={`cursor-pointer border-b hover:bg-hover ${r + 1 === headerRow ? "border-b-rule bg-hover font-medium text-ink" : r + 1 < headerRow ? "border-hairline text-muted" : "border-hairline text-text"}`}
-              >
-                <td className="num px-2 py-1.5 text-right text-muted">{r + 1}</td>
-                {Array.from({ length: width }, (_, c) => (
-                  <td key={c} className="max-w-56 truncate px-2 py-1.5 whitespace-nowrap">
-                    {row[c] ?? ""}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="text-xs text-muted">Πατήστε τη γραμμή της επικεφαλίδας (τώρα: γραμμή {headerRow}).</p>
+      <SpecTable label="Προεπισκόπηση αρχείου" className="max-h-80 overflow-y-auto border-y border-hairline" tableClassName="text-small">
+        <tbody>
+          {preview.map((row, r) => (
+            <tr
+              key={r}
+              onClick={() => setHeaderRow(r + 1)}
+              className={`cursor-pointer border-b hover:bg-hover ${r + 1 === headerRow ? "border-b-rule bg-hover font-medium text-ink" : r + 1 < headerRow ? "border-hairline text-muted" : "border-hairline text-text"}`}
+            >
+              <td className="num px-2 py-1.5 text-right text-muted">{r + 1}</td>
+              {Array.from({ length: width }, (_, c) => (
+                <td key={c} className="max-w-56 truncate px-2 py-1.5 whitespace-nowrap">
+                  {row[c] ?? ""}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </SpecTable>
+      <p className="text-small text-muted">Πατήστε τη γραμμή της επικεφαλίδας (τώρα: γραμμή {headerRow}).</p>
       <input type="hidden" name="header_row" value={headerRow} />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -142,9 +140,9 @@ export function MappingForm({
       </Field>
 
       {state && "error" in state && (
-        <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+        <Notice tone="negative" role="alert">
           {state.error}
-        </p>
+        </Notice>
       )}
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>

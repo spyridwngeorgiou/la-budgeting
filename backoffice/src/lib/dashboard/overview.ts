@@ -2,7 +2,7 @@
 // the «Πού θέλετε να πάτε» destination cards, one per menu section in menu
 // order. The page passes raw numbers from its existing queries; labels,
 // formatting, hrefs and exceptions live here. Pure, so vitest covers it.
-import { formatMoney } from "@/lib/format";
+import { figureLength, formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { monthKeyOf, monthLabel } from "@/lib/dates";
 import { PNL_LINES } from "@/lib/finance/pnl";
@@ -80,9 +80,7 @@ export function pnlResult(rows: OverviewInputs["pnlRows"]): number {
 }
 
 // «1.250,00 €» is 10 characters, «12.345,67 €» 11, «-1.234.567,89 €» 15.
-export function figureLength(value: string): 1 | 2 | 3 {
-  return value.length <= 11 ? 1 : value.length <= 13 ? 2 : 3;
-}
+export { figureLength };
 
 const signed = (n: number) => `${n > 0 ? "+" : ""}${formatMoney(n)}`;
 

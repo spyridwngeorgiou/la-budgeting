@@ -54,8 +54,10 @@
   --color-negative-tint: #f6e5e3;
   --color-warning: #7a5a16;
   --color-warning-tint: #f5ecd9;
-  --color-ai: #55508a; /* symbol and label only */
-  --color-ai-tint: #ebeaf3;
+  /* AI has no colour of its own: the accent-ink family; the ✦ symbol and
+     the «AI» label set it apart (owner decision, 11/10/2026). */
+  --color-ai: #4f6d8a; /* accent-ink */
+  --color-ai-tint: #e6ecf1; /* hover */
 
   /*
    * Legacy aliases -- the names every existing page uses, pointed at the new
@@ -75,10 +77,10 @@
   --color-amber-ink: #7a5a16;   /* warning */
   --color-red-bg: #f6e5e3;      /* negative-tint */
   --color-red-ink: #9b3a32;     /* negative */
-  --color-ai-bg: #ebeaf3;       /* ai-tint */
-  --color-ai-border: #c9c6dd;
-  --color-ai-ink: #55508a;      /* ai */
-  --color-ai-strong: #55508a;   /* ai */
+  --color-ai-bg: #e6ecf1;       /* ai-tint */
+  --color-ai-border: #9fb2c4;   /* chip-border */
+  --color-ai-ink: #4f6d8a;      /* ai */
+  --color-ai-strong: #4f6d8a;   /* ai */
 
   /* Inter only */
   --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -106,6 +108,9 @@
   --text-lead--line-height: 1.5;
   --text-body: 0.9375rem;
   --text-body--line-height: 1.5;
+  /* Form fields on phones: 16px, or iOS zooms the page on focus. */
+  --text-field: 1rem;
+  --text-field--line-height: 1.5;
   --text-small: 0.8125rem;
   --text-small--line-height: 1.45;
   --text-eyebrow: 0.75rem;
@@ -151,6 +156,11 @@
   --spacing-bottombar: 4rem;
   --spacing-glance: 20rem;
   --spacing-drawer: 36rem;
+  /* The content column of every page (max-w-page): 1320px, centred. */
+  --spacing-page: 82.5rem;
+  /* The two chart heights: 176px (phones, small charts) and 220px. */
+  --spacing-chart-sm: 11rem;
+  --spacing-chart: 13.75rem;
 }
 
 :root {
@@ -197,6 +207,36 @@
 @utility num {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+/*
+ * A wide table's frame (ui/SpecTable): it scrolls sideways on its own, the
+ * page never does. A fade on the side that has more columns says so: two
+ * canvas "covers" scroll with the content (local) and hide two soft ink
+ * shades fixed to the frame's edges (scroll) until there is something
+ * beyond the edge. A gradient, not a shadow: no box gets lifted.
+ */
+@utility scroll-frame {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  background:
+    linear-gradient(to right, var(--color-canvas) 40%, transparent) left center / 2.5rem 100% no-repeat local,
+    linear-gradient(to left, var(--color-canvas) 40%, transparent) right center / 2.5rem 100% no-repeat local,
+    linear-gradient(to right, color-mix(in srgb, var(--color-ink) 16%, transparent), transparent) left center / 1rem 100% no-repeat scroll,
+    linear-gradient(to left, color-mix(in srgb, var(--color-ink) 16%, transparent), transparent) right center / 1rem 100% no-repeat scroll;
+}
+
+/* With .scroll-frame: the first column stays put while the rest scrolls. */
+@utility sticky-first {
+  & tr > :first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--color-canvas);
+  }
+  & tbody tr:hover > :first-child {
+    background: var(--color-hover);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

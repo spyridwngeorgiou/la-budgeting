@@ -58,7 +58,7 @@ export function OnePagerRow({
 
   const figure = (
     <span
-      className={`num ${emphasis ? "text-body font-medium" : "text-sm"} ${exception ? "text-negative" : "text-ink"}`}
+      className={`num ${emphasis ? "text-body font-medium" : "text-body"} ${exception ? "text-negative" : "text-ink"}`}
     >
       {negative && typeof amount === "number" && amount !== 0 ? `−${formatMoney(Math.abs(amount))}` : rendered}
       {suffix}
@@ -71,7 +71,7 @@ export function OnePagerRow({
         emphasis ? "border-t border-ink" : "border-b border-hairline"
       } ${exception ? "border-l-2 border-l-negative pl-2.5" : ""}`}
     >
-      <span className={`text-sm ${emphasis ? "font-medium text-ink" : "text-text"}`}>{label}</span>
+      <span className={`text-body ${emphasis ? "font-medium text-ink" : "text-text"}`}>{label}</span>
       <span className="text-right">
         {href ? (
           <Link href={href} className="underline-offset-4 hover:underline">
@@ -120,7 +120,7 @@ export function StatusNotes({
   if (notes.length === 0) {
     return (
       <div className="flex flex-col gap-3">
-        <p className="border-b border-hairline py-3 text-sm text-muted">Καμία ανοιχτή σημείωση.</p>
+        <p className="border-b border-hairline py-3 text-body text-muted">Καμία ανοιχτή σημείωση.</p>
         {footer}
       </div>
     );
@@ -135,12 +135,12 @@ export function StatusNotes({
                 <div className="flex flex-wrap items-baseline gap-3">
                   <span className={`eyebrow ${SEVERITY_TEXT[n.severity]}`}>{SEVERITY_LABEL[n.severity]}</span>
                   {n.exposure_amount != null && (
-                    <span className="num text-sm text-ink">έκθεση {formatMoney(n.exposure_amount)}</span>
+                    <span className="num text-body text-ink">έκθεση {formatMoney(n.exposure_amount)}</span>
                   )}
                 </div>
                 {renderActions && <div className="flex flex-wrap items-center gap-2">{renderActions(n)}</div>}
               </div>
-              <p className="text-sm text-ink">{n.body}</p>
+              <p className="text-body text-ink">{n.body}</p>
             </div>
           </li>
         ))}

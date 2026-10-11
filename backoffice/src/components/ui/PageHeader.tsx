@@ -102,7 +102,7 @@ export function KeyValue({
       {items.map((it, i) => (
         <div key={i} className="flex items-baseline justify-between gap-4 border-b border-hairline py-2.5">
           <dt className="text-small text-muted">{it.label}</dt>
-          <dd className={cn("text-right text-sm text-ink", it.numeric && "num")}>{it.value}</dd>
+          <dd className={cn("text-right text-body text-ink", it.numeric && "num")}>{it.value}</dd>
         </div>
       ))}
     </dl>

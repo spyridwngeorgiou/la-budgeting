@@ -57,9 +57,9 @@ export function ProjectMilestones({
                 <span className="flex min-w-0 items-baseline gap-2">
                   <span className={`truncate ${x.done_at ? "text-muted line-through" : "text-ink"}`}>{x.title}</span>
                   {x.kind !== "general" && (
-                    <span className="shrink-0 text-xs text-muted">{el.planner.milestoneKind[x.kind]}</span>
+                    <span className="shrink-0 text-small text-muted">{el.planner.milestoneKind[x.kind]}</span>
                   )}
-                  <span className={`num shrink-0 text-xs ${late ? "text-negative" : "text-muted"}`}>
+                  <span className={`num shrink-0 text-small ${late ? "text-negative" : "text-muted"}`}>
                     {formatDate(x.due_date)}
                   </span>
                 </span>

@@ -98,7 +98,7 @@ export function MentionTextarea({
             <li key={p.userId} role="option" aria-selected={i === highlighted}>
               <button
                 type="button"
-                className={`flex min-h-11 w-full items-center px-3 text-left text-sm text-ink ${i === highlighted ? "bg-hover" : "hover:bg-hover"}`}
+                className={`flex min-h-11 w-full items-center px-3 text-left text-body text-ink ${i === highlighted ? "bg-hover" : "hover:bg-hover"}`}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => pick(p)}
               >
@@ -117,7 +117,7 @@ export function MentionTextarea({
         disabled={disabled}
         autoFocus={autoFocus}
         aria-label={ariaLabel ?? placeholder}
-        className={`block w-full resize-none border border-field-border bg-field px-3 py-2 text-base text-ink placeholder:text-muted focus:border-navy focus:outline-none disabled:bg-hover disabled:text-muted sm:text-sm ${className}`}
+        className={`block w-full resize-none border border-field-border bg-field px-3 py-2 text-field text-ink placeholder:text-muted focus:border-navy focus:outline-none disabled:bg-hover disabled:text-muted sm:text-body ${className}`}
         onChange={(e) => {
           onChange(e.target.value);
           setCaret(e.target.selectionStart ?? e.target.value.length);

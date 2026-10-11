@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Input } from "@/components/ui";
+import { Input, LINK_CLASS, SpecTable, Td, Th, Tr } from "@/components/ui";
 
 interface ContactRow {
   contact_id: string | null;
@@ -16,10 +16,8 @@ interface ContactRow {
   net_balance: number | null;
 }
 
-// Spec-sheet table: uppercase 12px head over the navy rule, hairline rows,
-// figures right-aligned in tabular numerals.
-const TH = "eyebrow border-b border-rule px-3 py-2.5 font-medium whitespace-nowrap text-muted";
-const TD = "border-b border-hairline px-3 py-1 align-middle md:py-3";
+// Rows sit tighter on a phone (the name link carries the 44px target).
+const CELL = "max-md:py-1 max-md:align-middle md:align-middle";
 
 function normalize(s: string) {
   return s.toLocaleLowerCase("el");
@@ -46,48 +44,61 @@ export function ContactsTable({ rollup }: { rollup: ContactRow[] }) {
         className="w-full max-md:min-h-11 md:max-w-md"
       />
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-left text-sm">
-          <thead>
+      <SpecTable label="Επαφές">
+        <thead>
+          <tr>
+            <Th>{el.contact.name}</Th>
+            <Th className="hidden md:table-cell">{el.contact.afm}</Th>
+            <Th numeric className="hidden sm:table-cell">
+              {el.contact.totalIncome}
+            </Th>
+            <Th numeric className="hidden sm:table-cell">
+              {el.contact.totalExpense}
+            </Th>
+            <Th numeric className="hidden md:table-cell">
+              {el.contact.outstanding}
+            </Th>
+            <Th numeric>{el.contact.netBalance}</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {visible.map((c) => (
+            <Tr key={c.contact_id}>
+              <Td className={CELL}>
+                <Link href={`/contacts/${c.contact_id}`} className={`${LINK_CLASS} inline-flex min-h-11 items-center md:min-h-0`}>
+                  {c.name}
+                </Link>
+              </Td>
+              <Td className={`${CELL} num hidden md:table-cell`}>
+                <span className="text-muted">{c.afm ?? "—"}</span>
+              </Td>
+              <Td numeric className={`${CELL} hidden sm:table-cell`}>
+                {formatMoney(c.total_income)}
+              </Td>
+              <Td numeric className={`${CELL} hidden sm:table-cell`}>
+                {formatMoney(c.total_expense)}
+              </Td>
+              <Td numeric className={`${CELL} hidden md:table-cell`}>
+                {formatMoney(c.outstanding)}
+              </Td>
+              <Td numeric strong className={CELL}>
+                {formatMoney(c.net_balance)}
+              </Td>
+            </Tr>
+          ))}
+          {visible.length === 0 && (
             <tr>
-              <th scope="col" className={TH}>{el.contact.name}</th>
-              <th scope="col" className={`${TH} hidden md:table-cell`}>{el.contact.afm}</th>
-              <th scope="col" className={`${TH} hidden text-right sm:table-cell`}>{el.contact.totalIncome}</th>
-              <th scope="col" className={`${TH} hidden text-right sm:table-cell`}>{el.contact.totalExpense}</th>
-              <th scope="col" className={`${TH} hidden text-right md:table-cell`}>{el.contact.outstanding}</th>
-              <th scope="col" className={`${TH} text-right`}>{el.contact.netBalance}</th>
-            </tr>
-          </thead>
-          <tbody className="text-text">
-            {visible.map((c) => (
-              <tr key={c.contact_id} className="hover:bg-hover">
-                <td className={`${TD} text-ink`}>
-                  <Link
-                    href={`/contacts/${c.contact_id}`}
-                    className="inline-flex min-h-11 items-center underline-offset-4 hover:underline md:min-h-0"
-                  >
-                    {c.name}
-                  </Link>
-                </td>
-                <td className={`${TD} num hidden text-muted md:table-cell`}>{c.afm ?? "—"}</td>
-                <td className={`${TD} num hidden text-right sm:table-cell`}>{formatMoney(c.total_income)}</td>
-                <td className={`${TD} num hidden text-right sm:table-cell`}>{formatMoney(c.total_expense)}</td>
-                <td className={`${TD} num hidden text-right md:table-cell`}>{formatMoney(c.outstanding)}</td>
-                <td className={`${TD} num text-right text-ink`}>{formatMoney(c.net_balance)}</td>
-              </tr>
-            ))}
-            {visible.length === 0 && (
-              <tr>
-                <td colSpan={6} className="border-b border-hairline px-3 py-8 text-muted">
+              <Td colSpan={6} className="py-8">
+                <span className="text-muted">
                   {rollup.length === 0
                     ? "Δεν υπάρχουν ακόμα επαφές. Πατήστε «+ Νέα Επαφή» για να ξεκινήσετε."
                     : "Καμία επαφή δεν ταιριάζει με την αναζήτηση."}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                </span>
+              </Td>
+            </tr>
+          )}
+        </tbody>
+      </SpecTable>
     </div>
   );
 }

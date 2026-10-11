@@ -1,12 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
-import { SectionHeader } from "@/components/ui";
-import { specRow, specTable, specTd, specTh } from "@/components/specTable";
-import { formatMoney } from "@/lib/format";
+import { SectionHeader, SpecTable, Td, Th, Tr } from "@/components/ui";
+import { formatDuration, formatMoney } from "@/lib/format";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { ingestUnified } from "@/lib/ingest/flag";
 
 const FEATURE_LABELS: Record<string, string> = {
   document_extraction: "Ανάγνωση Παραστατικού (φωτό)",
+  email_document_extraction: "Ανάγνωση Παραστατικού (email)",
+  email_nl_entry: "Καταχώρηση από email (κείμενο)",
   nl_entry: "Καταχώρηση με Κείμενο/Φωνή",
   assistant: "Kansha AI (chat)",
   dashboard_summary: "Περίληψη Κέντρου Ελέγχου",
@@ -78,7 +79,7 @@ export async function CaptureAnalytics() {
     return (
       <section className="flex w-full max-w-2xl flex-col gap-4">
         <SectionHeader title="Ανάλυση Καταγραφής AI" />
-        <p className="text-sm text-muted">
+        <p className="text-body text-muted">
           Καμία χρήση AI ακόμα. Αυτή η ενότητα γεμίζει μόλις αρχίσετε να χρησιμοποιείτε το Kansha
           Operator για πραγματικές κινήσεις.
         </p>
@@ -110,47 +111,45 @@ export async function CaptureAnalytics() {
   return (
     <section className="flex w-full max-w-2xl flex-col gap-4">
       <SectionHeader title="Ανάλυση Καταγραφής AI" />
-      <p className="text-xs text-muted">
+      <p className="text-small text-muted">
         Ταχύτητα και ακρίβεια ανά λειτουργία AI, από τις πραγματικές κλήσεις.
       </p>
-      <div className="overflow-x-auto">
-        <table className={specTable}>
-          <thead>
-            <tr>
-              <th scope="col" className={specTh}>Λειτουργία</th>
-              <th scope="col" className={`${specTh} text-right`}>Κλήσεις</th>
-              <th scope="col" className={`${specTh} text-right`}>Μέση Ταχύτητα</th>
-              <th scope="col" className={`${specTh} text-right`}>Ποσοστό Επεξεργασίας</th>
-              <th scope="col" className={`${specTh} text-right`}>Κόστος</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[...byFeature.entries()].map(([feature, stats]) => {
-              const med = median(stats.latencies);
-              const editRate =
-                feature === "document_extraction"
-                  ? editRateBySource("ai_document")
-                  : feature === "nl_entry"
-                    ? editRateBySource("ai_nl")
-                    : null;
-              return (
-                <tr key={feature} className={specRow}>
-                  <td className={`${specTd} text-ink`}>{FEATURE_LABELS[feature] ?? feature}</td>
-                  <td className={`${specTd} num text-right`}>{stats.count}</td>
-                  <td className={`${specTd} num text-right`}>
-                    {med != null ? `${(med / 1000).toFixed(1)}s` : "—"}
-                  </td>
-                  <td className={`${specTd} num text-right`}>
-                    {editRate ? `${Math.round((editRate.edited / editRate.total) * 100)}%` : "—"}
-                  </td>
-                  <td className={`${specTd} num text-right`}>{formatMoney(stats.costCents / 100)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <p className="text-xs text-muted">
+      <SpecTable label="Ανάλυση Καταγραφής AI">
+        <thead>
+          <tr>
+            <Th>Λειτουργία</Th>
+            <Th numeric>Κλήσεις</Th>
+            <Th numeric>Μέση Ταχύτητα</Th>
+            <Th numeric>Ποσοστό Επεξεργασίας</Th>
+            <Th numeric>Κόστος</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {[...byFeature.entries()].map(([feature, stats]) => {
+            const med = median(stats.latencies);
+            const editRate =
+              feature === "document_extraction"
+                ? editRateBySource("ai_document")
+                : feature === "nl_entry"
+                  ? editRateBySource("ai_nl")
+                  : null;
+            return (
+              <Tr key={feature}>
+                <Td strong>{FEATURE_LABELS[feature] ?? feature.replace(/_/g, " ")}</Td>
+                <Td numeric>{stats.count}</Td>
+                <Td numeric>
+                  {formatDuration(med)}
+                </Td>
+                <Td numeric>
+                  {editRate ? `${Math.round((editRate.edited / editRate.total) * 100)}%` : "—"}
+                </Td>
+                <Td numeric>{formatMoney(stats.costCents / 100)}</Td>
+              </Tr>
+            );
+          })}
+        </tbody>
+      </SpecTable>
+      <p className="text-small text-muted">
         «Ποσοστό Επεξεργασίας» = πόσες εγκεκριμένες κινήσεις χρειάστηκαν διόρθωση πριν καταχωρηθούν
         (μόνο για φωτό/κείμενο-φωνή).
       </p>

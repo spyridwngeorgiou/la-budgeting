@@ -117,7 +117,7 @@ export default async function CollabProjectPage({ params }: { params: Promise<{ 
               {(people ?? []).map((p) => (
                 <li key={`${p.user_id}-${p.is_internal}`} className="flex items-start justify-between gap-2 border-b border-hairline py-2.5">
                   <div className="min-w-0">
-                    <p className="truncate text-sm text-ink">{p.display_name || el.collab.unknownUser}</p>
+                    <p className="truncate text-body text-ink">{p.display_name || el.collab.unknownUser}</p>
                     <p className="truncate text-small text-muted">
                       {[p.company_name, p.discipline ? el.partner.disciplineValues[p.discipline] : null]
                         .filter(Boolean)
@@ -136,10 +136,10 @@ export default async function CollabProjectPage({ params }: { params: Promise<{ 
 
           <section className="flex flex-col">
             <SectionHeader title={el.collab.activity} />
-            {(activity ?? []).length === 0 && <p className="py-3 text-sm text-muted">{el.collab.noActivity}</p>}
+            {(activity ?? []).length === 0 && <p className="py-3 text-body text-muted">{el.collab.noActivity}</p>}
             <ul className="flex flex-col">
               {(activity ?? []).map((a) => (
-                <li key={a.id} className="border-b border-hairline py-2.5 text-sm">
+                <li key={a.id} className="border-b border-hairline py-2.5 text-body">
                   <span className="text-ink">{nameOf(a.actor_id)}</span>{" "}
                   <span className="text-muted">{el.collab.activityKinds[a.kind] ?? a.kind}</span>
                   {a.summary && <span className="text-ink"> «{a.summary}»</span>}

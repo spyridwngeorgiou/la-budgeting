@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { SubmitButton } from "@/components/SubmitButton";
-import { AiSpark, Textarea } from "@/components/ui";
+import { AiSpark, Notice, Textarea } from "@/components/ui";
 import { createRevenuePlanFromText } from "./actions";
 import { errorOf } from "@/lib/actions";
 
@@ -36,16 +36,15 @@ export function AiCreateForm({ projectId }: { projectId?: string }) {
         required
       />
       {error && (
-        <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+        <Notice tone="negative" role="alert">
           {error}
-        </p>
+        </Notice>
       )}
       <div className="flex justify-end">
         <SubmitButton
           variant="ai"
           pendingLabel="Δημιουργία ανάλυσης… (μπορεί να πάρει λίγο)"
           disabled={!text.trim()}
-          className="max-md:min-h-11"
         >
           <AiSpark className="mr-1.5" />
           Δημιουργία με AI

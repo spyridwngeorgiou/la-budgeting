@@ -23,7 +23,7 @@ export default async function ProjectsPage() {
     .filter((id): id is string => id !== null);
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
       <PageHeader
         title={el.nav.projects}
         meta={
@@ -34,10 +34,10 @@ export default async function ProjectsPage() {
         }
         actions={
           <>
-            <ButtonLink href="/projects/revenue-plans" className="max-md:min-h-11">
+            <ButtonLink href="/projects/revenue-plans">
               {el.nav.revenuePlans}
             </ButtonLink>
-            <ButtonLink href="/collab" className="max-md:min-h-11">
+            <ButtonLink href="/collab">
               {el.collab.navLabel}
             </ButtonLink>
             <ProjectFormModal action={createProject} />

@@ -280,7 +280,7 @@ export function LoanFields({ initial }: { initial?: LoanInitial }) {
               <input type="checkbox" className="accent-navy" checked={r.done} onChange={(e) => patch(i, { done: e.target.checked })} />
               έγινε
             </label>
-            <Button type="button" variant="ghost" size="sm" className="max-md:min-h-11 max-md:min-w-11" aria-label="Αφαίρεση εκταμίευσης" onClick={() => setRows(rows.filter((_, j) => j !== i))}>
+            <Button type="button" variant="ghost" size="sm" className="max-md:min-w-11" aria-label="Αφαίρεση εκταμίευσης" onClick={() => setRows(rows.filter((_, j) => j !== i))}>
               ×
             </Button>
           </div>
@@ -290,7 +290,6 @@ export function LoanFields({ initial }: { initial?: LoanInitial }) {
             type="button"
             variant="secondary"
             size="sm"
-            className="max-md:min-h-11"
             onClick={() => setRows([...rows, { key: nextKey++, month: "", amount: "", done: false }])}
           >
             + Εκταμίευση

@@ -50,7 +50,7 @@ export function PlannerCalendar({
       </div>
 
       <div className="hidden md:block">
-        <div className="grid grid-cols-7 border-t border-l border-hairline text-xs">
+        <div className="grid grid-cols-7 border-t border-l border-hairline text-small">
           {WEEKDAY_LABELS.map((w) => (
             <div key={w} className="eyebrow border-r border-b border-hairline border-b-rule bg-raised px-1.5 py-2 text-muted">
               {w}
@@ -71,7 +71,7 @@ export function PlannerCalendar({
               >
                 <span
                   className={cn(
-                    "num self-end px-1 text-xs",
+                    "num self-end px-1 text-small",
                     isToday ? "bg-navy font-medium text-panel-ink" : cell.inMonth ? "text-text" : "text-muted",
                   )}
                 >
@@ -81,7 +81,7 @@ export function PlannerCalendar({
                   <Pill key={item.item_key} item={item} href={hrefFor(item)} overdue={!item.is_done && item.ends_on < today} />
                 ))}
                 {dayItems.length > MAX_PER_CELL && (
-                  <span className="px-1 text-xs text-muted">
+                  <span className="px-1 text-small text-muted">
                     +{dayItems.length - MAX_PER_CELL} {el.planner.calendar.more}
                   </span>
                 )}
@@ -129,7 +129,7 @@ function Pill({
       title={`${el.planner.source[item.source]} · ${label}`}
       className={cn(
         "flex items-center gap-1 border-l-2 bg-field leading-tight group-hover:bg-hover",
-        wide ? "min-h-11 px-2 py-1.5 text-sm" : "px-1 py-0.5 text-xs",
+        wide ? "min-h-11 px-2 py-1.5 text-body" : "px-1 py-0.5 text-small",
         SOURCE_PILL[item.source],
         item.is_done && "text-muted line-through",
         overdue && "border-negative text-negative",

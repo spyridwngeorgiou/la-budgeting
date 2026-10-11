@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Button, Input, Select, Label, Field, Badge } from "@/components/ui";
+import { Button, Input, Select, Label, Field, Badge, Notice, PageHeader } from "@/components/ui";
 import { DuplicateWarning } from "@/components/DuplicateWarning";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, formatPercent } from "@/lib/format";
 import { deriveFromNet, cashOnly } from "@/lib/finance/money";
 import { VAT_RATES } from "@/lib/domain/enums";
 import { el } from "@/lib/i18n/el";
@@ -90,7 +90,7 @@ export function ReviewForm({
   const allTouched = [...amberFields].every((f) => touched.has(f));
 
   if (status !== "pending") {
-    return <p className="border-y border-hairline py-6 text-sm text-muted">Αυτό το πρόχειρο έχει ήδη διεκπεραιωθεί.</p>;
+    return <p className="border-y border-hairline py-6 text-body text-muted">Αυτό το πρόχειρο έχει ήδη διεκπεραιωθεί.</p>;
   }
 
   return (
@@ -111,25 +111,25 @@ export function ReviewForm({
       )}
 
       <div className="flex flex-1 flex-col gap-3">
-        <h1 className="border-b border-rule pb-4 text-title font-normal text-ink">Έλεγχος Πρόχειρης Κίνησης</h1>
+        <PageHeader title="Έλεγχος Πρόχειρης Κίνησης" />
         {queueIds.length > 0 && (
-          <p className="text-xs text-muted">
+          <p className="text-small text-muted">
             {queueIds.length} ακόμα κίνηση{queueIds.length > 1 ? "εις" : ""} από αυτή την περιγραφή σε αναμονή ελέγχου.
           </p>
         )}
 
         {needsReviewReasons.length > 0 && (
-          <div className="border-l-2 border-warning py-1 pl-4 text-sm text-warning">
+          <Notice as="div" tone="warning">
             <ul className="list-disc pl-4">
               {needsReviewReasons.map((r) => (
                 <li key={r}>{r}</li>
               ))}
             </ul>
-          </div>
+          </Notice>
         )}
 
         {extraction.notes_for_human && (
-          <p className="text-xs text-muted">Σημείωση AI: {extraction.notes_for_human}</p>
+          <p className="text-small text-muted">Σημείωση AI: {extraction.notes_for_human}</p>
         )}
 
         {/* onSubmit, not action={...}: React resets an action form's
@@ -146,7 +146,7 @@ export function ReviewForm({
             {(["expense", "income"] as const).map((d) => (
               <label
                 key={d}
-                className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center border px-3 py-2 text-center text-sm not-first:-ml-px ${
+                className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center border px-3 py-2 text-center text-body not-first:-ml-px ${
                   direction === d ? "relative border-navy bg-navy text-panel-ink" : "border-chip-border text-ink hover:bg-hover"
                 }`}
               >
@@ -187,7 +187,7 @@ export function ReviewForm({
             <Label className="flex items-center gap-2">
               Επαφή
               {extraction.issuer_name && (
-                <span className="text-xs text-ai" title={`AI: ${extraction.issuer_name}`}>
+                <span className="text-small text-ai" title={`AI: ${extraction.issuer_name}`}>
                   (AI: {extraction.issuer_name})
                 </span>
               )}
@@ -212,7 +212,7 @@ export function ReviewForm({
             <Field>
               <Label className="flex items-center gap-2">
                 Έργο
-                {extraction.project_mention && <span className="text-xs text-ai">(AI: {extraction.project_mention})</span>}
+                {extraction.project_mention && <span className="text-small text-ai">(AI: {extraction.project_mention})</span>}
               </Label>
               <Select
                 name="project_id"
@@ -254,7 +254,7 @@ export function ReviewForm({
             </Select>
           </Field>
 
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2 text-body">
             <input type="checkbox" name="has_invoice" checked={hasInvoice} onChange={(e) => setHasInvoice(e.target.checked)} />
             Με παραστατικό
           </label>
@@ -270,7 +270,7 @@ export function ReviewForm({
                 <Select name="vat_rate" value={vatRate} onChange={(e) => setVatRate(e.target.value)}>
                   {VAT_RATES.map((r) => (
                     <option key={r} value={r}>
-                      {(r * 100).toFixed(0)}%
+                      {formatPercent(r, { digits: 0 })}
                     </option>
                   ))}
                 </Select>
@@ -278,7 +278,7 @@ export function ReviewForm({
             )}
           </div>
 
-          <div className="border-y border-ink py-3 text-sm">
+          <div className="border-y border-ink py-3 text-body">
             <div className="flex justify-between">
               <span className="text-ai" title={extraction.gross.evidence ?? undefined}>
                 Σύνολο (AI: {formatMoney(extraction.gross.value)})
@@ -326,9 +326,9 @@ export function ReviewForm({
           </div>
 
           {error && (
-            <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+            <Notice tone="negative" role="alert">
               {error}
-            </p>
+            </Notice>
           )}
 
           {duplicates.length > 0 && (
@@ -353,7 +353,7 @@ export function ReviewForm({
             </Button>
           </div>
           {!allTouched && (
-            <p className="text-right text-xs text-warning">
+            <p className="text-right text-small text-warning">
               Ελέγξτε τα πεδία με κίτρινο περίγραμμα πριν καταχωρήσετε.
             </p>
           )}

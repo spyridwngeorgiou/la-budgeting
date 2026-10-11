@@ -9,7 +9,7 @@ export function ManualPlanForm({ projectId }: { projectId?: string }) {
   const id = (name: string) => `manual-plan-${name}`;
   return (
     <details className="border-y border-hairline">
-      <summary className="flex min-h-11 cursor-pointer items-center text-sm text-ink hover:underline">
+      <summary className="flex min-h-11 cursor-pointer items-center text-body text-ink hover:underline">
         ή ξεκίνα μια κενή ανάλυση χειροκίνητα
       </summary>
       <form action={createRevenuePlan} className="flex flex-wrap items-end gap-3 pb-4">
@@ -23,7 +23,7 @@ export function ManualPlanForm({ projectId }: { projectId?: string }) {
         <Field label="Έτη" htmlFor={id("years")}>
           <Input id={id("years")} name="years" type="number" min={1} max={10} defaultValue={3} required className="num w-20" />
         </Field>
-        <Button type="submit" variant="secondary" className="max-md:min-h-11">
+        <Button type="submit" variant="secondary">
           Δημιουργία
         </Button>
       </form>

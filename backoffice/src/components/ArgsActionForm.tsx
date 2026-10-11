@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import type { ActionResult } from "@/lib/actions";
 import { useAction } from "@/lib/useAction";
+import { Notice } from "@/components/ui";
 
 // ActionForm for a list row, without `action.bind(null, id)` per row (Next
 // encrypts every bound argument, which costs CPU on every render). The
@@ -30,9 +31,9 @@ export function ArgsActionForm({
     <form action={formAction} className={className}>
       {children}
       {error && (
-        <p role="alert" className="basis-full border-l-2 border-negative pl-3 text-sm text-negative">
+        <Notice tone="negative" role="alert" className="basis-full">
           {error}
-        </p>
+        </Notice>
       )}
     </form>
   );

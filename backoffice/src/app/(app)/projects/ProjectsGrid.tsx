@@ -92,7 +92,7 @@ export function ProjectsGrid({
       </div>
 
       {visible.length === 0 ? (
-        <p className="border-y border-hairline py-6 text-sm text-muted">
+        <p className="border-y border-hairline py-6 text-body text-muted">
           {rollup.length === 0
             ? "Δεν υπάρχουν ακόμα έργα. Πατήστε «+ Νέο Έργο» για να ξεκινήσετε."
             : "Κανένα έργο δεν ταιριάζει με τα φίλτρα."}

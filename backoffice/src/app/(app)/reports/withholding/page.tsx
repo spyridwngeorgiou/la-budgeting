@@ -3,8 +3,7 @@ import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney } from "@/lib/format";
 import { monthKeyOf, monthLabel } from "@/lib/dates";
 import { el } from "@/lib/i18n/el";
-import { PageHeader, cn } from "@/components/ui";
-import { FRAME, NUM, TABLE, TD, TH } from "../ui";
+import { PageHeader, SpecTable, Td, Th, Tr } from "@/components/ui";
 
 export default async function WithholdingPage() {
   const supabase = await createClient();
@@ -17,7 +16,7 @@ export default async function WithholdingPage() {
     .limit(24);
 
   return (
-    <div className="flex min-w-0 flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-10">
       <PageHeader
         title={el.nav.withholding}
         meta={
@@ -26,32 +25,30 @@ export default async function WithholdingPage() {
       />
 
       {(positions ?? []).length === 0 ? (
-        <p className="border-y border-hairline py-6 text-sm text-muted">
+        <p className="border-y border-hairline py-6 text-body text-muted">
           Δεν υπάρχουν ακόμα κινήσεις με παρακράτηση.
         </p>
       ) : (
-        <div className={cn(FRAME, "max-w-2xl")}>
-          <table className={TABLE}>
-            <thead>
-              <tr>
-                <th scope="col" className={TH}>
-                  {el.vat.period}
-                </th>
-                <th scope="col" className={cn(TH, "text-right")}>
-                  Παρακρατηθέν Ποσό
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {(positions ?? []).map((p) => (
-                <tr key={p.period_start} className="hover:bg-hover">
-                  <td className={cn(TD, "whitespace-nowrap text-ink")}>{p.period_start ? monthLabel(monthKeyOf(p.period_start)) : "—"}</td>
-                  <td className={cn(TD, NUM, "text-ink")}>{formatMoney(p.withheld_total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <SpecTable label={el.nav.withholding} className="max-w-2xl">
+          <thead>
+            <tr>
+              <Th>{el.vat.period}</Th>
+              <Th numeric>Παρακρατηθέν Ποσό</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {(positions ?? []).map((p) => (
+              <Tr key={p.period_start}>
+                <Td strong className="whitespace-nowrap">
+                  {p.period_start ? monthLabel(monthKeyOf(p.period_start)) : "—"}
+                </Td>
+                <Td numeric strong>
+                  {formatMoney(p.withheld_total)}
+                </Td>
+              </Tr>
+            ))}
+          </tbody>
+        </SpecTable>
       )}
     </div>
   );

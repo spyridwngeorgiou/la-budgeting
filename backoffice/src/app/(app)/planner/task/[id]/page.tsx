@@ -36,7 +36,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
     : [{ id: task.project_id, label: "—" }];
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
       <PageHeader
         eyebrow={
           <Link href={`/planner?project=${task.project_id}`} className="inline-flex min-h-8 items-center hover:text-ink hover:underline">
@@ -56,9 +56,11 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
               </Link>
             )}
             {task.due_date && (
-              <span className={overdue ? "border-l-2 border-negative pl-2 font-medium text-negative" : "num"}>
-                {el.planner.task.due}: {formatDate(task.due_date)}
-                {overdue && ` · ${el.planner.task.overdue}`}
+              <span className="inline-flex flex-wrap items-center gap-1.5">
+                <span className={overdue ? "num text-negative" : "num"}>
+                  {el.planner.task.due}: {formatDate(task.due_date)}
+                </span>
+                {overdue && <Badge tone="negative">{el.planner.task.overdue}</Badge>}
               </span>
             )}
             {task.completed_at && (
@@ -118,7 +120,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
             {task.description && (
               <div className="flex flex-col gap-1">
                 <p className="eyebrow text-muted">{el.planner.task.description}</p>
-                <p className="text-sm whitespace-pre-wrap text-ink">{task.description}</p>
+                <p className="text-body whitespace-pre-wrap text-ink">{task.description}</p>
               </div>
             )}
           </>

@@ -598,17 +598,17 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
       <header className="flex h-14 shrink-0 items-center gap-1.5 border-b border-hairline bg-raised px-2 sm:px-3">
         <Link
           href={bootstrap.backHref}
-          className="flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 px-2 text-sm text-muted hover:bg-hover hover:text-ink"
+          className="flex h-11 min-w-11 shrink-0 items-center justify-center gap-1 px-2 text-body text-muted hover:bg-hover hover:text-ink"
           aria-label={el.collab.board.back}
         >
-          <span aria-hidden="true" className="text-lg">
+          <span aria-hidden="true" className="text-section">
             ←
           </span>
           <span className="hidden md:inline">{el.collab.board.back}</span>
         </Link>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium text-ink">{bootstrap.title}</div>
-          <div className={`truncate text-xs ${status === "offline" || status === "error" ? "text-negative" : "text-muted"}`}>
+          <div className="truncate text-body font-medium text-ink">{bootstrap.title}</div>
+          <div className={`truncate text-small ${status === "offline" || status === "error" ? "text-negative" : "text-muted"}`}>
             {!canEdit && <span className="font-medium text-warning">{el.collab.viewOnly} · </span>}
             {STATUS_LABEL[status]}
           </div>
@@ -620,7 +620,7 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
                 key={p.userId}
                 type="button"
                 title={`${p.name} · ${el.collab.presence.goTo}`}
-                className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-raised text-xs font-medium text-panel-ink"
+                className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-raised text-small font-medium text-panel-ink"
                 style={{ background: p.color }}
                 onClick={() => {
                   const pointer = peerPointer(p.userId);
@@ -643,7 +643,7 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
           type="button"
           onClick={() => setPanel((p) => (p === "comments" ? null : "comments"))}
           className={cn(
-            "relative flex h-11 min-w-11 items-center justify-center gap-1 border px-2.5 text-sm font-medium",
+            "relative flex h-11 min-w-11 items-center justify-center gap-1 border px-2.5 text-body font-medium",
             panel === "comments" ? "border-navy bg-navy text-panel-ink" : "border-chip-border text-ink hover:border-navy hover:bg-hover",
           )}
           aria-label={el.collab.comments.title}
@@ -651,7 +651,7 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
         >
           <span aria-hidden="true">📌</span>
           <span className="hidden lg:inline">{el.collab.comments.title}</span>
-          {openThreads > 0 && <span className="num text-xs">{openThreads}</span>}
+          {openThreads > 0 && <span className="num text-small">{openThreads}</span>}
         </button>
         <button
           type="button"
@@ -663,17 +663,17 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
             }
           }}
           className={cn(
-            "relative flex h-11 items-center gap-1.5 border px-3 text-sm font-medium",
+            "relative flex h-11 items-center gap-1.5 border px-3 text-body font-medium",
             panel === "chat" ? "border-navy bg-navy text-panel-ink" : "border-chip-border text-ink hover:border-navy hover:bg-hover",
           )}
           title={el.collab.chat.title}
         >
-          <span aria-hidden="true" className="text-base">
+          <span aria-hidden="true" className="text-body">
             💬
           </span>
           {el.collab.chat.open}
           {chat.unread > 0 && (
-            <span className="num absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-negative px-1 text-xs font-medium text-panel-ink">
+            <span className="num absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-negative px-1 text-small font-medium text-panel-ink">
               {chat.unread > 99 ? "99+" : chat.unread}
               <span className="sr-only"> {el.collab.chat.unread}</span>
             </span>
@@ -787,7 +787,7 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
           {(uploads.progress || uploads.pdfOffer) && (
             <div className="pointer-events-none absolute inset-x-0 top-3 z-[8] flex justify-center px-2">
               {uploads.progress ? (
-                <div className="pointer-events-auto flex max-w-full items-center gap-2 bg-panel px-4 py-2 text-sm text-panel-ink">
+                <div className="pointer-events-auto flex max-w-full items-center gap-2 bg-panel px-4 py-2 text-body text-panel-ink">
                   <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-panel-muted border-t-panel-ink" aria-hidden="true" />
                   <span className="shrink-0">
                     {fillText(el.collab.quick.uploading, { done: uploads.progress.done + 1, total: uploads.progress.total })}
@@ -796,7 +796,7 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
                 </div>
               ) : (
                 uploads.pdfOffer && (
-                  <div className="pointer-events-auto flex max-w-full flex-wrap items-center gap-2 border border-hairline bg-raised px-4 py-2 text-sm text-ink">
+                  <div className="pointer-events-auto flex max-w-full flex-wrap items-center gap-2 border border-hairline bg-raised px-4 py-2 text-body text-ink">
                     <span className="min-w-0">
                       {fillText(el.collab.quick.pdfPages, { name: uploads.pdfOffer.name, pages: uploads.pdfOffer.numPages })}
                     </span>
@@ -861,7 +861,7 @@ export default function BoardCanvas({ bootstrap }: { bootstrap: BoardBootstrap }
               )}
               <button
                 type="button"
-                className="flex h-11 w-11 items-center justify-center text-xl text-muted hover:bg-hover hover:text-ink"
+                className="flex h-11 w-11 items-center justify-center text-section text-muted hover:bg-hover hover:text-ink"
                 onClick={closePanel}
                 aria-label={el.collab.comments.close}
               >
@@ -957,7 +957,7 @@ function TabButton({
       aria-selected={active}
       onClick={onClick}
       className={cn(
-        "-mb-px flex min-h-11 items-center gap-1.5 border-b-2 px-3 text-sm font-medium whitespace-nowrap",
+        "-mb-px flex min-h-11 items-center gap-1.5 border-b-2 px-3 text-body font-medium whitespace-nowrap",
         active ? "border-navy" : "border-transparent hover:bg-hover",
         ai ? "text-ai" : active ? "text-ink" : "text-muted hover:text-ink",
       )}

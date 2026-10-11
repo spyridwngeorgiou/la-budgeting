@@ -28,7 +28,7 @@ const BADGE: Record<Exclude<Tone, "green" | "amber" | "red">, string> = {
 
 export function Badge({ children, tone = "neutral", className = "" }: { children: ReactNode; tone?: Tone; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-1 border px-1.5 py-0.5 text-xs font-medium whitespace-nowrap", BADGE[NORMAL[tone]], className)}>
+    <span className={cn("inline-flex items-center gap-1 border px-1.5 py-0.5 text-small font-medium whitespace-nowrap", BADGE[NORMAL[tone]], className)}>
       {children}
     </span>
   );

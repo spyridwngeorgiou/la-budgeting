@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate, formatMoney } from "@/lib/format";
-import { Badge, Button, Input, PageHeader, Stat, cn } from "@/components/ui";
+import { Badge, Button, Input, Notice, PageHeader, Stat, cn } from "@/components/ui";
 import { markInvoiceReceived } from "./actions";
 import { currentYear, monthKeyOf, monthLabel } from "@/lib/dates";
 import { el } from "@/lib/i18n/el";
@@ -28,7 +28,7 @@ const CHECKS = [
         </Link>
         {r.issue === "drift" && (
           <>
-            <span className="text-xs text-muted">μέτρηση {formatDate(r.counted_on)}</span>
+            <span className="text-small text-muted">μέτρηση {formatDate(r.counted_on)}</span>
             <Badge tone={Math.abs(Number(r.drift)) >= 50 ? "red" : "amber"}>
               {Number(r.drift) > 0 ? "+" : ""}
               {formatMoney(r.drift)} {Number(r.drift) > 0 ? "περισσότερα από την εφαρμογή" : "λιγότερα από την εφαρμογή"}
@@ -52,7 +52,7 @@ const CHECKS = [
         <Link href={`/transactions?ids=${(r.transaction_ids ?? []).join(",")}`} className="min-w-0 flex-1 text-ink underline-offset-4 hover:underline">
           {r.counterparty_name}
         </Link>
-        <span className="text-xs text-muted">τελευταία {formatDate(r.last_tx_date)}</span>
+        <span className="text-small text-muted">τελευταία {formatDate(r.last_tx_date)}</span>
         <span className="num">{formatMoney(r.gross_amount)}</span>
         <Badge tone="amber">{r.n}×</Badge>
       </Row>
@@ -79,13 +79,13 @@ const CHECKS = [
         ) : (
           <Badge tone="red">μετρητά &gt; όριο</Badge>
         )}
-        <span className="text-xs text-muted">
+        <span className="text-small text-muted">
           χάνονται ~{formatMoney(Number(r.lost_deduction_est ?? 0) + Number(r.lost_input_vat_est ?? 0))}
         </span>
         {r.risk_kind === "no_invoice" && (
           <ArgsActionForm action={markInvoiceReceived} args={[r.transaction_id]} className="flex items-center gap-1">
             <Input name="invoice_number" placeholder="Αρ. παραστατικού" className="w-40" />
-            <Button type="submit" variant="secondary" size="sm" className="max-md:min-h-11">
+            <Button type="submit" variant="secondary" size="sm">
               Ήρθε
             </Button>
           </ArgsActionForm>
@@ -193,7 +193,7 @@ const CHECKS = [
       <Row key={r.transaction_id}>
         <span>{formatDate(r.tx_date)}</span>
         <span className="min-w-0 flex-1 text-ink">{r.contact_name}</span>
-        <span className="num text-xs">
+        <span className="num text-small">
           κίνηση: {r.counterparty_afm} <span className="text-muted">/</span> επαφή: {r.contact_afm}
         </span>
       </Row>
@@ -314,7 +314,7 @@ const CHECKS = [
         </Link>
         <Badge tone="amber">{r.kind === "loan" ? "δάνειο" : "μίσθωση"}</Badge>
         <ArgsActionForm action={syncStaleSchedule} args={[r.kind ?? "loan", r.source_id ?? ""]}>
-          <Button type="submit" variant="secondary" size="sm" className="max-md:min-h-11">
+          <Button type="submit" variant="secondary" size="sm">
             Συγχρονισμός
           </Button>
         </ArgsActionForm>
@@ -432,7 +432,7 @@ export default async function QualityPage() {
   );
 
   return (
-    <div className="flex min-w-0 flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-10">
       <PageHeader
         title={
           <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -451,7 +451,7 @@ export default async function QualityPage() {
       />
 
       {exposure.gross > 0 && (
-        <section className="flex flex-col gap-4 border-l-2 border-warning py-1 pl-4">
+        <Notice tone="warning" as="section" className="flex flex-col gap-4">
           <h2 className="text-body text-ink">Εκτιμώμενη φορολογική απώλεια από δαπάνες χωρίς παραστατικό</h2>
           <div className="flex flex-wrap gap-x-10 gap-y-4">
             <Stat label="Δαπάνες" value={formatMoney(exposure.gross)} />
@@ -461,7 +461,7 @@ export default async function QualityPage() {
           <p className="text-small text-muted">
             Εκτίμηση με το όριο και τον συντελεστή των Ρυθμίσεων — επιβεβαιώστε με τον λογιστή.
           </p>
-        </section>
+        </Notice>
       )}
 
       <div className="flex flex-col border-t border-hairline">
@@ -481,11 +481,11 @@ export default async function QualityPage() {
             </div>
             <p className="max-w-3xl text-small text-muted">{check.why}</p>
             {check.count > 0 && (
-              <div className="mt-1 flex flex-col border-t border-hairline text-sm">
+              <div className="mt-1 flex flex-col border-t border-hairline text-body">
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 {(check.rows as any[]).map((r) => check.render(r as never))}
                 {check.count > check.rows.length && (
-                  <p className="pt-2 text-xs text-muted">
+                  <p className="pt-2 text-small text-muted">
                     … και {check.count - check.rows.length} ακόμα
                   </p>
                 )}

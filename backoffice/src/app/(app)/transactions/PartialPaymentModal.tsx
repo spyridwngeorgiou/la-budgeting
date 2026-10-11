@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Select, Label, Field, Modal } from "@/components/ui";
+import { Button, Input, Select, Label, Field, Modal, Notice } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { el } from "@/lib/i18n/el";
 import { formatMoney } from "@/lib/format";
@@ -82,7 +82,7 @@ export function PartialPaymentModal({ transactionId, label, remaining, accountId
           </Select>
         </Field>
 
-        <div className="border-t border-hairline text-sm">
+        <div className="border-t border-hairline text-body">
           <div className="flex items-baseline justify-between gap-4 border-b border-hairline py-2.5">
             <span className="text-small text-muted">Καταγράφεται ως πληρωμένη</span>
             <span className="num text-ink">{formatMoney(paid)}</span>
@@ -92,14 +92,14 @@ export function PartialPaymentModal({ transactionId, label, remaining, accountId
             <span className={`num ${left < 0 ? "text-negative" : "text-ink"}`}>{formatMoney(Math.max(left, 0))}</span>
           </div>
           {paid > 0 && left === 0 && (
-            <p className="mt-2 text-xs text-muted">Ολόκληρο το υπόλοιπο — η κίνηση θα σημειωθεί ως πληρωμένη.</p>
+            <p className="mt-2 text-small text-muted">Ολόκληρο το υπόλοιπο — η κίνηση θα σημειωθεί ως πληρωμένη.</p>
           )}
         </div>
 
         {error && (
-          <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+          <Notice tone="negative" role="alert">
             {error}
-          </p>
+          </Notice>
         )}
 
         <div className="mt-1 flex justify-end gap-2">

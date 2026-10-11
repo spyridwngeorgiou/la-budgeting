@@ -1,11 +1,12 @@
 import { OnePagerRow, OnePagerSection } from "@/components/onepager";
 import { Button, Term } from "@/components/ui";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, formatMultiple, formatPercent } from "@/lib/format";
 import type { ScenarioResult, ScenarioRow } from "@/lib/finance/projectModel";
 import { saveScenario, saveOpexLine, deleteOpexLine } from "./scenario-actions";
 import { ScenarioFormModal } from "../LegacyFormModals";
 import { OpexLineFormModal } from "../LegacyFormModals";
 import { SendToCashSection } from "./FinanceSections";
+import { RowDeleteMenu } from "@/components/RowDeleteMenu";
 
 // The base scenario's blocks of the project one-pager: its assumptions
 // (editable), the reference operating year (ΛΕΙΤΟΥΡΓΙΑ) and the cash flow
@@ -46,19 +47,19 @@ export function ScenarioSections({
         <div className="flex flex-col gap-3">
           {!scenario ? (
             <div className="flex flex-col items-start gap-3 border-b border-hairline py-3 md:flex-row md:items-center md:justify-between">
-              <p className="text-sm text-muted">Δεν υπάρχει ακόμα σενάριο λειτουργίας για αυτό το έργο.</p>
+              <p className="text-body text-muted">Δεν υπάρχει ακόμα σενάριο λειτουργίας για αυτό το έργο.</p>
               <ScenarioFormModal action={saveScenario.bind(null, id, null)} trigger="+ Σενάριο Λειτουργίας" />
             </div>
           ) : (
             <>
-              <div className="flex flex-col items-start gap-2 border-b border-hairline py-3 text-sm md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-col items-start gap-2 border-b border-hairline py-3 text-body md:flex-row md:items-center md:justify-between">
                 <div className="num text-text">
-                  Ανάπτυξη εσόδων {(Number(scenario.revenue_growth_pct) * 100).toFixed(1)}% ·{" "}
+                  Ανάπτυξη εσόδων {formatPercent(Number(scenario.revenue_growth_pct), { fixed: true })} ·{" "}
                   <Term title="Opex (Operating Expenses) — λειτουργικά έξοδα, εκτός μισθώματος και εξυπηρέτησης δανείου.">
                     opex
                   </Term>{" "}
-                  {(Number(scenario.opex_growth_pct) * 100).toFixed(1)}% · προεξόφληση{" "}
-                  {(Number(scenario.discount_rate_pct) * 100).toFixed(1)}% ·{" "}
+                  {formatPercent(Number(scenario.opex_growth_pct), { fixed: true })} · προεξόφληση{" "}
+                  {formatPercent(Number(scenario.discount_rate_pct), { fixed: true })} ·{" "}
                   <Term title="DSCR (Debt Service Coverage Ratio) — Δείκτης Κάλυψης Εξυπηρέτησης Χρέους: λειτουργικό αποτέλεσμα ÷ ετήσια δόση δανείου. Πάνω από 1.0× σημαίνει ότι τα έσοδα καλύπτουν τη δόση.">
                     DSCR
                   </Term>{" "}
@@ -84,7 +85,7 @@ export function ScenarioSections({
                 {opexLines.map((l) => (
                   <div
                     key={l.id}
-                    className="flex flex-col gap-2 border-b border-hairline py-3 text-sm md:flex-row md:items-center md:justify-between md:gap-4"
+                    className="flex flex-col gap-2 border-b border-hairline py-3 text-body md:flex-row md:items-center md:justify-between md:gap-4"
                   >
                     <span className="min-w-0 text-ink">
                       {l.label}{" "}
@@ -113,11 +114,9 @@ export function ScenarioSections({
                           note: l.note,
                         }}
                       />
-                      <form action={deleteOpexLine.bind(null, id, l.id)}>
-                        <Button type="submit" variant="danger" size="sm" className="max-md:min-h-11">
-                          Διαγραφή
-                        </Button>
-                      </form>
+                      <RowDeleteMenu action={deleteOpexLine.bind(null, id, l.id)} label="Ενέργειες" plain>
+                        Διαγραφή
+                      </RowDeleteMenu>
                     </div>
                   </div>
                 ))}
@@ -153,7 +152,7 @@ export function ScenarioSections({
           <OnePagerRow label="ΕΤΗΣΙΟ ΑΠΟΤΕΛΕΣΜΑ" amount={operatingResult} emphasis />
           <OnePagerRow
             label="Περιθώριο επί τζίρου"
-            amount={`${((operatingResult / revenue) * 100).toFixed(1)}%`}
+            amount={formatPercent(operatingResult / revenue, { fixed: true })}
           />
         </OnePagerSection>
       )}
@@ -168,14 +167,14 @@ export function ScenarioSections({
           {cashflow.kpis.firstAmortisationYearDscr && (
             <OnePagerRow
               label="Κάλυψη δόσης — πρώτο έτος χρεολυσίου"
-              amount={`${cashflow.kpis.firstAmortisationYearDscr.value.toFixed(2)}×`}
+              amount={formatMultiple(cashflow.kpis.firstAmortisationYearDscr.value)}
               note={`${cashflow.kpis.firstAmortisationYearDscr.calendarYear}`}
             />
           )}
           {cashflow.kpis.minDscr && (
             <OnePagerRow
               label="Χαμηλότερη κάλυψη δόσης"
-              amount={`${cashflow.kpis.minDscr.value.toFixed(2)}×`}
+              amount={formatMultiple(cashflow.kpis.minDscr.value)}
               note={`${cashflow.kpis.minDscr.calendarYear}`}
               negative={cashflow.kpis.minDscr.value < (scenario?.dscr_covenant_min ?? 1.2)}
               alert={cashflow.kpis.minDscr.value < (scenario?.dscr_covenant_min ?? 1.2)}
@@ -190,7 +189,7 @@ export function ScenarioSections({
             label="Καθαρή Παρούσα Αξία"
             amount={cashflow.kpis.npv}
             emphasis
-            note={`Προεξοφλημένη ροή μετά την εξυπηρέτηση δανείου, χωρίς την αρχική επένδυση — @${((Number(scenario?.discount_rate_pct ?? 0.09)) * 100).toFixed(0)}%.`}
+            note={`Προεξοφλημένη ροή μετά την εξυπηρέτηση δανείου, χωρίς την αρχική επένδυση — @${formatPercent(Number(scenario?.discount_rate_pct ?? 0.09), { digits: 0 })}.`}
           />
           {cashflow.kpis.covenantBreaches.length > 0 && (
             <OnePagerRow

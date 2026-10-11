@@ -34,7 +34,7 @@ export function RevenuePlansGrid({ plans }: { plans: RevenuePlanRow[] }) {
   }, [plans, search]);
 
   if (plans.length === 0) {
-    return <p className="border-b border-hairline py-3 text-sm text-muted">Καμία ανάλυση ακόμα.</p>;
+    return <p className="border-b border-hairline py-3 text-body text-muted">Καμία ανάλυση ακόμα.</p>;
   }
 
   return (
@@ -50,7 +50,7 @@ export function RevenuePlansGrid({ plans }: { plans: RevenuePlanRow[] }) {
         />
       )}
       {visible.length === 0 ? (
-        <p className="border-b border-hairline py-3 text-sm text-muted">Καμία ανάλυση δεν ταιριάζει με την αναζήτηση.</p>
+        <p className="border-b border-hairline py-3 text-body text-muted">Καμία ανάλυση δεν ταιριάζει με την αναζήτηση.</p>
       ) : (
         // No cards: a block under a hairline that turns navy on hover.
         <ul className="grid grid-cols-1 gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">

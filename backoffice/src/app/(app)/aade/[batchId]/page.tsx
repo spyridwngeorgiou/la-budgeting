@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { legacyInboxHref } from "@/lib/ingest/legacy";
 import { createClient } from "@/lib/supabase/server";
-import { Badge, Button } from "@/components/ui";
+import { Button, Notice, PageHeader, StatusDot } from "@/components/ui";
 import { ReviewTable } from "./ReviewTable";
 import { commitBatch } from "../actions";
 import { el } from "@/lib/i18n/el";
@@ -41,25 +41,27 @@ export default async function AadeBatchReviewPage({
   const dupCount = (rows?.length ?? 0) - newCount;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-rule pb-4">
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <h1 className="text-title font-normal break-words text-ink">{batch.filename}</h1>
-          <p className="text-small text-muted">
+    <div className="flex flex-col gap-10">
+      <PageHeader
+        title={batch.filename}
+        meta={
+          <>
             {rows?.length ?? 0} γραμμές · {newCount} νέες · {dupCount} διπλότυπες
-          </p>
-        </div>
-        {batch.status === "committed" ? (
-          <Badge tone="green">Ολοκληρώθηκε</Badge>
-        ) : (
-          <ActionForm action={commitBatch.bind(null, batchId)}>
-            <Button type="submit">Οριστικοποίηση Εισαγωγής</Button>
-          </ActionForm>
-        )}
-      </div>
+          </>
+        }
+        actions={
+          batch.status === "committed" ? (
+            <StatusDot tone="positive" label="Ολοκληρώθηκε" />
+          ) : (
+            <ActionForm action={commitBatch.bind(null, batchId)}>
+              <Button type="submit">Οριστικοποίηση Εισαγωγής</Button>
+            </ActionForm>
+          )
+        }
+      />
 
       {failedRows.length > 0 && (
-        <div role="alert" className="border-l-2 border-negative py-1 pl-4 text-sm text-negative">
+        <Notice as="div" tone="negative" role="alert">
           <p className="eyebrow">
             {failedRows.length} {el.ingest.commitFailedRows}
           </p>
@@ -71,7 +73,7 @@ export default async function AadeBatchReviewPage({
               </li>
             ))}
           </ul>
-        </div>
+        </Notice>
       )}
 
       <ReviewTable

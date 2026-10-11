@@ -3,12 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate, formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Button, PageHeader, SectionHeader, Stat, cn } from "@/components/ui";
-import { ArgsActionForm } from "@/components/ArgsActionForm";
+import { LINK_CLASS, NUM_CLASS, PageHeader, SUB_CLASS, SectionHeader, SpecTable, Stat, Td, Tr, cn } from "@/components/ui";
 import { BarChart } from "@/components/ui/BarChart";
 import { netWorthRows } from "@/lib/finance/reportCharts";
-import { FRAME, LINK, NUM, ROW, SUB, TABLE, TOUCH } from "../ui";
 import { AssetFormModal, LiabilityFormModal } from "./NetWorthForms";
+import { RowDeleteMenu } from "./RowDeleteMenu";
 import { deleteAsset, deleteLiability, saveAsset, saveLiability } from "./actions";
 
 // Καθαρή θέση. Totals and items are v_net_worth / v_net_worth_items (0068)
@@ -74,7 +73,7 @@ export default async function NetWorthPage() {
   const chartRows = netWorthRows(amountOf, COMPONENTS, (c) => t.components[c].replace(/\s*\(.*\)$/, ""));
 
   return (
-    <div className="flex min-w-0 flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-10">
       <PageHeader title={t.title} meta={<span className="block max-w-3xl">{t.intro}</span>} />
 
       <div className="border-b border-hairline pb-5">
@@ -105,32 +104,31 @@ export default async function NetWorthPage() {
         <ComponentTable title={t.owed} components={owed} amountOf={amountOf} itemsOf={itemsOf} />
       </div>
 
-      <section className="flex min-w-0 flex-col gap-3">
+      <section className="flex min-w-0 flex-col gap-4">
         <SectionHeader title={t.assetsTitle} actions={<AssetFormModal action={saveAsset} />} />
         {(assets ?? []).length === 0 ? (
-          <p className="text-sm text-muted">{t.empty}</p>
+          <p className="text-body text-muted">{t.empty}</p>
         ) : (
-          <div className={FRAME}>
-            <table className={TABLE}>
-              <tbody>
+          <SpecTable label={t.assetsTitle}>
+            <tbody>
                 {(assets ?? []).map((a) => {
                   const counted = a.state === "held";
                   return (
-                    <tr key={a.id} className={cn(ROW, !counted && "text-muted")}>
-                      <td className={cn("min-w-48 py-2.5 pr-3 align-middle", counted ? "text-ink" : "text-muted")}>
+                    <Tr key={a.id} className="[&>td]:align-middle">
+                      <Td className={cn("min-w-48", counted ? "text-ink" : "text-muted")}>
                         {a.name}
-                        {a.category && <span className="ml-1 text-xs text-muted">· {a.category}</span>}
-                        <span className={SUB}>
+                        {a.category && <span className="ml-1 text-small text-muted">· {t.assetCategories[a.category.toLowerCase()] ?? a.category}</span>}
+                        <span className={SUB_CLASS}>
                           {el.account.ownerValues[a.owner_scope]}
                           {Number(a.ownership_pct) !== 1 && ` · ${Math.round(Number(a.ownership_pct) * 10000) / 100}%`}
                           {a.valuation_date && ` · ${formatDate(a.valuation_date)}`}
                           {!counted && ` · ${t.assetStates.pending_inheritance}`}
                         </span>
-                      </td>
-                      <td className={cn("py-2.5 pr-3 align-middle", NUM, counted ? "text-ink" : "text-muted")}>
+                      </Td>
+                      <Td numeric className={counted ? "text-ink" : "text-muted"}>
                         {formatMoney(a.estimated_value)}
-                      </td>
-                      <td className="py-1.5 align-middle">
+                      </Td>
+                      <Td className="py-1.5">
                         <div className="flex items-center justify-end gap-1.5">
                           <AssetFormModal
                             action={saveAsset}
@@ -146,48 +144,42 @@ export default async function NetWorthPage() {
                               notes: a.notes,
                             }}
                           />
-                          <ArgsActionForm action={deleteAsset} args={[a.id]}>
-                            <Button type="submit" variant="secondary" size="sm" className={TOUCH}>
-                              {el.common.delete}
-                            </Button>
-                          </ArgsActionForm>
+                          <RowDeleteMenu action={deleteAsset} id={a.id} />
                         </div>
-                      </td>
-                    </tr>
+                      </Td>
+                    </Tr>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+            </tbody>
+          </SpecTable>
         )}
       </section>
 
-      <section className="flex min-w-0 flex-col gap-3">
+      <section className="flex min-w-0 flex-col gap-4">
         <SectionHeader title={t.liabilitiesTitle} actions={<LiabilityFormModal action={saveLiability} />} />
         <p className="text-small text-muted">{t.liabilitiesHint}</p>
         {(liabilities ?? []).length === 0 ? (
-          <p className="text-sm text-muted">{t.empty}</p>
+          <p className="text-body text-muted">{t.empty}</p>
         ) : (
-          <div className={FRAME}>
-            <table className={TABLE}>
-              <tbody>
+          <SpecTable label={t.liabilitiesTitle}>
+            <tbody>
                 {(liabilities ?? []).map((l) => {
                   const counted = l.state === "disbursed";
                   return (
-                    <tr key={l.id} className={ROW}>
-                      <td className={cn("min-w-48 py-2.5 pr-3 align-middle", counted ? "text-ink" : "text-muted")}>
+                    <Tr key={l.id} className="[&>td]:align-middle">
+                      <Td className={cn("min-w-48", counted ? "text-ink" : "text-muted")}>
                         {l.lender}
-                        <span className="ml-1 text-xs text-muted">· {t.liabilityKinds[l.kind]}</span>
-                        <span className={SUB}>
+                        <span className="ml-1 text-small text-muted">· {t.liabilityKinds[l.kind]}</span>
+                        <span className={SUB_CLASS}>
                           {t.liabilityStates[l.state]} · {el.account.ownerValues[l.owner_scope]}
                           {Number(l.interest_rate) > 0 && ` · ${Math.round(Number(l.interest_rate) * 100000) / 1000}%`}
                           {l.maturity_date && ` · ${t.maturity} ${formatDate(l.maturity_date)}`}
                         </span>
-                      </td>
-                      <td className={cn("py-2.5 pr-3 align-middle", NUM, counted ? "text-ink" : "text-muted")}>
+                      </Td>
+                      <Td numeric className={counted ? "text-ink" : "text-muted"}>
                         {formatMoney(l.principal)}
-                      </td>
-                      <td className="py-1.5 align-middle">
+                      </Td>
+                      <Td className="py-1.5">
                         <div className="flex items-center justify-end gap-1.5">
                           <LiabilityFormModal
                             action={saveLiability}
@@ -203,19 +195,14 @@ export default async function NetWorthPage() {
                               terms: l.terms,
                             }}
                           />
-                          <ArgsActionForm action={deleteLiability} args={[l.id]}>
-                            <Button type="submit" variant="secondary" size="sm" className={TOUCH}>
-                              {el.common.delete}
-                            </Button>
-                          </ArgsActionForm>
+                          <RowDeleteMenu action={deleteLiability} id={l.id} />
                         </div>
-                      </td>
-                    </tr>
+                      </Td>
+                    </Tr>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+            </tbody>
+          </SpecTable>
         )}
       </section>
     </div>
@@ -244,30 +231,30 @@ function ComponentTable({
         <span className="num text-figure-sm font-light text-ink">{formatMoney(sum)}</span>
       </div>
       {components.length === 0 ? (
-        <p className="py-3 text-sm text-muted">{t.empty}</p>
+        <p className="py-3 text-body text-muted">{t.empty}</p>
       ) : (
-        <ul className="flex flex-col text-sm">
+        <ul className="flex flex-col text-body">
           {components.map((c) => {
             const href = COMPONENT_HREF[c];
             const list = itemsOf(c);
             return (
-              <li key={c} className={cn(ROW, "py-2.5")}>
+              <li key={c} className="border-b border-hairline py-2.5">
                 <div className="flex justify-between gap-3 text-ink">
                   {href ? (
-                    <Link href={href} className={LINK}>
+                    <Link href={href} className={LINK_CLASS}>
                       {t.components[c]}
                     </Link>
                   ) : (
                     <span>{t.components[c]}</span>
                   )}
-                  <span className={NUM}>{formatMoney(amountOf[c])}</span>
+                  <span className={NUM_CLASS}>{formatMoney(amountOf[c])}</span>
                 </div>
                 {list.length > 0 && (
-                  <ul className="mt-1 flex flex-col gap-0.5 pl-3 text-xs text-muted">
+                  <ul className="mt-1 flex flex-col gap-0.5 pl-3 text-small text-muted">
                     {list.map((i) => (
                       <li key={`${c}:${i.ref_id}`} className="flex justify-between gap-3">
                         <span className="min-w-0 truncate">{i.label || "—"}</span>
-                        <span className={cn("shrink-0", NUM)}>{formatMoney(i.amount ?? 0)}</span>
+                        <span className={cn("shrink-0", NUM_CLASS)}>{formatMoney(i.amount ?? 0)}</span>
                       </li>
                     ))}
                   </ul>

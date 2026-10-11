@@ -53,7 +53,7 @@ export function WorklistItem({
       </div>
       {(count !== undefined || amount) && (
         <div className="flex shrink-0 flex-col items-end gap-0.5 pt-4">
-          {amount && <span className="num text-sm text-ink">{amount}</span>}
+          {amount && <span className="num text-body text-ink">{amount}</span>}
           {count !== undefined && <span className="num text-small text-muted">{count}</span>}
         </div>
       )}

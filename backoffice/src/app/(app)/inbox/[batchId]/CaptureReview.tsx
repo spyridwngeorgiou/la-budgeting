@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Badge, Button, Field, Input, Label, Select } from "@/components/ui";
-import { Modal } from "@/components/Modal";
+import { Badge, Button, Field, Input, Label, Notice, Select } from "@/components/ui";
+import { Modal } from "@/components/ui";
 import { DuplicateWarning } from "@/components/DuplicateWarning";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, formatPercent } from "@/lib/format";
 import { cashOnly, deriveFromNet } from "@/lib/finance/money";
 import { VAT_RATES } from "@/lib/domain/enums";
 import { el } from "@/lib/i18n/el";
@@ -47,7 +47,7 @@ const t = el.ingest.review;
 function Evidence({ value, evidence }: { value?: string | number | null; evidence?: string | null }) {
   if (value == null && !evidence) return null;
   return (
-    <span className="text-xs text-ai" title={evidence ?? undefined}>
+    <span className="text-small text-ai" title={evidence ?? undefined}>
       ({t.aiRead}: {typeof value === "number" ? formatMoney(value) : (value ?? "—")}
       {evidence ? ` · ${t.evidence} «${evidence}»` : ""})
     </span>
@@ -74,7 +74,7 @@ export function CaptureReview({
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button type="button" variant="secondary" className="!px-2 !py-1 text-xs" onClick={() => setOpen(true)}>
+      <Button type="button" variant="secondary" className="!px-2 !py-1 text-small" onClick={() => setOpen(true)}>
         {t.open}
       </Button>
       {open && (
@@ -162,7 +162,7 @@ function CaptureForm({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={documentUrl} alt={t.document} className="max-h-[45vh] w-full border border-hairline object-contain md:max-h-[70vh]" />
           )}
-          <a href={documentUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-8 items-center text-xs text-muted underline underline-offset-4 hover:text-ink">
+          <a href={documentUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-8 items-center text-small text-muted underline underline-offset-4 hover:text-ink">
             {t.openDocument}
           </a>
         </div>
@@ -179,14 +179,14 @@ function CaptureForm({
         className="flex flex-1 flex-col gap-3"
       >
         {needsReview.length > 0 && (
-          <ul className="list-disc border-l-2 border-warning py-1 pr-2 pl-8 text-sm text-warning">
+          <Notice as="ul" tone="warning">
             {needsReview.map((r) => (
               <li key={r}>{r}</li>
             ))}
-          </ul>
+          </Notice>
         )}
         {e?.notes_for_human && (
-          <p className="text-xs text-muted">
+          <p className="text-small text-muted">
             {t.aiNote}: {e.notes_for_human}
           </p>
         )}
@@ -195,7 +195,7 @@ function CaptureForm({
           {(["expense", "income"] as const).map((d) => (
             <label
               key={d}
-              className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center border px-3 py-2 text-center text-sm not-first:-ml-px ${
+              className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center border px-3 py-2 text-center text-body not-first:-ml-px ${
                 direction === d ? "relative border-navy bg-navy text-panel-ink" : "border-chip-border text-ink hover:bg-hover"
               }`}
             >
@@ -288,7 +288,7 @@ function CaptureForm({
           </Select>
         </Field>
 
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2 text-body">
           <input type="checkbox" name="has_invoice" checked={hasInvoice} onChange={(ev) => setHasInvoice(ev.target.checked)} />
           {t.hasInvoice}
         </label>
@@ -309,7 +309,7 @@ function CaptureForm({
                 <Select name="vat_rate" value={vatRate} onChange={(ev) => setVatRate(ev.target.value)}>
                   {VAT_RATES.map((r) => (
                     <option key={r} value={r}>
-                      {(r * 100).toFixed(0)}%
+                      {formatPercent(r, { digits: 0 })}
                     </option>
                   ))}
                 </Select>
@@ -331,7 +331,7 @@ function CaptureForm({
           )}
         </div>
 
-        <div className="border-y border-ink py-3 text-sm">
+        <div className="border-y border-ink py-3 text-body">
           <div className="flex flex-wrap justify-between gap-2">
             <span className="flex flex-wrap items-center gap-2">
               {t.total} <Evidence value={e?.gross.value} evidence={e?.gross.evidence} />
@@ -389,9 +389,9 @@ function CaptureForm({
         </Field>
 
         {error && (
-          <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+          <Notice tone="negative" role="alert">
             {error}
-          </p>
+          </Notice>
         )}
         {duplicates.length > 0 && (
           <DuplicateWarning

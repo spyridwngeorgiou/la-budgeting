@@ -50,16 +50,16 @@ export function QuickAddBar({
               onClick={() => setColours((v) => !v)}
               ariaExpanded={colours}
             />
-            <Tool icon={<span className="text-lg font-semibold leading-none">T</span>} label={q.text} onClick={onText} />
-            <Tool icon={<span className="text-lg leading-none">🖼️</span>} label={q.file} onClick={onFile} />
+            <Tool icon={<span className="text-section font-semibold leading-none">T</span>} label={q.text} onClick={onText} />
+            <Tool icon={<span className="text-section leading-none">🖼️</span>} label={q.file} onClick={onFile} />
           </>
         )}
-        <Tool icon={<span className="text-lg leading-none">💬</span>} label={q.comment} onClick={onComment} active={commentActive} />
+        <Tool icon={<span className="text-section leading-none">💬</span>} label={q.comment} onClick={onComment} active={commentActive} />
         {canEdit && (
           <>
-            <Tool icon={<span className="text-lg leading-none">↗</span>} label={q.arrow} onClick={onArrow} />
+            <Tool icon={<span className="text-section leading-none">↗</span>} label={q.arrow} onClick={onArrow} />
             <Tool
-              icon={<span className="text-lg leading-none">{toolsExpanded ? "▾" : "⋯"}</span>}
+              icon={<span className="text-section leading-none">{toolsExpanded ? "▾" : "⋯"}</span>}
               label={toolsExpanded ? q.lessTools : q.moreTools}
               onClick={onToggleTools}
               active={toolsExpanded}
@@ -115,7 +115,7 @@ function Tool({
       onClick={onClick}
       aria-expanded={ariaExpanded}
       aria-pressed={ariaExpanded === undefined ? active : undefined}
-      className={`flex min-h-14 min-w-14 shrink-0 flex-col items-center justify-center gap-0.5 px-2 text-xs leading-tight font-medium ${
+      className={`flex min-h-14 min-w-14 shrink-0 flex-col items-center justify-center gap-0.5 px-2 text-small leading-tight font-medium ${
         active ? "bg-navy text-panel-ink" : "text-ink hover:bg-hover"
       }`}
     >

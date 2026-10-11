@@ -1,9 +1,42 @@
 import type { ReactNode } from "react";
+import { figureLength } from "@/lib/format";
 import { shell } from "@/lib/i18n/v2/shell";
 import { cn } from "./cn";
 
+// Big figures step down by their length AND the width their cell actually
+// has (container queries on the Stat), so «1.234.567,89 €» never overflows a
+// quarter of a row or a phone half. Literal class strings: Tailwind only
+// sees what is written out. `max` is the size a short figure gets.
+const FIT = {
+  lg: {
+    1: "text-section @min-[9.25rem]:text-figure-sm @min-[14rem]:text-figure",
+    2: "text-section @min-[11rem]:text-figure-sm @min-[16.5rem]:text-figure",
+    3: "text-body @min-[10rem]:text-section @min-[13.5rem]:text-figure-sm @min-[20.5rem]:text-figure",
+  },
+  md: {
+    1: "text-section @min-[8rem]:text-figure-sm",
+    2: "text-section @min-[11rem]:text-figure-sm",
+    3: "text-body @min-[10rem]:text-section @min-[13.5rem]:text-figure-sm",
+  },
+} as const;
+
+// The size classes for a figure; the element above it must be an @container.
+export function figureFit(length: 1 | 2 | 3, max: "md" | "lg" = "lg"): string {
+  return FIT[max][length];
+}
+
+function textOf(node: ReactNode): string | null {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) {
+    const parts = node.map(textOf);
+    return parts.every((p) => p !== null) ? parts.join("") : null;
+  }
+  return null;
+}
+
 // A figure with its label: eyebrow label, Light 300 tabular value, an
-// optional line under it. `onPanel` for the navy glance panel.
+// optional line under it. `onPanel` for the navy glance panel. The value
+// steps down to fit (see FIT); it never overflows its cell.
 export function Stat({
   label,
   value,
@@ -19,13 +52,17 @@ export function Stat({
   onPanel?: boolean;
   className?: string;
 }) {
+  const text = textOf(value);
+  // A value that is not plain text (a link, a badge) keeps the full size
+  // but still wraps instead of overflowing.
+  const fit = text === null ? (size === "lg" ? "text-figure" : "text-figure-sm") : figureFit(figureLength(text), size);
   return (
-    <div className={cn("flex min-w-0 flex-col gap-1", className)}>
-      <span className={cn("eyebrow", onPanel ? "text-panel-muted" : "text-muted")}>{label}</span>
-      <span className={cn("num font-light", size === "lg" ? "text-figure" : "text-figure-sm", onPanel ? "text-panel-ink" : "text-ink")}>
+    <div className={cn("@container flex min-w-0 flex-col gap-1", className)}>
+      <span className={cn("eyebrow break-words", onPanel ? "text-panel-muted" : "text-muted")}>{label}</span>
+      <span className={cn("num font-light whitespace-normal [overflow-wrap:anywhere]", fit, onPanel ? "text-panel-ink" : "text-ink")}>
         {value}
       </span>
-      {sub && <span className={cn("text-small", onPanel ? "text-panel-muted" : "text-muted")}>{sub}</span>}
+      {sub && <span className={cn("text-small break-words", onPanel ? "text-panel-muted" : "text-muted")}>{sub}</span>}
     </div>
   );
 }
@@ -65,9 +102,11 @@ export function GlancePanel({
       {items && (
         <dl className="flex flex-col gap-4">
           {items.map((it, i) => (
-            <div key={i} className="flex flex-col gap-0.5">
+            <div key={i} className="@container flex min-w-0 flex-col gap-0.5">
               <dt className="text-small text-panel-muted">{it.label}</dt>
-              <dd className="num text-figure-sm text-panel-ink">{it.value}</dd>
+              <dd className={cn("num font-light whitespace-normal text-panel-ink [overflow-wrap:anywhere]", figureFit(figureLength(textOf(it.value) ?? ""), "md"))}>
+                {it.value}
+              </dd>
               {it.sub && <dd className="text-small text-panel-muted">{it.sub}</dd>}
             </div>
           ))}

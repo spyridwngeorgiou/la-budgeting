@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { aiEnabled } from "@/lib/ai/client";
 import { el } from "@/lib/i18n/el";
-import { AiSpark, ButtonLink, PageHeader } from "@/components/ui";
+import { AiSpark, ButtonLink, Notice, PageHeader } from "@/components/ui";
 import { UploadChooser } from "../UploadChooser";
 import { NlEntryForm } from "../../documents/new/NlEntryForm";
 
@@ -22,7 +22,7 @@ export default async function NewCapturePage() {
   const afmMissing = !org?.own_afm || org.own_afm === "000000000";
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
       <PageHeader
         eyebrow={
           <Link href="/inbox" className="inline-flex min-h-8 items-center hover:text-ink">
@@ -33,7 +33,7 @@ export default async function NewCapturePage() {
         meta="Φωτογραφία, αρχείο, κείμενο ή φωνή: το AI ετοιμάζει τις κινήσεις και εσείς τις ελέγχετε πριν καταχωριστούν."
       />
 
-      <section className="flex flex-col gap-3" aria-labelledby="capture-file">
+      <section className="flex flex-col gap-4" aria-labelledby="capture-file">
         <h2 id="capture-file" className="flex items-center gap-2 border-b border-hairline pb-3 text-section font-normal text-ink">
           <Upload className="h-5 w-5 text-muted" strokeWidth={1.5} aria-hidden />
           Φωτογραφία ή αρχείο
@@ -41,40 +41,40 @@ export default async function NewCapturePage() {
         <UploadChooser accounts={(accounts ?? []).map((a) => ({ id: a.id, label: a.name }))} aiOn={aiOn} afmMissing={afmMissing} />
       </section>
 
-      <section className="flex flex-col gap-3" aria-labelledby="capture-text">
+      <section className="flex flex-col gap-4" aria-labelledby="capture-text">
         <h2 id="capture-text" className="flex items-center gap-2 border-b border-hairline pb-3 text-section font-normal text-ink">
           <MessageSquareText className="h-5 w-5 text-muted" strokeWidth={1.5} aria-hidden />
           Γράψε ή πες
         </h2>
         {aiOn ? (
           <>
-            <p className="text-sm text-muted">
+            <p className="text-body text-muted">
               Περιγράψτε την κίνηση με δικά σας λόγια ή πατήστε το μικρόφωνο, π.χ. «πλήρωσα 50 € βενζίνη μετρητά για τη
               Λαζαράκη».
             </p>
             <NlEntryForm rows={5} />
           </>
         ) : (
-          <p className="border-l-2 border-warning py-1 pl-4 text-sm text-warning">
+          <Notice tone="warning">
             Ο βοηθός AI δεν είναι ακόμα ενεργοποιημένος. Χρειάζεται ANTHROPIC_API_KEY και AI_ENABLED=true.
-          </p>
+          </Notice>
         )}
       </section>
 
-      <section className="flex flex-col gap-3" aria-labelledby="capture-manual">
+      <section className="flex flex-col gap-4" aria-labelledby="capture-manual">
         <h2 id="capture-manual" className="flex items-center gap-2 border-b border-hairline pb-3 text-section font-normal text-ink">
           <PenLine className="h-5 w-5 text-muted" strokeWidth={1.5} aria-hidden />
           Χειροκίνητα
         </h2>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted">Η φόρμα κίνησης, συμπληρωμένη από εσάς, χωρίς AI.</p>
+          <p className="text-body text-muted">Η φόρμα κίνησης, συμπληρωμένη από εσάς, χωρίς AI.</p>
           <ButtonLink href="/transactions?new=1" variant="secondary">
             Νέα κίνηση
           </ButtonLink>
         </div>
       </section>
 
-      <p className="flex items-start gap-1.5 text-xs text-muted">
+      <p className="flex items-start gap-1.5 text-small text-muted">
         <AiSpark className="mt-0.5 shrink-0" />
         <span>
           Για αλλαγές σε λογαριασμούς, έργα, επαφές ή δόσεις χρησιμοποιήστε το{" "}

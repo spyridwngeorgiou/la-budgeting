@@ -14,7 +14,7 @@ Greek UI (el), Next.js 16 App Router + Supabase (RLS) on Cloudflare Workers via 
 - `npm run check` — typecheck + lint + vitest (clears stale `.next/dev`, `.next/types`).
 - `npm run ship:staging` — check → push main → wait CI → migrate staging → deploy → logged-in smoke.
 - `npm run ship:prod` — CI green → JSON backup → migrate → deploy → light smoke. Only after owner «οκ».
-- `npm run smoke -- staging /path /other` — logged-in GETs as a throwaway owner (deleted after). `{project}` = first project id.
+- `npm run smoke -- staging /path /other` — logged-in GETs as a throwaway owner (deleted after). `{project}` = first project id. Then the same pages in headless Chrome (puppeteer-core; auto when Chrome is installed, `BROWSER=0` skips) at 1440 and 390: fails on a browser error, the «Κάτι πήγε στραβά» page, or sideways scroll at 390.
 - Destructive migrations (drop/delete/truncate) need `node scripts/backup-json.mjs <ref>` then `node scripts/migrate-remote.mjs <ref> --confirm-destructive`.
 - Refs: staging `jpxxixhiudwjbzagidmn`, prod `hjypszddhwohgvubirkc`. Token in `.env.migrate` (never read or print it).
 
@@ -26,6 +26,7 @@ Greek UI (el), Next.js 16 App Router + Supabase (RLS) on Cloudflare Workers via 
 
 ## Code conventions
 - UI primitives: `@/components/ui` (barrel); `TrendChart` imported directly from `@/components/ui/TrendChart`. P15 tokens in `src/app/globals.css`: square corners, no shadows, no hex colours in code (design-guard test).
+- Design guard (`src/test/design-guard.test.ts`, all of `src/app` + `src/components`): type only on the scale (`text-small/body/section/title…`, `text-field` for phone inputs; no `text-xs/sm/base/lg/xl`, no `text-[..]`, no `font-mono`), `<h1>` only via `PageHeader`, `<table>` only via `SpecTable`/`DataTable`. Alerts are `Notice`, big figures `Stat`, numbers through `@/lib/format` (true minus, «—» for zero in tables).
 - Greek strings in `src/lib/i18n/el.ts` (texts of the restyled `components/ui` and planner in `src/lib/i18n/v2/*`).
 - Migrations: next free number in `supabase/migrations/`, each with a pgTAP test in `supabase/tests/`. Fixture rows: `has_invoice=true` when VAT/withholding ≠ 0, `paid_on` when status is paid.
 - `src/lib/db/types.ts`: add new views/functions by hand (no local Supabase on this machine).

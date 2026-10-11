@@ -12,13 +12,13 @@ export default async function ContactsPage() {
   const { data: rollup } = await supabase.from("v_contact_rollup").select("*").eq("org_id", orgId).order("name");
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-10">
       <PageHeader
         title={el.nav.contacts}
         meta="Προμηθευτές, πελάτες και συνεργάτες, με σύνολο εσόδων/εξόδων και υπόλοιπο ανά επαφή."
         actions={
           <>
-            <a href="/api/contacts/export" className={buttonClass("secondary", "md", "max-md:min-h-11")}>
+            <a href="/api/contacts/export" className={buttonClass("secondary", "md")}>
               Εξαγωγή CSV
             </a>
             <ContactFormModal action={createContact} />

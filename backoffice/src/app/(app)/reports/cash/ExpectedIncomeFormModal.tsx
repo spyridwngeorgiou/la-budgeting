@@ -33,7 +33,7 @@ export function ExpectedIncomeFormModal({
   const t = el.reports;
   return (
     <>
-      <Button variant="secondary" size="sm" className="max-md:min-h-11" onClick={() => setOpen(true)}>
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
         {trigger ?? `+ ${t.expectedAdd}`}
       </Button>
       {open && (

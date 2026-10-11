@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { PageHeader, buttonClass } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { getAccessContext } from "@/lib/supabase/access";
 import { createClient } from "@/lib/supabase/server";
@@ -31,28 +32,28 @@ export default async function AssistantPage({
   const showChanges = canReview && panel === "changes";
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-rule pb-4">
-        <div className="flex min-w-0 max-w-3xl flex-col gap-1.5">
-          <h1 className="text-title font-normal text-ink">{el.nav.assistant}</h1>
-          <p className="text-small text-muted">
+    <div className="flex flex-col gap-10">
+      <PageHeader
+        title={el.nav.assistant}
+        meta={
+          <span className="block max-w-3xl">
             Ρωτήστε ελεύθερα για τα οικονομικά της επιχείρησης -- κάθε απάντηση βασίζεται σε πραγματικά δεδομένα,
             ποτέ σε εικασία, με «Πηγές» για κάθε αριθμό. Οι αλλαγές που προτείνει ο βοηθός εφαρμόζονται μόνο αφού
             τις εγκρίνετε.
-          </p>
-        </div>
-        {canReview && (
-          <Link
-            href={showChanges ? "/assistant" : "/assistant?panel=changes"}
-            aria-expanded={showChanges}
-            className={`inline-flex min-h-10 items-center border px-3 py-1.5 text-sm whitespace-nowrap ${
-              showChanges ? "border-ai bg-ai-tint text-ai" : "border-chip-border text-muted hover:border-navy hover:text-ink"
-            }`}
-          >
-            {el.nav.pending} ({pending})
-          </Link>
-        )}
-      </div>
+          </span>
+        }
+        actions={
+          canReview && (
+            <Link
+              href={showChanges ? "/assistant" : "/assistant?panel=changes"}
+              aria-expanded={showChanges}
+              className={buttonClass(showChanges ? "ai" : "secondary", "md", showChanges ? "bg-ai-tint" : "")}
+            >
+              {el.nav.pending} ({pending})
+            </Link>
+          )
+        }
+      />
       <div className={showChanges ? "grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]" : ""}>
         <ChatPanel
           initialPrompt={q}

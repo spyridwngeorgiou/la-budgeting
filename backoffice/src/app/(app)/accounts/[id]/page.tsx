@@ -88,7 +88,7 @@ export default async function AccountLedgerPage({
   const signed = (n: number) => `${n < 0 ? "−" : n > 0 ? "+" : ""}${formatMoney(Math.abs(n))}`;
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
       <PageHeader
         eyebrow={
           <Link href="/accounts" className="hover:text-ink">
@@ -128,12 +128,12 @@ export default async function AccountLedgerPage({
         <Stat label={`${el.account.monthOut} · ${monthLabel(statMonth)}`} value={formatMoney(stat.outflow)} />
       </StatRow>
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-4">
         <h2 className="eyebrow text-muted">{el.account.last12}</h2>
         <LedgerChart data={chart} inflowLabel={el.account.inflow} outflowLabel={el.account.outflow} label={el.account.last12} />
       </section>
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="eyebrow text-muted">
             {el.account.ledger} <span className="num">({total})</span>
@@ -153,22 +153,22 @@ export default async function AccountLedgerPage({
                     href={`/transactions?ids=${r.transaction_id}`}
                     className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-0.5 py-3 hover:bg-hover md:grid-cols-[6.5rem_minmax(0,1fr)_9rem_9rem] md:px-3"
                   >
-                    <span className="num col-start-1 row-start-2 text-small text-muted md:row-start-1 md:text-sm">
+                    <span className="num col-start-1 row-start-2 text-small text-muted md:row-start-1 md:text-body">
                       {formatDate(r.paid_date)}
                     </span>
-                    <span className="col-start-1 row-start-1 min-w-0 truncate text-sm text-ink md:col-start-2">
+                    <span className="col-start-1 row-start-1 min-w-0 truncate text-body text-ink md:col-start-2">
                       {r.party_name || r.description || "—"}
                       {r.party_name && r.description && <span className="text-muted"> · {r.description}</span>}
                     </span>
                     <span
                       className={cn(
-                        "num col-start-2 row-start-1 text-right text-sm md:col-start-3",
+                        "num col-start-2 row-start-1 text-right text-body md:col-start-3",
                         amount < 0 ? "text-text" : "text-positive",
                       )}
                     >
                       {signed(amount)}
                     </span>
-                    <span className="num col-start-2 row-start-2 text-right text-small text-muted md:col-start-4 md:row-start-1 md:text-sm">
+                    <span className="num col-start-2 row-start-2 text-right text-small text-muted md:col-start-4 md:row-start-1 md:text-body">
                       {formatMoney(Number(r.running_balance))}
                     </span>
                   </Link>
@@ -177,11 +177,11 @@ export default async function AccountLedgerPage({
             })}
             {showOpening && (
               <li className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 border-b border-hairline py-3 md:grid-cols-[6.5rem_minmax(0,1fr)_9rem_9rem] md:px-3">
-                <span className="num col-start-1 row-start-2 text-small text-muted md:row-start-1 md:text-sm">
+                <span className="num col-start-1 row-start-2 text-small text-muted md:row-start-1 md:text-body">
                   {formatDate(account.opening_balance_date)}
                 </span>
-                <span className="col-start-1 row-start-1 text-sm text-muted md:col-start-2">{el.account.opening}</span>
-                <span className="num col-start-2 row-start-2 text-right text-small text-muted md:col-start-4 md:row-start-1 md:text-sm">
+                <span className="col-start-1 row-start-1 text-body text-muted md:col-start-2">{el.account.opening}</span>
+                <span className="num col-start-2 row-start-2 text-right text-small text-muted md:col-start-4 md:row-start-1 md:text-body">
                   {formatMoney(Number(account.opening_balance))}
                 </span>
               </li>

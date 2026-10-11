@@ -57,14 +57,17 @@ export function Menu({
         onClick={() => setOpen((o) => !o)}
         className="inline-flex min-h-10 min-w-10 items-center justify-center border border-chip-border px-2 text-ink hover:border-navy hover:bg-hover"
       >
-        {trigger ?? <span aria-hidden="true" className="text-lg leading-none">⋯</span>}
+        {trigger ?? <span aria-hidden="true" className="text-section leading-none">⋯</span>}
       </button>
       {open && (
         <div
           id={id}
           role="menu"
           onClick={(e) => {
-            if ((e.target as HTMLElement).closest("[role=menuitem]")) setOpen(false);
+            // Close after the browser has run the click's default action: a
+            // MenuItem type="submit" inside a <form> in the menu must submit
+            // before the menu (and the form with it) leaves the DOM.
+            if ((e.target as HTMLElement).closest("[role=menuitem]")) setTimeout(() => setOpen(false), 0);
           }}
           className={cn(
             "absolute top-full z-30 mt-1 flex min-w-52 flex-col border border-hairline bg-field py-1",
@@ -78,7 +81,7 @@ export function Menu({
   );
 }
 
-const ITEM = "flex min-h-10 w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-hover disabled:opacity-50";
+const ITEM = "flex min-h-10 w-full items-center gap-2 px-3 py-2 text-left text-body text-ink hover:bg-hover disabled:opacity-50";
 
 export function MenuItem({
   tone = "default",

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge, Button, ButtonLink, MetaList, PageHeader, Select, AiSpark } from "@/components/ui";
+import { Badge, Button, ButtonLink, MetaList, Notice, PageHeader, Select, AiSpark } from "@/components/ui";
 import { OnePagerSection, OnePagerRow, StatusNotes, type ProjectNote } from "@/components/onepager";
 import { computeScenarioFromInputs, loadProjectFlows, loadScenarioInputs } from "@/lib/finance/projectModel";
 import { computeDevelopmentResult } from "@/lib/finance/development";
@@ -29,10 +29,8 @@ import { saveUtility, deleteUtility } from "./finance-actions";
 import { saveProjectNote, resolveProjectNote } from "../actions";
 import { setScenarioRevenuePlan } from "./scenario-actions";
 import { AiCreateForm } from "../revenue-plans/AiCreateForm";
+import { RowDeleteMenu } from "@/components/RowDeleteMenu";
 import { ManualPlanForm } from "../revenue-plans/ManualPlanForm";
-
-// 44px touch targets on phones for the page's buttons.
-const TAP = "max-md:min-h-11";
 
 // Σύνοψη Έργου -- the one-pager, modelled on the layout the Q004 workbook
 // already proved works: blocks of label / figure / explanatory note, bold
@@ -210,17 +208,17 @@ export async function LegacyProjectPage({ id }: { id: string }) {
                 : undefined
             }
           />
-          <ButtonLink href={`/transactions?project_id=${id}`} className={TAP}>
+          <ButtonLink href={`/transactions?project_id=${id}`}>
             {el.nav.transactions}
           </ButtonLink>
-          <ButtonLink href={`/planner?project=${id}`} className={TAP}>
+          <ButtonLink href={`/planner?project=${id}`}>
             {el.nav.planner}
           </ButtonLink>
           {lease?.kind === "indexed_rent" && <LeaseSyncButton leaseId={lease.id} />}
-          <ButtonLink href={`/projects/${id}/compare`} className={TAP}>
+          <ButtonLink href={`/projects/${id}/compare`}>
             Σύγκριση σεναρίων
           </ButtonLink>
-          <ButtonLink href={`/collab/${id}`} className={TAP}>
+          <ButtonLink href={`/collab/${id}`}>
             {el.collab.navLabel}
           </ButtonLink>
           </>
@@ -242,7 +240,7 @@ export async function LegacyProjectPage({ id }: { id: string }) {
           ) : (
             <div className="flex flex-col items-start gap-2 border-b border-hairline py-3">
               <Badge tone="warning">Χωρίς προϋπολογισμό</Badge>
-              <p className="text-sm text-muted">
+              <p className="text-body text-muted">
                 Δεν έχει καταχωρηθεί προϋπολογισμός για αυτό το έργο.
               </p>
             </div>
@@ -352,14 +350,14 @@ export async function LegacyProjectPage({ id }: { id: string }) {
             <ManualPlanForm projectId={id} />
 
             {linkedPlans.length === 0 ? (
-              <p className="text-sm text-muted">Καμία ανάλυση εσόδων ακόμα για αυτό το έργο.</p>
+              <p className="text-body text-muted">Καμία ανάλυση εσόδων ακόμα για αυτό το έργο.</p>
             ) : (
               <ul className="flex flex-col border-t border-hairline">
                 {linkedPlans.map((p) => (
                   <li key={p.id}>
                     <Link
                       href={`/projects/revenue-plans/${p.id}`}
-                      className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-hairline py-2 text-sm text-ink hover:bg-hover"
+                      className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-hairline py-2 text-body text-ink hover:bg-hover"
                     >
                       <span className="underline-offset-4 hover:underline">{p.name}</span>
                       <span className="text-small text-muted">
@@ -398,7 +396,7 @@ export async function LegacyProjectPage({ id }: { id: string }) {
                     ))}
                   </Select>
                 </div>
-                <Button type="submit" variant="secondary" className={TAP}>
+                <Button type="submit" variant="secondary">
                   Ενημέρωση
                 </Button>
               </form>
@@ -440,7 +438,7 @@ export async function LegacyProjectPage({ id }: { id: string }) {
           {(utilities ?? []).map((u) => (
             <div
               key={u.id}
-              className="flex flex-col gap-2 border-b border-hairline py-3 text-sm md:flex-row md:flex-wrap md:items-center md:gap-x-3"
+              className="flex flex-col gap-2 border-b border-hairline py-3 text-body md:flex-row md:flex-wrap md:items-center md:gap-x-3"
             >
               <span className="text-muted md:w-28">{UTILITY_KIND_LABELS[u.kind]}</span>
               <span className="min-w-0 flex-1 break-words text-ink">
@@ -462,16 +460,14 @@ export async function LegacyProjectPage({ id }: { id: string }) {
                   notes: u.notes,
                 }}
               />
-              <form action={deleteUtility.bind(null, id, u.id)}>
-                <Button type="submit" variant="danger" size="sm" className={TAP}>
-                  {el.common.delete}
-                </Button>
-              </form>
+              <RowDeleteMenu action={deleteUtility.bind(null, id, u.id)} label="Ενέργειες" plain>
+                {el.common.delete}
+              </RowDeleteMenu>
               </span>
             </div>
           ))}
           {(utilities ?? []).length === 0 && (
-            <p className="border-b border-hairline py-3 text-sm text-muted">Δεν έχουν καταχωρηθεί παροχές.</p>
+            <p className="border-b border-hairline py-3 text-body text-muted">Δεν έχουν καταχωρηθεί παροχές.</p>
           )}
           <div className="pt-3">
             <UtilityFormModal action={saveUtility.bind(null, id, null)} />
@@ -523,7 +519,7 @@ export async function LegacyProjectPage({ id }: { id: string }) {
                   }}
                 />
                 <form action={resolveProjectNote.bind(null, id, n.id)}>
-                  <Button type="submit" variant="secondary" size="sm" className={TAP}>
+                  <Button type="submit" variant="secondary" size="sm">
                     Επίλυση
                   </Button>
                 </form>
@@ -541,7 +537,7 @@ export async function LegacyProjectPage({ id }: { id: string }) {
       <PartnersPanel projectId={id} isAdmin={isOrgAdmin} />
 
       {leaseSchedule && leaseSchedule.diagnostics.length > 0 && (
-        <aside className="flex max-w-prose flex-col gap-1.5 border-l-2 border-warning pl-4">
+        <Notice as="aside" tone="warning" className="flex max-w-prose flex-col gap-1.5">
           <div className="eyebrow flex items-center gap-1.5 text-warning">
             <AiSpark />
             Σημειώσεις μοντέλου
@@ -551,7 +547,7 @@ export async function LegacyProjectPage({ id }: { id: string }) {
               <li key={d}>{d}</li>
             ))}
           </ul>
-        </aside>
+        </Notice>
       )}
     </div>
   );

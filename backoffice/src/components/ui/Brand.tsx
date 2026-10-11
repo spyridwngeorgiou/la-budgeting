@@ -27,7 +27,7 @@ export function LogoMark({ size = 28, className = "" }: { size?: number; classNa
 // The wordmark as live text (Inter, wide tracking, like the proposals'
 // .wordmark), not an image: crisp at every size and selectable.
 export function Wordmark({ className = "" }: { className?: string }) {
-  return <span className={cn("text-sm font-semibold tracking-[0.38em] uppercase", className)}>Kansha</span>;
+  return <span className={cn("text-body font-semibold tracking-[0.38em] uppercase", className)}>Kansha</span>;
 }
 
 // Mark + wordmark, the rail's lockup. `compact` shows the mark only.

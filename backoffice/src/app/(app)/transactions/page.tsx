@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { el } from "@/lib/i18n/el";
 import { formatDate, formatMoney } from "@/lib/format";
-import { AiSpark, buttonClass } from "@/components/ui";
+import { AiSpark, FilterChip, Notice, buttonClass } from "@/components/ui";
 import { TransactionsTable } from "./TransactionsTable";
 import { TransactionFilters } from "./TransactionFilters";
 import { TX_STATUS, TX_DIRECTION, type TxStatus, type TxDirection } from "@/lib/domain/enums";
@@ -28,6 +29,9 @@ interface SearchParams {
   from?: string;
   to?: string;
   ids?: string;
+  // 1-based page of PAGE_SIZE rows (owner decision 11/10/2026: 50 a page
+  // instead of up to 500 at once -- less CPU per request, usable on a phone).
+  page?: string;
   // «＋ Καταχώριση» → Χειροκίνητα: open the new-movement form at once.
   new?: string;
 }
@@ -58,11 +62,10 @@ export default async function TransactionsPage({
   // with project_id / account_id / contact_id / category_id / scope / from /
   // to so any figure shown elsewhere is one click away from the actual rows
   // behind it, not just a total you have to trust.
-  const ROW_LIMIT = 500;
-  // count: "exact" alongside the row fetch -- otherwise a filtered set with
-  // more than ROW_LIMIT matches would silently drop rows off the end with
-  // no indication anything was cut, which is a worse failure mode than an
-  // error: nothing tells the user the total is wrong.
+  const PAGE_SIZE = 50;
+  const requestedPage = Math.max(1, Math.floor(Number(params.page) || 1));
+  // count: "exact" alongside the row fetch, so the page knows how many
+  // pages there are and says so -- rows are never silently cut off.
   let query = supabase
     .from("transactions")
     .select(
@@ -71,7 +74,9 @@ export default async function TransactionsPage({
     )
     .eq("org_id", orgId)
     .order("tx_date", { ascending: false })
-    .limit(ROW_LIMIT);
+    // A stable order inside one day, so paging never repeats or skips a row.
+    .order("id", { ascending: false })
+    .range((requestedPage - 1) * PAGE_SIZE, requestedPage * PAGE_SIZE - 1);
 
   if (status) query = query.eq("status", status);
   if (direction) query = query.eq("direction", direction);
@@ -139,14 +144,18 @@ export default async function TransactionsPage({
   const activeContactName = contactId ? contactOptions.find((c) => c.id === contactId)?.label : null;
   const activeCategoryName = categoryId ? categoryOptions.find((c) => c.id === categoryId)?.label : null;
   const hasDrillFilter = projectId || accountId || contactId || categoryId || scope || from || to || ids;
-  const isTruncated = (totalCount ?? 0) > ROW_LIMIT;
+  const total = totalCount ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const page = Math.min(requestedPage, pageCount);
+  // A page past the end (rows deleted, filters narrowed): go to the last one.
+  if (requestedPage > pageCount) redirect(withParams("/transactions", { ...params }, { page: pageCount > 1 ? String(pageCount) : null }));
 
   // Same filters as the on-screen table, but the export route itself has no
-  // row cap -- "export what I'm looking at" always gets everything, not
-  // just the first 500.
+  // row cap and no paging -- "export what I'm looking at" always gets every
+  // matching row, not just this page.
   const exportParams = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
-    if (typeof v === "string" && v) exportParams.set(k, v);
+    if (typeof v === "string" && v && k !== "page" && k !== "new") exportParams.set(k, v);
   }
   const exportHref = `/api/transactions/export?${exportParams.toString()}`;
 
@@ -195,14 +204,8 @@ export default async function TransactionsPage({
         categories={categoryOptions}
         accounts={accountOptions}
       />
-      {isTruncated && (
-        <p key="truncated-banner" role="status" className="border-l-2 border-warning pl-3 text-small text-text">
-          Δείχνονται μόνο οι πρώτες <span className="num">{ROW_LIMIT}</span> από <span className="num">{totalCount}</span>{" "}
-          κινήσεις που ταιριάζουν. Περιορίστε με φίλτρα (ημερομηνία, έργο, κατηγορία…) για να δείτε τις υπόλοιπες.
-        </p>
-      )}
       {hasDrillFilter && (
-        <div key="drill-banner" className="flex flex-col gap-1 border-l-2 border-navy pl-3 text-small text-text">
+        <Notice key="drill-banner" as="div" size="small" className="flex flex-col gap-1">
           <div key="line1" className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span key="label" className="eyebrow text-muted">Ανάλυση κινήσεων:</span>
             {activeProjectName && <strong key="project" className="font-medium text-ink">{activeProjectName}</strong>}
@@ -237,30 +240,28 @@ export default async function TransactionsPage({
               έναρξης εμφανίζονται εδώ αλλά δεν προσμετρώνται στο υπόλοιπο.
             </p>
           )}
-        </div>
+        </Notice>
       )}
       <div key="status-chips" className="flex flex-wrap items-center gap-2">
         {["", "paid", "pending", "scheduled"].map((s) => {
           const on = status === s || (!status && !s);
           return (
-            <a
+            <FilterChip
               key={s || "all"}
               // Keeps the project / account / date filters already applied
               // (it used to reset to ?status= alone).
-              href={withParams("/transactions", { ...params }, { status: s || null })}
-              aria-current={on ? "true" : undefined}
-              className={`inline-flex min-h-11 items-center border px-3 py-1 text-small whitespace-nowrap transition-colors md:min-h-9 ${
-                on ? "border-navy bg-navy text-panel-ink" : "border-chip-border text-text hover:border-navy hover:text-ink"
-              }`}
+              href={withParams("/transactions", { ...params }, { status: s || null, page: null })}
+              active={on}
+              className="max-md:min-h-11"
             >
               {s ? el.transaction[s as "paid" | "pending" | "scheduled"] : "Όλα"}
-            </a>
+            </FilterChip>
           );
         })}
         <Link
           key="ask-ai"
           href={`/assistant?q=${encodeURIComponent(askPrompt)}`}
-          className={buttonClass("ai", "md", "ml-auto max-md:min-h-11 max-md:w-full max-md:whitespace-normal")}
+          className={buttonClass("ai", "md", "ml-auto max-md:w-full max-md:whitespace-normal")}
         >
           <AiSpark />
           Ρώτα το Kansha AI γι&apos; αυτόν τον πίνακα →
@@ -269,8 +270,36 @@ export default async function TransactionsPage({
     </div>
   );
 
+  // «Σελίδα 2 από 14» with previous / next: plain links that keep every
+  // filter (withParams), so a page is shareable like any filter.
+  const pageHref = (n: number) => withParams("/transactions", { ...params }, { page: n > 1 ? String(n) : null, new: null });
+  const pager =
+    pageCount > 1 ? (
+      <nav key="pager" aria-label="Σελίδες κινήσεων" className="flex flex-wrap items-center justify-between gap-3 text-small text-muted">
+        <span key="where">
+          Σελίδα <span className="num text-ink">{page}</span> από <span className="num">{pageCount}</span> ·{" "}
+          <span className="num">{(page - 1) * PAGE_SIZE + 1}</span>–<span className="num">{Math.min(page * PAGE_SIZE, total)}</span> από{" "}
+          <span className="num">{total}</span> κινήσεις
+        </span>
+        <span key="links" className="flex gap-2">
+          {page > 1 ? (
+            <Link key="prev" href={pageHref(page - 1)} rel="prev" className={buttonClass("secondary", "sm")}>
+              ‹ Προηγούμενη
+            </Link>
+          ) : null}
+          {page < pageCount ? (
+            <Link key="next" href={pageHref(page + 1)} rel="next" className={buttonClass("secondary", "sm")}>
+              Επόμενη ›
+            </Link>
+          ) : null}
+        </span>
+      </nav>
+    ) : null;
+
   return (
     <TransactionsTable
+      pager={pager}
+      pageTotalsOnly={pageCount > 1}
       transactions={rows}
       contacts={contactOptions}
       projects={projectOptions}

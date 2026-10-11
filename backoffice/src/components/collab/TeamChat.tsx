@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { el } from "@/lib/i18n/el";
 import { fillText } from "@/lib/collab/text";
 import { assistantQuestion, type MentionPerson } from "@/lib/collab/mentions";
-import { AiSpark, Button, MenuItem, Textarea, cn } from "@/components/ui";
+import { AiSpark, Button, MenuItem, Notice, Textarea, cn } from "@/components/ui";
 import { MentionText, MentionTextarea } from "./MentionTextarea";
 import { COLLAB_FILE_TYPES, isAllowedCollabFile, isImageType } from "./boardFiles";
 import type { TeamChatState, TeamMessage } from "./useTeamChat";
@@ -125,7 +125,7 @@ export function TeamChat({
         addFiles(e.dataTransfer.files);
       }}
     >
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3 text-sm md:px-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3 text-body md:px-4">
         {chat.loaded && chat.messages.length === 0 && (
           <p className="max-w-xs py-10 text-small text-muted">{t.empty}</p>
         )}
@@ -182,7 +182,7 @@ export function TeamChat({
         {files.length > 0 && (
           <ul className="flex flex-wrap gap-1.5">
             {files.map((f, i) => (
-              <li key={`${f.name}-${i}`} className="flex items-center gap-1 border border-chip-border bg-field py-0.5 pr-0.5 pl-2.5 text-xs text-ink">
+              <li key={`${f.name}-${i}`} className="flex items-center gap-1 border border-chip-border bg-field py-0.5 pr-0.5 pl-2.5 text-small text-ink">
                 <span className="max-w-40 truncate">
                   {f.type === "application/pdf" && <span className="text-muted">PDF </span>}
                   {f.name}
@@ -200,7 +200,7 @@ export function TeamChat({
           </ul>
         )}
         {progress && (
-          <p className="border-l-2 border-navy pl-3 text-xs text-muted">{fillText(el.collab.fileLibrary.uploading, progress)}</p>
+          <Notice tone="info" size="small">{fillText(el.collab.fileLibrary.uploading, progress)}</Notice>
         )}
         <form
           className="flex items-end gap-2"
@@ -254,7 +254,7 @@ export function TeamChat({
             type="button"
             variant="ai"
             size="sm"
-            className="self-start max-md:min-h-11"
+            className="self-start"
             disabled={!draft.trim()}
             onClick={() => {
               const q = assistantQuestion(draft) ?? draft.trim();
@@ -318,7 +318,7 @@ function MessageRow({
       )}
     >
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex min-w-0 items-baseline gap-1.5 text-xs text-muted">
+        <div className="flex min-w-0 items-baseline gap-1.5 text-small text-muted">
           {!mine && <span className="font-medium text-ink">{author}</span>}
           <span className="num">{timeFmt.format(new Date(m.created_at))}</span>
           {m.edited_at && <span>· {el.collab.chat.edited}</span>}
@@ -336,14 +336,14 @@ function MessageRow({
                 onChange={(e) => onEditChange(e.target.value)}
                 rows={3}
                 maxLength={4000}
-                className="w-full max-md:text-base"
+                className="w-full max-md:text-field"
                 autoFocus
               />
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="secondary" size="sm" className="max-md:min-h-11" onClick={onCancelEdit}>
+                <Button type="button" variant="secondary" size="sm" onClick={onCancelEdit}>
                   {el.common.cancel}
                 </Button>
-                <Button type="button" size="sm" className="max-md:min-h-11" onClick={onSaveEdit}>
+                <Button type="button" size="sm" onClick={onSaveEdit}>
                   {el.common.save}
                 </Button>
               </div>
@@ -361,7 +361,7 @@ function MessageRow({
                 const a = attachments[id];
                 if (a === null) {
                   return (
-                    <li key={id} className="border border-hairline px-2 py-1 text-xs text-muted italic">
+                    <li key={id} className="border border-hairline px-2 py-1 text-small text-muted italic">
                       {el.collab.fileLibrary.removed}
                     </li>
                   );
@@ -374,7 +374,7 @@ function MessageRow({
                         // eslint-disable-next-line @next/next/no-img-element -- signed, short-lived URL behind a redirect
                         <img src={href} alt={a.name} className="h-24 max-w-48 border border-hairline bg-field object-cover" />
                       ) : (
-                        <span className="flex min-h-11 items-center gap-1.5 border border-hairline bg-field px-3 text-xs text-ink underline-offset-2 hover:border-navy hover:underline">
+                        <span className="flex min-h-11 items-center gap-1.5 border border-hairline bg-field px-3 text-small text-ink underline-offset-2 hover:border-navy hover:underline">
                           <span className="font-medium text-negative">PDF</span>
                           <span className="max-w-40 truncate">{a?.name || "PDF"}</span>
                         </span>
@@ -394,7 +394,7 @@ function MessageRow({
             aria-label={el.collab.project.moreActions}
             aria-haspopup="menu"
             aria-expanded={menuOpen}
-            className="flex h-9 w-9 items-center justify-center text-lg leading-none text-muted hover:bg-raised hover:text-ink max-md:h-11 max-md:w-11"
+            className="flex h-9 w-9 items-center justify-center text-section leading-none text-muted hover:bg-raised hover:text-ink max-md:h-11 max-md:w-11"
             onClick={onMenu}
           >
             <span aria-hidden="true">⋯</span>
@@ -405,7 +405,7 @@ function MessageRow({
                 <button
                   type="button"
                   role="menuitem"
-                  className="flex min-h-10 w-full items-center gap-2 px-3 py-2 text-left text-sm text-ai hover:bg-ai-tint max-md:min-h-11"
+                  className="flex min-h-10 w-full items-center gap-2 px-3 py-2 text-left text-body text-ai hover:bg-ai-tint max-md:min-h-11"
                   onClick={onAsk}
                 >
                   <AiSpark /> {el.collab.chat.askAssistant}

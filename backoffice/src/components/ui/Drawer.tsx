@@ -54,7 +54,7 @@ export function Drawer({
             type="button"
             onClick={close}
             aria-label={shell.ui.close}
-            className="-mr-2 inline-flex min-h-10 min-w-10 items-center justify-center text-xl text-muted hover:bg-hover hover:text-ink"
+            className="-mr-2 inline-flex min-h-10 min-w-10 items-center justify-center text-section text-muted hover:bg-hover hover:text-ink"
           >
             <span aria-hidden="true">×</span>
           </button>

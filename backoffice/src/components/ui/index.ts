@@ -6,13 +6,15 @@
 export { cn } from "./cn";
 export * as tokens from "./tokens";
 
-export { Button, ButtonLink, buttonClass, AiSpark, type ButtonVariant, type ButtonSize } from "./Button";
+export { Button, ButtonLink, buttonClass, withPlus, AiSpark, type ButtonVariant, type ButtonSize } from "./Button";
 export { Input, MoneyInput, Select, Textarea, Checkbox, Label, Field, Term } from "./Field";
 export { Badge, StatusDot, type Tone } from "./Badge";
-export { Stat, StatRow, GlancePanel } from "./Stat";
+export { Stat, StatRow, GlancePanel, figureFit } from "./Stat";
 export { PageHeader, SectionHeader, MetaList, KeyValue } from "./PageHeader";
 export { DataTable, Amount, type Column } from "./DataTable";
-export { Toolbar, FilterChip, Segmented } from "./Toolbar";
+export { SpecTable, Th, Td, Tr, TH_CLASS, TD_CLASS, NUM_CLASS, LINK_CLASS, SUB_CLASS } from "./SpecTable";
+export { Notice, type NoticeTone } from "./Notice";
+export { Toolbar, FilterChip, Segmented, ViewSwitch } from "./Toolbar";
 export { Tabs } from "./Tabs";
 export { Drawer, FormDrawer } from "./Drawer";
 export { Modal, FormModal, DialogForm } from "./Modal";

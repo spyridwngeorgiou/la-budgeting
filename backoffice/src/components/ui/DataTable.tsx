@@ -56,7 +56,7 @@ export function DataTable<T>({
   className?: string;
 }) {
   if (rows.length === 0) {
-    return <p className={cn("border-y border-hairline py-6 text-sm text-muted", className)}>{empty}</p>;
+    return <p className={cn("border-y border-hairline py-6 text-body text-muted", className)}>{empty}</p>;
   }
   const primaryKey = (columns.find((c) => c.primary) ?? columns[0]).key;
   const cellFor = (row: T, c: Column<T>) => {
@@ -72,7 +72,7 @@ export function DataTable<T>({
   };
 
   const table = (
-    <table className="w-full border-collapse text-sm">
+    <table className="w-full border-collapse text-body">
       {caption && <caption className="eyebrow pb-2 text-left text-muted">{caption}</caption>}
       <thead>
         <tr>
@@ -126,7 +126,7 @@ export function DataTable<T>({
             {columns.map((c, i) => (
               <td
                 key={c.key}
-                className={cn("border-t border-ink px-3 py-3 font-semibold text-ink", c.numeric && "num text-right", c.className)}
+                className={cn("border-t border-ink px-3 py-3 font-medium text-ink", c.numeric && "num text-right", c.className)}
               >
                 {totals[c.key] ?? (i === 0 ? shell.ui.total : null)}
               </td>
@@ -139,7 +139,7 @@ export function DataTable<T>({
   );
 
   if (mode === "scroll") {
-    return <div className={cn("overflow-x-auto", className)}>{table}</div>;
+    return <div className={cn("scroll-frame max-w-full", className)}>{table}</div>;
   }
 
   const rest = columns.filter((c) => c.key !== primaryKey && !c.hideOnCard);
@@ -157,8 +157,8 @@ export function DataTable<T>({
             <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
               {rest.map((c) => (
                 <div key={c.key} className={cn("flex flex-col", c.numeric && "items-end text-right")}>
-                  <dt className="text-xs text-muted">{c.header}</dt>
-                  <dd className={cn("text-sm text-text", c.numeric && "num")}>{c.cell(row)}</dd>
+                  <dt className="text-small text-muted">{c.header}</dt>
+                  <dd className={cn("text-body text-text", c.numeric && "num")}>{c.cell(row)}</dd>
                 </div>
               ))}
             </dl>
@@ -172,8 +172,8 @@ export function DataTable<T>({
                 .filter((c) => totals[c.key] !== undefined)
                 .map((c) => (
                   <div key={c.key} className={cn("flex flex-col", c.numeric && "items-end text-right")}>
-                    <dt className="text-xs text-muted">{c.header}</dt>
-                    <dd className={cn("text-sm font-semibold text-ink", c.numeric && "num")}>{totals[c.key]}</dd>
+                    <dt className="text-small text-muted">{c.header}</dt>
+                    <dd className={cn("text-body font-medium text-ink", c.numeric && "num")}>{totals[c.key]}</dd>
                   </div>
                 ))}
             </dl>

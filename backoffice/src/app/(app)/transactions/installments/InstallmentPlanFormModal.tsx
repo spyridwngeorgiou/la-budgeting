@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Input, Select, Label, Field, Modal } from "@/components/ui";
+import { formatPercent } from "@/lib/format";
+import { Button, Input, Select, Label, Field, Modal, Notice } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { el } from "@/lib/i18n/el";
 import { VAT_RATES } from "@/lib/domain/enums";
@@ -27,7 +28,7 @@ export function InstallmentPlanFormModal({ action, contacts, projects, categorie
 
   return (
     <>
-      <Button onClick={() => setOpen(true)} className="max-md:min-h-11">
+      <Button onClick={() => setOpen(true)}>
         + Νέο Σχέδιο Δόσεων
       </Button>
       {open && (
@@ -57,7 +58,7 @@ export function InstallmentPlanFormModal({ action, contacts, projects, categorie
               {(["expense", "income"] as const).map((d, i) => (
                 <label
                   key={d}
-                  className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 border border-chip-border px-3 py-2 text-sm text-text has-[:checked]:border-navy has-[:checked]:bg-navy has-[:checked]:text-panel-ink md:min-h-10 ${
+                  className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 border border-chip-border px-3 py-2 text-body text-text has-[:checked]:border-navy has-[:checked]:bg-navy has-[:checked]:text-panel-ink md:min-h-10 ${
                     i > 0 ? "-ml-px" : ""
                   }`}
                 >
@@ -116,7 +117,7 @@ export function InstallmentPlanFormModal({ action, contacts, projects, categorie
               </Select>
             </Field>
 
-            <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 self-start text-sm text-ink md:min-h-10">
+            <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 self-start text-body text-ink md:min-h-10">
               <input
                 className="h-4 w-4 accent-navy"
                 type="checkbox"
@@ -138,7 +139,7 @@ export function InstallmentPlanFormModal({ action, contacts, projects, categorie
                   <Select name="vat_rate" defaultValue="0.24">
                     {VAT_RATES.map((r) => (
                       <option key={r} value={r}>
-                        {(r * 100).toFixed(0)}%
+                        {formatPercent(r, { digits: 0 })}
                       </option>
                     ))}
                   </Select>
@@ -173,9 +174,9 @@ export function InstallmentPlanFormModal({ action, contacts, projects, categorie
             </Field>
 
             {error && (
-              <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+              <Notice tone="negative" role="alert">
                 {error}
-              </p>
+              </Notice>
             )}
 
             <div className="mt-2 flex justify-end gap-2">

@@ -1,17 +1,15 @@
 import { OnePagerRow, OnePagerSection } from "@/components/onepager";
-import { ActionForm } from "@/components/ActionForm";
-import { Button } from "@/components/ui";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, formatPercent } from "@/lib/format";
 import type { LoansScheduleResult } from "@/lib/finance/loan";
 import type { LoanRow } from "@/lib/finance/projectModel";
 import { LoanFormModal } from "../LegacyFormModals";
 import { saveLoan, deleteLoan } from "./finance-actions";
 import { ProjectIrrRow } from "./FinanceSections";
+import { RowDeleteMenu } from "@/components/RowDeleteMenu";
 
 // An editable record: its facts on the left, the buttons on the right
-// (under it on phones, 44px tall there), a hairline under each.
+// (under it on phones), a hairline under each.
 const ROW = "flex flex-col gap-2 border-b border-hairline py-3 md:flex-row md:items-center md:justify-between md:gap-4";
-const TAP = "max-md:min-h-11";
 
 // How the project is funded: the loan programme and its tranches (each
 // written into the ledger by saveLoan, 0065), and the project's own return
@@ -61,10 +59,10 @@ export function FundingSections({
         <div className="flex flex-col">
           {loanRows.map((l) => (
             <div key={l.id} className={ROW}>
-              <div className="min-w-0 text-sm">
+              <div className="min-w-0 text-body">
                 <span className="text-ink">{l.label}</span>{" "}
                 <span className="num text-muted">
-                  · {formatMoney(l.principal)} · {(Number(l.interest_rate) * 100).toFixed(2)}% ·{" "}
+                  · {formatMoney(l.principal)} · {formatPercent(Number(l.interest_rate), { digits: 2, fixed: true })} ·{" "}
                   {l.term_years} έτη
                 </span>
               </div>
@@ -88,11 +86,9 @@ export function FundingSections({
                     })),
                   }}
                 />
-                <ActionForm action={deleteLoan.bind(null, id, l.id)}>
-                  <Button type="submit" variant="danger" size="sm" className={TAP}>
-                    Διαγραφή
-                  </Button>
-                </ActionForm>
+                <RowDeleteMenu action={deleteLoan.bind(null, id, l.id)} label="Ενέργειες">
+                  Διαγραφή
+                </RowDeleteMenu>
               </div>
             </div>
           ))}

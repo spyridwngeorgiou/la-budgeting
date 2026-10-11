@@ -45,7 +45,7 @@ export default async function AccountsPage() {
   const today = todayAthens();
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
       <PageHeader
         title={el.nav.accounts}
         meta="Τράπεζες, μετρητά και μη ρευστά περιουσιακά στοιχεία, εταιρικά και προσωπικά, με τρέχον υπόλοιπο."
@@ -62,7 +62,7 @@ export default async function AccountsPage() {
             .map((scope) => ({ scope, rows: rows.filter((a) => a.owner_scope === scope) }))
             .filter((group) => group.rows.length > 0)
             .map((group) => (
-              <section key={group.scope} className="flex flex-col gap-2">
+              <section key={group.scope} className="flex flex-col gap-4">
                 <h2 className="eyebrow text-muted">{el.account.groups[group.scope]}</h2>
                 <AccountsTable accounts={group.rows} today={today} />
               </section>

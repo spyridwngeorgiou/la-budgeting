@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, Notice } from "@/components/ui";
 import { errorOf } from "@/lib/actions";
 import { createNdjsonParser, TOOL_LABEL, type ChatEvent } from "@/lib/ai/chatProtocol";
 import type { ChangeCard } from "@/lib/ai/changeCards";
@@ -217,13 +217,13 @@ export function ChatPanel({
           Νέα συζήτηση
         </Button>
         {listError && (
-          <p role="alert" className="border-l-2 border-negative pl-2 text-xs text-negative">
+          <Notice tone="negative" size="small" role="alert">
             {listError}
-          </p>
+          </Notice>
         )}
         <nav aria-label="Συζητήσεις" className="flex-1 overflow-y-auto">
           {conversations.length === 0 ? (
-            <p className="py-2 text-xs text-muted">Καμία αποθηκευμένη συζήτηση.</p>
+            <p className="py-2 text-small text-muted">Καμία αποθηκευμένη συζήτηση.</p>
           ) : (
             <ul className="flex flex-col">
               {conversations.map((c) => (
@@ -232,7 +232,7 @@ export function ChatPanel({
                     type="button"
                     onClick={() => openConversation(c.id)}
                     aria-current={c.id === activeId ? "true" : undefined}
-                    className={`min-h-10 flex-1 truncate border-l-2 px-2 py-2 text-left text-xs ${
+                    className={`min-h-10 flex-1 truncate border-l-2 px-2 py-2 text-left text-small ${
                       c.id === activeId ? "border-ai bg-ai-tint text-ai" : "border-transparent text-muted hover:bg-hover hover:text-ink"
                     }`}
                     title={c.title ?? undefined}
@@ -243,7 +243,7 @@ export function ChatPanel({
                     type="button"
                     onClick={() => removeConversation(c.id)}
                     aria-label={`Διαγραφή συζήτησης «${c.title ?? ""}»`}
-                    className="flex h-10 w-8 items-center justify-center text-xs text-muted opacity-0 group-hover:opacity-100 hover:text-negative focus:opacity-100 max-md:opacity-100"
+                    className="flex h-10 w-8 items-center justify-center text-small text-muted opacity-0 group-hover:opacity-100 hover:text-negative focus:opacity-100 max-md:opacity-100"
                   >
                     ×
                   </button>
@@ -256,23 +256,18 @@ export function ChatPanel({
 
       <div className="flex min-h-0 flex-col gap-3">
         <div className="flex-1 overflow-y-auto border-y border-hairline py-4" aria-live="polite">
-          {loadingThread && <p className="text-sm text-muted">Φόρτωση συζήτησης…</p>}
+          {loadingThread && <p className="text-body text-muted">Φόρτωση συζήτησης…</p>}
           {!loadingThread && messages.length === 0 && (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-              <p className="max-w-prose text-sm text-muted">
+              <p className="max-w-prose text-body text-muted">
                 Ρωτήστε οτιδήποτε για τα οικονομικά της επιχείρησης — κάθε απάντηση βασίζεται σε πραγματικά δεδομένα
                 από το βιβλίο σας, με συνδέσμους στις πηγές.
               </p>
               <div className="flex flex-wrap justify-center gap-2">
                 {SUGGESTIONS.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => send(s)}
-                    className="inline-flex min-h-9 items-center border border-ai-border px-3 py-1.5 text-xs text-ai hover:bg-ai-tint"
-                  >
+                  <Button key={s} type="button" variant="ai" size="sm" onClick={() => send(s)}>
                     {s}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -320,7 +315,7 @@ function MessageView({ message: m, canReview }: { message: UiMessage; canReview:
   if (m.role === "user") {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[85%] bg-hover px-3 py-2 text-sm whitespace-pre-wrap text-ink">{m.content}</div>
+        <div className="max-w-[85%] bg-hover px-3 py-2 text-body whitespace-pre-wrap text-ink">{m.content}</div>
       </div>
     );
   }
@@ -333,7 +328,7 @@ function MessageView({ message: m, canReview }: { message: UiMessage; canReview:
             {m.tools.map((t, i) => (
               <span
                 key={i}
-                className={`border px-2 py-0.5 text-[11px] ${
+                className={`border px-2 py-0.5 text-eyebrow ${
                   t.status === "error"
                     ? "border-negative text-negative"
                     : t.status === "start"
@@ -348,7 +343,7 @@ function MessageView({ message: m, canReview }: { message: UiMessage; canReview:
           </div>
         )}
         {(m.content || thinking) && (
-          <div className="border-l-2 border-ai-border py-1 pl-3 text-sm whitespace-pre-wrap text-ink">
+          <div className="border-l-2 border-ai-border py-1 pl-3 text-body whitespace-pre-wrap text-ink">
             {m.content || <span className="text-muted">Ο βοηθός σκέφτεται…</span>}
           </div>
         )}
@@ -356,12 +351,12 @@ function MessageView({ message: m, canReview }: { message: UiMessage; canReview:
           <ChangeCardView key={p.id} initial={p} canReview={canReview} />
         ))}
         {m.error && (
-          <div role="alert" className="border-l-2 border-negative py-1 pl-3 text-sm text-negative">
+          <Notice as="div" tone="negative" role="alert">
             {m.error}
-          </div>
+          </Notice>
         )}
         {m.sources.length > 0 && (
-          <div className="text-xs text-muted">
+          <div className="text-small text-muted">
             <span className="font-medium">Πηγές: </span>
             {m.sources.map((s, i) => (
               <span key={s.href}>

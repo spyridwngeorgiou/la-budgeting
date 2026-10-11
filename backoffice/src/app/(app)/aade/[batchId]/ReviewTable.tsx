@@ -2,9 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { formatMoney, formatDate } from "@/lib/format";
-import { Badge, Button, Select } from "@/components/ui";
+import { Button, Select, SpecTable, StatusDot, Td, Th, Tr } from "@/components/ui";
 import { updateStagingRowField, bulkAssign } from "../actions";
-import { specRow, specTable, specTd, specTh } from "@/components/specTable";
 
 interface Option {
   id: string;
@@ -79,7 +78,7 @@ export function ReviewTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <label className="flex min-h-10 items-center gap-2 text-sm text-muted">
+      <label className="flex min-h-10 items-center gap-2 text-body text-muted">
         <input
           type="checkbox"
           checked={showDuplicates}
@@ -89,7 +88,7 @@ export function ReviewTable({
       </label>
 
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 border-y border-hairline py-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 border-y border-hairline py-2 text-body">
           <span>{selected.size} επιλεγμένες:</span>
           <Select value={bulkProject} onChange={(e) => setBulkProject(e.target.value)}>
             <option value="">Έργο —</option>
@@ -115,90 +114,86 @@ export function ReviewTable({
               </option>
             ))}
           </Select>
-          <Button onClick={applyBulk} className="!px-2 !py-1 text-xs">
+          <Button onClick={applyBulk} size="sm">
             Εφαρμογή
           </Button>
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className={specTable}>
-          <thead>
-            <tr>
-              <th scope="col" className={specTh}></th>
-              <th scope="col" className={specTh}>Ημ/νία</th>
-              <th scope="col" className={specTh}>Αντισυμβαλλόμενος</th>
-              <th scope="col" className={`${specTh} text-right`}>Ποσό</th>
-              <th scope="col" className={specTh}>Κατάσταση</th>
-              <th scope="col" className={specTh}>Έργο</th>
-              <th scope="col" className={specTh}>Κατηγορία</th>
-              <th scope="col" className={specTh}>Λογαριασμός</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visibleRows.map((row) => (
-              <tr key={row.id} className={specRow}>
-                <td className={specTd}>
-                  {row.dedup_status === "new" && (
-                    <input
-                      type="checkbox"
-                      checked={selected.has(row.id)}
-                      onChange={() => toggle(row.id)}
-                    />
-                  )}
-                </td>
-                <td className={`${specTd} num`}>{formatDate(row.issue_date)}</td>
-                <td className={`${specTd} text-ink`}>{row.counterparty_name ?? "—"}</td>
-                <td
-                  className={`${specTd} num text-right text-ink`}
-                >
-                  {row.direction === "income" ? "+" : row.direction === "expense" ? "−" : ""}
-                  {formatMoney(row.gross_amount)}
-                </td>
-                <td className={specTd}>
-                  {row.dedup_status === "new" ? (
-                    <Badge tone="green">Νέα</Badge>
-                  ) : (
-                    <Badge tone="neutral">{DEDUP_LABEL[row.dedup_status] ?? row.dedup_status}</Badge>
-                  )}
-                </td>
-                {row.dedup_status === "new" ? (
-                  <>
-                    <td className={specTd}>
-                      <RowSelect
-                        rowId={row.id}
-                        field="project_id"
-                        value={row.project_id}
-                        options={projects}
-                      />
-                    </td>
-                    <td className={specTd}>
-                      <RowSelect
-                        rowId={row.id}
-                        field="category_id"
-                        value={row.category_id}
-                        options={categories}
-                      />
-                    </td>
-                    <td className={specTd}>
-                      <RowSelect
-                        rowId={row.id}
-                        field="account_id"
-                        value={row.account_id}
-                        options={accounts}
-                      />
-                    </td>
-                  </>
-                ) : (
-                  <td className={`${specTd} text-xs text-muted`} colSpan={3}>
-                    Θα παραλειφθεί
-                  </td>
+      <SpecTable label="Γραμμές εισαγωγής">
+        <thead>
+          <tr>
+            <Th></Th>
+            <Th>Ημ/νία</Th>
+            <Th>Αντισυμβαλλόμενος</Th>
+            <Th numeric>Ποσό</Th>
+            <Th>Κατάσταση</Th>
+            <Th>Έργο</Th>
+            <Th>Κατηγορία</Th>
+            <Th>Λογαριασμός</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {visibleRows.map((row) => (
+            <Tr key={row.id}>
+              <Td>
+                {row.dedup_status === "new" && (
+                  <input
+                    type="checkbox"
+                    checked={selected.has(row.id)}
+                    onChange={() => toggle(row.id)}
+                  />
                 )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+              </Td>
+              <Td className="num">{formatDate(row.issue_date)}</Td>
+              <Td strong>{row.counterparty_name ?? "—"}</Td>
+              <Td numeric strong>
+                {row.direction === "income" ? "+" : row.direction === "expense" ? "−" : ""}
+                {formatMoney(row.gross_amount)}
+              </Td>
+              <Td>
+                {row.dedup_status === "new" ? (
+                  <StatusDot tone="positive" label="Νέα" />
+                ) : (
+                  <StatusDot tone="neutral" label={DEDUP_LABEL[row.dedup_status] ?? row.dedup_status} />
+                )}
+              </Td>
+              {row.dedup_status === "new" ? (
+                <>
+                  <Td>
+                    <RowSelect
+                      rowId={row.id}
+                      field="project_id"
+                      value={row.project_id}
+                      options={projects}
+                    />
+                  </Td>
+                  <Td>
+                    <RowSelect
+                      rowId={row.id}
+                      field="category_id"
+                      value={row.category_id}
+                      options={categories}
+                    />
+                  </Td>
+                  <Td>
+                    <RowSelect
+                      rowId={row.id}
+                      field="account_id"
+                      value={row.account_id}
+                      options={accounts}
+                    />
+                  </Td>
+                </>
+              ) : (
+                <Td className="text-small text-muted" colSpan={3}>
+                  Θα παραλειφθεί
+                </Td>
+              )}
+            </Tr>
+          ))}
+        </tbody>
+      </SpecTable>
     </div>
   );
 }

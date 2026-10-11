@@ -15,7 +15,7 @@ export default async function CalendarPage({
   const ctx = await plannerContext(params);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-10">
       <PageHeader title={el.planner.tabs.calendar} />
       <CalendarView ctx={ctx} params={params} />
     </div>

@@ -59,6 +59,27 @@ export function Segmented({
   );
 }
 
+// A labelled, mutually exclusive view option (scenario, year, grouping):
+// eyebrow label over joined chips. Every option is a URL.
+export function ViewSwitch({
+  label,
+  options,
+  active,
+  className = "",
+}: {
+  label: string;
+  options: { key: string; label: ReactNode; href: string }[];
+  active: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
+      <span className="eyebrow text-muted">{label}</span>
+      <Segmented label={label} options={options} active={active} className="flex-wrap [&>a]:pointer-coarse:min-h-11" />
+    </div>
+  );
+}
+
 // The filter row above a table: chips (and selects) on the left, actions on
 // the right; wraps on narrow screens.
 export function Toolbar({

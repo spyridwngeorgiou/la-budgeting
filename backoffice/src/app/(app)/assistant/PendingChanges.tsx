@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate } from "@/lib/format";
-import { Badge, AiSpark } from "@/components/ui";
+import { AiSpark, Badge, SectionHeader, SpecTable, StatusDot, Td, Th, Tr } from "@/components/ui";
 import { OP_LABEL, STATUS_LABEL, tableLabel, toChangeCard, type ChangeOperation, type ChangeStatus } from "@/lib/ai/changeCards";
 import { el } from "@/lib/i18n/el";
 import { ChangeCardView } from "./ChangeCardView";
@@ -42,17 +42,21 @@ export async function PendingChanges() {
 
   return (
     <section id="changes" className="flex flex-col gap-4">
-      <div className="flex items-center gap-2 border-b border-hairline pb-3">
-        <AiSpark className="text-ai" />
-        <h2 className="text-section font-normal text-ink">{el.nav.changes}</h2>
-      </div>
-      <p className="text-sm text-muted">
+      <SectionHeader
+        title={
+          <span className="inline-flex items-center gap-2">
+            <AiSpark className="text-ai" />
+            {el.nav.changes}
+          </span>
+        }
+      />
+      <p className="text-body text-muted">
         Προτάσεις αλλαγών από το Kansha Operator. Καμία δεν έχει εφαρμοστεί ακόμα -- ελέγξτε το πριν/μετά και
         εγκρίνετε ή απορρίψτε.
       </p>
 
       {(changes ?? []).length === 0 ? (
-        <p className="border-b border-hairline pb-3 text-sm text-muted">Καμία εκκρεμής πρόταση αυτή τη στιγμή.</p>
+        <p className="border-b border-hairline pb-3 text-body text-muted">Καμία εκκρεμής πρόταση αυτή τη στιγμή.</p>
       ) : (
         <div className="flex flex-col gap-4">
           {(changes ?? []).map((c) => (
@@ -64,34 +68,37 @@ export async function PendingChanges() {
       {history && history.length > 0 && (
         <section>
           <h2 className="eyebrow mb-2 text-muted">Ιστορικό Αποφάσεων</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left text-xs">
-              <thead>
-                <tr>
-                  <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Πίνακας</th>
-                  <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Ενέργεια</th>
-                  <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Απόφαση</th>
-                  <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Από</th>
-                  <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Πότε</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((h) => (
-                  <tr key={h.id}>
-                    <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0">{tableLabel(h.table_name, h.action)}</td>
-                    <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0">{OP_LABEL[h.operation as ChangeOperation] ?? h.operation}</td>
-                    <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0">
-                      <Badge tone={h.status === "approved" ? "green" : "red"}>
-                        {STATUS_LABEL[h.status as ChangeStatus] ?? h.status}
-                      </Badge>
-                    </td>
-                    <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0">{reviewerName(h.reviewed_by)}</td>
-                    <td className="border-b border-hairline px-2 py-1.5 align-top first:pl-0 num text-muted">{h.reviewed_at ? formatDate(h.reviewed_at) : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SpecTable label="Ιστορικό Αποφάσεων" tableClassName="text-small">
+            <thead>
+              <tr>
+                <Th>Πίνακας</Th>
+                <Th>Ενέργεια</Th>
+                <Th>Απόφαση</Th>
+                <Th>Από</Th>
+                <Th>Πότε</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.map((h) => (
+                <Tr key={h.id}>
+                  <Td>{tableLabel(h.table_name, h.action)}</Td>
+                  <Td>{OP_LABEL[h.operation as ChangeOperation] ?? h.operation}</Td>
+                  <Td>
+                    {h.status === "failed" ? (
+                      <Badge tone="negative">{STATUS_LABEL[h.status as ChangeStatus] ?? h.status}</Badge>
+                    ) : (
+                      <StatusDot
+                        tone={h.status === "approved" ? "positive" : "negative"}
+                        label={STATUS_LABEL[h.status as ChangeStatus] ?? h.status}
+                      />
+                    )}
+                  </Td>
+                  <Td>{reviewerName(h.reviewed_by)}</Td>
+                  <Td className="num text-muted">{h.reviewed_at ? formatDate(h.reviewed_at) : "—"}</Td>
+                </Tr>
+              ))}
+            </tbody>
+          </SpecTable>
         </section>
       )}
     </section>

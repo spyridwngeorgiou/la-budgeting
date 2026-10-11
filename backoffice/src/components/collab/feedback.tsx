@@ -74,7 +74,7 @@ function ConfirmDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-section text-ink">{el.collab.confirm.title}</h2>
-        <p className="mt-2 text-sm text-text">{message}</p>
+        <p className="mt-2 text-body text-text">{message}</p>
         <div className="mt-4 flex justify-end gap-2">
           <button
             ref={cancelRef}
@@ -150,7 +150,7 @@ export function ToastStack({
         <div
           key={t.id}
           className={cn(
-            "pointer-events-auto flex max-w-[calc(100vw-1.5rem)] items-center gap-3 bg-panel py-1 pr-1 pl-4 text-sm text-panel-ink",
+            "pointer-events-auto flex max-w-[calc(100vw-1.5rem)] items-center gap-3 bg-panel py-1 pr-1 pl-4 text-body text-panel-ink",
             t.tone === "error" && "border-l-2 border-negative-tint",
           )}
         >

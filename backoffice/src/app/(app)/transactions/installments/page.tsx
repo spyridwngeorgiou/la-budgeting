@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge, Button, EmptyState, PageHeader, Stat, StatRow } from "@/components/ui";
+import { Badge, Button, EmptyState, PageHeader, SpecTable, Stat, StatRow, StatusDot, Td, Tr } from "@/components/ui";
 import { InstallmentPlanFormModal } from "./InstallmentPlanFormModal";
 import { createInstallmentPlan, regeneratePlan, markInstallmentPaid } from "./actions";
 import { loadLookups } from "@/lib/data/lookups";
@@ -43,7 +43,7 @@ export default async function InstallmentsPage() {
   const accountOptions = (accounts ?? []).map((a) => ({ id: a.id, label: a.name }));
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
       <PageHeader
         title={el.nav.installments}
         meta="Δόσεις προς τρίτους (π.χ. ρυθμίσεις φόρων, οφειλές) που δεν είναι δάνειο έργου."
@@ -83,7 +83,7 @@ export default async function InstallmentsPage() {
                   </Badge>
                 ) : null}
                 <form action={regeneratePlan.bind(null, plan.plan_id!)}>
-                  <Button type="submit" variant="secondary" size="sm" className="max-md:min-h-11">
+                  <Button type="submit" variant="secondary" size="sm">
                     Ανανέωση
                   </Button>
                 </form>
@@ -104,33 +104,36 @@ export default async function InstallmentsPage() {
                 </span>
                 Δόσεις (<span className="num">{rows.length}</span>)
               </summary>
-              <div className="mt-2 overflow-x-auto">
-                <table className="w-full border-collapse text-left text-sm">
-                  <tbody className="border-t border-rule">
-                    {rows.map((tx) => (
-                      <tr key={tx.id} className="border-b border-hairline hover:bg-hover">
-                        <td className="num px-3 py-2 text-muted">#{tx.installment_no}</td>
-                        <td className="num px-3 py-2 text-text">{formatDate(tx.due_date)}</td>
-                        <td className="num px-3 py-2 text-right text-ink">{formatMoney(tx.gross_amount)}</td>
-                        <td className="px-3 py-2">
-                          <Badge tone={tx.status === "paid" ? "neutral" : "warning"}>
-                            {el.transaction[tx.status as "paid" | "pending" | "scheduled" | "cancelled"]}
-                          </Badge>
-                        </td>
-                        <td className="px-3 py-1.5 text-right">
-                          {tx.status !== "paid" && (
-                            <form action={markInstallmentPaid.bind(null, tx.id)}>
-                              <Button type="submit" variant="secondary" size="sm" className="max-md:min-h-11">
-                                {el.common.markPaid}
-                              </Button>
-                            </form>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <SpecTable label="Δόσεις" className="mt-2">
+                <tbody className="border-t border-rule">
+                  {rows.map((tx) => (
+                    <Tr key={tx.id}>
+                      <Td className="num">
+                        <span className="text-muted">#{tx.installment_no}</span>
+                      </Td>
+                      <Td className="num">{formatDate(tx.due_date)}</Td>
+                      <Td numeric strong>
+                        {formatMoney(tx.gross_amount)}
+                      </Td>
+                      <Td>
+                        <StatusDot
+                          tone={tx.status === "paid" ? "neutral" : "warning"}
+                          label={el.transaction[tx.status as "paid" | "pending" | "scheduled" | "cancelled"]}
+                        />
+                      </Td>
+                      <Td className="text-right">
+                        {tx.status !== "paid" && (
+                          <form action={markInstallmentPaid.bind(null, tx.id)}>
+                            <Button type="submit" variant="secondary" size="sm">
+                              {el.common.markPaid}
+                            </Button>
+                          </form>
+                        )}
+                      </Td>
+                    </Tr>
+                  ))}
+                </tbody>
+              </SpecTable>
             </details>
           </section>
         );
