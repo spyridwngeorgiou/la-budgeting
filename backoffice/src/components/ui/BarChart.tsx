@@ -81,12 +81,16 @@ export function BarChart({
   // Rows grow with the data; columns are ~220px, smaller on phones.
   const style = rows ? { height: Math.max(120, data.length * 30 + 40) } : undefined;
   const legendPayload = legend
-    ? legend.map((l) => ({ value: l.name, type: "square" as const, color: TONE[l.tone], id: l.name }))
+    ? legend.map((l) => ({ value: l.name, type: "square" as const, color: TONE[l.tone], id: l.name, payload: { strokeDasharray: "0" } }))
     : series.map((s, i) => ({
         value: s.name,
         type: (s.kind === "line" ? "plainline" : "square") as "plainline" | "square",
         color: s.faint ? color.chipBorder : TONE[s.tone ?? (i === 0 ? "navy" : "accent")],
         id: s.key,
+        // recharts draws a "plainline" legend icon from payload.strokeDasharray
+        // and throws in the browser when payload is missing (it crashed the
+        // cash and P&L reports, the two charts with a line).
+        payload: { strokeDasharray: s.faint ? "4 3" : "0" },
       }));
   const showLegend = legend ? legend.length > 1 : series.length > 1;
 

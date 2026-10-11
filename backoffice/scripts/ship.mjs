@@ -109,7 +109,7 @@ async function smoke(envName, paths, { gapMs = 0 } = {}) {
       const html = await r.text();
       const ms = Date.now() - t0;
       // A streamed redirect (NEXT_REDIRECT digest) is fine; any other digest is a render error.
-      const err = /Application error/.test(html) || /data-dgst="(?!NEXT_REDIRECT|NEXT_HTTP_ERROR)/.test(html);
+      const err = /Application error|Κάτι πήγε στραβά/.test(html) || /data-dgst="(?!NEXT_REDIRECT|NEXT_HTTP_ERROR)/.test(html);
       const toLogin = r.status >= 300 && r.status < 400 && /\/login/.test(r.headers.get("location") ?? "");
       if (r.status >= 400 || err || toLogin) {
         bad++;
