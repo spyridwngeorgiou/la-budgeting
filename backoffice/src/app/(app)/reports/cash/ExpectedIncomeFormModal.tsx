@@ -17,11 +17,14 @@ export interface ExpectedIncomeInitial {
 
 export function ExpectedIncomeFormModal({
   action,
+  id = null,
   initial,
   projects,
   trigger,
 }: {
-  action: (formData: FormData) => Promise<ActionResult>;
+  // The plain server action and the row id (null = new): no per-row .bind.
+  action: (id: string | null, formData: FormData) => Promise<ActionResult>;
+  id?: string | null;
   initial?: ExpectedIncomeInitial;
   projects: { id: string; display_name: string }[];
   trigger?: string;
@@ -34,7 +37,7 @@ export function ExpectedIncomeFormModal({
         {trigger ?? `+ ${t.expectedAdd}`}
       </Button>
       {open && (
-        <FormDrawer onClose={() => setOpen(false)} title={initial ? t.expectedEdit : t.expectedAdd} action={action}>
+        <FormDrawer onClose={() => setOpen(false)} title={initial ? t.expectedEdit : t.expectedAdd} action={(formData: FormData) => action(id, formData)}>
           <Field>
             <Label>{t.expectedSource}</Label>
             <Input name="source" defaultValue={initial?.source} required />

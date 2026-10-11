@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
-import { formatMoney, formatDate } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
+import { monthKeyOf, monthLabel } from "@/lib/dates";
 import { el } from "@/lib/i18n/el";
 import { PageHeader, cn } from "@/components/ui";
 import { FRAME, NUM, TABLE, TD, TH } from "../ui";
@@ -20,10 +21,7 @@ export default async function WithholdingPage() {
       <PageHeader
         title={el.nav.withholding}
         meta={
-          <span className="block max-w-3xl">
-            Παρακράτηση φόρου σε πληρωμές προς προμηθευτές/συνεργάτες, μηνιαία, μόνο στην πλευρά
-            των εξόδων.
-          </span>
+          <span className="block max-w-3xl">{el.reports.withholdingIntro}</span>
         }
       />
 
@@ -47,7 +45,7 @@ export default async function WithholdingPage() {
             <tbody>
               {(positions ?? []).map((p) => (
                 <tr key={p.period_start} className="hover:bg-hover">
-                  <td className={cn(TD, "num text-ink")}>{formatDate(p.period_start)}</td>
+                  <td className={cn(TD, "whitespace-nowrap text-ink")}>{p.period_start ? monthLabel(monthKeyOf(p.period_start)) : "—"}</td>
                   <td className={cn(TD, NUM, "text-ink")}>{formatMoney(p.withheld_total)}</td>
                 </tr>
               ))}

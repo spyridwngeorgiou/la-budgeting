@@ -4,7 +4,9 @@ import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate, formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { Button, PageHeader, SectionHeader, Stat, cn } from "@/components/ui";
-import { ActionForm } from "@/components/ActionForm";
+import { ArgsActionForm } from "@/components/ArgsActionForm";
+import { BarChart } from "@/components/ui/BarChart";
+import { netWorthRows } from "@/lib/finance/reportCharts";
 import { FRAME, LINK, NUM, ROW, SUB, TABLE, TOUCH } from "../ui";
 import { AssetFormModal, LiabilityFormModal } from "./NetWorthForms";
 import { deleteAsset, deleteLiability, saveAsset, saveLiability } from "./actions";
@@ -68,6 +70,8 @@ export default async function NetWorthPage() {
   // (cash always shows, so the left column is never blank).
   const owned = COMPONENTS.filter((c) => amountOf[c] > 0 || c === "cash");
   const owed = COMPONENTS.filter((c) => amountOf[c] < 0);
+  // The composition as horizontal bars: what we own (navy) over what we owe.
+  const chartRows = netWorthRows(amountOf, COMPONENTS, (c) => t.components[c].replace(/\s*\(.*\)$/, ""));
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
@@ -81,13 +85,28 @@ export default async function NetWorthPage() {
         />
       </div>
 
+      {chartRows.length > 0 && (
+        <BarChart
+          label={el.reports.netWorthChartLabel}
+          data={chartRows}
+          xKey="label"
+          layout="rows"
+          series={[{ key: "amount", name: t.total }]}
+          toneKey="tone"
+          legend={[
+            { name: t.owned, tone: "navy" },
+            { name: t.owed, tone: "negative" },
+          ]}
+        />
+      )}
+
       <div className="grid min-w-0 grid-cols-1 gap-8 md:grid-cols-2">
         <ComponentTable title={t.owned} components={owned} amountOf={amountOf} itemsOf={itemsOf} />
         <ComponentTable title={t.owed} components={owed} amountOf={amountOf} itemsOf={itemsOf} />
       </div>
 
       <section className="flex min-w-0 flex-col gap-3">
-        <SectionHeader title={t.assetsTitle} actions={<AssetFormModal action={saveAsset.bind(null, null)} />} />
+        <SectionHeader title={t.assetsTitle} actions={<AssetFormModal action={saveAsset} />} />
         {(assets ?? []).length === 0 ? (
           <p className="text-sm text-muted">{t.empty}</p>
         ) : (
@@ -114,7 +133,8 @@ export default async function NetWorthPage() {
                       <td className="py-1.5 align-middle">
                         <div className="flex items-center justify-end gap-1.5">
                           <AssetFormModal
-                            action={saveAsset.bind(null, a.id)}
+                            action={saveAsset}
+                            id={a.id}
                             initial={{
                               name: a.name,
                               category: a.category,
@@ -126,11 +146,11 @@ export default async function NetWorthPage() {
                               notes: a.notes,
                             }}
                           />
-                          <ActionForm action={deleteAsset.bind(null, a.id)}>
+                          <ArgsActionForm action={deleteAsset} args={[a.id]}>
                             <Button type="submit" variant="secondary" size="sm" className={TOUCH}>
                               {el.common.delete}
                             </Button>
-                          </ActionForm>
+                          </ArgsActionForm>
                         </div>
                       </td>
                     </tr>
@@ -143,7 +163,7 @@ export default async function NetWorthPage() {
       </section>
 
       <section className="flex min-w-0 flex-col gap-3">
-        <SectionHeader title={t.liabilitiesTitle} actions={<LiabilityFormModal action={saveLiability.bind(null, null)} />} />
+        <SectionHeader title={t.liabilitiesTitle} actions={<LiabilityFormModal action={saveLiability} />} />
         <p className="text-small text-muted">{t.liabilitiesHint}</p>
         {(liabilities ?? []).length === 0 ? (
           <p className="text-sm text-muted">{t.empty}</p>
@@ -170,7 +190,8 @@ export default async function NetWorthPage() {
                       <td className="py-1.5 align-middle">
                         <div className="flex items-center justify-end gap-1.5">
                           <LiabilityFormModal
-                            action={saveLiability.bind(null, l.id)}
+                            action={saveLiability}
+                            id={l.id}
                             initial={{
                               lender: l.lender,
                               kind: l.kind,
@@ -182,11 +203,11 @@ export default async function NetWorthPage() {
                               terms: l.terms,
                             }}
                           />
-                          <ActionForm action={deleteLiability.bind(null, l.id)}>
+                          <ArgsActionForm action={deleteLiability} args={[l.id]}>
                             <Button type="submit" variant="secondary" size="sm" className={TOUCH}>
                               {el.common.delete}
                             </Button>
-                          </ActionForm>
+                          </ArgsActionForm>
                         </div>
                       </td>
                     </tr>

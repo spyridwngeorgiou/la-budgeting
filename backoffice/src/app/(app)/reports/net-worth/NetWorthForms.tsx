@@ -6,7 +6,9 @@ import { el } from "@/lib/i18n/el";
 import { ASSET_STATE, LIABILITY_KIND, LIABILITY_STATE } from "@/lib/domain/enums";
 import type { ActionResult } from "@/lib/actions";
 
-type Action = (formData: FormData) => Promise<ActionResult>;
+// The plain server action (id, formData) and the row id as a plain prop:
+// no `action.bind(null, id)` per row on the server page.
+type Action = (id: string | null, formData: FormData) => Promise<ActionResult>;
 
 function OwnerSelect({ value }: { value?: string }) {
   return (
@@ -39,14 +41,14 @@ export interface AssetInitial {
   notes: string | null;
 }
 
-export function AssetFormModal({ action, initial }: { action: Action; initial?: AssetInitial }) {
+export function AssetFormModal({ action, id = null, initial }: { action: Action; id?: string | null; initial?: AssetInitial }) {
   const [open, setOpen] = useState(false);
   const t = el.netWorth;
   return (
     <>
       <Trigger edit={!!initial} label={t.addAsset} onClick={() => setOpen(true)} />
       {open && (
-        <FormDrawer onClose={() => setOpen(false)} title={initial ? t.editAsset : t.addAsset} action={action}>
+        <FormDrawer onClose={() => setOpen(false)} title={initial ? t.editAsset : t.addAsset} action={(formData: FormData) => action(id, formData)}>
           <Field>
             <Label>{t.name}</Label>
             <Input name="name" defaultValue={initial?.name} required />
@@ -112,14 +114,14 @@ export interface LiabilityInitial {
   terms: string | null;
 }
 
-export function LiabilityFormModal({ action, initial }: { action: Action; initial?: LiabilityInitial }) {
+export function LiabilityFormModal({ action, id = null, initial }: { action: Action; id?: string | null; initial?: LiabilityInitial }) {
   const [open, setOpen] = useState(false);
   const t = el.netWorth;
   return (
     <>
       <Trigger edit={!!initial} label={t.addLiability} onClick={() => setOpen(true)} />
       {open && (
-        <FormDrawer onClose={() => setOpen(false)} title={initial ? t.editLiability : t.addLiability} action={action}>
+        <FormDrawer onClose={() => setOpen(false)} title={initial ? t.editLiability : t.addLiability} action={(formData: FormData) => action(id, formData)}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field>
               <Label>{t.lender}</Label>

@@ -4,9 +4,11 @@ import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { Badge, Button, PageHeader, buttonClass, cn } from "@/components/ui";
 import { toggleVatFiled } from "./actions";
-import { ActionForm } from "@/components/ActionForm";
+import { ArgsActionForm } from "@/components/ArgsActionForm";
+import { BarChart } from "@/components/ui/BarChart";
+import { vatChartRows } from "@/lib/finance/reportCharts";
 import { FRAME, NUM, TABLE, TD, TH, TOUCH } from "../ui";
-import { addMonths, currentMonthKey, firstOfMonth, monthKeyOf, quarterOf } from "@/lib/dates";
+import { addMonths, currentMonthKey, firstOfMonth, monthKeyOf, quarterOf, shortMonthYearLabel, todayAthens } from "@/lib/dates";
 
 export default async function VatPage() {
   const supabase = await createClient();
@@ -35,6 +37,12 @@ export default async function VatPage() {
   ]);
 
   const filingByPeriod = new Map((filings ?? []).map((f) => [f.period_start, f]));
+  const t = el.reports;
+  const periodLabel = (start: string) => {
+    const months = Number((positions ?? []).find((p) => p.period_start === start)?.period_months ?? 1);
+    return months === 3 ? `${el.reports.quarter} ${quarterOf(start)}/${start.slice(2, 4)}` : shortMonthYearLabel(monthKeyOf(start));
+  };
+  const chart = vatChartRows(positions ?? [], periodLabel, todayAthens());
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
@@ -44,7 +52,7 @@ export default async function VatPage() {
           <span className="block max-w-3xl">
             Υπολογίζεται με βάση την ημερομηνία τιμολογίου (accrual), με μεταφορά πιστωτικού
             υπολοίπου από περίοδο σε περίοδο. Δείχνονται οι περίοδοι από 6 μήνες πριν έως 6 μήνες μετά τον
-            τρέχοντα μήνα. {el.reports.vatLockHint}
+            τρέχοντα μήνα. {el.reports.vatLockHint} {t.vatIssuedHint}
           </span>
         }
         actions={
@@ -59,6 +67,17 @@ export default async function VatPage() {
           Δεν υπάρχουν ακόμα κινήσεις για υπολογισμό θέσης ΦΠΑ.
         </p>
       ) : (
+        <>
+        <BarChart
+          label={t.vatChartLabel}
+          data={chart.data}
+          xKey="label"
+          series={[
+            { key: "payable", name: t.vatPayable, tone: "navy", stack: "vat" },
+            { key: "credit", name: t.vatCredit, tone: "accent", stack: "vat" },
+          ]}
+          marker={chart.nextDeadline ? { x: chart.nextDeadline.x, label: `${t.vatNextDeadline} ${formatDate(chart.nextDeadline.deadline)}` } : undefined}
+        />
         <div className={FRAME}>
           <table className={TABLE}>
             <thead>
@@ -71,6 +90,12 @@ export default async function VatPage() {
                 </th>
                 <th scope="col" className={cn(TH, "hidden text-right sm:table-cell")}>
                   {el.vat.vatExpense}
+                </th>
+                <th scope="col" className={cn(TH, "hidden text-right lg:table-cell")}>
+                  {t.vatIssued}
+                </th>
+                <th scope="col" className={cn(TH, "hidden text-right lg:table-cell")}>
+                  {t.vatScheduled}
                 </th>
                 <th scope="col" className={cn(TH, "hidden text-right md:table-cell")}>
                   {el.vat.credit}
@@ -107,6 +132,8 @@ export default async function VatPage() {
                     </td>
                     <td className={cn(TD, NUM, "hidden sm:table-cell")}>{formatMoney(p.vat_income)}</td>
                     <td className={cn(TD, NUM, "hidden sm:table-cell")}>{formatMoney(p.vat_expense)}</td>
+                    <td className={cn(TD, NUM, "hidden lg:table-cell")}>{formatMoney(p.net_issued)}</td>
+                    <td className={cn(TD, NUM, "hidden text-muted lg:table-cell")}>{formatMoney(p.net_scheduled)}</td>
                     <td className={cn(TD, NUM, "hidden md:table-cell")}>{formatMoney(Math.abs(p.credit_balance ?? 0))}</td>
                     <td className={cn(TD, NUM, "font-medium text-ink")}>{formatMoney(p.payable_after_credit)}</td>
                     <td className={cn(TD, "num hidden whitespace-nowrap text-muted md:table-cell")}>{formatDate(p.filing_deadline)}</td>
@@ -114,11 +141,11 @@ export default async function VatPage() {
                       <Badge tone={filed ? "neutral" : "amber"}>{filed ? el.vat.filed : el.vat.notFiled}</Badge>
                     </td>
                     <td className={cn(TD, "py-1.5 text-right")}>
-                      <ActionForm action={toggleVatFiled.bind(null, p.period_start!, filed)}>
+                      <ArgsActionForm action={toggleVatFiled} args={[p.period_start!, filed]}>
                         <Button type="submit" variant="ghost" size="sm" className={TOUCH}>
                           {filed ? "Αναίρεση" : "Σήμανση ως υποβλήθηκε"}
                         </Button>
-                      </ActionForm>
+                      </ArgsActionForm>
                     </td>
                   </tr>
                 );
@@ -126,6 +153,7 @@ export default async function VatPage() {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </div>
   );

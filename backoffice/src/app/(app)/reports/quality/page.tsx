@@ -4,9 +4,9 @@ import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate, formatMoney } from "@/lib/format";
 import { Badge, Button, Input, PageHeader, Stat, cn } from "@/components/ui";
 import { markInvoiceReceived } from "./actions";
-import { currentYear } from "@/lib/dates";
+import { currentYear, monthKeyOf, monthLabel } from "@/lib/dates";
 import { el } from "@/lib/i18n/el";
-import { ActionForm } from "@/components/ActionForm";
+import { ArgsActionForm } from "@/components/ArgsActionForm";
 import { syncStaleSchedule } from "../../projects/schedule-actions";
 
 // Business-language framing for each check: not "amount_identity_mismatch"
@@ -83,12 +83,12 @@ const CHECKS = [
           χάνονται ~{formatMoney(Number(r.lost_deduction_est ?? 0) + Number(r.lost_input_vat_est ?? 0))}
         </span>
         {r.risk_kind === "no_invoice" && (
-          <form action={markInvoiceReceived.bind(null, r.transaction_id)} className="flex items-center gap-1">
+          <ArgsActionForm action={markInvoiceReceived} args={[r.transaction_id]} className="flex items-center gap-1">
             <Input name="invoice_number" placeholder="Αρ. παραστατικού" className="w-40" />
             <Button type="submit" variant="secondary" size="sm" className="max-md:min-h-11">
               Ήρθε
             </Button>
-          </form>
+          </ArgsActionForm>
         )}
       </Row>
     ),
@@ -313,11 +313,11 @@ const CHECKS = [
           {r.label ?? "—"}
         </Link>
         <Badge tone="amber">{r.kind === "loan" ? "δάνειο" : "μίσθωση"}</Badge>
-        <ActionForm action={syncStaleSchedule.bind(null, r.kind ?? "loan", r.source_id ?? "")}>
+        <ArgsActionForm action={syncStaleSchedule} args={[r.kind ?? "loan", r.source_id ?? ""]}>
           <Button type="submit" variant="secondary" size="sm" className="max-md:min-h-11">
             Συγχρονισμός
           </Button>
-        </ActionForm>
+        </ArgsActionForm>
       </Row>
     ),
   },
@@ -339,6 +339,48 @@ const CHECKS = [
           {r.direction === "income" ? "+" : "−"}
           {formatMoney(Math.abs(Number(r.amount ?? 0)))}
 </span>
+      </Row>
+    ),
+  },
+  {
+    view: "v_qc_expected_vs_scheduled" as const,
+    title: "Αναμενόμενα που υπάρχουν ήδη ως κίνηση",
+    why: "Το ίδιο ποσό, τον ίδιο μήνα, είναι και αναμενόμενο έσοδο και εκκρεμής ή προγραμματισμένη κίνηση· η πρόβλεψη ταμείου το μετρά δύο φορές. Αν είναι το ίδιο, σημειώστε το αναμενόμενο ως «Εισπράχθηκε» ή «Δεν θα έρθει» στο Ταμείο.",
+    render: (r: {
+      expected_id: string | null; transaction_id: string | null; source: string | null; expected_month: string | null;
+      expected_amount: number | null; tx_label: string | null; tx_due_date: string | null; direction: string | null;
+    }) => (
+      <Row key={`${r.expected_id}:${r.transaction_id}`}>
+        <span className="whitespace-nowrap">{r.expected_month ? monthLabel(monthKeyOf(r.expected_month)) : "—"}</span>
+        <span className="min-w-0 flex-1 text-ink">
+          <Link href="/reports/cash" className="underline-offset-4 hover:underline">{r.source ?? "—"}</Link>
+          <span className="text-muted"> = </span>
+          <Link href={`/transactions?ids=${r.transaction_id}`} className="underline-offset-4 hover:underline">
+            {r.tx_label ?? "—"}
+          </Link>
+          <span className="text-muted"> · {formatDate(r.tx_due_date)}</span>
+        </span>
+        <span className="num">
+          {r.direction === "expense" ? "−" : "+"}
+          {formatMoney(r.expected_amount)}
+        </span>
+      </Row>
+    ),
+  },
+  {
+    view: "v_qc_loan_without_interest" as const,
+    title: "Δόσεις δανείου χωρίς τόκο",
+    why: "Από μια δόση δανείου τα Αποτελέσματα μετρούν μόνο τον τόκο. Χωρίς τόκο στη δόση, το κόστος του δανείου λείπει από το αποτέλεσμα και όλο το ποσό λογίζεται ως κεφάλαιο. Συμπληρώστε τον τόκο στην κίνηση ή συγχρονίστε το πρόγραμμα του δανείου.",
+    render: (r: {
+      transaction_id: string | null; loan_label: string | null; due_date: string | null; gross_amount: number | null;
+      project_id: string | null;
+    }) => (
+      <Row key={r.transaction_id}>
+        <span>{formatDate(r.due_date)}</span>
+        <Link href={`/transactions?ids=${r.transaction_id}`} className="min-w-0 flex-1 text-ink underline-offset-4 hover:underline">
+          {r.loan_label ?? "—"}
+        </Link>
+        <span className="num">{formatMoney(r.gross_amount)}</span>
       </Row>
     ),
   },
