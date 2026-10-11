@@ -141,11 +141,28 @@ export default async function DashboardPage() {
   // Where the ledger and reality disagree (or the app is blind): warned about,
   // never silently "fixed" by editing opening balances -- v_qc_account_drift /
   // v_qc_counterparty_without_contact (0033).
-  const [{ data: uninvoiced }, { data: accountIssues }, { data: contactless }] = await Promise.all([
-    supabase.from("v_qc_uninvoiced_large_expenses").select("lost_deduction_est, lost_input_vat_est").eq("org_id", orgId),
-    supabase.from("v_qc_account_drift").select("account_name, drift, issue, days_since_count").eq("org_id", orgId),
-    supabase.from("v_qc_counterparty_without_contact").select("n").eq("org_id", orgId),
-  ]);
+  const [{ data: uninvoiced }, { data: accountIssues }, { data: contactless }, { data: lowestItems }, { count: expectedOverdue }] =
+    await Promise.all([
+      supabase.from("v_qc_uninvoiced_large_expenses").select("lost_deduction_est, lost_input_vat_est").eq("org_id", orgId),
+      supabase.from("v_qc_account_drift").select("account_name, drift, issue, days_since_count").eq("org_id", orgId),
+      supabase.from("v_qc_counterparty_without_contact").select("n").eq("org_id", orgId),
+      // Why the low point is low: that month's largest outflow.
+      lowest
+        ? supabase
+            .rpc("cash_forecast_items", { p_org: orgId, p_month: lowest.month })
+            .eq("direction", "expense")
+            .order("amount", { ascending: false })
+            .limit(1)
+        : Promise.resolve({ data: [] as { label: string | null; amount: number }[] }),
+      // Expected income still "expected" after its month: the forecast keeps
+      // counting it, so the owner should mark it received or move it.
+      supabase
+        .from("expected_income")
+        .select("id", { count: "exact", head: true })
+        .eq("org_id", orgId)
+        .eq("status", "expected")
+        .lt("expected_month", `${todayIso.slice(0, 7)}-01`),
+    ]);
   const uninvoicedLost = (uninvoiced ?? []).reduce(
     (sum, r) => sum + Number(r.lost_deduction_est ?? 0) + Number(r.lost_input_vat_est ?? 0),
     0,
@@ -161,6 +178,7 @@ export default async function DashboardPage() {
     cashCorporate,
     cashPersonal,
     lowest,
+    lowestDriver: lowestItems?.[0] ?? null,
     inboxPending,
     calendarNext7: calendarNext7 ?? 0,
     year: Number(todayIso.slice(0, 4)),
@@ -182,6 +200,11 @@ export default async function DashboardPage() {
       kind: "overdue",
       label: `${overdue.length} ληξιπρόθεσμ${overdue.length === 1 ? "η υποχρέωση" : "ες υποχρεώσεις"}`,
       href: `/transactions?ids=${overdue.map((tx) => tx.id).join(",")}`,
+    },
+    (expectedOverdue ?? 0) > 0 && {
+      kind: "expectedOverdue",
+      label: `${expectedOverdue} αναμενόμεν${expectedOverdue === 1 ? "ο έσοδο έχει" : "α έσοδα έχουν"} περάσει την ημερομηνία ${expectedOverdue === 1 ? "του" : "τους"}`,
+      href: "/reports/cash",
     },
     // Captures waiting on review and AI proposals: one row, one place.
     inboxCount > 0 && { kind: "inbox", label: `Εισερχόμενα: ${inboxCount} προς έλεγχο`, href: "/inbox" },
@@ -359,8 +382,14 @@ function Tile({ tile }: { tile: DashboardTile }) {
       href={tile.href}
       className="flex min-w-0 flex-col gap-2 border-r border-b border-hairline p-4 transition-colors hover:bg-hover"
     >
-      <span className="eyebrow truncate text-muted">{tile.eyebrow}</span>
-      <span className={`num truncate text-figure-sm font-light ${tile.negative ? "text-negative" : "text-ink"}`}>{tile.value}</span>
+      <span className="eyebrow text-muted">{tile.eyebrow}</span>
+      {/* Millions don't fit a quarter-width tile at figure size: step down
+          instead of truncating or overlapping the next tile. */}
+      <span
+        className={`num font-light break-words ${tile.value.length > 13 ? "text-lg md:text-xl" : "text-figure-sm"} ${tile.negative ? "text-negative" : "text-ink"}`}
+      >
+        {tile.value}
+      </span>
       <span className="text-xs text-muted">{tile.sub}</span>
     </Link>
   );

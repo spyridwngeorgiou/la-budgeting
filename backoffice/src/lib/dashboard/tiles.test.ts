@@ -28,7 +28,7 @@ describe("dashboardTiles", () => {
     const tiles = dashboardTiles(base);
     expect(tiles.map((t) => [t.key, t.href])).toEqual([
       ["cash", "/accounts"],
-      ["forecast", "/reports/cash"],
+      ["forecast", "/reports/cash?month=2027-03"],
       ["inbox", "/inbox"],
       ["calendar", "/calendar"],
       ["pnl", "/reports/pnl"],
@@ -90,6 +90,17 @@ describe("dashboardTiles", () => {
     expect(t.calendar.sub).toBe("εγγραφή τις επόμενες 7 ημέρες");
     expect(t.pnl.value).toBe(formatMoney(0));
     expect(t.projects.sub).toBe("ενεργό · 0 εκτός προϋπολογισμού");
+  });
+});
+
+describe("forecast tile driver", () => {
+  it("names the low month's largest outflow and links to that month", () => {
+    const t = byKey({ ...base, lowestDriver: { label: "Κατασκευή — φάση Α", amount: "690558" } });
+    expect(t.forecast.sub).toContain(`κυρίως: Κατασκευή — φάση Α −${formatMoney(690558)}`);
+    expect(t.forecast.href).toBe("/reports/cash?month=2027-03");
+  });
+  it("leaves the driver out when there is none", () => {
+    expect(byKey({ ...base, lowestDriver: null }).forecast.sub).not.toContain("κυρίως");
   });
 });
 

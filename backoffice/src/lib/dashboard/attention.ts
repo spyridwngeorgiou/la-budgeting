@@ -7,6 +7,9 @@
 export const ATTENTION_ORDER = [
   "cashBelowBuffer",
   "overdue",
+  // Expected income whose month has passed: the forecast still counts it, so
+  // every number built on the forecast is optimistic until it is updated.
+  "expectedOverdue",
   "inbox",
   "vatUnfiled",
   "accountDrift",

@@ -20,6 +20,9 @@ export interface TileInputs {
   cashPersonal: number;
   // The lowest month of the 12-month cash_forecast(), or null without one.
   lowest: { month: string; closing_balance: number | string | null; below_buffer: boolean | null } | null;
+  // The single largest outflow of that month (cash_forecast_items), so the
+  // tile says *why* the low point is low.
+  lowestDriver?: { label: string | null; amount: number | string | null } | null;
   inboxPending: number;
   calendarNext7: number;
   year: number;
@@ -66,8 +69,18 @@ export function dashboardTiles(i: TileInputs): DashboardTile[] {
       key: "forecast",
       eyebrow: "Πρόβλεψη",
       value: lowestBalance === null ? "—" : formatMoney(lowestBalance),
-      sub: i.lowest ? `Χαμηλότερο 12μ. · ${monthLabel(monthKeyOf(i.lowest.month))}` : "Χωρίς πρόβλεψη",
-      href: "/reports/cash",
+      sub: i.lowest
+        ? [
+            `Χαμηλότερο 12μ. · ${monthLabel(monthKeyOf(i.lowest.month))}`,
+            i.lowestDriver?.label && num(i.lowestDriver.amount) > 0
+              ? `κυρίως: ${i.lowestDriver.label} −${formatMoney(num(i.lowestDriver.amount))}`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")
+        : "Χωρίς πρόβλεψη",
+      // Straight to the low month's breakdown in Ταμείο & Πρόβλεψη.
+      href: i.lowest ? `/reports/cash?month=${monthKeyOf(i.lowest.month)}` : "/reports/cash",
       negative: Boolean(i.lowest?.below_buffer) || (lowestBalance ?? 0) < 0,
     },
     {
