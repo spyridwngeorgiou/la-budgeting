@@ -6382,6 +6382,23 @@ export type Database = {
           },
         ]
       }
+      v_qc_expected_vs_scheduled: {
+        Row: {
+          direction: Database["public"]["Enums"]["tx_direction"] | null
+          expected_amount: number | null
+          expected_id: string | null
+          expected_month: string | null
+          org_id: string | null
+          project_id: string | null
+          source: string | null
+          status: Database["public"]["Enums"]["tx_status"] | null
+          transaction_id: string | null
+          tx_amount: number | null
+          tx_due_date: string | null
+          tx_label: string | null
+        }
+        Relationships: []
+      }
       v_qc_forecast_stale: {
         Row: {
           amount: number | null
@@ -6419,6 +6436,19 @@ export type Database = {
             referencedColumns: ["org_id"]
           },
         ]
+      }
+      v_qc_loan_without_interest: {
+        Row: {
+          due_date: string | null
+          gross_amount: number | null
+          loan_id: string | null
+          loan_label: string | null
+          org_id: string | null
+          project_id: string | null
+          status: Database["public"]["Enums"]["tx_status"] | null
+          transaction_id: string | null
+        }
+        Relationships: []
       }
       v_qc_missing_project_or_account: {
         Row: {
@@ -6662,7 +6692,9 @@ export type Database = {
           credit_balance: number | null
           filing_deadline: string | null
           is_locked: boolean | null
+          net_issued: number | null
           net_position: number | null
+          net_scheduled: number | null
           org_id: string | null
           payable_after_credit: number | null
           period_months: number | null
@@ -7043,6 +7075,10 @@ export type Database = {
         | { Args: { p_period_start: string }; Returns: string }
         | { Args: { p_period_months: number; p_period_start: string }; Returns: string }
       vat_period_months: { Args: { p_org: string }; Returns: number }
+      vat_paid_in_ledger: {
+        Args: { p_filing_deadline: string; p_org: string }
+        Returns: boolean
+      }
       withholding_filing_deadline: {
         Args: { p_period_start: string }
         Returns: string
