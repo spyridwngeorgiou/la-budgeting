@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { TX_STATUS, TX_DIRECTION, type TxStatus, type TxDirection, type TxScope } from "@/lib/domain/enums";
 import { toCsv, csvResponseHeaders } from "@/lib/csv";
 import { getCurrentOrgId } from "@/lib/supabase/org";
+import { txSearchFilter } from "@/lib/data/txSearch";
 
 // Before this route existed, there was no way for the owner to get their
 // own ledger data out of the app independent of this UI -- fully locked
@@ -55,6 +56,9 @@ export async function GET(request: NextRequest) {
   if (from) query = query.gte("tx_date", from);
   if (to) query = query.lte("tx_date", to);
   if (ids) query = query.in("id", ids.split(",").filter(Boolean));
+  // Same text search as the on-screen list, so the CSV is exactly what you see.
+  const searchFilter = await txSearchFilter(supabase, orgId, params.get("q"));
+  if (searchFilter) query = query.or(searchFilter);
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

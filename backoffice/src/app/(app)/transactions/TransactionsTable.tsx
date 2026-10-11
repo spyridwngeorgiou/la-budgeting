@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import {
@@ -81,10 +82,6 @@ interface TxRow {
   has_source_document: boolean;
 }
 
-function normalize(s: string) {
-  return s.toLocaleLowerCase("el");
-}
-
 export function TransactionsTable({
   transactions,
   contacts,
@@ -115,21 +112,34 @@ export function TransactionsTable({
   // when switching targets, so stale form state never leaks between rows.
   const [target, setTarget] = useState<"create" | TxRow | null>(startCreating ? "create" : null);
   const [paying, setPaying] = useState<TxRow | null>(null);
-  const [search, setSearch] = useState("");
+  // The search lives in the URL (?q=) and runs on the server over every
+  // matching row (lib/data/txSearch), so it works across pages. Typing
+  // updates the URL after a short pause and goes back to page 1.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const urlQuery = searchParams.get("q") ?? "";
+  const [search, setSearch] = useState(urlQuery);
+  const lastSent = useRef(urlQuery);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [loadingSource, setLoadingSource] = useState<string | null>(null);
 
-  // Filtered client-side over the page's already-loaded rows -- instant as
-  // you type, no round trip (one page: 50 rows).
-  const visibleTransactions = useMemo(() => {
-    const q = normalize(search.trim());
-    if (!q) return transactions;
-    return transactions.filter((tx) =>
-      [tx.description, tx.contact_name, tx.project_name, tx.category_name, tx.invoice_number]
-        .filter(Boolean)
-        .some((field) => normalize(field as string).includes(q)),
-    );
-  }, [transactions, search]);
+  useEffect(() => {
+    const q = search.trim();
+    if (q === lastSent.current) return;
+    const timer = setTimeout(() => {
+      lastSent.current = q;
+      const next = new URLSearchParams(searchParams.toString());
+      if (q) next.set("q", q);
+      else next.delete("q");
+      next.delete("page");
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search, searchParams, pathname, router]);
+
+  const visibleTransactions = transactions;
 
   // The total is a claim about exactly the rows on screen -- recomputed from
   // visibleTransactions (post-search), same "number IS the rows behind it"
@@ -215,7 +225,7 @@ export function TransactionsTable({
       <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-6">
         <Input
           type="search"
-          placeholder="Αναζήτηση σε επαφή, έργο, κατηγορία, περιγραφή, αρ. παραστατικού…"
+          placeholder="Αναζήτηση σε όλες τις κινήσεις: επαφή, έργο, κατηγορία, περιγραφή, αρ. παραστατικού…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full max-md:min-h-11 md:max-w-md md:flex-1"

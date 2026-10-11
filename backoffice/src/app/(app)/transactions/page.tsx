@@ -8,6 +8,7 @@ import { TransactionsTable } from "./TransactionsTable";
 import { TransactionFilters } from "./TransactionFilters";
 import { TX_STATUS, TX_DIRECTION, type TxStatus, type TxDirection } from "@/lib/domain/enums";
 import { loadLookups } from "@/lib/data/lookups";
+import { txSearchFilter } from "@/lib/data/txSearch";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { withParams } from "@/lib/url";
 
@@ -32,6 +33,8 @@ interface SearchParams {
   // 1-based page of PAGE_SIZE rows (owner decision 11/10/2026: 50 a page
   // instead of up to 500 at once -- less CPU per request, usable on a phone).
   page?: string;
+  // Text search, run on the server over every matching row.
+  q?: string;
   // «＋ Καταχώριση» → Χειροκίνητα: open the new-movement form at once.
   new?: string;
 }
@@ -88,6 +91,9 @@ export default async function TransactionsPage({
   if (from) query = query.gte("tx_date", from);
   if (to) query = query.lte("tx_date", to);
   if (ids) query = query.in("id", ids);
+  // Text search over every matching row, not just this page (lib/data/txSearch).
+  const searchFilter = await txSearchFilter(supabase, orgId, params.q);
+  if (searchFilter) query = query.or(searchFilter);
 
   const [{ data: transactions, count: totalCount }, { contacts, projects, categories, accounts }, { data: accountBalance }] =
     await Promise.all([
