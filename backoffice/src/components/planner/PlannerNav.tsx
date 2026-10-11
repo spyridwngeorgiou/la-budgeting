@@ -6,8 +6,7 @@ import { Checkbox, Input, Select, cn } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 
 // The planner's filter bar. Filters live in the URL (shareable, back-button
-// friendly, read by the server page); changing one keeps every other param,
-// the ?view= of PlannerViews included.
+// friendly, read by the server page); changing one keeps every other param.
 
 export interface FilterOption {
   id: string;

@@ -13,7 +13,6 @@ import {
 import { loadCalendarItems } from "@/lib/planner/queries";
 import { PlannerFilters } from "@/components/planner/PlannerNav";
 import { PlannerCalendar } from "@/components/planner/PlannerCalendar";
-import { plannerHref } from "@/components/planner/PlannerViews";
 import { type plannerContext, withParam } from "../planner/context";
 
 // The month calendar, moved out of /planner (was ?view=calendar, which now
@@ -29,8 +28,7 @@ function calendarHrefFor(item: CalendarItem): string | null {
     case "task":
       return item.ref_id ? `/planner/task/${item.ref_id}` : null;
     case "milestone":
-    case "phase":
-      return item.project_id ? plannerHref({ project: item.project_id }, "timeline") : null;
+      return item.project_id ? `/projects/${item.project_id}` : null;
     case "project":
       return `/projects/${item.ref_id}`;
     case "payment":

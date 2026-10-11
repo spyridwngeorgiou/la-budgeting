@@ -7,7 +7,6 @@ import { projects } from "@/lib/i18n/v2/projects";
 import type { Tables } from "@/lib/db/types";
 import {
   BUSINESS_MODEL,
-  CAPITAL_SOURCE_KIND,
   LIABILITY_STATE,
   OPEX_LINE_KIND,
   PROJECT_NOTE_KIND_ACTIVE,
@@ -160,41 +159,6 @@ export function NoteFields({ initial }: { initial?: ProjectNoteInitial }) {
           <Input type="date" name="due_date" defaultValue={initial?.due_date ?? ""} />
         </Field>
       </div>
-    </>
-  );
-}
-
-// ── Capital source ────────────────────────────────────────────────────────────
-
-export const CAPITAL_KIND_LABELS = f.capitalKind;
-export type CapitalSourceInitial = Initial<Tables<"project_capital_sources">, "id" | "kind" | "contributor" | "amount" | "contributed_on" | "notes">;
-
-export function CapitalFields({ initial }: { initial?: CapitalSourceInitial }) {
-  return (
-    <>
-      <Field label="Είδος">
-        <Select name="kind" defaultValue={initial?.kind ?? "equity"}>
-          {CAPITAL_SOURCE_KIND.map((k) => (
-            <option key={k} value={k}>
-              {CAPITAL_KIND_LABELS[k]}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <Field label="Από ποιον">
-        <Input name="contributor" defaultValue={initial?.contributor ?? ""} placeholder="π.χ. Σπύρος, Συνεπενδυτής Χ" />
-      </Field>
-      <div className={two}>
-        <Field label="Ποσό (€)">
-          <Input type="number" step="0.01" name="amount" defaultValue={initial?.amount} required />
-        </Field>
-        <Field label="Ημερομηνία εισφοράς">
-          <Input type="date" name="contributed_on" defaultValue={initial?.contributed_on} required />
-        </Field>
-      </div>
-      <Field label="Σημειώσεις">
-        <Textarea name="notes" defaultValue={initial?.notes ?? ""} rows={2} />
-      </Field>
     </>
   );
 }

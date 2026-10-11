@@ -21,9 +21,12 @@ export const LEGACY_REDIRECTS: {
   { source: "/changes", destination: "/assistant?panel=changes" },
   { source: "/revenue-plans", destination: "/projects/revenue-plans" },
   { source: "/revenue-plans/:id", destination: "/projects/revenue-plans/:id" },
-  // Phase 6: the planner is one page with a view switch. The request's own
-  // query (project, assignee, month…) is passed through and merged.
-  { source: "/planner/timeline", destination: "/planner?view=timeline" },
+  // The timeline view (and phases) were removed (0093): the planner is the
+  // task board. The request's own query (project, assignee…) is passed
+  // through; the destination's view=board (the default) overrides the old
+  // view=timeline, so the `has` entry cannot loop.
+  { source: "/planner/timeline", destination: "/planner" },
+  { source: "/planner", has: [{ type: "query", key: "view", value: "timeline" }], destination: "/planner?view=board" },
   // The month calendar left the planner for its own page (/calendar); the
   // query (month, project, src…) is passed through.
   { source: "/planner/calendar", destination: "/calendar" },

@@ -67,9 +67,6 @@ export type LiabilityKind = (typeof LIABILITY_KIND)[number];
 export const LIABILITY_STATE = ["in_application", "approved", "disbursed", "repaid"] as const;
 export type LiabilityState = (typeof LIABILITY_STATE)[number];
 
-export const CAPITAL_SOURCE_KIND = ["equity", "debt", "co_investor"] as const;
-export type CapitalSourceKind = (typeof CAPITAL_SOURCE_KIND)[number];
-
 export const ASSET_STATE = ["held", "pending_inheritance"] as const;
 export type AssetState = (typeof ASSET_STATE)[number];
 
@@ -109,8 +106,6 @@ export type TaskPriority = (typeof TASK_PRIORITY)[number];
 export const MILESTONE_KIND = ["general", "permit", "inspection", "handover", "deadline"] as const;
 export type MilestoneKind = (typeof MILESTONE_KIND)[number];
 
-export const PHASE_STATUS = ["planned", "active", "on_hold", "done"] as const;
-export type PhaseStatus = (typeof PHASE_STATUS)[number];
 // -- Partners & collaboration (0037) ------------------------------------------
 // Roles *inside one project* for external partners -- deliberately a
 // separate enum from ORG_ROLE, since partners never hold an org role.

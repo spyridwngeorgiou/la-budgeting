@@ -30,7 +30,6 @@ export function monthCells(monthKey: string): MonthCell[] {
 export const CALENDAR_SOURCES = [
   "task",
   "milestone",
-  "phase",
   "project",
   "payment",
   "installment",
@@ -117,7 +116,7 @@ export function toCalendarItems(
   return out;
 }
 
-// Long ranges (a construction phase) would paint every cell of the month;
+// Long ranges (a months-long task) would paint every cell of the month;
 // on the grid they show on their first and last day only, and the agenda
 // lists them once. Short ranges (a task over a few days) fill each day.
 export const MAX_SPREAD_DAYS = 7;

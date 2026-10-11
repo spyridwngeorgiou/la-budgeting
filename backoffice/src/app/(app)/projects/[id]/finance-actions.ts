@@ -6,11 +6,11 @@ import { getCurrentOrgId, formString } from "@/lib/supabase/org";
 import { action, UserError, type ActionResult } from "@/lib/actions";
 import { syncLeaseSchedule, syncLoanSchedule, type SyncSummary } from "@/lib/finance/scheduleSync";
 import { firstOfMonth, isMonthKey } from "@/lib/dates";
-import type { BudgetLineCode, CapitalSourceKind, LiabilityState } from "@/lib/domain/enums";
+import type { BudgetLineCode, LiabilityState } from "@/lib/domain/enums";
 import type { Database } from "@/lib/db/types";
 import { revalidateProject } from "../revalidate";
 
-// Οικονομικά: the project's money writes -- budget, loans, capital, utilities
+// Οικονομικά: the project's money writes -- budget, loans, utilities
 // and the lease/loan schedule sync. One of the four action files of the
 // project page (actions, [id]/finance-actions, [id]/scenario-actions,
 // [id]/partner-actions); the old per-table files were merged here in Φ4.
@@ -168,41 +168,6 @@ export async function deleteLoan(projectId: string, loanId: string): Promise<Act
     revalidateProject(projectId);
     revalidatePath("/reports/cash");
   });
-}
-
-// ── Capital sources ───────────────────────────────────────────────────────
-
-function capitalFieldsFromForm(formData: FormData, projectId: string) {
-  return {
-    project_id: projectId,
-    kind: String(formData.get("kind")) as CapitalSourceKind,
-    contributor: formString(formData, "contributor"),
-    amount: Number(formData.get("amount")),
-    contributed_on: String(formData.get("contributed_on")),
-    notes: formString(formData, "notes"),
-  };
-}
-
-export async function saveCapitalSource(projectId: string, sourceId: string | null, formData: FormData) {
-  const supabase = await createClient();
-  const orgId = await getCurrentOrgId(supabase);
-  const fields = capitalFieldsFromForm(formData, projectId);
-
-  if (sourceId) {
-    const { error } = await supabase.from("project_capital_sources").update(fields).eq("id", sourceId);
-    if (error) throw new Error(error.message);
-  } else {
-    const { error } = await supabase.from("project_capital_sources").insert({ ...fields, org_id: orgId });
-    if (error) throw new Error(error.message);
-  }
-  revalidateProject(projectId);
-}
-
-export async function deleteCapitalSource(projectId: string, sourceId: string) {
-  const supabase = await createClient();
-  const { error } = await supabase.from("project_capital_sources").delete().eq("id", sourceId);
-  if (error) throw new Error(error.message);
-  revalidateProject(projectId);
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db/types";
-import type { MilestoneKind, PhaseStatus, TaskPriority, TaskStatus } from "@/lib/domain/enums";
+import type { TaskPriority, TaskStatus } from "@/lib/domain/enums";
 import { toCalendarItems, type CalendarItem } from "./calendar";
 
 // Planner reads, shared by /planner and (later) the partner space at
@@ -34,9 +34,6 @@ export interface BoardTask {
   due_date: string | null;
   sort_key: number;
   archived_at: string | null;
-  checklist_done: number;
-  checklist_total: number;
-  comment_count: number;
 }
 
 export interface BoardFilters {
@@ -79,7 +76,7 @@ export async function loadBoardTasks(
   let query = supabase
     .from("tasks")
     .select(
-      "id, project_id, title, status, priority, assignee_id, start_date, due_date, sort_key, archived_at, task_checklist_items(done), task_comments(count)",
+      "id, project_id, title, status, priority, assignee_id, start_date, due_date, sort_key, archived_at",
     )
     .in("project_id", filters.projectId ? [filters.projectId] : projectIds)
     .order("sort_key")
@@ -91,87 +88,18 @@ export async function loadBoardTasks(
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return (data ?? []).map((t) => {
-    const items = t.task_checklist_items ?? [];
-    const comments = t.task_comments as unknown as { count: number }[] | null;
-    return {
-      id: t.id,
-      project_id: t.project_id,
-      title: t.title,
-      status: t.status,
-      priority: t.priority,
-      assignee_id: t.assignee_id,
-      start_date: t.start_date,
-      due_date: t.due_date,
-      sort_key: Number(t.sort_key),
-      archived_at: t.archived_at,
-      checklist_done: items.filter((i) => i.done).length,
-      checklist_total: items.length,
-      comment_count: comments?.[0]?.count ?? 0,
-    };
-  });
-}
-
-export interface TimelinePhase {
-  id: string;
-  project_id: string;
-  name: string;
-  status: PhaseStatus;
-  planned_start: string | null;
-  planned_end: string | null;
-  actual_start: string | null;
-  actual_end: string | null;
-  sort_order: number;
-}
-
-export interface TimelineMilestone {
-  id: string;
-  project_id: string;
-  phase_id: string | null;
-  title: string;
-  kind: MilestoneKind;
-  due_date: string;
-  done_at: string | null;
-  description: string | null;
-}
-
-export interface TimelineTask {
-  id: string;
-  project_id: string;
-  title: string;
-  status: TaskStatus;
-  start_date: string | null;
-  due_date: string | null;
-}
-
-export async function loadSchedule(
-  supabase: Client,
-  projectIds: string[],
-): Promise<{ phases: TimelinePhase[]; milestones: TimelineMilestone[]; tasks: TimelineTask[] }> {
-  if (projectIds.length === 0) return { phases: [], milestones: [], tasks: [] };
-  const [phases, milestones, tasks] = await Promise.all([
-    supabase
-      .from("project_phases")
-      .select("id, project_id, name, status, planned_start, planned_end, actual_start, actual_end, sort_order")
-      .in("project_id", projectIds)
-      .order("sort_order")
-      .order("planned_start", { nullsFirst: false }),
-    supabase
-      .from("project_milestones")
-      .select("id, project_id, phase_id, title, kind, due_date, done_at, description")
-      .in("project_id", projectIds)
-      .order("due_date"),
-    supabase
-      .from("tasks")
-      .select("id, project_id, title, status, start_date, due_date")
-      .in("project_id", projectIds)
-      .is("archived_at", null)
-      .or("start_date.not.is.null,due_date.not.is.null")
-      .order("start_date", { nullsFirst: false })
-      .order("due_date"),
-  ]);
-  for (const r of [phases, milestones, tasks]) if (r.error) throw new Error(r.error.message);
-  return { phases: phases.data ?? [], milestones: milestones.data ?? [], tasks: tasks.data ?? [] };
+  return (data ?? []).map((t) => ({
+    id: t.id,
+    project_id: t.project_id,
+    title: t.title,
+    status: t.status,
+    priority: t.priority,
+    assignee_id: t.assignee_id,
+    start_date: t.start_date,
+    due_date: t.due_date,
+    sort_key: Number(t.sort_key),
+    archived_at: t.archived_at,
+  }));
 }
 
 // v_calendar_items for a date window. An item is in the window when its
