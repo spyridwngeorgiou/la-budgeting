@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { el } from "@/lib/i18n/el";
 import { formatDate, formatMoney } from "@/lib/format";
-import { AiSpark } from "@/components/ui";
+import { AiSpark, buttonClass } from "@/components/ui";
 import { TransactionsTable } from "./TransactionsTable";
 import { TransactionFilters } from "./TransactionFilters";
 import { TX_STATUS, TX_DIRECTION, type TxStatus, type TxDirection } from "@/lib/domain/enums";
@@ -174,7 +174,7 @@ export default async function TransactionsPage({
   // React logs a spurious (but real, reproducible) missing-key warning on
   // every navigation to this page.
   const filterBar = (
-    <div key="filter-bar" className="flex flex-col gap-2">
+    <div key="filter-bar" className="flex flex-col gap-4">
       <TransactionFilters
         key="entity-filters"
         current={{
@@ -194,57 +194,71 @@ export default async function TransactionsPage({
         accounts={accountOptions}
       />
       {isTruncated && (
-        <div key="truncated-banner" className="rounded-md border border-amber-ink/40 bg-amber-bg px-3 py-2 text-sm text-amber-ink">
-          Δείχνονται μόνο οι πρώτες {ROW_LIMIT} από {totalCount} κινήσεις που ταιριάζουν. Περιορίστε με φίλτρα
-          (ημερομηνία, έργο, κατηγορία…) για να δείτε τις υπόλοιπες.
-        </div>
+        <p key="truncated-banner" role="status" className="border-l-2 border-warning pl-3 text-small text-text">
+          Δείχνονται μόνο οι πρώτες <span className="num">{ROW_LIMIT}</span> από <span className="num">{totalCount}</span>{" "}
+          κινήσεις που ταιριάζουν. Περιορίστε με φίλτρα (ημερομηνία, έργο, κατηγορία…) για να δείτε τις υπόλοιπες.
+        </p>
       )}
       {hasDrillFilter && (
-        <div key="drill-banner" className="flex flex-col gap-1 rounded-md bg-sage px-3 py-2 text-sm text-sage-ink">
-          <div key="line1" className="flex flex-wrap items-center gap-2">
-            <span key="label">Ανάλυση κινήσεων:</span>
-            {activeProjectName && <strong key="project">{activeProjectName}</strong>}
-            {activeAccountName && <strong key="account">{activeAccountName}</strong>}
-            {activeContactName && <strong key="contact">{activeContactName}</strong>}
-            {activeCategoryName && <strong key="category">{activeCategoryName}</strong>}
-            {scope && <strong key="scope">{scope === "business" ? "Επιχειρηματικό" : "Προσωπικό"}</strong>}
+        <div key="drill-banner" className="flex flex-col gap-1 border-l-2 border-navy pl-3 text-small text-text">
+          <div key="line1" className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span key="label" className="eyebrow text-muted">Ανάλυση κινήσεων:</span>
+            {activeProjectName && <strong key="project" className="font-medium text-ink">{activeProjectName}</strong>}
+            {activeAccountName && <strong key="account" className="font-medium text-ink">{activeAccountName}</strong>}
+            {activeContactName && <strong key="contact" className="font-medium text-ink">{activeContactName}</strong>}
+            {activeCategoryName && <strong key="category" className="font-medium text-ink">{activeCategoryName}</strong>}
+            {scope && (
+              <strong key="scope" className="font-medium text-ink">
+                {scope === "business" ? "Επιχειρηματικό" : "Προσωπικό"}
+              </strong>
+            )}
             {(from || to) && (
-              <strong key="range">
+              <strong key="range" className="num font-medium text-ink">
                 {from ? formatDate(from) : "…"} – {to ? formatDate(to) : "…"}
               </strong>
             )}
-            {status && <strong key="status">({el.transaction[status]})</strong>}
-            {ids && <strong key="ids">Από τον Βοηθό AI</strong>}
-            <Link key="clear" href="/transactions" className="ml-auto underline">
+            {status && <strong key="status" className="font-medium text-ink">({el.transaction[status]})</strong>}
+            {ids && <strong key="ids" className="font-medium text-ink">Από τον Βοηθό AI</strong>}
+            <Link
+              key="clear"
+              href="/transactions"
+              className="ml-auto inline-flex min-h-11 items-center text-ink underline underline-offset-4 hover:text-navy md:min-h-0"
+            >
               Καθαρισμός
             </Link>
           </div>
           {accountBalance && (
-            <div key="line2" className="text-xs opacity-80">
+            <p key="line2" className="text-small text-muted">
               Υπόλοιπο Έναρξης {formatDate(accountBalance.opening_balance_date)}:{" "}
-              {formatMoney(accountBalance.opening_balance)} · Τρέχον Υπόλοιπο:{" "}
-              {formatMoney(accountBalance.current_balance)}. Κινήσεις πριν την ημερομηνία έναρξης
-              εμφανίζονται εδώ αλλά δεν προσμετρώνται στο υπόλοιπο.
-            </div>
+              <span className="num">{formatMoney(accountBalance.opening_balance)}</span> · Τρέχον Υπόλοιπο:{" "}
+              <span className="num">{formatMoney(accountBalance.current_balance)}</span>. Κινήσεις πριν την ημερομηνία
+              έναρξης εμφανίζονται εδώ αλλά δεν προσμετρώνται στο υπόλοιπο.
+            </p>
           )}
         </div>
       )}
-      <div key="status-chips" className="flex flex-wrap items-center gap-2 text-sm">
-        {["", "paid", "pending", "scheduled"].map((s) => (
-          <a
-            key={s || "all"}
-            // Keeps the project / account / date filters already applied
-            // (it used to reset to ?status= alone).
-            href={withParams("/transactions", { ...params }, { status: s || null })}
-            className={`rounded px-3 py-1 ${status === s || (!status && !s) ? "bg-ink text-white" : "bg-bg"}`}
-          >
-            {s ? el.transaction[s as "paid" | "pending" | "scheduled"] : "Όλα"}
-          </a>
-        ))}
+      <div key="status-chips" className="flex flex-wrap items-center gap-2">
+        {["", "paid", "pending", "scheduled"].map((s) => {
+          const on = status === s || (!status && !s);
+          return (
+            <a
+              key={s || "all"}
+              // Keeps the project / account / date filters already applied
+              // (it used to reset to ?status= alone).
+              href={withParams("/transactions", { ...params }, { status: s || null })}
+              aria-current={on ? "true" : undefined}
+              className={`inline-flex min-h-11 items-center border px-3 py-1 text-small whitespace-nowrap transition-colors md:min-h-9 ${
+                on ? "border-navy bg-navy text-panel-ink" : "border-chip-border text-text hover:border-navy hover:text-ink"
+              }`}
+            >
+              {s ? el.transaction[s as "paid" | "pending" | "scheduled"] : "Όλα"}
+            </a>
+          );
+        })}
         <Link
           key="ask-ai"
           href={`/assistant?q=${encodeURIComponent(askPrompt)}`}
-          className="ml-auto flex items-center gap-1.5 rounded-full border border-ai-border bg-ai-bg px-3 py-1 text-ai-ink hover:bg-ai-border/40"
+          className={buttonClass("ai", "md", "ml-auto max-md:min-h-11 max-md:w-full max-md:whitespace-normal")}
         >
           <AiSpark />
           Ρώτα το Kansha AI γι&apos; αυτόν τον πίνακα →
