@@ -15,18 +15,26 @@ import {
 } from "recharts";
 import { formatMoney } from "@/lib/format";
 import { cn } from "./cn";
-import { CHART_HEIGHT_CLASS, ReferenceKey, chartTheme, compactNumber } from "./chart";
+import { CHART_HEIGHT_CLASS, ReferenceKey, STACK_PALETTE, chartTheme, compactNumber } from "./chart";
+import { alignedDomains, axisExtent, num } from "./chartScale";
 import { color } from "./tokens";
 
 // Bars (and an optional line or two) on the chart theme, for the report
-// tabs: in/out per month with the running balance, revenue/cost with the
-// result, a signed VAT position, a composition in horizontal rows. Props
-// are plain data only, so a server component can render it directly; every
-// value is money (formatted here). Imported directly from
-// "@/components/ui/BarChart" so recharts never rides in through the barrel.
+// tabs: in/out per month, revenue/cost with the result, a signed VAT
+// position, a composition in horizontal rows. Props are plain data only, so
+// a server component can render it directly; every value is money
+// (formatted here). Imported directly from "@/components/ui/BarChart" so
+// recharts never rides in through the barrel.
 //
 // At most three colours: navy, the accent and (for what is owed / lost)
-// the negative. A comparison line is the accent, thin and dashed.
+// the negative. A comparison line is the accent, thin and dashed. Two more
+// modes:
+//   - `stacked`: every bar series in one column, coloured from the fixed
+//     brand palette (STACK_PALETTE, ≤6 series) -- outflows by source;
+//   - a series with `axis: "right"` gets its OWN scale on the right, with
+//     the zero lines of both axes aligned -- signed monthly bars with a
+//     cumulative line. Never put monthly flows and a million-scale balance
+//     on one axis: give the balance the right axis, or its own chart.
 
 export type BarTone = "navy" | "accent" | "negative";
 
@@ -39,19 +47,27 @@ const TONE: Record<BarTone, string> = {
 export interface BarSeries {
   key: string;
   name: string;
-  // "bar" (default) or "line" -- one value axis for both, always money.
+  // "bar" (default) or "line" -- always money.
   kind?: "bar" | "line";
   tone?: BarTone;
   // A line drawn thin and dashed, for a comparison (last year).
   faint?: boolean;
   // Bars with the same stack id share one column (a signed position).
   stack?: string;
+  // The value axis: "left" (default) or its own scale on the right (columns
+  // layout only), e.g. the cumulative result next to the monthly bars.
+  axis?: "left" | "right";
+  // A bar coloured by its sign: `tone` (navy) when ≥ 0, `negativeTone`
+  // (default the accent) when < 0.
+  signed?: boolean;
+  negativeTone?: BarTone;
 }
 
 export type BarDatum = Record<string, string | number | null>;
 
 const FAINT_DASH = "4 3";
 const CATEGORY_WIDTH = 132;
+const STACK_ID = "stack";
 
 // A category label on the left of a horizontal bar: cut to the column's
 // width with «…» (the full name in the tooltip and the <title>), so long
@@ -79,6 +95,7 @@ export function BarChart({
   legend,
   threshold,
   marker,
+  stacked = false,
   className,
 }: {
   data: BarDatum[];
@@ -95,12 +112,27 @@ export function BarChart({
   threshold?: { value: number; label: string };
   // A vertical marker at one x value (the next deadline, today).
   marker?: { x: string; label?: string };
+  // Every bar series in one column, coloured from STACK_PALETTE (≤6).
+  stacked?: boolean;
   className?: string;
 }) {
   const rows = layout === "rows";
   // Rows grow with the data; columns take one of the two chart heights.
   const style = rows ? { height: Math.max(120, data.length * 30 + 40) } : undefined;
-  const toneOf = (s: BarSeries, i: number) => (s.faint ? color.accent : TONE[s.tone ?? (i === 0 ? "navy" : "accent")]);
+  const bars = series.filter((s) => s.kind !== "line");
+  const toneOf = (s: BarSeries, i: number) => {
+    if (s.faint) return color.accent;
+    if (s.tone) return TONE[s.tone];
+    if (stacked && s.kind !== "line") return STACK_PALETTE[bars.indexOf(s) % STACK_PALETTE.length];
+    return i === 0 ? TONE.navy : TONE.accent;
+  };
+  const hasRight = !rows && series.some((s) => s.axis === "right");
+  const domains = hasRight
+    ? alignedDomains(
+        axisExtent(data, series.filter((s) => s.axis !== "right"), stacked ? STACK_ID : undefined),
+        axisExtent(data, series.filter((s) => s.axis === "right"), stacked ? STACK_ID : undefined),
+      )
+    : null;
   // One legend icon (the theme's line). recharts draws a "plainline" icon
   // from payload.strokeDasharray and throws in the browser when payload is
   // missing, so every entry carries one.
@@ -120,7 +152,7 @@ export function BarChart({
   ];
 
   return (
-    <figure aria-label={label} className={cn("w-full min-w-0", className)}>
+    <figure aria-label={label} className={cn("w-full min-w-0 print-avoid-break", className)}>
       <div className={rows ? undefined : CHART_HEIGHT_CLASS} style={style}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
@@ -138,22 +170,27 @@ export function BarChart({
               <XAxis dataKey={xKey} {...chartTheme.xAxis} />
             )}
             {rows ? (
-              <YAxis type="category" dataKey={xKey} {...chartTheme.yAxis} width={CATEGORY_WIDTH} interval={0} tick={<CategoryTick />} />
+              <YAxis yAxisId="left" type="category" dataKey={xKey} {...chartTheme.yAxis} width={CATEGORY_WIDTH} interval={0} tick={<CategoryTick />} />
             ) : (
-              <YAxis {...chartTheme.yAxis} tickFormatter={compactNumber} />
+              <YAxis yAxisId="left" {...chartTheme.yAxis} tickFormatter={compactNumber} domain={domains ? domains[0] : undefined} />
+            )}
+            {domains && (
+              <YAxis yAxisId="right" orientation="right" {...chartTheme.yAxis} tickFormatter={compactNumber} domain={domains[1]} />
             )}
             <Tooltip {...chartTheme.tooltip} formatter={(value: number, name: string) => [formatMoney(value), name]} />
             {showLegend && <Legend {...chartTheme.legend} payload={legendPayload} />}
-            <ReferenceLine {...(rows ? { x: 0 } : { y: 0 })} {...chartTheme.zero} />
-            {threshold && <ReferenceLine y={threshold.value} {...chartTheme.threshold} />}
-            {marker && <ReferenceLine x={marker.x} {...chartTheme.today} />}
+            <ReferenceLine yAxisId="left" {...(rows ? { x: 0 } : { y: 0 })} {...chartTheme.zero} />
+            {threshold && <ReferenceLine yAxisId="left" y={threshold.value} {...chartTheme.threshold} />}
+            {marker && <ReferenceLine yAxisId="left" x={marker.x} {...chartTheme.today} />}
             {series.map((s, i) => {
               const fill = toneOf(s, i);
+              const axis = hasRight && s.axis === "right" ? "right" : "left";
               if (s.kind === "line") {
                 const base = chartTheme.line(0);
                 return (
                   <Line
                     key={s.key}
+                    yAxisId={axis}
                     dataKey={s.key}
                     name={s.name}
                     {...base}
@@ -164,9 +201,23 @@ export function BarChart({
                   />
                 );
               }
+              const negativeFill = TONE[s.negativeTone ?? "accent"];
               return (
-                <Bar key={s.key} dataKey={s.key} name={s.name} stackId={s.stack} {...chartTheme.bar(0)} fill={fill}>
-                  {toneKey && data.map((d, j) => <Cell key={j} fill={TONE[d[toneKey] as BarTone] ?? fill} />)}
+                <Bar
+                  key={s.key}
+                  yAxisId={axis}
+                  dataKey={s.key}
+                  name={s.name}
+                  stackId={s.stack ?? (stacked ? STACK_ID : undefined)}
+                  {...chartTheme.bar(0)}
+                  fill={fill}
+                  // A canvas hairline between stacked segments.
+                  stroke={stacked ? color.canvas : undefined}
+                  strokeWidth={stacked ? 1 : undefined}
+                >
+                  {s.signed
+                    ? data.map((d, j) => <Cell key={j} fill={num(d[s.key]) < 0 ? negativeFill : fill} />)
+                    : toneKey && data.map((d, j) => <Cell key={j} fill={TONE[d[toneKey] as BarTone] ?? fill} />)}
                 </Bar>
               );
             })}

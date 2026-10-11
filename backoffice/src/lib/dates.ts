@@ -60,6 +60,13 @@ export function athensMinuteLabel(now: Date = new Date()): string {
   return `${p.year}-${p.month}-${p.day} ${hour}:${p.minute}`;
 }
 
+// «09/10/2026 01:30», Athens wall-clock, for «ενημερώθηκε …» lines.
+export function athensDateTimeLabel(now: Date = new Date()): string {
+  const p = Object.fromEntries(athensMinuteParts.formatToParts(now).map((x) => [x.type, x.value]));
+  const hour = p.hour === "24" ? "00" : p.hour;
+  return `${p.day}/${p.month}/${p.year} ${hour}:${p.minute}`;
+}
+
 // Whole days from a to b (b - a); negative when b is earlier.
 export function diffDays(a: string, b: string): number {
   return Math.round((parseIso(b).getTime() - parseIso(a).getTime()) / DAY_MS);

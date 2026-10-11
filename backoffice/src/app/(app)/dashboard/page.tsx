@@ -5,6 +5,7 @@ import { getAccessContext } from "@/lib/supabase/access";
 import { formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { AiSpark, figureFit, GlancePanel, PageHeader, SectionHeader } from "@/components/ui";
+import { ReportTools } from "@/components/PresentMode";
 import { aiEnabled } from "@/lib/ai/client";
 import { rankAttention } from "@/lib/dashboard/attention";
 import { DashboardSummary } from "./DashboardSummary";
@@ -269,7 +270,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-10">
-      <PageHeader eyebrow={longDateLabel(todayIso)} title={el.nav.dashboard} />
+      <PageHeader eyebrow={longDateLabel(todayIso)} title={el.nav.dashboard} actions={<ReportTools />} />
 
       <GlancePanel
         title="Με μια ματιά"
