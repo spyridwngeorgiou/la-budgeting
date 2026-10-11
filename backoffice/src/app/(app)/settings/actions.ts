@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { isValidAfm } from "@/lib/finance/money";
 import { action, UserError, type ActionResult } from "@/lib/actions";
+import { DEFAULT_HOME_PATH, isHomePath } from "@/lib/homePath";
 
 export async function changePassword(formData: FormData): Promise<ActionResult> {
   return action(async () => {
@@ -23,6 +24,32 @@ export async function changePassword(formData: FormData): Promise<ActionResult> 
     // rights or anyone else's password involved, just "change my own".
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) throw new UserError(`Η αλλαγή κωδικού απέτυχε: ${error.message}`);
+  });
+}
+
+// The page / opens on for this user (profiles.home_path, 0092). Only the
+// caller's own row: RLS profiles_write enforces it, the list check here
+// gives a readable error (the database check rejects the rest anyway).
+export async function setHomePath(formData: FormData): Promise<ActionResult> {
+  return action(async () => {
+    const value = formData.get("home_path");
+    if (!isHomePath(value)) throw new UserError("Μη έγκυρη αρχική σελίδα.");
+
+    const supabase = await createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.user) throw new UserError("Δεν είστε συνδεδεμένοι.");
+
+    // Null for the default keeps "never chose" and "chose the dashboard" the
+    // same row state.
+    const { error } = await supabase
+      .from("profiles")
+      .update({ home_path: value === DEFAULT_HOME_PATH ? null : value })
+      .eq("user_id", session.user.id);
+    if (error) throw error;
+    revalidatePath("/settings");
+    revalidatePath("/");
   });
 }
 

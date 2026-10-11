@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentOrg, getCurrentMembership } from "@/lib/supabase/org";
+import { getCurrentOrg, getCurrentMembership, getMyProfile } from "@/lib/supabase/org";
 import { el } from "@/lib/i18n/el";
 import { Badge, PageHeader, SectionHeader } from "@/components/ui";
-import { updateOwnAfm, updateOrgSettings, updateTaxRiskSettings } from "./actions";
+import { setHomePath, updateOwnAfm, updateOrgSettings, updateTaxRiskSettings } from "./actions";
+import { HOME_PATHS, resolveHomePath } from "@/lib/homePath";
 import { Button, Input, Select, Label, Field, buttonClass } from "@/components/ui";
 import { ChangePasswordForm } from "./ChangePasswordForm";
 import { monthlyBudgetCents } from "@/lib/ai/client";
@@ -15,7 +16,11 @@ const ROLE_LABELS: Record<string, string> = { viewer: "Θεατής", editor: "�
 
 export default async function SettingsPage() {
   const supabase = await createClient();
-  const [org, membership] = await Promise.all([getCurrentOrg(supabase), getCurrentMembership(supabase)]);
+  const [org, membership, profile] = await Promise.all([
+    getCurrentOrg(supabase),
+    getCurrentMembership(supabase),
+    getMyProfile(supabase),
+  ]);
   const settings = (org?.settings as Record<string, unknown>) ?? {};
   const currentBudgetEuros = monthlyBudgetCents(settings.ai_monthly_budget_cents) / 100;
   const isAdmin = membership.role === "admin" || membership.role === "owner";
@@ -38,8 +43,30 @@ export default async function SettingsPage() {
     <div className="flex flex-col gap-10">
       <PageHeader
         title={el.nav.settings}
-        meta="Στοιχεία της επιχείρησης, όριο δαπάνης AI, κωδικός πρόσβασης, και εξαγωγή δεδομένων."
+        meta="Προσωπικά (αρχική σελίδα, κωδικός), στοιχεία της επιχείρησης, όριο δαπάνης AI και εξαγωγή δεδομένων."
       />
+
+      <section className="flex w-full max-w-md flex-col gap-6">
+        <SectionHeader title="Προσωπικά" />
+        <ActionForm action={setHomePath} className="flex flex-wrap items-end gap-3">
+          <Field>
+            <Label>Αρχική σελίδα</Label>
+            <Select name="home_path" defaultValue={resolveHomePath(profile?.home_path)}>
+              {HOME_PATHS.map((h) => (
+                <option key={h.path} value={h.path}>
+                  {h.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Button type="submit">{el.common.save}</Button>
+        </ActionForm>
+        <p className="text-xs text-muted">Η σελίδα που ανοίγει μετά τη σύνδεση. Το «Αρχική» του μενού ανοίγει πάντα τον πίνακα.</p>
+        <div className="flex flex-col gap-3">
+          <h3 className="eyebrow text-muted">Αλλαγή Κωδικού</h3>
+          <ChangePasswordForm />
+        </div>
+      </section>
 
       <section className="flex w-full max-w-md flex-col gap-4">
         <SectionHeader title="Στοιχεία Επιχείρησης" />
@@ -166,11 +193,6 @@ export default async function SettingsPage() {
       </section>
 
       {isAdmin && <CaptureAnalytics />}
-
-      <section className="flex w-full max-w-md flex-col gap-4">
-        <SectionHeader title="Αλλαγή Κωδικού" />
-        <ChangePasswordForm />
-      </section>
 
       <section className="flex w-full max-w-md flex-col gap-4">
         <SectionHeader title="Εξαγωγή Δεδομένων" />

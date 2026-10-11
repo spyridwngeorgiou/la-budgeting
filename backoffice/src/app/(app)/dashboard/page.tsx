@@ -9,10 +9,13 @@ import { aiEnabled } from "@/lib/ai/client";
 import { rankAttention } from "@/lib/dashboard/attention";
 import { DashboardSummary } from "./DashboardSummary";
 import { AskAssistantCard } from "./AskAssistantCard";
-import { monthKeyOf, monthLabel, todayAthens } from "@/lib/dates";
+import { addDays, monthKeyOf, monthLabel, todayAthens } from "@/lib/dates";
+import { dashboardTiles, type DashboardTile } from "@/lib/dashboard/tiles";
+import { loadInboxCounts } from "@/lib/data/inboxCount";
+import { inboxTotal } from "@/lib/ingest/inboxCount";
 import { loadPendingCaptures } from "@/lib/ingest/pendingCaptures";
 
-// Αρχική: liquidity in one row, the few things that need attention, the
+// Αρχική: eight tiles (one per area, lib/dashboard/tiles.ts), the few things that need attention, the
 // project portfolio, then the AI. Every figure reads from the SQL views
 // (0011_views.sql and later), never from a hand-maintained rollup, so it can
 // never drift from the ledger. The month calendar lives at /calendar.
@@ -46,6 +49,9 @@ export default async function DashboardPage() {
     { count: pendingChanges },
     { data: liquidity },
     { data: forecast },
+    { count: calendarNext7 },
+    { data: pnlRows },
+    inboxPending,
   ] = await Promise.all([
     supabase.from("v_project_rollup").select("*").eq("org_id", orgId).order("code"),
     supabase
@@ -75,6 +81,19 @@ export default async function DashboardPage() {
     // cash_forecast() /reports/cash shows -- never re-derived here.
     supabase.from("v_liquidity").select("owner_scope, balance").eq("org_id", orgId),
     supabase.rpc("cash_forecast", { p_org: orgId, p_months: 12 }),
+    // Calendar tile: items overlapping the next 7 days (today included),
+    // same overlap rule as the calendar itself; head-only, no rows travel.
+    supabase
+      .from("v_calendar_items")
+      .select("item_key", { count: "exact", head: true })
+      .eq("org_id", orgId)
+      .lte("starts_on", addDays(todayIso, 6))
+      .gte("ends_on", todayIso)
+      .not("is_done", "is", true),
+    // Result tile: the year so far, same function and defaults as /reports/pnl.
+    supabase.rpc("pnl_summary", { p_org: orgId, p_from: `${todayIso.slice(0, 4)}-01-01`, p_to: todayIso }),
+    // The nav badge's number (cached per request: the layout reads it too).
+    loadInboxCounts(orgId).then(inboxTotal),
   ]);
 
   const noBudget = new Set((withoutBudget ?? []).map((r) => r.project_id));
@@ -138,6 +157,21 @@ export default async function DashboardPage() {
   // The dashboard's single worklist, ranked by severity and capped
   // (lib/dashboard/attention.ts), so a zero-item list is a real, trustworthy
   // "nothing needs you today".
+  const tiles = dashboardTiles({
+    cashCorporate,
+    cashPersonal,
+    lowest,
+    inboxPending,
+    calendarNext7: calendarNext7 ?? 0,
+    year: Number(todayIso.slice(0, 4)),
+    pnlRows: pnlRows ?? [],
+    vatPayable: Number(currentVat?.payable_after_credit ?? 0),
+    receivables,
+    payables,
+    activeProjects: (projects ?? []).filter((p) => p.status === "active").length,
+    overBudgetProjects: overBudgetProjects.length,
+  });
+
   const attention = rankAttention([
     forecastBelow && {
       kind: "cashBelowBuffer",
@@ -194,25 +228,14 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-10">
       <PageHeader
         title={el.nav.dashboard}
-        meta="Ρευστότητα, εκκρεμότητες και έργα με μια ματιά. Κάθε ποσό είναι κλικάρισμα στις κινήσεις που το απαρτίζουν."
+        meta="Ένα πλακίδιο ανά ενότητα, εκκρεμότητες και έργα με μια ματιά. Κάθε νούμερο ανοίγει τη σελίδα από την οποία προκύπτει."
       />
 
-      <section className="flex flex-col">
-        <SectionHeader title="Ρευστότητα" />
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-          <Stat label="Ταμείο εταιρικό" value={formatMoney(cashCorporate)} href="/transactions?scope=business&status=paid" />
-          <Stat label="Ταμείο προσωπικό" value={formatMoney(cashPersonal)} href="/transactions?scope=personal&status=paid" />
-          {lowest && (
-            <Stat
-              label={`Χαμηλότερο 12μ. (${monthLabel(monthKeyOf(lowest.month))})`}
-              value={formatMoney(lowest.closing_balance)}
-              href="/reports/cash"
-              negative={lowest.below_buffer}
-            />
-          )}
-          <Stat label="ΦΠΑ οφειλόμενο" value={formatMoney(currentVat?.payable_after_credit ?? 0)} href="/reports/vat" />
-          <Stat label="Απαιτήσεις" value={formatMoney(receivables)} href="/transactions?direction=income&status=pending" />
-          <Stat label="Υποχρεώσεις" value={formatMoney(payables)} href="/transactions?direction=expense&status=pending" />
+      <section aria-label="Με μια ματιά" className="flex flex-col">
+        <div className="grid grid-cols-2 border-t border-l border-hairline lg:grid-cols-4">
+          {tiles.map((tile) => (
+            <Tile key={tile.key} tile={tile} />
+          ))}
         </div>
         <p className="mt-2 text-xs text-muted">
           Το ταμείο μετρά μόνο ρευστούς λογαριασμούς· χρυσός και crypto εμφανίζονται στην Καθαρή θέση.
@@ -328,16 +351,17 @@ export default async function DashboardPage() {
   );
 }
 
-function Stat({ label, value, href, negative }: { label: string; value: string; href: string; negative?: boolean | null }) {
+// One P15 tile: hairline grid cell, eyebrow, a big light tabular figure and
+// a small sub-line; the whole tile is the link.
+function Tile({ tile }: { tile: DashboardTile }) {
   return (
     <Link
-      href={href}
-      className={`flex min-w-0 flex-col gap-1 border-b border-hairline py-4 pr-4 transition-colors hover:bg-hover ${
-        negative ? "border-l-2 border-l-negative pl-3" : "pl-1"
-      }`}
+      href={tile.href}
+      className="flex min-w-0 flex-col gap-2 border-r border-b border-hairline p-4 transition-colors hover:bg-hover"
     >
-      <span className="truncate text-small text-muted">{label}</span>
-      <span className={`num text-figure-sm font-light ${negative ? "text-negative" : "text-ink"}`}>{value}</span>
+      <span className="eyebrow truncate text-muted">{tile.eyebrow}</span>
+      <span className={`num truncate text-figure-sm font-light ${tile.negative ? "text-negative" : "text-ink"}`}>{tile.value}</span>
+      <span className="text-xs text-muted">{tile.sub}</span>
     </Link>
   );
 }
