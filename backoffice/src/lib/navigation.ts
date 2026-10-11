@@ -28,8 +28,8 @@ export const SECTION_TABS = {
     { href: "/reports/withholding", label: el.tabs.withholding },
     { href: "/reports/quality", label: el.tabs.quality },
   ],
-  // The planner has no route tabs: /planner?view=board|timeline|calendar
-  // (components/planner/PlannerViews.tsx).
+  // The planner has no route tabs: /planner?view=board|timeline
+  // (components/planner/PlannerViews.tsx); the calendar is /calendar.
 } satisfies Record<string, SubNavTab[]>;
 
 // The tab owning `pathname`: the longest href that is the path itself or a

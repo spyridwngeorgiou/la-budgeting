@@ -76,7 +76,7 @@ export async function ProjectPlanSection({ projectId }: { projectId: string }) {
           <Link href={`/planner?view=timeline&project=${projectId}`} className="inline-flex min-h-10 items-center text-ink hover:underline">
             {el.planner.tabs.timeline} →
           </Link>
-          <Link href={`/planner?view=calendar&project=${projectId}`} className="inline-flex min-h-10 items-center text-ink hover:underline">
+          <Link href={`/calendar?project=${projectId}`} className="inline-flex min-h-10 items-center text-ink hover:underline">
             {el.planner.tabs.calendar} →
           </Link>
         </div>

@@ -1,4 +1,4 @@
 {
-  "$comment": "Size budget checked by budgets.test.ts. appPagesMax may only go DOWN. It is 32 since the v2 redesign was removed: its /money and /projects/[id]/[tab] pages went, the root redirect moved back to src/app/page.tsx (outside (app)), and the classic /projects/[id]/compare came back as its own page.",
-  "appPagesMax": 32
+  "$comment": "Size budget checked by budgets.test.ts. appPagesMax may only go DOWN, unless the owner approves a new page. It was 32 after the v2 redesign was removed: its /money and /projects/[id]/[tab] pages went, the root redirect moved back to src/app/page.tsx (outside (app)), and the classic /projects/[id]/compare came back as its own page. 33 since the owner-approved /calendar (Ημερολόγιο) left /planner?view=calendar for a page of its own.",
+  "appPagesMax": 33
 }

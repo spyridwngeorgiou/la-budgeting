@@ -28,13 +28,14 @@ export function DashboardSummary() {
 
   if (text) {
     return (
-      <div className="border-l-2 border-ai-border py-1 pl-4 text-sm text-ink">
-        <div className="eyebrow mb-1.5 flex items-center gap-1.5 text-ai">
+      // One paragraph: line breaks in the model's answer are folded into it.
+      <p className="border-l-2 border-ai-border py-1 pl-4 text-sm text-ink">
+        <span className="eyebrow mr-2 inline-flex items-center gap-1.5 text-ai">
           <AiSpark />
           Περίληψη AI
-        </div>
-        {text}
-      </div>
+        </span>
+        {text.replace(/\s*\n+\s*/g, " ").trim()}
+      </p>
     );
   }
 
