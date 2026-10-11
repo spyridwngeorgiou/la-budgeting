@@ -5,7 +5,7 @@ import { cn } from "./cn";
 // canvas), square, navy border on focus. One height (40px) so inputs,
 // selects and buttons line up in a row.
 const CONTROL =
-  "min-h-10 border border-field-border bg-field px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-navy focus:outline-none disabled:bg-hover disabled:text-muted aria-[invalid=true]:border-negative";
+  "min-h-10 border border-field-border bg-field px-3 py-2 text-body text-ink placeholder:text-muted focus:border-navy focus:outline-none disabled:bg-hover disabled:text-muted aria-[invalid=true]:border-negative max-md:text-field";
 
 export function Input({ className = "", ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(CONTROL, className)} {...props} />;
@@ -20,7 +20,7 @@ export function MoneyInput({
   return (
     <span className={cn("relative inline-flex", className)}>
       <input type="text" inputMode="decimal" autoComplete="off" className={cn(CONTROL, "num w-full pr-8 text-right")} {...props} />
-      <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted">
+      <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-body text-muted">
         {currency}
       </span>
     </span>
@@ -45,7 +45,7 @@ export function Checkbox({
   ...props
 }: Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & { label: ReactNode }) {
   return (
-    <label className={cn("inline-flex min-h-10 cursor-pointer items-center gap-2 text-sm text-ink", className)}>
+    <label className={cn("inline-flex min-h-10 cursor-pointer items-center gap-2 text-body text-ink", className)}>
       <input type="checkbox" className="h-4 w-4 accent-navy" {...props} />
       {label}
     </label>
@@ -67,7 +67,7 @@ export function Label({
     <label
       htmlFor={htmlFor}
       className={cn(
-        "mb-1 block text-xs font-medium text-muted",
+        "mb-1 block text-small font-medium text-muted",
         title && "cursor-help underline decoration-dotted underline-offset-2",
         className,
       )}
@@ -99,9 +99,9 @@ export function Field({
     <div className={cn("flex flex-col", className)}>
       {label && <Label htmlFor={htmlFor}>{label}</Label>}
       {children}
-      {hint && !error && <p className="mt-1 text-xs text-muted">{hint}</p>}
+      {hint && !error && <p className="mt-1 text-small text-muted">{hint}</p>}
       {error && (
-        <p role="alert" className="mt-1 text-xs text-negative">
+        <p role="alert" className="mt-1 text-small text-negative">
           {error}
         </p>
       )}

@@ -60,7 +60,7 @@ export function AssignSelect({
   const [pending, startTransition] = useTransition();
   const options = lookups[FIELD_OPTIONS[field]];
   if (!editable) {
-    return <span className="text-xs">{options.find((o) => o.id === value)?.label ?? "—"}</span>;
+    return <span className="text-small">{options.find((o) => o.id === value)?.label ?? "—"}</span>;
   }
   return (
     <>
@@ -68,7 +68,7 @@ export function AssignSelect({
         aria-label={FIELD_LABEL[field]}
         defaultValue={value ?? ""}
         disabled={pending}
-        className={`w-full !py-1 text-xs ${!value && field !== "category_id" ? "border-warning" : ""}`}
+        className={`w-full !py-1 text-small ${!value && field !== "category_id" ? "border-warning" : ""}`}
         onChange={(e) => {
           const next = e.target.value;
           setError(null);
@@ -85,7 +85,7 @@ export function AssignSelect({
           </option>
         ))}
       </Select>
-      {error && <span role="alert" className="text-xs text-negative">{error}</span>}
+      {error && <span role="alert" className="text-small text-negative">{error}</span>}
     </>
   );
 }
@@ -108,7 +108,7 @@ export function BulkAssignBar() {
   return (
     <form
       id={BULK_FORM_ID}
-      className="flex flex-wrap items-center gap-2 border-y border-hairline py-2 text-sm"
+      className="flex flex-wrap items-center gap-2 border-y border-hairline py-2 text-body"
       onSubmit={(e) => {
         e.preventDefault();
         const form = e.currentTarget;
@@ -123,7 +123,7 @@ export function BulkAssignBar() {
     >
       <span className="eyebrow text-muted">{el.ingest.review.selected}</span>
       {(Object.keys(FIELD_OPTIONS) as (keyof typeof FIELD_OPTIONS)[]).map((field) => (
-        <Select key={field} name={field} defaultValue="" className="!py-1 text-xs">
+        <Select key={field} name={field} defaultValue="" className="!py-1 text-small">
           <option value="">{FIELD_LABEL[field]} —</option>
           {lookups[FIELD_OPTIONS[field]].map((o) => (
             <option key={o.id} value={o.id}>
@@ -132,10 +132,10 @@ export function BulkAssignBar() {
           ))}
         </Select>
       ))}
-      <Button type="submit" disabled={pending} className="!px-2 !py-1 text-xs">
+      <Button type="submit" disabled={pending} className="!px-2 !py-1 text-small">
         {el.ingest.review.apply}
       </Button>
-      {error && <span role="alert" className="text-xs text-negative">{error}</span>}
+      {error && <span role="alert" className="text-small text-negative">{error}</span>}
     </form>
   );
 }

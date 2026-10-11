@@ -18,7 +18,7 @@ export function DuplicateWarning({
   onCancel: () => void;
 }) {
   return (
-    <div role="alert" className="border-l-2 border-warning py-1 pl-4 text-sm text-text">
+    <div role="alert" className="border-l-2 border-warning py-1 pl-4 text-body text-text">
       <p className="eyebrow text-warning">{el.ingest.possibleDuplicate}</p>
       <p className="mt-1">{el.ingest.possibleDuplicateHint}</p>
       <ul className="mt-3 flex flex-col border-t border-hairline">
@@ -29,7 +29,7 @@ export function DuplicateWarning({
               {d.invoice_number ? ` · ${d.invoice_number}` : ""}
             </span>
             <span className="num">{formatMoney(d.gross_amount)}</span>
-            <span className="w-full text-xs text-muted">{el.ingest.duplicateReason[d.reason]}</span>
+            <span className="w-full text-small text-muted">{el.ingest.duplicateReason[d.reason]}</span>
           </li>
         ))}
       </ul>

@@ -32,7 +32,7 @@ export async function ProjectPlanSection({ projectId, canEdit }: { projectId: st
 
   return (
     <OnePagerSection title={el.planner.projectSection}>
-      <div className="flex flex-col gap-2 text-sm">
+      <div className="flex flex-col gap-2 text-body">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span className="font-medium text-ink">
             {open.length} {el.planner.openTasks}
@@ -40,13 +40,13 @@ export async function ProjectPlanSection({ projectId, canEdit }: { projectId: st
           {counts
             .filter(([, n]) => n > 0)
             .map(([s, n]) => (
-              <span key={s} className="flex items-center gap-1.5 text-xs text-muted">
+              <span key={s} className="flex items-center gap-1.5 text-small text-muted">
                 <span className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT[s]}`} />
                 {el.planner.status[s]} {n}
               </span>
             ))}
           {overdue > 0 && (
-            <span className="border-l-2 border-negative pl-2 text-xs font-medium text-negative">
+            <span className="border-l-2 border-negative pl-2 text-small font-medium text-negative">
               {overdue} {el.planner.task.overdue}
             </span>
           )}

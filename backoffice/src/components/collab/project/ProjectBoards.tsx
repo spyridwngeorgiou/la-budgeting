@@ -110,7 +110,7 @@ export function ProjectBoards({
                     // eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL from the private bucket
                     <img src={b.thumbnailUrl} alt="" className="h-full w-full object-contain" loading="lazy" />
                   ) : (
-                    <div className="flex h-full items-center justify-center px-3 text-center text-xs text-muted">{el.collab.project.noThumbnail}</div>
+                    <div className="flex h-full items-center justify-center px-3 text-center text-small text-muted">{el.collab.project.noThumbnail}</div>
                   )}
                 </Link>
                 <div className="flex items-start gap-1">
@@ -131,7 +131,7 @@ export function ProjectBoards({
                           maxLength={200}
                           autoFocus
                           aria-label={el.collab.boardTitle}
-                          className="min-w-0 flex-1 max-md:min-h-11 max-md:text-base"
+                          className="min-w-0 flex-1 max-md:min-h-11 max-md:text-field"
                           onKeyDown={(e) => e.key === "Escape" && setRenaming(null)}
                         />
                         <Button type="submit" className="max-md:min-h-11">
@@ -157,7 +157,7 @@ export function ProjectBoards({
                         aria-label={el.collab.project.moreActions}
                         aria-haspopup="menu"
                         aria-expanded={menuFor === b.id}
-                        className="-mr-2 flex h-10 w-10 items-center justify-center text-lg leading-none text-muted hover:bg-hover hover:text-ink max-md:h-11 max-md:w-11"
+                        className="-mr-2 flex h-10 w-10 items-center justify-center text-section leading-none text-muted hover:bg-hover hover:text-ink max-md:h-11 max-md:w-11"
                         onClick={() => setMenuFor((id) => (id === b.id ? null : b.id))}
                       >
                         <span aria-hidden="true">⋯</span>
@@ -194,14 +194,14 @@ export function ProjectBoards({
         <div className="border-y border-hairline">
           <button
             type="button"
-            className="flex min-h-12 w-full items-center justify-between gap-3 text-left text-sm text-text hover:text-ink"
+            className="flex min-h-12 w-full items-center justify-between gap-3 text-left text-body text-text hover:text-ink"
             aria-expanded={showTrash}
             onClick={() => setShowTrash((v) => !v)}
           >
             <span>
               {el.collab.trash.title} <span className="num text-muted">({trash.length})</span>
             </span>
-            <span aria-hidden="true" className="text-xs text-muted">
+            <span aria-hidden="true" className="text-small text-muted">
               {showTrash ? "▲" : "▼"}
             </span>
           </button>
@@ -215,7 +215,7 @@ export function ProjectBoards({
                   return (
                     <li key={b.id} className="flex flex-wrap items-center gap-2 border-t border-hairline py-2.5 first:border-t-0">
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm text-ink">{b.title}</p>
+                        <p className="truncate text-body text-ink">{b.title}</p>
                         <p className="text-small text-muted">
                           {days > 0 ? fillText(el.collab.trash.daysLeft, { days }) : el.collab.trash.lastDay}
                         </p>
@@ -285,12 +285,12 @@ function NewBoardDialog({ projectId, onClose }: { projectId: string; onClose: ()
             maxLength={200}
             autoFocus
             placeholder={template === "blank" ? el.collab.boardTitle : t[template].name}
-            className="max-md:min-h-11 max-md:text-base"
+            className="max-md:min-h-11 max-md:text-field"
           />
         </div>
         <input type="hidden" name="template" value={template} />
         <fieldset>
-          <legend className="mb-1 text-xs font-medium text-muted">{el.collab.project.chooseTemplate}</legend>
+          <legend className="mb-1 text-small font-medium text-muted">{el.collab.project.chooseTemplate}</legend>
           <div className="flex flex-col border-t border-hairline">
             {BOARD_TEMPLATES.map((key) => (
               <button
@@ -303,7 +303,7 @@ function NewBoardDialog({ projectId, onClose }: { projectId: string; onClose: ()
                   template === key ? "border-l-navy bg-hover" : "border-l-transparent hover:bg-hover",
                 )}
               >
-                <span className={cn("block text-sm", template === key ? "font-medium text-ink" : "text-ink")}>{t[key].name}</span>
+                <span className={cn("block text-body", template === key ? "font-medium text-ink" : "text-ink")}>{t[key].name}</span>
                 <span className="block text-small text-muted">{t[key].hint}</span>
               </button>
             ))}

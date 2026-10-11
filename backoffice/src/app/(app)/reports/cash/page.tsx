@@ -89,7 +89,7 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
   const outflowItems = (items ?? []).filter((i) => i.direction === "expense");
 
   return (
-    <div className="flex min-w-0 flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-10">
       <PageHeader title={t.cashTitle} meta={<span className="block max-w-3xl">{t.cashIntro}</span>} />
 
       <div className="flex flex-col gap-2">
@@ -146,7 +146,7 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
         series={[
           { key: "inflow", name: t.inflow, tone: "navy" },
           { key: "outflow", name: t.outflow, tone: "accent" },
-          { key: "balance", name: t.closing, kind: "line", tone: "ink" },
+          { key: "balance", name: t.closing, kind: "line", tone: "navy" },
         ]}
         threshold={{ value: buffer, label: t.buffer }}
       />
@@ -200,7 +200,7 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
                     <td className={cn(TD, NUM)}>
                       {formatMoney(r.inflow)}
                       {Number(r.uncertain_inflow) > 0 && (
-                        <span className="block text-xs text-muted">
+                        <span className="block text-small text-muted">
                           {t.uncertainPart} {formatMoney(r.uncertain_inflow)}
                         </span>
                       )}
@@ -215,11 +215,11 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
           </table>
         </div>
 
-        <section className="flex min-w-0 flex-col gap-3">
+        <section className="flex min-w-0 flex-col gap-4">
           <SectionHeader title={`${t.breakdown}: ${monthLabel(selected)}`} />
           <p className="text-small text-muted">{t.breakdownHint}</p>
           {(items ?? []).length === 0 ? (
-            <p className="text-sm text-muted">{t.noItems}</p>
+            <p className="text-body text-muted">{t.noItems}</p>
           ) : (
             <div className="flex flex-col gap-6">
               <ItemList title={t.inflow} items={inflowItems} />
@@ -229,13 +229,13 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
         </section>
       </div>
 
-      <section className="flex min-w-0 flex-col gap-3">
+      <section className="flex min-w-0 flex-col gap-4">
         <SectionHeader
           title={t.expectedTitle}
           actions={<ExpectedIncomeFormModal action={saveExpectedIncome} projects={lookups.projects} />}
         />
         {(expected ?? []).length === 0 ? (
-          <p className="text-sm text-muted">{t.expectedEmpty}</p>
+          <p className="text-body text-muted">{t.expectedEmpty}</p>
         ) : (
           <div className={FRAME}>
             <table className={TABLE}>
@@ -247,15 +247,15 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
                     <tr key={e.id} className={ROW}>
                       <td className="min-w-40 py-2.5 pr-3 align-middle text-ink">
                         {e.source}
-                        {e.direction === "expense" && <span className="ml-1 text-xs text-muted">({el.transaction.expense})</span>}
-                        {project && <span className="ml-1 text-xs text-muted">· {project.display_name}</span>}
-                        {e.scenario_id && <span className="ml-1 text-xs text-muted">· {t.expectedFromScenario}</span>}
+                        {e.direction === "expense" && <span className="ml-1 text-small text-muted">({el.transaction.expense})</span>}
+                        {project && <span className="ml-1 text-small text-muted">· {project.display_name}</span>}
+                        {e.scenario_id && <span className="ml-1 text-small text-muted">· {t.expectedFromScenario}</span>}
                       </td>
                       <td className="py-2.5 pr-3 align-middle whitespace-nowrap text-muted">
                         {e.expected_month ? monthLabel(monthKeyOf(e.expected_month)) : "—"}
                       </td>
                       <td className={cn("py-2.5 pr-3 align-middle text-ink", NUM)}>{formatMoney(e.amount)}</td>
-                      <td className={cn("py-2.5 pr-3 align-middle text-xs text-muted", NUM)}>{Math.round(probability * 100)}%</td>
+                      <td className={cn("py-2.5 pr-3 align-middle text-small text-muted", NUM)}>{Math.round(probability * 100)}%</td>
                       <td className="py-1.5 align-middle">
                         {!e.scenario_id && (
                           <div className="flex items-center justify-end gap-1">
@@ -328,9 +328,9 @@ function ItemList({ title, items }: { title: string; items: Item[] }) {
     <div>
       <div className="flex justify-between gap-3 border-b border-rule pb-2">
         <span className="eyebrow text-muted">{title}</span>
-        <span className="num text-sm text-ink">{formatMoney(total)}</span>
+        <span className="num text-body text-ink">{formatMoney(total)}</span>
       </div>
-      <ul className="flex flex-col text-sm">
+      <ul className="flex flex-col text-body">
         {items.map((i) => {
           const href = itemHref(i);
           const sourceLabel = t.sources[i.source as keyof typeof t.sources] ?? i.source;
@@ -356,7 +356,7 @@ function ItemList({ title, items }: { title: string; items: Item[] }) {
               <span className={cn("shrink-0 text-ink", NUM)}>
                 {formatMoney(i.weighted_amount)}
                 {Number(i.weighted_amount) !== Number(i.amount) && (
-                  <span className="block text-xs text-muted">{formatMoney(i.amount)}</span>
+                  <span className="block text-small text-muted">{formatMoney(i.amount)}</span>
                 )}
               </span>
             </li>

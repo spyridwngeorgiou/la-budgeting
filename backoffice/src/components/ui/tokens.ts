@@ -41,9 +41,11 @@ export const color = {
   negativeTint: "#f6e5e3",
   warning: "#7a5a16",
   warningTint: "#f5ecd9",
-  ai: "#55508a",
-  aiTint: "#ebeaf3",
-  aiBorder: "#c9c6dd",
+  // AI: no colour of its own (owner decision, 11/10/2026) -- the accent-ink
+  // family; the ✦ symbol and the «AI» label are what set it apart.
+  ai: "#4f6d8a",
+  aiTint: "#e6ecf1",
+  aiBorder: "#9fb2c4",
 } as const;
 
 export type ColorToken = keyof typeof color;
@@ -62,6 +64,8 @@ export const type = {
   section: [20, 1.3, 400],
   lead: [17, 1.5, 400],
   body: [15, 1.5, 400],
+  // Form fields on phones only (iOS zooms into anything under 16px).
+  field: [16, 1.5, 400],
   small: [13, 1.45, 400],
   eyebrow: [12, 1.3, 500],
 } as const satisfies Record<string, readonly [number, number, number]>;

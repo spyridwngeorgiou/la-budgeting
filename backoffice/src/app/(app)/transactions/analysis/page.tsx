@@ -195,7 +195,7 @@ export default async function AnalysisPage({
   }${scope !== "all" ? `, πεδίο ${scope === "business" ? "επιχειρηματικό" : "προσωπικό"}` : ""}. Ποιες γραμμές ξεχωρίζουν και γιατί;`;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-10">
       <PageHeader
         title="Ανάλυση Κινήσεων"
         meta="Επιλέξτε πώς θέλετε να ομαδοποιήσετε τα δεδομένα. Κάθε ποσό στον πίνακα είναι κλικάρισμα — σας πάει κατευθείαν στις κινήσεις που το απαρτίζουν."
@@ -242,7 +242,7 @@ export default async function AnalysisPage({
       </div>
 
       {rows.length === 0 ? (
-        <p className="border-y border-hairline py-6 text-sm text-muted">Δεν βρέθηκαν κινήσεις για αυτά τα φίλτρα.</p>
+        <p className="border-y border-hairline py-6 text-body text-muted">Δεν βρέθηκαν κινήσεις για αυτά τα φίλτρα.</p>
       ) : (
         // The months ARE the content: the table scrolls sideways inside its
         // own frame on a phone, the first column stays put.
@@ -263,7 +263,7 @@ export default async function AnalysisPage({
                     <Link href={columnHref(m)} className="underline-offset-4 hover:text-ink hover:underline">
                       {shortMonthYearLabel(m)}
                     </Link>
-                    {m === todayMonth && <div className="mt-0.5 text-xs font-medium tracking-normal normal-case text-accent-ink">σήμερα</div>}
+                    {m === todayMonth && <div className="mt-0.5 text-small font-medium tracking-normal normal-case text-accent-ink">σήμερα</div>}
                   </th>
                 ))}
                 <th scope="col" className={`${TH} text-right text-ink`}>

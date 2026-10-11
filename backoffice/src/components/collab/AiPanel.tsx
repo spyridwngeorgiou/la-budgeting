@@ -271,7 +271,7 @@ export function AiPanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-wrap items-center gap-2 border-b border-hairline px-3 py-2 text-xs">
+      <div className="flex flex-wrap items-center gap-2 border-b border-hairline px-3 py-2 text-small">
         <Select
           className="min-h-9 min-w-0 flex-1 truncate px-2 py-1 text-small max-md:min-h-11"
           value={threadId ?? ""}
@@ -317,7 +317,7 @@ export function AiPanel({
         )}
       </div>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 text-sm">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 text-body">
         {messages.length === 0 && (
           <div className="space-y-3">
             <p className="text-muted">{t.intro}</p>
@@ -333,7 +333,7 @@ export function AiPanel({
               }
             >
               {m.role === "assistant" && (
-                <div className="mb-1 flex items-center gap-1 text-xs font-medium text-ai">
+                <div className="mb-1 flex items-center gap-1 text-small font-medium text-ai">
                   <AiSpark /> {t.assistant}
                 </div>
               )}
@@ -345,7 +345,7 @@ export function AiPanel({
           <ProposalCard key={p.id} proposal={p} rights={rights} canPlace={!!api} onDecide={(a) => decide(p, a)} />
         ))}
         {activity && (
-          <div className="flex items-center gap-1.5 text-xs text-ai">
+          <div className="flex items-center gap-1.5 text-small text-ai">
             <AiSpark className="animate-pulse" /> {activity}
           </div>
         )}
@@ -385,7 +385,7 @@ export function AiPanel({
             rows={2}
             maxLength={4000}
             placeholder={t.placeholder}
-            className="min-h-11 flex-1 resize-none px-2 py-1.5 text-base sm:text-sm"
+            className="min-h-11 flex-1 resize-none px-2 py-1.5 text-field sm:text-body"
           />
           {busy ? (
             <Button type="button" variant="secondary" className="max-md:min-h-11" onClick={() => abortRef.current?.abort()}>
@@ -446,7 +446,7 @@ function ProposalCard({
 
   return (
     <div className="border-l-2 border-ai-border py-1 pl-3">
-      <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs font-medium text-ai">
+      <div className="mb-2 flex flex-wrap items-center gap-1.5 text-small font-medium text-ai">
         <AiSpark /> {title}
         {canvas && <span className="font-normal text-muted">· {canvasSpecSummary(canvas.spec)}</span>}
       </div>
@@ -483,18 +483,18 @@ function ProposalCard({
             )}
           </svg>
         ) : (
-          <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+          <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
             {p.invalid}
           </p>
         ))}
 
       {planner && (
-        <ul className="divide-y divide-hairline text-sm text-ink">
+        <ul className="divide-y divide-hairline text-body text-ink">
           {planner.items.map((item, i) => (
             <li key={i} className="flex items-baseline justify-between gap-2 py-1">
               <span className="min-w-0">{item.title}</span>
               {item.due_date && (
-                <span className="num shrink-0 text-xs text-muted">
+                <span className="num shrink-0 text-small text-muted">
                   {p.due} {item.due_date}
                 </span>
               )}
@@ -503,12 +503,12 @@ function ProposalCard({
         </ul>
       )}
       {proposal.kind !== "canvas" && !planner && (
-        <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+        <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
           {p.invalid}
         </p>
       )}
 
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-small">
         {decided ? (
           <span className="text-muted">{decided}</span>
         ) : proposal.kind === "canvas" ? (

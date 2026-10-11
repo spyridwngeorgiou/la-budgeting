@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, formatPercentPoints } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { Button, Field, Input, PageHeader, SectionHeader, Stat } from "@/components/ui";
 import { computeRevenuePlan, type RoomType, type Assumption } from "@/lib/finance/revenuePlan";
@@ -97,7 +97,7 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
       <PageHeader
         eyebrow={el.nav.revenuePlans}
         title={plan.name}
@@ -129,7 +129,7 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
 
       {plan.project_id && actualComparison.length > 0 && (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-sm">
+          <table className="w-full border-collapse text-left text-body">
             <thead>
               <tr>
                 <th scope="col" className={TH}>Πραγματικά vs Πρόβλεψη</th>
@@ -150,7 +150,7 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
                     <td className={`${TD} num text-right whitespace-nowrap text-text`}>{formatMoney(r.planned)}</td>
                     <td className={`${TD} num text-right whitespace-nowrap text-ink`}>{formatMoney(r.actual)}</td>
                     <td className={`${TD} num text-right whitespace-nowrap ${diffPct != null ? "text-ink" : "text-muted"}`}>
-                      {diffPct != null ? `${diffPct > 0 ? "+" : diffPct < 0 ? "−" : ""}${Math.abs(diffPct)}%` : "—"}
+                      {formatPercentPoints(diffPct, { signed: true })}
                     </td>
                   </tr>
                 );
@@ -162,7 +162,7 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
 
       {result.summary.length > 0 && (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-max border-collapse text-left text-sm">
+          <table className="w-full min-w-max border-collapse text-left text-body">
             <thead>
               <tr>
                 <th scope="col" className={TH}>Τύπος Δωματίου</th>

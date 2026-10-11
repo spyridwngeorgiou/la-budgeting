@@ -9,7 +9,7 @@ export function ManualPlanForm({ projectId }: { projectId?: string }) {
   const id = (name: string) => `manual-plan-${name}`;
   return (
     <details className="border-y border-hairline">
-      <summary className="flex min-h-11 cursor-pointer items-center text-sm text-ink hover:underline">
+      <summary className="flex min-h-11 cursor-pointer items-center text-body text-ink hover:underline">
         ή ξεκίνα μια κενή ανάλυση χειροκίνητα
       </summary>
       <form action={createRevenuePlan} className="flex flex-wrap items-end gap-3 pb-4">

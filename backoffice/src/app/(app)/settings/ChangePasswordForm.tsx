@@ -36,11 +36,11 @@ export function ChangePasswordForm() {
         <Input type="password" name="confirm_password" minLength={8} required autoComplete="new-password" />
       </Field>
       {error && (
-        <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+        <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
           {error}
         </p>
       )}
-      {success && <p className="border-l-2 border-positive pl-3 text-sm text-positive">Ο κωδικός άλλαξε επιτυχώς.</p>}
+      {success && <p className="border-l-2 border-positive pl-3 text-body text-positive">Ο κωδικός άλλαξε επιτυχώς.</p>}
       <div className="flex justify-end">
         <SubmitButton>Αλλαγή Κωδικού</SubmitButton>
       </div>

@@ -63,7 +63,7 @@ export default async function RevenuePlansPage() {
         {aiEnabled() ? (
           <AiCreateForm />
         ) : (
-          <p className="max-w-prose border-l-2 border-warning pl-3 text-sm text-text">
+          <p className="max-w-prose border-l-2 border-warning pl-3 text-body text-text">
             Ο βοηθός AI δεν είναι ενεργοποιημένος -- μπορείτε ακόμα να φτιάξετε μια ανάλυση χειροκίνητα
             παρακάτω.
           </p>

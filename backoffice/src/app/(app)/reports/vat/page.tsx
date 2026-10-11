@@ -45,7 +45,7 @@ export default async function VatPage() {
   const chart = vatChartRows(positions ?? [], periodLabel, todayAthens());
 
   return (
-    <div className="flex min-w-0 flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-10">
       <PageHeader
         title={el.nav.vat}
         meta={
@@ -63,7 +63,7 @@ export default async function VatPage() {
       />
 
       {(positions ?? []).length === 0 ? (
-        <p className="border-y border-hairline py-6 text-sm text-muted">
+        <p className="border-y border-hairline py-6 text-body text-muted">
           Δεν υπάρχουν ακόμα κινήσεις για υπολογισμό θέσης ΦΠΑ.
         </p>
       ) : (
@@ -127,8 +127,8 @@ export default async function VatPage() {
                           ? `${el.reports.quarter} ${quarterOf(p.period_start!)}/${p.period_start!.slice(0, 4)}`
                           : formatDate(p.period_start)}
                       </span>
-                      {p.is_locked && <span className="ml-1.5 text-xs text-muted">{el.reports.vatLocked}</span>}
-                      {isCurrent && <span className="ml-1.5 text-xs font-medium text-navy">τρέχουσα περίοδος</span>}
+                      {p.is_locked && <span className="ml-1.5 text-small text-muted">{el.reports.vatLocked}</span>}
+                      {isCurrent && <span className="ml-1.5 text-small font-medium text-navy">τρέχουσα περίοδος</span>}
                     </td>
                     <td className={cn(TD, NUM, "hidden sm:table-cell")}>{formatMoney(p.vat_income)}</td>
                     <td className={cn(TD, NUM, "hidden sm:table-cell")}>{formatMoney(p.vat_expense)}</td>

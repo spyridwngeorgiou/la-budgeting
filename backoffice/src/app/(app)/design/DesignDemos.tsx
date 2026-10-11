@@ -72,7 +72,7 @@ export function OverlayDemos() {
             </div>
           }
         >
-          <p className="text-sm text-text">
+          <p className="text-body text-text">
             Διάβασε πρώτα, επεξεργάσου σε συρτάρι. Στο κινητό το συρτάρι γεμίζει την οθόνη· στον υπολογιστή ανοίγει
             από δεξιά και η σελίδα πίσω μένει ανενεργή.
           </p>
@@ -104,7 +104,7 @@ export function OverlayDemos() {
       )}
       {open === "modal" && (
         <Modal onClose={close} title="Αναίρεση εισαγωγής;">
-          <p className="text-sm text-text">Οι 48 κινήσεις του αρχείου θα αφαιρεθούν. Μπορείτε να το ανεβάσετε ξανά.</p>
+          <p className="text-body text-text">Οι 48 κινήσεις του αρχείου θα αφαιρεθούν. Μπορείτε να το ανεβάσετε ξανά.</p>
           <div className="mt-5 flex justify-end gap-2">
             <Button variant="secondary" onClick={close}>
               Άκυρο

@@ -5,7 +5,7 @@ import { getCurrentOrgId } from "@/lib/supabase/org";
 import { toCents } from "@/lib/finance/money";
 import { formatDate, formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge } from "@/components/ui";
+import { Badge, PageHeader } from "@/components/ui";
 import { specRow, specTable, specTd, specTh } from "@/components/specTable";
 import { loadLookups } from "@/lib/data/lookups";
 import type { Extraction } from "@/lib/ai/schemas";
@@ -124,37 +124,43 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
 
   return (
     <ReviewProvider batchId={batch.id} editable={editable} lookups={reviewLookups}>
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-3 border-b border-rule pb-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <Link href="/inbox" className="eyebrow inline-flex min-h-8 items-center text-muted hover:text-ink">
+      <div className="flex flex-col gap-10">
+        <PageHeader
+          eyebrow={
+            <Link href="/inbox" className="inline-flex min-h-8 items-center text-muted hover:text-ink">
               ← {el.nav.inbox}
             </Link>
-            <h1 className="text-title font-normal break-words text-ink">{batch.filename ?? el.ingest.source[batch.source]}</h1>
-            <p className="text-small text-muted">
-              {subtitle.filter(Boolean).join(" · ")} · {rows?.length ?? 0} γραμμές{" "}
-              <Badge tone={STATUS_TONE[batch.status]}>{el.ingest.batchStatus[batch.status]}</Badge>
-            </p>
-            {meta.legacy && <p className="text-xs text-muted">{el.ingest.review.legacy}</p>}
-          </div>
-          <CommitBar
-            batchId={batch.id}
-            status={batch.status}
-            version={batch.version}
-            pendingCount={pendingCount}
-            undoable={!meta.legacy}
-          />
-        </div>
+          }
+          title={batch.filename ?? el.ingest.source[batch.source]}
+          meta={
+            <>
+              <p>
+                {subtitle.filter(Boolean).join(" · ")} · {rows?.length ?? 0} γραμμές{" "}
+                <Badge tone={STATUS_TONE[batch.status]}>{el.ingest.batchStatus[batch.status]}</Badge>
+              </p>
+              {meta.legacy && <p>{el.ingest.review.legacy}</p>}
+            </>
+          }
+          actions={
+            <CommitBar
+              batchId={batch.id}
+              status={batch.status}
+              version={batch.version}
+              pendingCount={pendingCount}
+              undoable={!meta.legacy}
+            />
+          }
+        />
 
         {/* Statement check: opening + Σ movements = closing, and the opening
             against what the ledger says the account held the day before. */}
         {opening !== null && (
-          <div className="grid grid-cols-1 gap-y-4 border-b border-hairline pb-4 text-sm sm:grid-cols-3 sm:gap-x-0 sm:[&>*:not(:first-child)]:border-l sm:[&>*:not(:first-child)]:border-hairline sm:[&>*:not(:first-child)]:pl-6">
+          <div className="grid grid-cols-1 gap-y-4 border-b border-hairline pb-4 text-body sm:grid-cols-3 sm:gap-x-0 sm:[&>*:not(:first-child)]:border-l sm:[&>*:not(:first-child)]:border-hairline sm:[&>*:not(:first-child)]:pl-6">
             <div>
               <div className="eyebrow text-muted">Υπόλοιπο έναρξης (αντίγραφο)</div>
               <div className="num mt-1 text-figure-sm font-light text-ink">{formatMoney(opening)}</div>
               {ledgerOk !== null && (
-                <div className={`mt-1 text-xs ${ledgerOk ? "text-muted" : "border-l-2 border-warning pl-2 text-warning"}`}>
+                <div className={`mt-1 text-small ${ledgerOk ? "text-muted" : "border-l-2 border-warning pl-2 text-warning"}`}>
                   Σύστημα: {formatMoney(ledgerOpening.data as number)} {ledgerOk ? "✓" : "— διαφέρει"}
                 </div>
               )}
@@ -167,7 +173,7 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
               <div className="eyebrow text-muted">Υπόλοιπο λήξης</div>
               <div className="num mt-1 text-figure-sm font-light text-ink">{formatMoney(closing)}</div>
               {arithmeticOk !== null && (
-                <div className={`mt-1 text-xs ${arithmeticOk && statement?.balanceConsistent !== false ? "text-muted" : "border-l-2 border-negative pl-2 text-negative"}`}>
+                <div className={`mt-1 text-small ${arithmeticOk && statement?.balanceConsistent !== false ? "text-muted" : "border-l-2 border-negative pl-2 text-negative"}`}>
                   {arithmeticOk && statement?.balanceConsistent !== false ? "Η αριθμητική του αντιγράφου συμφωνεί ✓" : "Η αριθμητική δεν συμφωνεί"}
                 </div>
               )}
@@ -176,7 +182,7 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
         )}
 
         {(meta.warnings ?? []).length > 0 && (
-          <ul className="list-disc border-l-2 border-warning py-1 pr-2 pl-8 text-sm text-warning">
+          <ul className="list-disc border-l-2 border-warning py-1 pr-2 pl-8 text-body text-warning">
             {meta.warnings!.map((w) => (
               <li key={w}>{w}</li>
             ))}
@@ -223,15 +229,15 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
                       {isDocuments ? (
                         <>
                           <div>{r.counterparty_name ?? "—"}</div>
-                          <div className="text-xs text-muted">
+                          <div className="text-small text-muted">
                             {[r.counterparty_afm, r.invoice_number, r.mydata_mark && `ΜΑΡΚ ${r.mydata_mark}`].filter(Boolean).join(" · ")}
                           </div>
-                          {r.description && <div className="text-xs text-muted">{r.description}</div>}
+                          {r.description && <div className="text-small text-muted">{r.description}</div>}
                         </>
                       ) : (
                         <>
                           <div className="whitespace-pre-line">{r.description ?? "—"}</div>
-                          {r.reference && <div className="text-xs text-muted">{r.reference}</div>}
+                          {r.reference && <div className="text-small text-muted">{r.reference}</div>}
                         </>
                       )}
                       {r.dedup_status === "dup_external_key" && <Badge tone="neutral">Ήδη εισηγμένη σε προηγούμενο αρχείο</Badge>}
@@ -239,12 +245,12 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
                         <Badge tone="neutral">{el.ingest.aadeDedup[rowMeta.aade_dedup_status]}</Badge>
                       )}
                       {(rowMeta.ai?.needs_review_reasons ?? []).map((reason) => (
-                        <div key={reason} className="mt-1 border-l-2 border-warning pl-2 text-xs text-warning">
+                        <div key={reason} className="mt-1 border-l-2 border-warning pl-2 text-small text-warning">
                           {reason}
                         </div>
                       ))}
                       {r.parse_errors.map((e) => (
-                        <div key={e} className="mt-1 border-l-2 border-negative pl-2 text-xs text-negative">
+                        <div key={e} className="mt-1 border-l-2 border-negative pl-2 text-small text-negative">
                           {e}
                         </div>
                       ))}
@@ -255,7 +261,7 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
                     {isDocuments && (
                       <td className={specTd}>
                         {r.decision === "skip" && !rowEditable ? (
-                          <span className="text-xs text-muted">—</span>
+                          <span className="text-small text-muted">—</span>
                         ) : (
                           <div className="flex min-w-44 flex-col gap-1">
                             <AssignSelect rowId={r.id} field="project_id" value={r.project_id} />
@@ -308,7 +314,7 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
                           />
                         )}
                         {isAi && !rowEditable && doc && (
-                          <a href={doc.url} target="_blank" rel="noreferrer" className="text-xs text-muted underline underline-offset-4 hover:text-ink">
+                          <a href={doc.url} target="_blank" rel="noreferrer" className="text-small text-muted underline underline-offset-4 hover:text-ink">
                             {el.ingest.review.openDocument}
                           </a>
                         )}

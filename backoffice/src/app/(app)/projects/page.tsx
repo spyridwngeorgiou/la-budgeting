@@ -23,7 +23,7 @@ export default async function ProjectsPage() {
     .filter((id): id is string => id !== null);
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
       <PageHeader
         title={el.nav.projects}
         meta={

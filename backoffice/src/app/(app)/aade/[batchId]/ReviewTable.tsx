@@ -79,7 +79,7 @@ export function ReviewTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <label className="flex min-h-10 items-center gap-2 text-sm text-muted">
+      <label className="flex min-h-10 items-center gap-2 text-body text-muted">
         <input
           type="checkbox"
           checked={showDuplicates}
@@ -89,7 +89,7 @@ export function ReviewTable({
       </label>
 
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 border-y border-hairline py-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 border-y border-hairline py-2 text-body">
           <span>{selected.size} επιλεγμένες:</span>
           <Select value={bulkProject} onChange={(e) => setBulkProject(e.target.value)}>
             <option value="">Έργο —</option>
@@ -115,7 +115,7 @@ export function ReviewTable({
               </option>
             ))}
           </Select>
-          <Button onClick={applyBulk} className="!px-2 !py-1 text-xs">
+          <Button onClick={applyBulk} className="!px-2 !py-1 text-small">
             Εφαρμογή
           </Button>
         </div>
@@ -190,7 +190,7 @@ export function ReviewTable({
                     </td>
                   </>
                 ) : (
-                  <td className={`${specTd} text-xs text-muted`} colSpan={3}>
+                  <td className={`${specTd} text-small text-muted`} colSpan={3}>
                     Θα παραλειφθεί
                   </td>
                 )}

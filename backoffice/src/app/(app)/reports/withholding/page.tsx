@@ -17,7 +17,7 @@ export default async function WithholdingPage() {
     .limit(24);
 
   return (
-    <div className="flex min-w-0 flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-10">
       <PageHeader
         title={el.nav.withholding}
         meta={
@@ -26,7 +26,7 @@ export default async function WithholdingPage() {
       />
 
       {(positions ?? []).length === 0 ? (
-        <p className="border-y border-hairline py-6 text-sm text-muted">
+        <p className="border-y border-hairline py-6 text-body text-muted">
           Δεν υπάρχουν ακόμα κινήσεις με παρακράτηση.
         </p>
       ) : (

@@ -1,14 +1,14 @@
-import { ButtonLink } from "@/components/ui";
+import { ButtonLink, PageHeader } from "@/components/ui";
 
 export default function NotFound() {
   return (
-    <div className="flex flex-1 items-start justify-center py-16">
-      <div className="flex w-full max-w-md flex-col gap-3">
-        <h1 className="border-b border-rule pb-3 text-title font-normal text-ink">Δεν βρέθηκε</h1>
-        <p className="text-sm text-text">
+    <div className="flex flex-col gap-10">
+      <PageHeader title="Δεν βρέθηκε" />
+      <div className="flex max-w-prose flex-col gap-4">
+        <p className="text-body text-text">
           Αυτή η σελίδα ή εγγραφή δεν υπάρχει, ή δεν έχετε πρόσβαση σε αυτήν.
         </p>
-        <div className="mt-2">
+        <div>
           <ButtonLink href="/dashboard" variant="primary">
             Επιστροφή στον Πίνακα Ελέγχου
           </ButtonLink>

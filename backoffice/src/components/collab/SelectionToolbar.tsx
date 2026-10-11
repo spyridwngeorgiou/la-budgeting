@@ -140,11 +140,11 @@ function Btn({
       type="button"
       onClick={onClick}
       title={label}
-      className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 px-2.5 text-xs font-medium whitespace-nowrap ${
+      className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 px-2.5 text-small font-medium whitespace-nowrap ${
         danger ? "text-negative hover:bg-negative-tint" : "text-ink hover:bg-hover"
       }`}
     >
-      <span aria-hidden="true" className="text-base leading-none">
+      <span aria-hidden="true" className="text-body leading-none">
         {icon}
       </span>
       <span className="max-sm:sr-only">{label}</span>

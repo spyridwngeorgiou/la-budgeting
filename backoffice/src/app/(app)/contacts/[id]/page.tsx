@@ -25,7 +25,7 @@ export default async function ContactDetailPage({
   if (!rollup) notFound();
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
       <PageHeader title={rollup.name} meta={rollup.afm ? <span className="num">ΑΦΜ: {rollup.afm}</span> : undefined} />
 
       <StatRow>
@@ -35,10 +35,10 @@ export default async function ContactDetailPage({
         <Stat label={el.contact.netBalance} value={formatMoney(rollup.net_balance)} />
       </StatRow>
 
-      <section className="flex flex-col gap-3">
+      <section className="flex flex-col gap-4">
         <h2 className="eyebrow text-muted">{el.nav.transactions}</h2>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-sm">
+          <table className="w-full border-collapse text-left text-body">
             <thead>
               <tr>
                 <th scope="col" className={TH}>{el.transaction.date}</th>

@@ -6,7 +6,7 @@ import { SECTION_TABS } from "@/lib/navigation";
 // underline on the active tab), then the tab's page.
 export default function ReportsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-w-0 flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-4">
       <Tabs tabs={SECTION_TABS.reports} label={el.nav.reports} />
       {children}
     </div>

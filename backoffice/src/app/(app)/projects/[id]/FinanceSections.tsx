@@ -1,7 +1,7 @@
 import { OnePagerRow, OnePagerSection } from "@/components/onepager";
 import { ActionForm } from "@/components/ActionForm";
 import { Button, Select, Input, Term } from "@/components/ui";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatMoney, formatPercent } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import type { DevelopmentResult } from "@/lib/finance/development";
 import { syncLeaseScheduleAction } from "./finance-actions";
@@ -38,7 +38,7 @@ export function BudgetLineRows({ rows }: { rows: BudgetLineRow[] }) {
   return (
     <div className="mt-4 flex flex-col gap-2">
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full border-collapse text-body">
           <caption className="eyebrow pb-2 text-left text-muted">{t.title}</caption>
           <thead>
             <tr>
@@ -87,7 +87,7 @@ export function ProjectIrrRow({ irr }: { irr: number | null }) {
   const t = el.development;
   return (
     <div
-      className={`flex items-baseline justify-between gap-4 border-b border-hairline py-2 text-sm ${
+      className={`flex items-baseline justify-between gap-4 border-b border-hairline py-2 text-body ${
         irr != null && irr < 0 ? "border-l-2 border-l-negative pl-2.5" : ""
       }`}
     >
@@ -95,7 +95,7 @@ export function ProjectIrrRow({ irr }: { irr: number | null }) {
         <Term title={t.irrHint}>{t.irr}</Term>
       </span>
       <span className={`num font-medium ${irr != null && irr < 0 ? "text-negative" : "text-ink"}`}>
-        {irr != null ? `${irr > 0 ? "+" : irr < 0 ? "−" : ""}${Math.abs(irr * 100).toFixed(1)}%` : "—"}
+        {irr != null ? formatPercent(irr, { signed: true, fixed: true }) : "—"}
       </span>
     </div>
   );
@@ -109,7 +109,7 @@ export function DevelopmentSection({ result, truncated }: { result: DevelopmentR
       <OnePagerRow label={t.revenue} amount={result.revenue} />
       <OnePagerRow label={t.cost} amount={result.cost} negative />
       <OnePagerRow label={t.margin} amount={result.margin} negative={result.margin < 0} alert={result.margin < 0} emphasis />
-      {result.marginPct != null && <OnePagerRow label={t.marginPct} amount={`${(result.marginPct * 100).toFixed(1)}%`} />}
+      {result.marginPct != null && <OnePagerRow label={t.marginPct} amount={formatPercent(result.marginPct, { fixed: true })} />}
       <OnePagerRow
         label={t.peak}
         amount={result.peakFunding}

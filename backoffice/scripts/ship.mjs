@@ -10,8 +10,13 @@
 // <env> is staging | prod. Needs SUPABASE_ACCESS_TOKEN (backoffice/.env.migrate).
 // smoke on prod hits only a few pages, slowly: the Workers Free plan has a tiny
 // CPU budget and a burst of SSR requests locks real users out (error 1102).
+//
+// smoke also opens every page in headless Chrome (when Chrome is installed at
+// CHROME, or BROWSER=1; BROWSER=0 skips it) at 1440 and 390 px, one page at a
+// time with a pause between: it fails on a browser error (pageerror), on the
+// error page «Κάτι πήγε στραβά», and on sideways scrolling at 390 px.
 import { spawnSync } from "node:child_process";
-import { rmSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { loadEnv, root } from "./lib/supabase-api.mjs";
 
@@ -21,6 +26,7 @@ const ENVS = {
   prod: { ref: "hjypszddhwohgvubirkc", url: "https://kansha-back-office.spyridwngeorgiou.workers.dev", deploy: "cf:deploy" },
 };
 const REPO = "spyridwngeorgiou/la-budgeting";
+const CHROME = process.env.CHROME ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const DEFAULT_PATHS = ["/dashboard", "/transactions", "/projects", "/planner", "/reports/cash", "/reports/pnl", "/accounts", "/contacts", "/inbox", "/collab"];
 
 const sh = (cmd, opts = {}) => {
@@ -102,6 +108,7 @@ async function smoke(envName, paths, { gapMs = 0 } = {}) {
     const chunks = ("base64-" + Buffer.from(JSON.stringify(session)).toString("base64url")).match(/.{1,3180}/g);
     const cookie = chunks.length === 1 ? `${name}=${chunks[0]}` : chunks.map((c, i) => `${name}.${i}=${c}`).join("; ");
 
+    const jar = chunks.length === 1 ? [{ name, value: chunks[0] }] : chunks.map((c, i) => ({ name: `${name}.${i}`, value: c }));
     const list = (paths.length ? paths : [...DEFAULT_PATHS, ...(proj ? [`/projects/${proj.id}`] : [])]).map((p) => unmangle(p).replace("{project}", proj?.id ?? ""));
     for (const p of list) {
       const t0 = Date.now();
@@ -118,10 +125,69 @@ async function smoke(envName, paths, { gapMs = 0 } = {}) {
       if (gapMs) await sleep(gapMs);
     }
     console.log(`${bad ? "✗" : "✓"} smoke ${envName}: ${list.length - bad}/${list.length} ok`);
+    const wantBrowser = process.env.BROWSER === "1" || (process.env.BROWSER !== "0" && existsSync(CHROME));
+    if (wantBrowser) bad += await browserSmoke(env.url, list, jar, { gapMs: Math.max(gapMs, 800) });
   } finally {
     await fetch(`${auth}/admin/users/${user.id}`, { method: "DELETE", headers: AH });
   }
   if (bad) process.exit(1);
+}
+
+// The same pages in a real browser, sequentially (the Workers CPU budget):
+// a desktop and a phone tab, each page loaded once per tab.
+async function browserSmoke(base, list, jar, { gapMs }) {
+  let puppeteer;
+  try {
+    puppeteer = (await import("puppeteer-core")).default;
+  } catch {
+    console.error("✗ browser smoke: puppeteer-core missing (npm ci)");
+    return 1;
+  }
+  const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ["--lang=el-GR"] });
+  let bad = 0;
+  try {
+    const host = new URL(base).hostname;
+    const desk = await browser.newPage();
+    await desk.setViewport({ width: 1440, height: 900 });
+    const phone = await browser.newPage();
+    await phone.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+    for (const pg of [desk, phone]) await pg.setCookie(...jar.map((c) => ({ ...c, domain: host, path: "/" })));
+    const load = async (pg, url) => {
+      for (let i = 0; i < 2; i++) {
+        const r = await pg.goto(url, { waitUntil: "load", timeout: 90_000 }).catch(() => null);
+        await sleep(2500); // hydration, client charts
+        const busy = await pg.evaluate(() => /error 1102|Error 5\d\d|Worker exceeded/i.test(document.body?.innerText?.slice(0, 400) ?? ""));
+        if (r && r.status() < 500 && !busy) return r.status();
+        await sleep(4000); // a Workers CPU hiccup: back off once
+      }
+      return 503;
+    };
+    for (const p of list) {
+      for (const [pg, tag] of [[desk, "1440"], [phone, "390"]]) {
+        const errors = [];
+        const onErr = (e) => errors.push(`pageerror: ${String(e.message).split(/\r?\n/)[0].slice(0, 200)}`);
+        pg.on("pageerror", onErr);
+        const status = await load(pg, base + p);
+        const found = await pg.evaluate(() => ({
+          boundary: document.body?.innerText.includes("Κάτι πήγε στραβά") ?? false,
+          overflow: document.documentElement.scrollWidth - window.innerWidth,
+        }));
+        pg.off("pageerror", onErr);
+        if (status >= 500) errors.push(`HTTP ${status}`);
+        if (found.boundary) errors.push("error page «Κάτι πήγε στραβά»");
+        if (tag === "390" && found.overflow > 1) errors.push(`scrolls sideways by ${found.overflow}px`);
+        if (errors.length) {
+          bad++;
+          console.error(`✗ browser ${tag} ${p}: ${errors.slice(0, 3).join("; ")}`);
+        }
+        await sleep(gapMs);
+      }
+    }
+    console.log(`${bad ? "✗" : "✓"} browser smoke: ${list.length * 2 - bad}/${list.length * 2} ok (1440 + 390)`);
+  } finally {
+    await browser.close();
+  }
+  return bad;
 }
 
 function deploy(envName) {

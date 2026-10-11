@@ -36,7 +36,7 @@ export function AiCreateForm({ projectId }: { projectId?: string }) {
         required
       />
       {error && (
-        <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+        <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
           {error}
         </p>
       )}

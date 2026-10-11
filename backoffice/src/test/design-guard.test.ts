@@ -3,45 +3,31 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import baseline from "./design-guard.baseline.json";
 
-// The design rules, enforced on the restyled code (src/components/ui,
-// src/components/planner, src/components/collab): square corners (rounded-full for
-// dots and avatars is the one exception, rounded-none is fine), no
-// shadows, and colours only through tokens -- no raw #hex in a .tsx.
-// The classic pages are left alone; they get the look through the aliases
-// in globals.css.
+// The design rules, enforced on ALL of src/app and src/components:
+//   - square corners (rounded-full for dots and avatars is the one
+//     exception, rounded-none is fine) and no shadows;
+//   - colours only through tokens -- no raw #hex in a .tsx;
+//   - type only on the scale (globals.css: text-display … text-eyebrow,
+//     text-field for phone inputs): no Tailwind text-xs/sm/base/lg/xl/2xl…,
+//     no arbitrary text-[…] sizes, no font-mono (Inter only);
+//   - one page title: <h1> only inside ui/PageHeader;
+//   - one table: <table> only inside components/ui (SpecTable, DataTable).
 //
 // An unavoidable exception goes in design-guard.baseline.json as
 // "path:rule": allowed count, so it is reviewed rather than silent.
 
 const SRC = path.resolve(import.meta.dirname, "..");
-// Phase 6 added the planner and the collaboration pieces (the Excalidraw
-// scene's own colours live in .ts files, which are not scanned).
-// The classic shell's own pages followed (look-and-feel pass): dashboard,
-// inbox (with its aade / documents flows), settings, assistant, login,
-// then the report tabs, the projects area and the ledger pages
-// (transactions, contacts, accounts).
-const GUARDED = [
-  "components/ui",
-  "components/planner",
-  "components/collab",
-  "app/(app)/dashboard",
-  "app/(app)/inbox",
-  "app/(app)/aade",
-  "app/(app)/documents",
-  "app/(app)/settings",
-  "app/(app)/assistant",
-  "app/(auth)",
-  "app/(app)/reports",
-  "app/(app)/projects",
-  "app/(app)/transactions",
-  "app/(app)/contacts",
-  "app/(app)/accounts",
-];
+const GUARDED = ["app", "components"];
 
-const RULES: { name: string; re: RegExp }[] = [
-  { name: "rounded", re: /\brounded-(?!full\b|none\b)[\w[\]-]+/g },
-  { name: "shadow", re: /\b(?:shadow|drop-shadow|inset-shadow)-[\w[\]/-]+/g },
-  { name: "hex", re: /#[0-9a-fA-F]{3,8}\b/g },
+const RULES: { name: string; re: RegExp; except?: (rel: string) => boolean }[] = [
+  { name: "rounded", re: /rounded-(?!full|none)[\w[\]-]+/g },
+  { name: "shadow", re: /(?:shadow|drop-shadow|inset-shadow)-[\w[\]/-]+/g },
+  { name: "hex", re: /#[0-9a-fA-F]{3,8}/g },
+  { name: "text-size", re: /(?<![\w-])(?:[\w@[\]-]+:)*text-(?:xs|sm|base|lg|xl|[2-9]xl)(?![\w-])/g },
+  { name: "text-arbitrary", re: /(?<![\w-])(?:[\w@[\]-]+:)*text-\[[^\]]*\]/g },
+  { name: "font-mono", re: /font-mono/g },
+  { name: "h1", re: /<h1[\s>]/g, except: (rel) => rel === "components/ui/PageHeader.tsx" },
+  { name: "table", re: /<table[\s>]/g, except: (rel) => rel.startsWith("components/ui/") },
 ];
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -64,6 +50,7 @@ export function violations(): Record<string, string[]> {
         .replace(/\/\*[\s\S]*?\*\//g, "")
         .replace(/(^|[^:])\/\/.*$/gm, "$1");
       for (const rule of RULES) {
+        if (rule.except?.(rel)) continue;
         const hits = text.match(rule.re);
         if (hits) out[`${rel}:${rule.name}`] = hits;
       }
@@ -76,9 +63,10 @@ export function violations(): Record<string, string[]> {
 describe("design guard", { timeout: 30_000 }, () => {
   it("scans the guarded folders", () => {
     expect(walk(path.join(SRC, "components/ui")).length).toBeGreaterThan(10);
+    expect(walk(path.join(SRC, "app")).length).toBeGreaterThan(100);
   });
 
-  it("no new rounded corners, shadows or raw hex colours", () => {
+  it("no new rounded corners, shadows, raw hex, off-scale type, raw titles or tables", () => {
     const allowed = baseline as Record<string, number>;
     const found = violations();
     const fresh = Object.entries(found)

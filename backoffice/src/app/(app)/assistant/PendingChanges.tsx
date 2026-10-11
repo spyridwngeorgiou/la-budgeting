@@ -46,13 +46,13 @@ export async function PendingChanges() {
         <AiSpark className="text-ai" />
         <h2 className="text-section font-normal text-ink">{el.nav.changes}</h2>
       </div>
-      <p className="text-sm text-muted">
+      <p className="text-body text-muted">
         Προτάσεις αλλαγών από το Kansha Operator. Καμία δεν έχει εφαρμοστεί ακόμα -- ελέγξτε το πριν/μετά και
         εγκρίνετε ή απορρίψτε.
       </p>
 
       {(changes ?? []).length === 0 ? (
-        <p className="border-b border-hairline pb-3 text-sm text-muted">Καμία εκκρεμής πρόταση αυτή τη στιγμή.</p>
+        <p className="border-b border-hairline pb-3 text-body text-muted">Καμία εκκρεμής πρόταση αυτή τη στιγμή.</p>
       ) : (
         <div className="flex flex-col gap-4">
           {(changes ?? []).map((c) => (
@@ -65,7 +65,7 @@ export async function PendingChanges() {
         <section>
           <h2 className="eyebrow mb-2 text-muted">Ιστορικό Αποφάσεων</h2>
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left text-xs">
+            <table className="w-full border-collapse text-left text-small">
               <thead>
                 <tr>
                   <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Πίνακας</th>

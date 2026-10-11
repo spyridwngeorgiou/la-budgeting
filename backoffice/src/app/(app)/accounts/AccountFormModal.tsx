@@ -56,7 +56,7 @@ export function AccountFormModal({ action }: { action: (formData: FormData) => P
                 ))}
               </Select>
             </Field>
-            <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 self-start text-sm text-ink md:min-h-10">
+            <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 self-start text-body text-ink md:min-h-10">
               <input type="checkbox" name="is_liquid" defaultChecked className="h-4 w-4 accent-navy" />
               Ρευστό διαθέσιμο
             </label>
@@ -74,7 +74,7 @@ export function AccountFormModal({ action }: { action: (formData: FormData) => P
               />
             </Field>
             {error && (
-              <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+              <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
                 {error}
               </p>
             )}

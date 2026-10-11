@@ -20,7 +20,7 @@ function SectionTitle({ id, title, count, children }: { id: string; title: strin
     <div className="flex flex-wrap items-end justify-between gap-2 border-b border-hairline pb-3">
       <h2 id={id} className="flex items-center gap-2 text-section font-normal text-ink">
         {title}
-        <span className="num text-sm text-muted">{count}</span>
+        <span className="num text-body text-muted">{count}</span>
       </h2>
       {children}
     </div>
@@ -84,10 +84,10 @@ export default async function InboxPage() {
         }
       />
 
-      <section className="flex flex-col gap-3" aria-labelledby="inbox-review">
+      <section className="flex flex-col gap-4" aria-labelledby="inbox-review">
         <SectionTitle id="inbox-review" title="Προς έλεγχο" count={counts.rows} />
         {stagedBatches.length === 0 ? (
-          <p className="text-sm text-muted">
+          <p className="text-body text-muted">
             Τίποτα προς έλεγχο.{" "}
             <Link href="/inbox/new" className="underline underline-offset-4 hover:text-ink">
               Νέα καταχώριση
@@ -113,7 +113,7 @@ export default async function InboxPage() {
                         <Link href={`/inbox/${b.id}`} className="underline-offset-4 hover:underline">
                           {b.filename ?? el.ingest.source[b.source]}
                         </Link>
-                        <div className="text-xs text-muted">{el.ingest.source[b.source]}</div>
+                        <div className="text-small text-muted">{el.ingest.source[b.source]}</div>
                       </td>
                       <td className={`${specTd} hidden sm:table-cell`}>{account?.name ?? "—"}</td>
                       <td className={`${specTd} num text-right`}>{b.row_count}</td>
@@ -127,14 +127,14 @@ export default async function InboxPage() {
         )}
       </section>
 
-      <section className="flex flex-col gap-3" aria-labelledby="inbox-ai">
+      <section className="flex flex-col gap-4" aria-labelledby="inbox-ai">
         <SectionTitle id="inbox-ai" title="Προτάσεις AI" count={counts.changes + counts.proposals}>
-          <Link href="/assistant?panel=changes" className="inline-flex min-h-8 items-center text-sm text-muted hover:text-ink">
+          <Link href="/assistant?panel=changes" className="inline-flex min-h-8 items-center text-body text-muted hover:text-ink">
             Ιστορικό αποφάσεων →
           </Link>
         </SectionTitle>
         {changeRows.length === 0 && proposalRows.length === 0 ? (
-          <p className="text-sm text-muted">Καμία εκκρεμής πρόταση αυτή τη στιγμή.</p>
+          <p className="text-body text-muted">Καμία εκκρεμής πρόταση αυτή τη στιγμή.</p>
         ) : (
           <div className="flex flex-col gap-4">
             {changeRows.map((c) => (
@@ -149,16 +149,16 @@ export default async function InboxPage() {
                   return (
                     <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline py-3">
                       <div className="flex min-w-0 flex-col gap-0.5">
-                        <span className="flex items-center gap-1.5 text-sm text-ai">
+                        <span className="flex items-center gap-1.5 text-body text-ai">
                           <AiSpark /> {title}
                         </span>
-                        <span className="text-xs text-muted">
+                        <span className="text-small text-muted">
                           {[project?.display_name, board?.title, formatDate(p.created_at)].filter(Boolean).join(" · ")}
                         </span>
                       </div>
                       <Link
                         href={`/collab/${p.project_id}/board/${p.board_id}`}
-                        className="inline-flex min-h-10 items-center text-sm text-ink underline-offset-4 hover:underline"
+                        className="inline-flex min-h-10 items-center text-body text-ink underline-offset-4 hover:underline"
                       >
                         Άνοιγμα στον πίνακα →
                       </Link>
@@ -171,10 +171,10 @@ export default async function InboxPage() {
         )}
       </section>
 
-      <section className="flex flex-col gap-3" aria-labelledby="inbox-history">
+      <section className="flex flex-col gap-4" aria-labelledby="inbox-history">
         <SectionTitle id="inbox-history" title="Ιστορικό" count={historyRows.length} />
         {historyRows.length === 0 ? (
-          <p className="text-sm text-muted">Δεν έχει καταχωριστεί ακόμα τίποτα από τα Εισερχόμενα.</p>
+          <p className="text-body text-muted">Δεν έχει καταχωριστεί ακόμα τίποτα από τα Εισερχόμενα.</p>
         ) : (
           <ul className="flex flex-col">
             {historyRows.map((b) => {
@@ -183,10 +183,10 @@ export default async function InboxPage() {
               return (
                 <li key={b.id} className="flex flex-col gap-2 border-b border-hairline py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex min-w-0 flex-col gap-0.5">
-                    <Link href={`/inbox/${b.id}`} className="truncate text-sm text-ink underline-offset-4 hover:underline">
+                    <Link href={`/inbox/${b.id}`} className="truncate text-body text-ink underline-offset-4 hover:underline">
                       {b.filename ?? el.ingest.source[b.source]}
                     </Link>
-                    <span className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                    <span className="flex flex-wrap items-center gap-1.5 text-small text-muted">
                       {el.ingest.source[b.source]} · <span className="num">{b.row_count}</span> γραμμές
                       {when ? ` · ${formatDate(when)}` : ""}
                       <Badge tone={STATUS_TONE[b.status]}>{el.ingest.batchStatus[b.status]}</Badge>

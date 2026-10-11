@@ -132,7 +132,7 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
   const years = [thisYear - 2, thisYear - 1, thisYear, thisYear + 1];
 
   return (
-    <div className="flex min-w-0 flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-10">
       <PageHeader title={t.pnlTitle} meta={<span className="block max-w-3xl">{t.pnlIntro}</span>} />
 
       <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
@@ -167,7 +167,7 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
           series={[
             { key: "revenue", name: t.lines.revenue, tone: "navy" },
             { key: "cost", name: t.pnlCost, tone: "accent" },
-            { key: "result", name: t.lines.result, kind: "line", tone: "ink" },
+            { key: "result", name: t.lines.result, kind: "line", tone: "navy" },
             ...(lastYearRows.length > 0
               ? [{ key: "lastYear", name: t.pnlLastYear, kind: "line" as const, faint: true }]
               : []),
@@ -176,7 +176,7 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
       )}
 
       {buckets.length === 0 ? (
-        <p className="border-y border-hairline py-6 text-sm text-muted">{t.pnlEmpty}</p>
+        <p className="border-y border-hairline py-6 text-body text-muted">{t.pnlEmpty}</p>
       ) : (
         <div className={FRAME}>
           <table className={TABLE}>
@@ -251,7 +251,7 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
       )}
 
       {topCosts.length > 0 && (
-        <section className="flex min-w-0 flex-col gap-3">
+        <section className="flex min-w-0 flex-col gap-4">
           <SectionHeader title={`${t.topCostsTitle} · ${year}`} />
           <BarChart
             label={t.topCostsLabel}
@@ -264,7 +264,7 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
       )}
 
       {drillable && cellLine && (
-        <section className="flex min-w-0 flex-col gap-3">
+        <section className="flex min-w-0 flex-col gap-4">
           <SectionHeader
             title={`${t.drillDown}: ${t.lines[cellLine as keyof typeof t.lines]}${cellBucket ? ` · ${bucketLabel(cellBucket)}` : ` · ${year}`}`}
             actions={
@@ -284,7 +284,7 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
             }
           />
           {drill.length === 0 ? (
-            <p className="text-sm text-muted">{t.noItems}</p>
+            <p className="text-body text-muted">{t.noItems}</p>
           ) : (
             <div className={FRAME}>
               <table className={TABLE}>
@@ -296,7 +296,7 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
                         <Link href={`/transactions?ids=${d.id}`} className={LINK}>
                           {d.label}
                         </Link>
-                        {d.scheduled && <span className="ml-1 text-xs text-muted">({t.pnlScheduledTag})</span>}
+                        {d.scheduled && <span className="ml-1 text-small text-muted">({t.pnlScheduledTag})</span>}
                       </td>
                       <td className={cn("py-2.5 text-ink", NUM)}>{formatMoney(d.amount)}</td>
                     </tr>

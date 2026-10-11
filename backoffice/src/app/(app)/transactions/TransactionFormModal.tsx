@@ -5,7 +5,7 @@ import { Button, Input, Select, Label, Field, Badge, Modal } from "@/components/
 import { DuplicateWarning } from "@/components/DuplicateWarning";
 import { el } from "@/lib/i18n/el";
 import { deriveFromNet, cashOnly } from "@/lib/finance/money";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, formatPercent } from "@/lib/format";
 import { VAT_RATES } from "@/lib/domain/enums";
 import type { DuplicateCandidate, WriteResult } from "@/lib/ingest/duplicates";
 import { suggestForContact } from "./actions";
@@ -139,7 +139,7 @@ export function TransactionFormModal({
           {(["expense", "income"] as const).map((d, i) => (
             <label
               key={d}
-              className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center border px-3 py-2 text-center text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy md:min-h-10 ${
+              className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center border px-3 py-2 text-center text-body transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy md:min-h-10 ${
                 i > 0 ? "-ml-px" : ""
               } ${direction === d ? "border-navy bg-navy text-panel-ink" : "border-chip-border text-text hover:border-navy hover:text-ink"}`}
             >
@@ -245,7 +245,7 @@ export function TransactionFormModal({
           </Select>
         </Field>
 
-        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 self-start text-sm text-ink md:min-h-10">
+        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 self-start text-body text-ink md:min-h-10">
           <input
             className="h-4 w-4 accent-navy"
             type="checkbox"
@@ -274,7 +274,7 @@ export function TransactionFormModal({
               <Select name="vat_rate" value={vatRate} onChange={(e) => setVatRate(e.target.value)}>
                 {VAT_RATES.map((r) => (
                   <option key={r} value={r}>
-                    {(r * 100).toFixed(0)}%
+                    {formatPercent(r, { digits: 0 })}
                   </option>
                 ))}
               </Select>
@@ -360,7 +360,7 @@ export function TransactionFormModal({
         </Field>
 
         {error && (
-          <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+          <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
             {error}
           </p>
         )}

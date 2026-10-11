@@ -43,7 +43,7 @@ export default async function InstallmentsPage() {
   const accountOptions = (accounts ?? []).map((a) => ({ id: a.id, label: a.name }));
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
       <PageHeader
         title={el.nav.installments}
         meta="Δόσεις προς τρίτους (π.χ. ρυθμίσεις φόρων, οφειλές) που δεν είναι δάνειο έργου."
@@ -105,7 +105,7 @@ export default async function InstallmentsPage() {
                 Δόσεις (<span className="num">{rows.length}</span>)
               </summary>
               <div className="mt-2 overflow-x-auto">
-                <table className="w-full border-collapse text-left text-sm">
+                <table className="w-full border-collapse text-left text-body">
                   <tbody className="border-t border-rule">
                     {rows.map((tx) => (
                       <tr key={tx.id} className="border-b border-hairline hover:bg-hover">

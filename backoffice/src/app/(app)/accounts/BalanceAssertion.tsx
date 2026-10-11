@@ -41,7 +41,7 @@ function BreakdownRow({ label, value, emphasis, tone }: { label: string; value: 
       }`}
     >
       <span>{label}</span>
-      <span className={`num text-sm ${tone ?? (emphasis ? "text-ink" : "text-text")}`}>{value}</span>
+      <span className={`num text-body ${tone ?? (emphasis ? "text-ink" : "text-text")}`}>{value}</span>
     </div>
   );
 }
@@ -54,7 +54,7 @@ function GapHeadline({ gap, isCash, gapPeriods }: { gap: number; isCash: boolean
     return (
       <div className="flex items-center gap-2">
         <Badge tone="neutral">Συμφωνεί</Badge>
-        <span className="text-sm text-text">Δεν λείπουν κινήσεις</span>
+        <span className="text-body text-text">Δεν λείπουν κινήσεις</span>
       </div>
     );
   }
@@ -62,7 +62,7 @@ function GapHeadline({ gap, isCash, gapPeriods }: { gap: number; isCash: boolean
   return (
     <div className="border-l-2 border-negative pl-3">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-sm font-medium text-negative">{gap < 0 ? "Λείπουν έξοδα" : "Λείπουν έσοδα"}</span>
+        <span className="text-body font-medium text-negative">{gap < 0 ? "Λείπουν έξοδα" : "Λείπουν έσοδα"}</span>
         <span className="num text-figure-sm font-light text-negative">{formatMoney(Math.abs(gap))}</span>
       </div>
       <p className="mt-1 text-small text-text">

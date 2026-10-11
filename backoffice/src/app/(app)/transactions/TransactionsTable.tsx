@@ -174,7 +174,7 @@ export function TransactionsTable({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-10">
       <PageHeader
         title={el.nav.transactions}
         meta="Το πλήρες βιβλίο εσόδων-εξόδων. Φιλτράρετε, αναζητήστε, επεξεργαστείτε."
@@ -222,7 +222,7 @@ export function TransactionsTable({
           inside its own frame under a sticky head), a stack of hairline
           cards on a phone. Never rendered twice -- this can be 500 rows. */}
       <div className="md:max-h-[70vh] md:overflow-auto">
-        <table className="block w-full border-collapse text-left text-sm md:table">
+        <table className="block w-full border-collapse text-left text-body md:table">
           <thead className="hidden md:table-header-group">
             <tr>
               <th scope="col" className={TH}>
@@ -257,13 +257,13 @@ export function TransactionsTable({
                   }`}
                 >
                   <td
-                    className={`${TD} col-start-1 row-start-1 text-small text-muted md:text-sm md:text-text ${
+                    className={`${TD} col-start-1 row-start-1 text-small text-muted md:text-body md:text-text ${
                       overdue ? "md:border-l-2 md:border-l-negative" : ""
                     }`}
                   >
                     <span className="num">{formatDate(tx.tx_date)}</span>
                   </td>
-                  <td className={`${TD} col-start-1 row-start-2 min-w-0 text-body text-ink md:text-sm`}>
+                  <td className={`${TD} col-start-1 row-start-2 min-w-0 text-body text-ink md:text-body`}>
                     <span className="inline-flex items-center gap-1.5 md:whitespace-nowrap">
                       {tx.contact_name ?? "—"}
                       {AI_ORIGINS.has(tx.origin ?? "") && (
@@ -274,18 +274,18 @@ export function TransactionsTable({
                     </span>
                   </td>
                   <td
-                    className={`${TD} col-span-2 col-start-1 row-start-3 text-small text-muted md:text-sm md:whitespace-nowrap md:text-text`}
+                    className={`${TD} col-span-2 col-start-1 row-start-3 text-small text-muted md:text-body md:whitespace-nowrap md:text-text`}
                   >
                     <span className="md:hidden">{el.transaction.project} · </span>
                     {tx.project_name ?? "—"}
                   </td>
                   <td
-                    className={`${TD} col-span-2 col-start-1 row-start-4 text-small text-muted md:text-sm md:whitespace-nowrap md:text-text`}
+                    className={`${TD} col-span-2 col-start-1 row-start-4 text-small text-muted md:text-body md:whitespace-nowrap md:text-text`}
                   >
                     <span className="md:hidden">{el.transaction.category} · </span>
                     {tx.category_name ?? "—"}
                   </td>
-                  <td className={`${TD} num col-start-2 row-start-1 text-right text-body text-ink md:text-sm`}>
+                  <td className={`${TD} num col-start-2 row-start-1 text-right text-body text-ink md:text-body`}>
                     {tx.direction === "income" ? "+" : "−"}
                     {formatMoney(tx.gross_amount)}
                   </td>
@@ -346,7 +346,7 @@ export function TransactionsTable({
             })}
             {visibleTransactions.length === 0 && (
               <tr className="block md:table-row">
-                <td colSpan={7} className="block border-b border-hairline py-8 text-sm text-muted md:table-cell md:px-3">
+                <td colSpan={7} className="block border-b border-hairline py-8 text-body text-muted md:table-cell md:px-3">
                   {transactions.length === 0
                     ? "Δεν υπάρχουν ακόμα κινήσεις. Πατήστε «+ Νέα Κίνηση» για να ξεκινήσετε."
                     : "Καμία κίνηση δεν ταιριάζει με την αναζήτηση."}

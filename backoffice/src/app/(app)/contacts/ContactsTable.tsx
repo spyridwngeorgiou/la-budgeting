@@ -47,7 +47,7 @@ export function ContactsTable({ rollup }: { rollup: ContactRow[] }) {
       />
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-left text-sm">
+        <table className="w-full border-collapse text-left text-body">
           <thead>
             <tr>
               <th scope="col" className={TH}>{el.contact.name}</th>

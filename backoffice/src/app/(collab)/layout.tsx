@@ -19,7 +19,7 @@ export default async function CollabLayout({ children }: { children: React.React
           <Brand compact className="sm:hidden" />
           <Brand className="max-sm:hidden" />
         </Link>
-        <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto text-sm">
+        <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto text-body">
           <Link
             href="/collab"
             className="inline-flex min-h-11 items-center px-2.5 whitespace-nowrap text-text hover:bg-hover hover:text-ink"

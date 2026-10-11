@@ -1,12 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { SectionHeader } from "@/components/ui";
 import { specRow, specTable, specTd, specTh } from "@/components/specTable";
-import { formatMoney } from "@/lib/format";
+import { formatDuration, formatMoney } from "@/lib/format";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { ingestUnified } from "@/lib/ingest/flag";
 
 const FEATURE_LABELS: Record<string, string> = {
   document_extraction: "Ανάγνωση Παραστατικού (φωτό)",
+  email_document_extraction: "Ανάγνωση Παραστατικού (email)",
+  email_nl_entry: "Καταχώρηση από email (κείμενο)",
   nl_entry: "Καταχώρηση με Κείμενο/Φωνή",
   assistant: "Kansha AI (chat)",
   dashboard_summary: "Περίληψη Κέντρου Ελέγχου",
@@ -78,7 +80,7 @@ export async function CaptureAnalytics() {
     return (
       <section className="flex w-full max-w-2xl flex-col gap-4">
         <SectionHeader title="Ανάλυση Καταγραφής AI" />
-        <p className="text-sm text-muted">
+        <p className="text-body text-muted">
           Καμία χρήση AI ακόμα. Αυτή η ενότητα γεμίζει μόλις αρχίσετε να χρησιμοποιείτε το Kansha
           Operator για πραγματικές κινήσεις.
         </p>
@@ -110,7 +112,7 @@ export async function CaptureAnalytics() {
   return (
     <section className="flex w-full max-w-2xl flex-col gap-4">
       <SectionHeader title="Ανάλυση Καταγραφής AI" />
-      <p className="text-xs text-muted">
+      <p className="text-small text-muted">
         Ταχύτητα και ακρίβεια ανά λειτουργία AI, από τις πραγματικές κλήσεις.
       </p>
       <div className="overflow-x-auto">
@@ -135,10 +137,10 @@ export async function CaptureAnalytics() {
                     : null;
               return (
                 <tr key={feature} className={specRow}>
-                  <td className={`${specTd} text-ink`}>{FEATURE_LABELS[feature] ?? feature}</td>
+                  <td className={`${specTd} text-ink`}>{FEATURE_LABELS[feature] ?? feature.replace(/_/g, " ")}</td>
                   <td className={`${specTd} num text-right`}>{stats.count}</td>
                   <td className={`${specTd} num text-right`}>
-                    {med != null ? `${(med / 1000).toFixed(1)}s` : "—"}
+                    {formatDuration(med)}
                   </td>
                   <td className={`${specTd} num text-right`}>
                     {editRate ? `${Math.round((editRate.edited / editRate.total) * 100)}%` : "—"}
@@ -150,7 +152,7 @@ export async function CaptureAnalytics() {
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-muted">
+      <p className="text-small text-muted">
         «Ποσοστό Επεξεργασίας» = πόσες εγκεκριμένες κινήσεις χρειάστηκαν διόρθωση πριν καταχωρηθούν
         (μόνο για φωτό/κείμενο-φωνή).
       </p>

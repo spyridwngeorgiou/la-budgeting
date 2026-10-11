@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/supabase/access";
 import { formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { AiSpark, GlancePanel, PageHeader, SectionHeader } from "@/components/ui";
+import { AiSpark, figureFit, GlancePanel, PageHeader, SectionHeader } from "@/components/ui";
 import { aiEnabled } from "@/lib/ai/client";
 import { rankAttention } from "@/lib/dashboard/attention";
 import { DashboardSummary } from "./DashboardSummary";
@@ -300,14 +300,14 @@ export default async function DashboardPage() {
       <section className="flex flex-col">
         <SectionHeader title="Χρειάζεται Προσοχή" />
         {attention.shown.length === 0 ? (
-          <p className="border-b border-hairline py-3 text-sm text-muted">Τίποτα δεν χρειάζεται προσοχή αυτή τη στιγμή.</p>
+          <p className="border-b border-hairline py-3 text-body text-muted">Τίποτα δεν χρειάζεται προσοχή αυτή τη στιγμή.</p>
         ) : (
           <ul className="flex flex-col">
             {attention.shown.map((item) => (
               <li key={item.href + item.label} className="border-b border-hairline">
                 <Link
                   href={item.href}
-                  className="flex min-h-11 items-center justify-between gap-3 border-l-2 border-negative py-2 pr-2 pl-4 text-sm text-ink transition-colors hover:bg-hover"
+                  className="flex min-h-11 items-center justify-between gap-3 border-l-2 border-negative py-2 pr-2 pl-4 text-body text-ink transition-colors hover:bg-hover"
                 >
                   <span>{item.label}</span>
                   <span aria-hidden="true" className="shrink-0 text-muted">
@@ -317,7 +317,7 @@ export default async function DashboardPage() {
               </li>
             ))}
             {attention.more > 0 && (
-              <li className="flex min-h-11 flex-wrap items-center gap-x-4 border-b border-hairline py-2 pr-2 pl-4 text-sm text-muted">
+              <li className="flex min-h-11 flex-wrap items-center gap-x-4 border-b border-hairline py-2 pr-2 pl-4 text-body text-muted">
                 <span>+{attention.more} ακόμα</span>
                 {canReview && (
                   <Link href="/inbox" className="inline-flex min-h-11 items-center text-ink underline-offset-4 hover:underline">
@@ -334,7 +334,7 @@ export default async function DashboardPage() {
       </section>
 
       {aiEnabled() && (
-        <section aria-label={el.nav.assistant} className="flex flex-col gap-2">
+        <section aria-label={el.nav.assistant} className="flex flex-col gap-4">
           <AskAssistantCard />
           <DashboardSummary />
         </section>
@@ -342,15 +342,6 @@ export default async function DashboardPage() {
     </div>
   );
 }
-
-// Each length steps down by the width its cell actually has (container
-// queries), so a million never overflows a quarter of the panel or a phone
-// half. Literal class strings: Tailwind only sees what is written out.
-const FIGURE_SIZE: Record<GlanceFigure["length"], string> = {
-  1: "text-xl @min-[9.25rem]:text-figure-sm @min-[14rem]:text-figure",
-  2: "text-lg @min-[9.25rem]:text-xl @min-[11rem]:text-figure-sm @min-[16.5rem]:text-figure",
-  3: "text-base @min-[10rem]:text-lg @min-[13.5rem]:text-figure-sm @min-[20.5rem]:text-figure",
-};
 
 // One «Με μια ματιά» figure: eyebrow (wraps), big light tabular value, a
 // muted line; the whole figure is the link to where the number comes from.
@@ -361,7 +352,7 @@ function Figure({ figure }: { figure: GlanceFigure }) {
       className="group @container flex min-h-11 min-w-0 flex-col gap-1.5 focus-visible:outline-panel-ink xl:border-l xl:border-panel-hairline xl:px-6 xl:first:border-l-0 xl:first:pl-0"
     >
       <span className="eyebrow break-words text-panel-muted transition-colors group-hover:text-panel-ink">{figure.label}</span>
-      <span className={`num font-light text-panel-ink [overflow-wrap:anywhere] ${FIGURE_SIZE[figure.length]}`}>
+      <span className={`num font-light text-panel-ink [overflow-wrap:anywhere] ${figureFit(figure.length)}`}>
         {figure.value}
       </span>
       <span className="text-small break-words text-panel-muted">
@@ -401,7 +392,7 @@ function Card({ card }: { card: DestinationCard }) {
         <span aria-hidden="true" className={`absolute inset-y-0 -left-px border-l-2 ${SEVERITY_BAR[card.severity]}`} />
       )}
       <span className="flex items-baseline justify-between gap-2">
-        <span className={`inline-flex min-w-0 items-center gap-1.5 text-lg break-words sm:text-section ${ai ? "text-ai" : "text-ink"}`}>
+        <span className={`inline-flex min-w-0 items-center gap-1.5 text-section break-words ${ai ? "text-ai" : "text-ink"}`}>
           {ai && <AiSpark className="shrink-0" />}
           {card.title}
         </span>
@@ -410,7 +401,7 @@ function Card({ card }: { card: DestinationCard }) {
         </span>
       </span>
       <span className="text-small text-muted">{card.description}</span>
-      <span className={`num mt-auto pt-3 text-sm ${card.severity ? SEVERITY_TEXT[card.severity] : "text-ink"}`}>{card.metric}</span>
+      <span className={`num mt-auto pt-3 text-body ${card.severity ? SEVERITY_TEXT[card.severity] : "text-ink"}`}>{card.metric}</span>
     </Link>
   );
 }

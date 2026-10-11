@@ -65,7 +65,7 @@ export function MappingForm({
       className="flex flex-col gap-5"
     >
       <div className="max-h-80 overflow-auto border-y border-hairline">
-        <table className="border-collapse text-xs">
+        <table className="border-collapse text-small">
           <tbody>
             {preview.map((row, r) => (
               <tr
@@ -84,7 +84,7 @@ export function MappingForm({
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-muted">Πατήστε τη γραμμή της επικεφαλίδας (τώρα: γραμμή {headerRow}).</p>
+      <p className="text-small text-muted">Πατήστε τη γραμμή της επικεφαλίδας (τώρα: γραμμή {headerRow}).</p>
       <input type="hidden" name="header_row" value={headerRow} />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -142,7 +142,7 @@ export function MappingForm({
       </Field>
 
       {state && "error" in state && (
-        <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+        <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
           {state.error}
         </p>
       )}

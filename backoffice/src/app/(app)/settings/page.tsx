@@ -46,7 +46,7 @@ export default async function SettingsPage() {
         meta="Προσωπικά (αρχική σελίδα, κωδικός), στοιχεία της επιχείρησης, όριο δαπάνης AI και εξαγωγή δεδομένων."
       />
 
-      <section className="flex w-full max-w-md flex-col gap-6">
+      <section className="flex w-full max-w-md flex-col gap-4">
         <SectionHeader title="Προσωπικά" />
         <ActionForm action={setHomePath} className="flex flex-wrap items-end gap-3">
           <Field>
@@ -61,7 +61,7 @@ export default async function SettingsPage() {
           </Field>
           <Button type="submit">{el.common.save}</Button>
         </ActionForm>
-        <p className="text-xs text-muted">Η σελίδα που ανοίγει μετά τη σύνδεση. Η «Επισκόπηση» μένει πάντα πρώτη στο μενού.</p>
+        <p className="text-small text-muted">Η σελίδα που ανοίγει μετά τη σύνδεση. Η «Επισκόπηση» μένει πάντα πρώτη στο μενού.</p>
         <div className="flex flex-col gap-3">
           <h3 className="eyebrow text-muted">Αλλαγή Κωδικού</h3>
           <ChangePasswordForm />
@@ -80,7 +80,7 @@ export default async function SettingsPage() {
             <Input name="own_afm" defaultValue={org?.own_afm ?? ""} pattern="[0-9]{9}" maxLength={9} required />
           </Field>
           {org?.own_afm === "000000000" && (
-            <p className="border-l-2 border-warning pl-3 text-xs text-warning">
+            <p className="border-l-2 border-warning pl-3 text-small text-warning">
               Προσοχή: εικονικό ΑΦΜ. Χρειάζεται το πραγματικό πριν από οποιαδήποτε εισαγωγή AADE,
               ώστε να καθορίζεται σωστά η κατεύθυνση (έσοδο/έξοδο) κάθε κίνησης.
             </p>
@@ -98,23 +98,23 @@ export default async function SettingsPage() {
             const profile = profileFor(m.user_id);
             return (
               <div key={m.user_id} className="flex min-h-11 flex-wrap items-center justify-between gap-2 border-b border-hairline py-2">
-                <span className="min-w-0 text-sm break-words text-ink">{profile?.display_name || profile?.email || m.user_id}</span>
+                <span className="min-w-0 text-body break-words text-ink">{profile?.display_name || profile?.email || m.user_id}</span>
                 {isAdmin ? (
                   <div className="flex flex-wrap items-center gap-1.5">
                     <ActionForm action={updateMemberRole.bind(null, m.user_id)} className="flex items-center gap-1.5">
-                      <Select name="role" defaultValue={m.role} className="!py-1 text-xs">
+                      <Select name="role" defaultValue={m.role} className="!py-1 text-small">
                         {ORG_ROLE.map((r) => (
                           <option key={r} value={r}>
                             {ROLE_LABELS[r]}
                           </option>
                         ))}
                       </Select>
-                      <Button type="submit" variant="secondary" className="!px-2 !py-1 text-xs">
+                      <Button type="submit" variant="secondary" className="!px-2 !py-1 text-small">
                         Ενημέρωση
                       </Button>
                     </ActionForm>
                     <ActionForm action={removeMember.bind(null, m.user_id)}>
-                      <Button type="submit" variant="danger" className="!px-2 !py-1 text-xs">
+                      <Button type="submit" variant="danger" className="!px-2 !py-1 text-small">
                         Αφαίρεση
                       </Button>
                     </ActionForm>
@@ -159,7 +159,7 @@ export default async function SettingsPage() {
 
       <section className="flex w-full max-w-md flex-col gap-4">
         <SectionHeader title="Όριο Δαπάνης AI" />
-        <p className="text-xs text-muted">
+        <p className="text-small text-muted">
           Μηνιαίο όριο δαπάνης για όλες τις λειτουργίες AI (βοηθός, ανάγνωση παραστατικών, εκτιμήσεις
           εσόδων). Όταν εξαντληθεί, οι λειτουργίες AI μπλοκάρουν με σαφές μήνυμα μέχρι τον επόμενο μήνα.
         </p>
@@ -174,7 +174,7 @@ export default async function SettingsPage() {
 
       <section className="flex w-full max-w-md flex-col gap-4">
         <SectionHeader title="Φορολογικός Κίνδυνος Παραστατικών" />
-        <p className="text-xs text-muted">
+        <p className="text-small text-muted">
           Επιχειρηματικές δαπάνες πάνω από το όριο χωρίς παραστατικό (ή πληρωμένες με μετρητά) δεν
           εκπίπτουν. Χρησιμοποιείται από τον έλεγχο «Δαπάνες χωρίς παραστατικό» στους Ελέγχους Ποιότητας.
           Επιβεβαιώστε όριο και συντελεστή με τον λογιστή σας.
@@ -196,7 +196,7 @@ export default async function SettingsPage() {
 
       <section className="flex w-full max-w-md flex-col gap-4">
         <SectionHeader title="Εξαγωγή Δεδομένων" />
-        <p className="text-xs text-muted">
+        <p className="text-small text-muted">
           Οι κινήσεις σας δεν είναι κλειδωμένες σε αυτή την εφαρμογή -- κατεβάστε τις οποτεδήποτε σε
           CSV, ανοίγει σε Excel/Google Sheets.
         </p>

@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Plus } from "lucide-react";
 import { el } from "@/lib/i18n/el";
-import { AiSpark } from "@/components/ui";
+import { AiSpark, Badge, Brand, buttonClass, withPlus } from "@/components/ui";
 import { OrgSwitcher } from "./OrgSwitcher";
 import type { OrgRole } from "@/lib/domain/enums";
 
@@ -63,11 +62,8 @@ function NavLink({ item, path, inboxCount }: { item: NavItem; path: string; inbo
       {item.ai && <AiSpark />}
       {item.label}
       {badge !== null && (
-        <span
-          className="num ml-auto border border-chip-border px-1.5 text-[11px] leading-[18px] font-medium text-ink"
-          aria-label={`${badge} ${el.nav.pending}`}
-        >
-          {badge}
+        <span className="ml-auto" aria-label={`${badge} ${el.nav.pending}`}>
+          <Badge className="num text-ink">{badge}</Badge>
         </span>
       )}
     </Link>
@@ -95,31 +91,19 @@ export function Nav({
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      <nav className="min-w-0 border-b border-hairline bg-canvas md:sticky md:top-0 md:flex md:h-screen md:w-56 md:shrink-0 md:flex-col md:overflow-y-auto md:border-b-0 md:border-r">
-        <Link href="/dashboard" className="block px-4 pt-5 pb-3">
-          <Image
-            src="/kansha-logo.png"
-            alt="Kansha"
-            width={120}
-            height={44}
-            style={{ width: "110px", height: "auto" }}
-            priority
-          />
+      <nav className="min-w-0 border-b border-hairline bg-canvas md:sticky md:top-0 md:flex md:h-screen md:w-rail md:shrink-0 md:flex-col md:overflow-y-auto md:border-b-0 md:border-r">
+        <Link href="/dashboard" aria-label="Kansha" className="flex min-h-11 items-center px-4 pt-5 pb-3">
+          <Brand />
         </Link>
         <OrgSwitcher orgs={orgs} currentOrgId={currentOrgId} />
         {canCapture && (
           <div className="hidden px-4 pt-2 pb-1 md:block">
-            <Link
-              href={CAPTURE_HREF}
-              aria-current={capturing ? "page" : undefined}
-              className="flex min-h-10 w-full items-center justify-center gap-1.5 border border-navy bg-navy px-4 text-sm font-medium text-panel-ink transition-colors hover:border-navy-strong hover:bg-navy-strong"
-            >
-              <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
-              {el.nav.capture}
+            <Link href={CAPTURE_HREF} aria-current={capturing ? "page" : undefined} className={buttonClass("primary", "md", "w-full")}>
+              {withPlus(`+ ${el.nav.capture}`)}
             </Link>
           </div>
         )}
-        <ul className="flex overflow-x-auto px-2 text-sm md:flex-1 md:flex-col md:gap-px md:overflow-visible md:px-0 md:py-2">
+        <ul className="flex overflow-x-auto px-2 text-body md:flex-1 md:flex-col md:gap-px md:overflow-visible md:px-0 md:py-2">
           {groups.map((group, g) =>
             group.map((item, i) => (
               <li
@@ -135,14 +119,20 @@ export function Nav({
           </li>
         </ul>
       </nav>
-      <main className={`min-w-0 flex-1 bg-canvas px-4 py-5 md:px-8 md:py-8 ${canCapture ? "max-md:pb-24" : ""}`}>{children}</main>
+      {/* One page width (max-w-page, centred) for every page; on phones the
+          bottom keeps clear of the «＋» button and the home indicator. */}
+      <main
+        className={`min-w-0 flex-1 bg-canvas px-4 py-5 md:px-8 md:py-8 ${canCapture ? "max-md:pb-[calc(6rem+env(safe-area-inset-bottom))]" : ""}`}
+      >
+        <div className="mx-auto w-full max-w-page min-w-0">{children}</div>
+      </main>
       {canCapture && !capturing && (
         <Link
           href={CAPTURE_HREF}
           aria-label={el.nav.capture}
-          className="fixed right-4 bottom-4 z-40 flex h-14 w-14 items-center justify-center border border-navy bg-navy text-panel-ink transition-colors hover:border-navy-strong hover:bg-navy-strong md:hidden"
+          className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 flex h-14 w-14 items-center justify-center border border-navy bg-navy text-panel-ink transition-colors hover:border-navy-strong hover:bg-navy-strong md:hidden"
         >
-          <Plus className="h-6 w-6" strokeWidth={2} aria-hidden />
+          <Plus className="h-6 w-6" strokeWidth={1.5} aria-hidden />
         </Link>
       )}
     </div>

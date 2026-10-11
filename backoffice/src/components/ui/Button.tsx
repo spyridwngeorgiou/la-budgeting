@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ButtonHTMLAttributes, ComponentProps } from "react";
+import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from "react";
 import { cn } from "./cn";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "ai" | "aiSolid";
@@ -7,8 +7,8 @@ export type ButtonSize = "sm" | "md";
 
 // Navy is the only solid fill: the primary button is the one thing to press.
 // Everything else is an outline or plain text. `ai` keeps the AI family
-// recognisable (violet symbol and label, never a violet fill); `aiSolid` is
-// the legacy "ready to run" AI action and now renders as a primary button.
+// recognisable by its ✦ symbol and label (no colour of its own); `aiSolid`
+// is the legacy "ready to run" AI action and renders as a primary button.
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: "border border-navy bg-navy text-panel-ink hover:border-navy-strong hover:bg-navy-strong",
   secondary: "border border-chip-border text-ink hover:border-navy hover:bg-hover",
@@ -18,10 +18,34 @@ const VARIANTS: Record<ButtonVariant, string> = {
   aiSolid: "border border-navy bg-navy text-panel-ink hover:border-navy-strong hover:bg-navy-strong",
 };
 
+// Two heights: md 40px, sm 32px; on a touch screen both are 44px.
 const SIZES: Record<ButtonSize, string> = {
-  sm: "min-h-8 px-2.5 py-1 text-small",
-  md: "min-h-10 px-4 py-2 text-sm",
+  sm: "min-h-8 px-2.5 py-1 text-small pointer-coarse:min-h-11",
+  md: "min-h-10 px-4 py-2 text-body pointer-coarse:min-h-11",
 };
+
+// «+» the same way everywhere: a label written «+ Νέα επαφή» renders as the
+// line plus glyph and the words, so every «add» button looks alike.
+function PlusGlyph() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
+      <path d="M8 2.5v11M2.5 8h11" />
+    </svg>
+  );
+}
+
+export function withPlus(children: ReactNode): ReactNode {
+  if (typeof children !== "string") return children;
+  const m = /^[+＋]\s+(.+)$/.exec(children);
+  return m ? (
+    <>
+      <PlusGlyph />
+      {m[1]}
+    </>
+  ) : (
+    children
+  );
+}
 
 export function buttonClass(variant: ButtonVariant = "primary", size: ButtonSize = "md", className = "") {
   return cn(
@@ -36,9 +60,14 @@ export function Button({
   variant = "primary",
   size = "md",
   className = "",
+  children,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; size?: ButtonSize }) {
-  return <button className={buttonClass(variant, size, className)} {...props} />;
+  return (
+    <button className={buttonClass(variant, size, className)} {...props}>
+      {withPlus(children)}
+    </button>
+  );
 }
 
 // A link that looks like a button (navigation, not an action).
@@ -46,9 +75,14 @@ export function ButtonLink({
   variant = "secondary",
   size = "md",
   className = "",
+  children,
   ...props
 }: ComponentProps<typeof Link> & { variant?: ButtonVariant; size?: ButtonSize }) {
-  return <Link className={buttonClass(variant, size, className)} {...props} />;
+  return (
+    <Link className={buttonClass(variant, size, className)} {...props}>
+      {withPlus(children)}
+    </Link>
+  );
 }
 
 // Small consistent glyph prefixed onto every AI-triggered label/heading --

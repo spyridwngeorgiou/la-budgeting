@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge, Button } from "@/components/ui";
-import { Modal } from "@/components/Modal";
+import { Modal } from "@/components/ui";
 import { formatFieldValue, STATUS_LABEL, type ChangeCard } from "@/lib/ai/changeCards";
 import { approveChange, rejectChange } from "./change-actions";
 
@@ -45,14 +45,14 @@ export function ChangeCardView({ initial, canReview }: { initial: ChangeCard; ca
   }
 
   return (
-    <div className="border-l-2 border-ai-border py-2 pl-3 text-sm text-ink" data-change-id={card.id}>
+    <div className="border-l-2 border-ai-border py-2 pl-3 text-body text-ink" data-change-id={card.id}>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Badge tone={isDelete ? "red" : "ai"}>{card.title}</Badge>
         <Badge tone={STATUS_TONE[card.status] ?? "neutral"}>{STATUS_LABEL[card.status] ?? card.status}</Badge>
       </div>
       {card.reason && <p className="mb-2 text-muted">{card.reason}</p>}
       {card.untrusted && open && (
-        <p className="mb-2 border-l-2 border-warning pl-2 text-xs text-warning">
+        <p className="mb-2 border-l-2 border-warning pl-2 text-small text-warning">
           Η πρόταση έγινε αφού ο βοηθός διάβασε ελεύθερο κείμενο από τα δεδομένα (περιγραφές, σημειώσεις). Ελέγξτε
           τη με προσοχή.
         </p>
@@ -60,10 +60,10 @@ export function ChangeCardView({ initial, canReview }: { initial: ChangeCard; ca
 
       {card.status === "conflict" && card.conflict.length > 0 ? (
         <div className="mb-3 overflow-x-auto">
-          <p className="mb-1 border-l-2 border-warning pl-2 text-xs text-warning">
+          <p className="mb-1 border-l-2 border-warning pl-2 text-small text-warning">
             Η εγγραφή άλλαξε μετά την πρόταση. Συγκρίνετε πριν εγκρίνετε.
           </p>
-          <table className="w-full border-collapse text-left text-xs">
+          <table className="w-full border-collapse text-left text-small">
             <thead>
               <tr>
                 <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Πεδίο</th>
@@ -86,7 +86,7 @@ export function ChangeCardView({ initial, canReview }: { initial: ChangeCard; ca
         </div>
       ) : (
         <div className="mb-3 overflow-x-auto">
-          <table className="w-full border-collapse text-left text-xs">
+          <table className="w-full border-collapse text-left text-small">
             <thead>
               <tr>
                 <th scope="col" className="eyebrow border-b border-rule px-2 py-1.5 font-medium whitespace-nowrap text-muted first:pl-0">Πεδίο</th>
@@ -118,12 +118,12 @@ export function ChangeCardView({ initial, canReview }: { initial: ChangeCard; ca
       )}
 
       {(error || card.error) && (
-        <p role="alert" className="mb-2 border-l-2 border-negative pl-2 text-xs text-negative">
+        <p role="alert" className="mb-2 border-l-2 border-negative pl-2 text-small text-negative">
           {error ?? card.error}
         </p>
       )}
       {card.resultHref && (
-        <Link href={card.resultHref} className="mb-2 inline-flex min-h-8 items-center text-xs font-medium text-ink underline underline-offset-4">
+        <Link href={card.resultHref} className="mb-2 inline-flex min-h-8 items-center text-small font-medium text-ink underline underline-offset-4">
           Άνοιγμα →
         </Link>
       )}
@@ -144,11 +144,11 @@ export function ChangeCardView({ initial, canReview }: { initial: ChangeCard; ca
           )}
         </div>
       )}
-      {!canReview && open && <p className="text-xs text-muted">Την έγκριση κάνει χρήστης με δικαίωμα επεξεργασίας.</p>}
+      {!canReview && open && <p className="text-small text-muted">Την έγκριση κάνει χρήστης με δικαίωμα επεξεργασίας.</p>}
 
       {confirmForce && (
         <Modal onClose={() => setConfirmForce(false)} title="Έγκριση παρά τη σύγκρουση">
-          <p className="mb-4 text-sm text-text">
+          <p className="mb-4 text-body text-text">
             Οι τιμές «Τώρα» θα αντικατασταθούν από τις προτεινόμενες. Συνέχεια;
           </p>
           <div className="flex justify-end gap-2">

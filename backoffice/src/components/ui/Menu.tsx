@@ -57,7 +57,7 @@ export function Menu({
         onClick={() => setOpen((o) => !o)}
         className="inline-flex min-h-10 min-w-10 items-center justify-center border border-chip-border px-2 text-ink hover:border-navy hover:bg-hover"
       >
-        {trigger ?? <span aria-hidden="true" className="text-lg leading-none">⋯</span>}
+        {trigger ?? <span aria-hidden="true" className="text-section leading-none">⋯</span>}
       </button>
       {open && (
         <div
@@ -78,7 +78,7 @@ export function Menu({
   );
 }
 
-const ITEM = "flex min-h-10 w-full items-center gap-2 px-3 py-2 text-left text-sm text-ink hover:bg-hover disabled:opacity-50";
+const ITEM = "flex min-h-10 w-full items-center gap-2 px-3 py-2 text-left text-body text-ink hover:bg-hover disabled:opacity-50";
 
 export function MenuItem({
   tone = "default",

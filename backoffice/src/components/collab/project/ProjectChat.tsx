@@ -50,7 +50,7 @@ export function ProjectChat({
       >
         <span className="min-w-0 flex-1">
           <span className="sr-only">{el.collab.project.chatCta}: </span>
-          <span className="block truncate text-sm text-text">
+          <span className="block truncate text-body text-text">
             {last ? (
               <>
                 <span className="text-ink">{(last.author_id && people[last.author_id]) || el.collab.unknownUser}</span>
@@ -86,7 +86,7 @@ export function ProjectChat({
               <h2 className="text-section font-normal text-ink">{el.collab.chat.title}</h2>
               <button
                 type="button"
-                className="-mr-2 inline-flex min-h-11 min-w-11 items-center justify-center text-xl text-muted hover:bg-hover hover:text-ink"
+                className="-mr-2 inline-flex min-h-11 min-w-11 items-center justify-center text-section text-muted hover:bg-hover hover:text-ink"
                 onClick={() => setOpen(false)}
                 aria-label={el.collab.comments.close}
               >

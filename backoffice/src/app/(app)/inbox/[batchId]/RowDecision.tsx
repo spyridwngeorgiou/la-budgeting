@@ -49,7 +49,7 @@ export function RowDecision({
   const selected = options.find((o) => encode(o.decision, o.transactionIds) === value) ?? null;
 
   if (!editable) {
-    return <span className="text-xs">{el.ingest.decision[decision]}</span>;
+    return <span className="text-small">{el.ingest.decision[decision]}</span>;
   }
 
   return (
@@ -89,7 +89,7 @@ export function RowDecision({
           </Badge>
         </span>
       ))}
-      {error && <span role="alert" className="text-xs text-negative">{error}</span>}
+      {error && <span role="alert" className="text-small text-negative">{error}</span>}
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { Segmented, cn } from "@/components/ui";
 
 // The frame a wide table scrolls inside (the page itself never scrolls sideways).
 export const FRAME = "max-w-full overflow-x-auto";
-export const TABLE = "w-full border-collapse text-left text-sm";
+export const TABLE = "w-full border-collapse text-left text-body";
 export const TH = "eyebrow border-b border-rule bg-canvas px-3 py-2.5 text-left font-medium whitespace-nowrap text-muted";
 export const TD = "border-b border-hairline px-3 py-3 align-top text-text";
 export const NUM = "num text-right whitespace-nowrap";
@@ -19,7 +19,7 @@ export const TOUCH = "max-md:min-h-11";
 // A text link inside a table or a list.
 export const LINK = "text-ink underline-offset-4 hover:underline";
 // Secondary line under a cell's main text.
-export const SUB = "block text-xs text-muted";
+export const SUB = "block text-small text-muted";
 
 // A labelled, mutually exclusive view option (scenario, year, grouping):
 // eyebrow label over joined chips. Every option is a URL.

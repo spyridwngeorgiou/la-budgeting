@@ -36,7 +36,7 @@ export function YearTable({
   return (
     <form action={saveYearAssumptions.bind(null, planId, roomTypeId, yearNumber)} className="flex flex-col gap-3">
       <div className="overflow-x-auto">
-        <table className="w-full table-fixed border-collapse text-xs">
+        <table className="w-full table-fixed border-collapse text-small">
           <colgroup>
             <col className="w-28" />
             {MONTHS.map((m) => (

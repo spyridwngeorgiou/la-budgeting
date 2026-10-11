@@ -45,7 +45,7 @@ export function RemovedFilesLayer({ api, removed }: { api: ExcalidrawImperativeA
       {boxes.map((e) => (
         <div
           key={e.id}
-          className="absolute flex items-center justify-center border border-dashed border-chip-border bg-canvas p-2 text-center text-xs text-muted"
+          className="absolute flex items-center justify-center border border-dashed border-chip-border bg-canvas p-2 text-center text-small text-muted"
           style={{
             left: (e.x + st.scrollX) * z,
             top: (e.y + st.scrollY) * z,
@@ -94,7 +94,7 @@ export function BoardTips() {
           ))}
         </div>
         <h2 className="text-section text-ink">{t.title}</h2>
-        <p className="mt-2 text-sm text-text">{t.body}</p>
+        <p className="mt-2 text-body text-text">{t.body}</p>
         <div className="mt-5 flex items-center justify-between gap-2">
           <Button type="button" variant="ghost" className="min-h-11" onClick={finish}>
             {el.collab.onboarding.skip}
@@ -124,11 +124,11 @@ export function ShortcutsHelp({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-section text-ink">{el.collab.shortcuts.title}</h2>
-        <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+        <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-body">
           {el.collab.shortcuts.list.map(([k, v]) => (
             <div key={k} className="contents">
               <dt>
-                <kbd className="border border-chip-border bg-field px-1.5 py-0.5 font-mono text-xs text-ink">{k}</kbd>
+                <kbd className="border border-chip-border bg-field px-1.5 py-0.5 num text-small text-ink">{k}</kbd>
               </dt>
               <dd className="text-text">{v}</dd>
             </div>

@@ -14,7 +14,7 @@ Greek UI (el), Next.js 16 App Router + Supabase (RLS) on Cloudflare Workers via 
 - `npm run check` — typecheck + lint + vitest (clears stale `.next/dev`, `.next/types`).
 - `npm run ship:staging` — check → push main → wait CI → migrate staging → deploy → logged-in smoke.
 - `npm run ship:prod` — CI green → JSON backup → migrate → deploy → light smoke. Only after owner «οκ».
-- `npm run smoke -- staging /path /other` — logged-in GETs as a throwaway owner (deleted after). `{project}` = first project id.
+- `npm run smoke -- staging /path /other` — logged-in GETs as a throwaway owner (deleted after). `{project}` = first project id. Then the same pages in headless Chrome (puppeteer-core; auto when Chrome is installed, `BROWSER=0` skips) at 1440 and 390: fails on a browser error, the «Κάτι πήγε στραβά» page, or sideways scroll at 390.
 - Destructive migrations (drop/delete/truncate) need `node scripts/backup-json.mjs <ref>` then `node scripts/migrate-remote.mjs <ref> --confirm-destructive`.
 - Refs: staging `jpxxixhiudwjbzagidmn`, prod `hjypszddhwohgvubirkc`. Token in `.env.migrate` (never read or print it).
 

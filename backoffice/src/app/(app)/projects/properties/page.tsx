@@ -54,7 +54,7 @@ export default async function PropertiesPage({ searchParams }: { searchParams: P
   const grandTotal = (costs ?? []).reduce((s, c) => s + Number(c.paid_amount ?? 0), 0);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-10">
       <PageHeader
         title={el.nav.properties}
         meta={
@@ -65,7 +65,7 @@ export default async function PropertiesPage({ searchParams }: { searchParams: P
           </span>
         }
         actions={
-          <div className="flex items-center gap-1 text-sm">
+          <div className="flex items-center gap-1 text-body">
             <ButtonLink
               href={`/projects/properties?month=${addMonths(month, -1)}`}
               variant="ghost"
@@ -90,7 +90,7 @@ export default async function PropertiesPage({ searchParams }: { searchParams: P
       {/* Spec table; the buckets ARE the columns, so it scrolls inside its
           frame on a phone with the property column pinned. */}
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full border-collapse text-body">
           <thead>
             <tr>
               <th scope="col" className={`${TH} sticky left-0 z-10 bg-canvas text-left`}>

@@ -65,16 +65,16 @@ export function CommitBar({
         )}
       </div>
       {pendingCount > 0 && status !== "committed" && (
-        <p className="border-l-2 border-warning pl-2 text-xs text-warning">{pendingCount} γραμμή/ές χρειάζονται απόφαση πριν την οριστικοποίηση.</p>
+        <p className="border-l-2 border-warning pl-2 text-small text-warning">{pendingCount} γραμμή/ές χρειάζονται απόφαση πριν την οριστικοποίηση.</p>
       )}
       {touched && (
-        <p className="max-w-md border-l-2 border-warning pl-2 text-xs text-warning sm:text-right">
+        <p className="max-w-md border-l-2 border-warning pl-2 text-small text-warning sm:text-right">
           {touched.length} κίνηση/εις άλλαξαν μετά την εισαγωγή. Η αναίρεση θα επαναφέρει μόνο όσα έκανε η εισαγωγή·
           οι μεταγενέστερες αλλαγές σε άλλα πεδία μένουν.
         </p>
       )}
       {error && (
-        <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+        <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
           {error}
         </p>
       )}

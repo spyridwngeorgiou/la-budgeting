@@ -29,7 +29,7 @@ export function DashboardSummary() {
   if (text) {
     return (
       // One paragraph: line breaks in the model's answer are folded into it.
-      <p className="border-l-2 border-ai-border py-1 pl-4 text-sm text-ink">
+      <p className="border-l-2 border-ai-border py-1 pl-4 text-body text-ink">
         <span className="eyebrow mr-2 inline-flex items-center gap-1.5 text-ai">
           <AiSpark />
           Περίληψη AI
@@ -41,7 +41,7 @@ export function DashboardSummary() {
 
   // One muted line until asked for: the Επισκόπηση ends quietly.
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-body text-muted">
       <span className="inline-flex items-center gap-1.5">
         <AiSpark className="text-ai" />
         Η περίληψη του μήνα από το AI, όταν τη χρειαστείτε.
@@ -54,7 +54,7 @@ export function DashboardSummary() {
       >
         {loading ? "Δημιουργία…" : "Δημιουργία περίληψης →"}
       </button>
-      {error && <span role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">{error}</span>}
+      {error && <span role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">{error}</span>}
     </div>
   );
 }

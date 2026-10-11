@@ -74,7 +74,7 @@ export default async function NetWorthPage() {
   const chartRows = netWorthRows(amountOf, COMPONENTS, (c) => t.components[c].replace(/\s*\(.*\)$/, ""));
 
   return (
-    <div className="flex min-w-0 flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-10">
       <PageHeader title={t.title} meta={<span className="block max-w-3xl">{t.intro}</span>} />
 
       <div className="border-b border-hairline pb-5">
@@ -105,10 +105,10 @@ export default async function NetWorthPage() {
         <ComponentTable title={t.owed} components={owed} amountOf={amountOf} itemsOf={itemsOf} />
       </div>
 
-      <section className="flex min-w-0 flex-col gap-3">
+      <section className="flex min-w-0 flex-col gap-4">
         <SectionHeader title={t.assetsTitle} actions={<AssetFormModal action={saveAsset} />} />
         {(assets ?? []).length === 0 ? (
-          <p className="text-sm text-muted">{t.empty}</p>
+          <p className="text-body text-muted">{t.empty}</p>
         ) : (
           <div className={FRAME}>
             <table className={TABLE}>
@@ -119,7 +119,7 @@ export default async function NetWorthPage() {
                     <tr key={a.id} className={cn(ROW, !counted && "text-muted")}>
                       <td className={cn("min-w-48 py-2.5 pr-3 align-middle", counted ? "text-ink" : "text-muted")}>
                         {a.name}
-                        {a.category && <span className="ml-1 text-xs text-muted">· {a.category}</span>}
+                        {a.category && <span className="ml-1 text-small text-muted">· {t.assetCategories[a.category.toLowerCase()] ?? a.category}</span>}
                         <span className={SUB}>
                           {el.account.ownerValues[a.owner_scope]}
                           {Number(a.ownership_pct) !== 1 && ` · ${Math.round(Number(a.ownership_pct) * 10000) / 100}%`}
@@ -162,11 +162,11 @@ export default async function NetWorthPage() {
         )}
       </section>
 
-      <section className="flex min-w-0 flex-col gap-3">
+      <section className="flex min-w-0 flex-col gap-4">
         <SectionHeader title={t.liabilitiesTitle} actions={<LiabilityFormModal action={saveLiability} />} />
         <p className="text-small text-muted">{t.liabilitiesHint}</p>
         {(liabilities ?? []).length === 0 ? (
-          <p className="text-sm text-muted">{t.empty}</p>
+          <p className="text-body text-muted">{t.empty}</p>
         ) : (
           <div className={FRAME}>
             <table className={TABLE}>
@@ -177,7 +177,7 @@ export default async function NetWorthPage() {
                     <tr key={l.id} className={ROW}>
                       <td className={cn("min-w-48 py-2.5 pr-3 align-middle", counted ? "text-ink" : "text-muted")}>
                         {l.lender}
-                        <span className="ml-1 text-xs text-muted">· {t.liabilityKinds[l.kind]}</span>
+                        <span className="ml-1 text-small text-muted">· {t.liabilityKinds[l.kind]}</span>
                         <span className={SUB}>
                           {t.liabilityStates[l.state]} · {el.account.ownerValues[l.owner_scope]}
                           {Number(l.interest_rate) > 0 && ` · ${Math.round(Number(l.interest_rate) * 100000) / 1000}%`}
@@ -244,9 +244,9 @@ function ComponentTable({
         <span className="num text-figure-sm font-light text-ink">{formatMoney(sum)}</span>
       </div>
       {components.length === 0 ? (
-        <p className="py-3 text-sm text-muted">{t.empty}</p>
+        <p className="py-3 text-body text-muted">{t.empty}</p>
       ) : (
-        <ul className="flex flex-col text-sm">
+        <ul className="flex flex-col text-body">
           {components.map((c) => {
             const href = COMPONENT_HREF[c];
             const list = itemsOf(c);
@@ -263,7 +263,7 @@ function ComponentTable({
                   <span className={NUM}>{formatMoney(amountOf[c])}</span>
                 </div>
                 {list.length > 0 && (
-                  <ul className="mt-1 flex flex-col gap-0.5 pl-3 text-xs text-muted">
+                  <ul className="mt-1 flex flex-col gap-0.5 pl-3 text-small text-muted">
                     {list.map((i) => (
                       <li key={`${c}:${i.ref_id}`} className="flex justify-between gap-3">
                         <span className="min-w-0 truncate">{i.label || "—"}</span>

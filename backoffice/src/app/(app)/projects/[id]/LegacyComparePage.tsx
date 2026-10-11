@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, formatMultiple } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { Badge, ButtonLink, PageHeader } from "@/components/ui";
 import { loadProjectModel, type ScenarioResult } from "@/lib/finance/projectModel";
@@ -27,7 +27,7 @@ export async function LegacyComparePage({ id }: { id: string }) {
     {
       label: "Ελάχιστο DSCR",
       render: (r) =>
-        r.cashflow?.kpis.minDscr ? `${r.cashflow.kpis.minDscr.value.toFixed(2)}× (${r.cashflow.kpis.minDscr.calendarYear})` : "—",
+        r.cashflow?.kpis.minDscr ? `${formatMultiple(r.cashflow.kpis.minDscr.value)} (${r.cashflow.kpis.minDscr.calendarYear})` : "—",
     },
     {
       label: "Παραβάσεις covenant",
@@ -40,7 +40,7 @@ export async function LegacyComparePage({ id }: { id: string }) {
   ];
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
       <PageHeader
         eyebrow={el.nav.projects}
         title={`Σύγκριση σεναρίων — ${project.display_name}`}
@@ -53,12 +53,12 @@ export async function LegacyComparePage({ id }: { id: string }) {
       />
 
       {results.length === 0 ? (
-        <p className="border-y border-hairline py-6 text-sm text-muted">Δεν υπάρχουν σενάρια για αυτό το έργο ακόμα.</p>
+        <p className="border-y border-hairline py-6 text-body text-muted">Δεν υπάρχουν σενάρια για αυτό το έργο ακόμα.</p>
       ) : (
         // The scenarios ARE the columns: a spec table that scrolls inside
         // its frame on a phone, the label column pinned.
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+          <table className="w-full border-collapse text-body">
             <thead>
               <tr>
                 <th

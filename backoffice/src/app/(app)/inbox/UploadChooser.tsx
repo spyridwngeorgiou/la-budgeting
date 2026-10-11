@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { formatBytes } from "@/lib/format";
 import { Camera, FileSpreadsheet, FileText, Landmark, Upload, X } from "lucide-react";
 import { AiSpark, Button, Select } from "@/components/ui";
 import { errorOf } from "@/lib/actions";
@@ -49,9 +50,7 @@ async function sniff(file: File): Promise<{ head: Uint8Array; text: string | nul
   return { head, text: null };
 }
 
-function formatSize(bytes: number): string {
-  return bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
+const formatSize = formatBytes;
 
 export function UploadChooser({
   accounts,
@@ -173,7 +172,7 @@ export function UploadChooser({
           </span>
           <div className="flex flex-col gap-1">
             <p className="text-section font-normal text-ink">{dragging ? "Αφήστε το αρχείο εδώ" : "Σύρετε εδώ το αρχείο"}</p>
-            <p className="text-sm text-muted">Παραστατικό (φωτογραφία ή PDF), αντίγραφο τράπεζας (CSV/XLSX) ή αρχείο myDATA (XLSX)</p>
+            <p className="text-body text-muted">Παραστατικό (φωτογραφία ή PDF), αντίγραφο τράπεζας (CSV/XLSX) ή αρχείο myDATA (XLSX)</p>
           </div>
           <div className="flex w-full max-w-md flex-col gap-2 sm:flex-row sm:justify-center">
             <Button type="button" className="min-h-11 gap-2" onClick={() => fileInput.current?.click()}>
@@ -193,8 +192,8 @@ export function UploadChooser({
               <KindIcon className="h-6 w-6" strokeWidth={1.5} aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm text-ink">{file.name}</div>
-              <div className="text-xs text-muted">
+              <div className="truncate text-body text-ink">{file.name}</div>
+              <div className="text-small text-muted">
                 {meta.title} · {formatSize(file.size)}
               </div>
             </div>
@@ -208,11 +207,11 @@ export function UploadChooser({
               <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
-          <p className="text-xs text-muted">{meta.text}</p>
+          <p className="text-small text-muted">{meta.text}</p>
 
           {/* A workbook can be either; the guess is shown and can be corrected. */}
           {kind !== "document" && (
-            <fieldset className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+            <fieldset className="flex flex-wrap gap-x-4 gap-y-1 text-body">
               <legend className="sr-only">Είδος αρχείου</legend>
               {(["bank", "aade"] as const).map((k) => (
                 <label key={k} className="inline-flex min-h-10 items-center gap-2 text-text">
@@ -236,12 +235,12 @@ export function UploadChooser({
             </Select>
           )}
           {kind === "aade" && afmMissing && (
-            <p className="border-l-2 border-warning pl-3 text-sm text-warning">
+            <p className="border-l-2 border-warning pl-3 text-body text-warning">
               Ορίστε πρώτα το πραγματικό ΑΦΜ της επιχείρησης στις Ρυθμίσεις — χρειάζεται για την κατεύθυνση κάθε κίνησης.
             </p>
           )}
 
-          <Button type="button" onClick={submit} disabled={pending} className="w-full py-3 text-base">
+          <Button type="button" onClick={submit} disabled={pending} className="w-full py-3 text-body">
             {kind === "document" && <AiSpark className="mr-1.5" />}
             {pending
               ? kind === "document"
@@ -255,7 +254,7 @@ export function UploadChooser({
       )}
 
       {error && (
-        <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+        <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
           {error}
         </p>
       )}

@@ -21,7 +21,7 @@ export function Tabs({ tabs, label, query = "", className = "" }: { tabs: SubNav
             href={`${t.href}${query}`}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "-mb-px min-h-10 border-b-2 px-3 py-2.5 text-sm whitespace-nowrap",
+              "-mb-px min-h-10 border-b-2 px-3 py-2.5 text-body whitespace-nowrap",
               isActive ? "border-navy text-ink" : "border-transparent text-muted hover:text-ink",
             )}
           >

@@ -163,7 +163,7 @@ export function TaskBoard({
   return (
     <div className="flex flex-col gap-3">
       {error && (
-        <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+        <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
           {error}
         </p>
       )}
@@ -178,13 +178,13 @@ export function TaskBoard({
             aria-selected={mobileStatus === s}
             onClick={() => setMobileStatus(s)}
             className={cn(
-              "-ml-px flex min-h-11 shrink-0 items-center gap-1.5 border px-3 text-sm whitespace-nowrap first:ml-0",
+              "-ml-px flex min-h-11 shrink-0 items-center gap-1.5 border px-3 text-body whitespace-nowrap first:ml-0",
               mobileStatus === s ? "relative border-navy bg-navy text-panel-ink" : "border-chip-border text-text",
             )}
           >
             <span className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT[s]}`} />
             {el.planner.status[s]}
-            <span className={cn("num text-xs", mobileStatus === s ? "text-panel-muted" : "text-muted")}>{columns[s].length}</span>
+            <span className={cn("num text-small", mobileStatus === s ? "text-panel-muted" : "text-muted")}>{columns[s].length}</span>
           </button>
         ))}
       </div>
@@ -285,7 +285,7 @@ function Column({
           <span className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT[status]}`} />
           {el.planner.status[status]}
         </span>
-        <span className="num text-xs text-muted">{tasks.length}</span>
+        <span className="num text-small text-muted">{tasks.length}</span>
       </header>
       <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <ul className="flex flex-col gap-2">{children}</ul>
@@ -343,11 +343,11 @@ function CardBody({
       <Link
         href={href}
         onKeyDown={(e) => e.stopPropagation()}
-        className="text-sm leading-snug text-ink hover:underline max-md:py-1"
+        className="text-body leading-snug text-ink hover:underline max-md:py-1"
       >
         {task.title}
       </Link>
-      <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+      <div className="flex flex-wrap items-center gap-2 text-small text-muted">
         {tone && <Badge tone={tone}>{el.planner.priority[task.priority]}</Badge>}
         {task.due_date && (
           <span className={cn("num", overdue && "font-medium text-negative")} title={overdue ? el.planner.task.overdue : undefined}>
@@ -357,7 +357,7 @@ function CardBody({
         {assignee && (
           <span
             title={assignee}
-            className="ml-auto inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-hover px-1 text-xs font-medium text-navy"
+            className="ml-auto inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-hover px-1 text-small font-medium text-navy"
           >
             {initials(assignee)}
           </span>

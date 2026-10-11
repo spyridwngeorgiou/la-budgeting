@@ -33,9 +33,12 @@ export const chartTheme = {
     },
     labelStyle: { color: color.ink, fontWeight: 500, marginBottom: 4 },
     itemStyle: { color: color.text, padding: 0 },
-    cursor: { stroke: color.chipBorder, strokeWidth: 1 },
+    // ONE cursor for every chart: a hairline at the hovered x (bar charts
+    // are drawn as ComposedChart so they get the line too, not a band).
+    cursor: { stroke: color.chipBorder, strokeWidth: 1, fill: "none" },
   },
-  legend: { iconType: "plainline" as const, wrapperStyle: { fontSize: 12, color: color.text } },
+  // ONE legend icon: a short line, dashed for a dashed series.
+  legend: { iconType: "plainline" as const, iconSize: 14, wrapperStyle: { fontSize: 12, color: color.text, paddingTop: 4 } },
   // A line series: 2px, no dots except the hovered one.
   line: (index: 0 | 1) => ({
     stroke: chartSeries[index],
@@ -43,7 +46,9 @@ export const chartTheme = {
     strokeDasharray: DASH[index],
     dot: false,
     activeDot: { r: 4, strokeWidth: 2, stroke: color.canvas, fill: chartSeries[index] },
-    type: "monotone" as const,
+    // Straight segments between the real points: a smoothed curve invents
+    // dips and peaks the data does not have (misleading on money).
+    type: "linear" as const,
     isAnimationActive: false,
   }),
   // A bar series (when bars are the right form): thin, flat fill.
@@ -55,6 +60,10 @@ export const chartTheme = {
   threshold: { stroke: color.negative, strokeDasharray: "4 4" },
 } as const;
 
+// TWO chart heights for the whole app: 176px on phones, 220px from md up
+// (h-chart-sm / h-chart, spacing tokens in globals.css).
+export const CHART_HEIGHT_CLASS = "h-chart-sm md:h-chart";
+
 // 12.400 -> «12k», 1.250.000 -> «1,3m» for axis ticks (the tooltip shows
 // the exact amount).
 export function compactNumber(v: number): string {
@@ -62,5 +71,27 @@ export function compactNumber(v: number): string {
   const sign = v < 0 ? "−" : "";
   if (a >= 1_000_000) return `${sign}${(a / 1_000_000).toLocaleString("el-GR", { maximumFractionDigits: 1 })}m`;
   if (a >= 1000) return `${sign}${Math.round(a / 1000)}k`;
-  return `${sign}${a}`;
+  return `${sign}${a.toLocaleString("el-GR", { maximumFractionDigits: 1 })}`;
+}
+
+// The labels of reference lines (the cash buffer, the next deadline) sit
+// UNDER the chart as a key, never inside the plot where they would cover
+// bars: a short line in the reference's colour and dash, then its words.
+export function ReferenceKey({ items }: { items: { label: string; kind: "threshold" | "today" }[] }) {
+  if (items.length === 0) return null;
+  return (
+    <figcaption className="flex flex-wrap gap-x-5 gap-y-1 pt-2 text-small text-text">
+      {items.map((it) => {
+        const ref = it.kind === "threshold" ? chartTheme.threshold : chartTheme.today;
+        return (
+          <span key={it.label} className="inline-flex items-center gap-2">
+            <svg width="16" height="6" aria-hidden="true" className="shrink-0">
+              <line x1="0" y1="3" x2="16" y2="3" stroke={ref.stroke} strokeWidth={1.5} strokeDasharray={ref.strokeDasharray} />
+            </svg>
+            {it.label}
+          </span>
+        );
+      })}
+    </figcaption>
+  );
 }

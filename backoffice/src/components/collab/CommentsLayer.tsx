@@ -77,7 +77,7 @@ export function CommentsLayer({
           key={c.id}
           type="button"
           onClick={() => onOpenThread(c.id)}
-          className="pointer-events-auto absolute flex h-7 min-w-7 -translate-x-1/2 -translate-y-full items-center justify-center border border-warning bg-warning-tint px-1.5 text-xs font-medium text-warning hover:bg-hover"
+          className="pointer-events-auto absolute flex h-7 min-w-7 -translate-x-1/2 -translate-y-full items-center justify-center border border-warning bg-warning-tint px-1.5 text-small font-medium text-warning hover:bg-hover"
           style={{ left, top }}
           title={c.body.slice(0, 120)}
         >
@@ -96,7 +96,7 @@ export function CommentsLayer({
             });
           }}
         >
-          <div className="pointer-events-none absolute top-16 left-1/2 -translate-x-1/2 bg-panel px-3 py-1.5 text-xs text-panel-ink">
+          <div className="pointer-events-none absolute top-16 left-1/2 -translate-x-1/2 bg-panel px-3 py-1.5 text-small text-panel-ink">
             {el.collab.comments.pinHint}
           </div>
         </div>

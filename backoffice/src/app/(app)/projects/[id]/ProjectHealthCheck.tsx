@@ -29,7 +29,7 @@ export function ProjectHealthCheck({ projectId }: { projectId: string }) {
 
   if (text) {
     return (
-      <div className="flex max-w-prose flex-col gap-1.5 border-l-2 border-ai pl-4 text-sm text-ink">
+      <div className="flex max-w-prose flex-col gap-1.5 border-l-2 border-ai pl-4 text-body text-ink">
         <div className="eyebrow flex items-center gap-1.5 text-ai">
           <AiSpark />
           AI Έλεγχος Υγείας Έργου
@@ -45,7 +45,7 @@ export function ProjectHealthCheck({ projectId }: { projectId: string }) {
         <AiSpark className="mr-1.5" />
         {loading ? "Ανάλυση…" : "AI Έλεγχος Υγείας Έργου"}
       </Button>
-      {error && <span className="border-l-2 border-negative pl-3 text-sm text-negative">{error}</span>}
+      {error && <span className="border-l-2 border-negative pl-3 text-body text-negative">{error}</span>}
     </div>
   );
 }

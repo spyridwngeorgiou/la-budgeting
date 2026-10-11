@@ -85,7 +85,7 @@ export function NlEntryForm({ rows = 3 }: { rows?: number }) {
           placeholder="π.χ. Πλήρευσα 80 ευρώ στον υδραυλικό για το Q003, μετρητά, χωρίς απόδειξη. Μπορείτε να περιγράψετε περισσότερες από μία κινήσεις μαζί -- θα καταχωρηθούν ξεχωριστά."
           rows={rows}
           required
-          className="min-w-0 flex-1 border border-field-border bg-field px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-navy focus:outline-none"
+          className="min-w-0 flex-1 border border-field-border bg-field px-3 py-2 text-body text-ink placeholder:text-muted focus:border-navy focus:outline-none"
         />
         {micSupported && (
           <Button
@@ -99,11 +99,11 @@ export function NlEntryForm({ rows = 3 }: { rows?: number }) {
         )}
       </div>
       {error && (
-        <p role="alert" className="border-l-2 border-negative pl-3 text-sm text-negative">
+        <p role="alert" className="border-l-2 border-negative pl-3 text-body text-negative">
           {error}
         </p>
       )}
-      <SubmitButton variant={text.trim() ? "aiSolid" : "ai"} className="w-full py-3 text-base" pendingLabel="Ανάλυση περιγραφής…" disabled={!text.trim()}>
+      <SubmitButton variant={text.trim() ? "aiSolid" : "ai"} className="w-full py-3 text-body" pendingLabel="Ανάλυση περιγραφής…" disabled={!text.trim()}>
         <AiSpark className="mr-1.5" />
         Ανάλυση με AI
       </SubmitButton>

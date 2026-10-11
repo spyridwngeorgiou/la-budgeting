@@ -81,7 +81,7 @@ export async function PartnersPanel({ projectId, isAdmin }: { projectId: string;
       <p className="max-w-prose text-small text-muted">{el.partner.panelHint}</p>
 
       {(members ?? []).length === 0 && (invites ?? []).length === 0 && (
-        <p className="border-b border-hairline pb-3 text-sm text-muted">{el.partner.none}</p>
+        <p className="border-b border-hairline pb-3 text-body text-muted">{el.partner.none}</p>
       )}
 
       <ul className="flex flex-col">
@@ -90,7 +90,7 @@ export async function PartnersPanel({ projectId, isAdmin }: { projectId: string;
           return (
             <li key={m.user_id} className={ROW}>
               <div className="min-w-0">
-                <p className="truncate text-sm text-ink">
+                <p className="truncate text-body text-ink">
                   {profile?.display_name || profile?.email || el.collab.unknownUser}
                   {profile?.company_name && <span className="text-muted"> · {profile.company_name}</span>}
                 </p>
@@ -140,7 +140,7 @@ export async function PartnersPanel({ projectId, isAdmin }: { projectId: string;
           return (
             <li key={inv.id} className={ROW}>
               <div className="min-w-0">
-                <p className="truncate text-sm text-ink">{inv.full_name || inv.email}</p>
+                <p className="truncate text-body text-ink">{inv.full_name || inv.email}</p>
                 <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-small text-muted">
                   {inv.full_name && <span className="truncate">{inv.email}</span>}
                   <Badge>{el.partner.roleValues[inv.role]}</Badge>

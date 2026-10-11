@@ -50,7 +50,7 @@ export default async function DealsPage() {
   const pipeline = [...weightedByDeal.values()].reduce((s, v) => s + v, 0);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-10">
       <PageHeader
         title={t.title}
         meta={<span className="block max-w-prose">{t.intro}</span>}
@@ -70,11 +70,11 @@ export default async function DealsPage() {
       )}
 
       {(deals ?? []).length === 0 ? (
-        <p className="border-y border-hairline py-6 text-sm text-muted">{t.empty}</p>
+        <p className="border-y border-hairline py-6 text-body text-muted">{t.empty}</p>
       ) : (
         // Spec table; scrolls inside its frame on a phone.
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-sm">
+          <table className="w-full border-collapse text-left text-body">
             <thead>
               <tr>
                 <th scope="col" className={TH}>{t.property}</th>
@@ -104,7 +104,7 @@ export default async function DealsPage() {
                     <td className={`${TD} num text-right whitespace-nowrap text-ink`}>{formatMoney(d.price)}</td>
                     <td className={`${TD} num text-right whitespace-nowrap text-ink`}>
                       {formatMoney(commission)}
-                      {weighted != null && <div className="text-xs text-muted">{formatMoney(weighted)} στην πρόβλεψη</div>}
+                      {weighted != null && <div className="text-small text-muted">{formatMoney(weighted)} στην πρόβλεψη</div>}
                     </td>
                     <td className={TD}>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

@@ -84,7 +84,7 @@ const TX_COLUMNS: Column<DemoTx>[] = [
 
 function Section({ n, title, children }: { n: number; title: string; children: ReactNode }) {
   return (
-    <section className="flex flex-col gap-5">
+    <section className="flex flex-col gap-4">
       <SectionHeader numeral={n} title={title} />
       {children}
     </section>
@@ -104,7 +104,7 @@ export default async function DesignPage({ searchParams }: { searchParams: Promi
   const total = DEMO_TX.reduce((s, r) => s + r.amount, 0);
 
   return (
-    <div className="flex flex-col gap-14">
+    <div className="flex flex-col gap-10">
       <PageHeader
         eyebrow="Εσωτερικό"
         title="Design system"
@@ -131,8 +131,8 @@ export default async function DesignPage({ searchParams }: { searchParams: Promi
               {g.tokens.map((t) => (
                 <li key={t} className="flex flex-col gap-1.5">
                   <span className="h-14 border border-hairline" style={{ background: color[t] }} />
-                  <span className="text-sm text-ink">{cssName(t)}</span>
-                  <span className="num text-xs text-muted">{color[t]}</span>
+                  <span className="text-body text-ink">{cssName(t)}</span>
+                  <span className="num text-small text-muted">{color[t]}</span>
                 </li>
               ))}
             </ul>
@@ -173,7 +173,7 @@ export default async function DesignPage({ searchParams }: { searchParams: Promi
         <div className="flex flex-col">
           {Object.entries(typeScale).map(([name, [size, lh, weight]]) => (
             <div key={name} className="flex flex-col gap-1 border-b border-hairline py-4 md:flex-row md:items-baseline md:gap-8">
-              <span className="num w-44 shrink-0 text-xs text-muted">
+              <span className="num w-44 shrink-0 text-small text-muted">
                 {name} · {size}/{lh} · {weight}
               </span>
               <span
