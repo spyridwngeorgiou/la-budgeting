@@ -1,21 +1,68 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatMoney, formatPercent } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { LINK_CLASS, NUM_CLASS, PageHeader, SUB_CLASS, SectionHeader, SpecTable, Stat, Td, Tr, cn } from "@/components/ui";
-import { BarChart } from "@/components/ui/BarChart";
-import { netWorthRows } from "@/lib/finance/reportCharts";
+import {
+  KpiBand,
+  LINK_CLASS,
+  NUM_CLASS,
+  PageHeader,
+  ReportChart,
+  ReportDetail,
+  ReportFooter,
+  ReportHeadline,
+  ReportMethod,
+  ReportSection,
+  SUB_CLASS,
+  SpecTable,
+  Td,
+  Tr,
+  cn,
+} from "@/components/ui";
+import { BandChart } from "@/components/ui/BandChart";
+import { addMonths, currentMonthKey, shortMonthYearLabel, todayAthens } from "@/lib/dates";
+import { netWorthNarrative } from "@/lib/finance/narratives";
+import { CompositionBars } from "./Composition";
+import { liquidMonthEnds } from "./liquidHistory";
 import { AssetFormModal, LiabilityFormModal } from "./NetWorthForms";
 import { RowDeleteMenu } from "./RowDeleteMenu";
 import { deleteAsset, deleteLiability, saveAsset, saveLiability } from "./actions";
 
-// Καθαρή θέση. Totals and items are v_net_worth / v_net_worth_items (0068)
-// only; the two lists below are the hand-kept assets and liabilities, which
-// had no screen before.
+// Καθαρή θέση -- «Πόσα αξίζουμε;». Totals and items are v_net_worth /
+// v_net_worth_items (0068/0090) only; the two lists below are the hand-kept
+// assets and liabilities. The second chart is the ACTUAL liquid balance of
+// the last 12 months (v_account_balances + v_account_ledger_monthly, 0091):
+// there is no net-worth history, so none is drawn.
 
 const COMPONENTS = ["cash", "other_accounts", "assets", "receivables", "payables", "liabilities", "loans", "vat"] as const;
 type Component = (typeof COMPONENTS)[number];
+// The order of the segments in the composition bars (VAT on the side its
+// sign puts it).
+const OWNED_ORDER: Component[] = ["cash", "other_accounts", "assets", "receivables", "vat"];
+const OWED_ORDER: Component[] = ["loans", "liabilities", "payables", "vat"];
+
+// Texts new to this tab (the rest are el.netWorth).
+const T = {
+  question: "Πόσα αξίζουμε;",
+  liquidity: "Ρευστότητα",
+  liquiditySub: "ρευστά / περιουσία",
+  leverage: "Μόχλευση",
+  leverageSub: "υποχρεώσεις / περιουσία",
+  property: "Ακίνητα",
+  propertySub: (n: number) => (n === 1 ? "1 ακίνητο" : `${n} ακίνητα`),
+  compositionTitle: "Τι έχουμε και τι οφείλουμε",
+  compositionCaption: "Σήμερα, στην ίδια κλίμακα",
+  liquidTitle: "Ρευστά τελευταίων 12 μηνών",
+  liquidCaption: "Πραγματικό υπόλοιπο ρευστών λογαριασμών στο τέλος κάθε μήνα· ο τρέχων μήνας έως σήμερα",
+  liquidSeries: "Ρευστά (πραγματικά)",
+  components: "Ανά στοιχείο",
+  method: [
+    "Καθαρή θέση = ό,τι έχουμε (ρευστά, λοιποί λογαριασμοί, περιουσιακά στοιχεία στο ποσοστό ιδιοκτησίας μας, απαιτήσεις) μείον ό,τι οφείλουμε (δάνεια, λοιπές υποχρεώσεις, εκκρεμείς πληρωμές σε προμηθευτές, ΦΠΑ). Ο ΦΠΑ μετρά στην πλευρά που τον βάζει το πρόσημό του.",
+    "Ρευστότητα: τα ρευστά ως μέρος της περιουσίας. Μόχλευση: οι υποχρεώσεις ως μέρος της περιουσίας.",
+    "«Ρευστά τελευταίων 12 μηνών»: το σημερινό υπόλοιπο των ρευστών λογαριασμών, μείον τις πληρωμένες κινήσεις κάθε επόμενου μήνα. Ιστορικό καθαρής θέσης δεν κρατείται, γι' αυτό δεν εμφανίζεται.",
+  ],
+};
 
 // Where each component's items live; receivables and payables are open
 // ledger rows (possibly thousands), so they link out instead of listing.
@@ -31,7 +78,10 @@ const COMPONENT_HREF: Partial<Record<Component, string>> = {
 export default async function NetWorthPage() {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
-  const [{ data: total, error }, { data: items }, { data: assets }, { data: liabilities }] = await Promise.all([
+  const thisMonth = currentMonthKey();
+  const monthKeys = Array.from({ length: 12 }, (_, i) => addMonths(thisMonth, i - 11));
+  const [{ data: total, error }, { data: items }, { data: assets }, { data: liabilities }, { data: liquidAccounts }, { data: ledger }] =
+    await Promise.all([
     supabase.from("v_net_worth").select("*").eq("org_id", orgId).maybeSingle(),
     supabase
       .from("v_net_worth_items")
@@ -50,6 +100,17 @@ export default async function NetWorthPage() {
       .select("id, lender, kind, principal, interest_rate, maturity_date, state, owner_scope, terms")
       .eq("org_id", orgId)
       .order("maturity_date", { nullsFirst: false }),
+    supabase
+      .from("v_account_balances")
+      .select("account_id, current_balance, opening_balance_date")
+      .eq("org_id", orgId)
+      .eq("is_liquid", true),
+    // Movements paid in the months after the first one shown.
+    supabase
+      .from("v_account_ledger_monthly")
+      .select("account_id, month, inflow, outflow")
+      .eq("org_id", orgId)
+      .gt("month", monthKeys[0]),
   ]);
   if (error) throw error;
 
@@ -69,43 +130,81 @@ export default async function NetWorthPage() {
   // (cash always shows, so the left column is never blank).
   const owned = COMPONENTS.filter((c) => amountOf[c] > 0 || c === "cash");
   const owed = COMPONENTS.filter((c) => amountOf[c] < 0);
-  // The composition as horizontal bars: what we own (navy) over what we owe.
-  const chartRows = netWorthRows(amountOf, COMPONENTS, (c) => t.components[c].replace(/\s*\(.*\)$/, ""));
+  const short = (c: Component) => t.components[c].replace(/\s*\(.*\)$/, "");
+  const ownedTotal = COMPONENTS.reduce((s, c) => s + Math.max(amountOf[c], 0), 0);
+  const owedTotal = COMPONENTS.reduce((s, c) => s + Math.max(-amountOf[c], 0), 0);
+  const netWorth = Number(total?.net_worth ?? 0);
+  const composition = [
+    {
+      key: "owned",
+      title: t.owned,
+      segments: OWNED_ORDER.filter((c) => amountOf[c] > 0).map((c) => ({ key: c, label: short(c), amount: amountOf[c] })),
+    },
+    {
+      key: "owed",
+      title: t.owed,
+      segments: OWED_ORDER.filter((c) => amountOf[c] < 0).map((c) => ({ key: c, label: short(c), amount: -amountOf[c] })),
+    },
+  ];
+  // Held property at our share, as the net worth counts it.
+  const property = (assets ?? []).filter((a) => a.state === "held" && a.category?.toLowerCase() === "property");
+  const propertyValue = property.reduce((s, a) => s + Number(a.estimated_value ?? 0) * Number(a.ownership_pct ?? 1), 0);
+  const liquid = liquidMonthEnds(monthKeys, liquidAccounts ?? [], ledger ?? []).map((r) => ({
+    label: shortMonthYearLabel(r.month),
+    liquid: r.balance,
+  }));
 
   return (
     <div className="flex min-w-0 flex-col gap-10">
-      <PageHeader title={t.title} meta={<span className="block max-w-3xl">{t.intro}</span>} />
+      <PageHeader title={t.title} meta={T.question} />
 
-      <div className="border-b border-hairline pb-5">
-        <Stat
-          size="lg"
-          label={t.total}
-          value={<span className={Number(total?.net_worth ?? 0) < 0 ? "text-negative" : undefined}>{formatMoney(total?.net_worth ?? 0)}</span>}
-        />
-      </div>
-
-      {chartRows.length > 0 && (
-        <BarChart
-          label={el.reports.netWorthChartLabel}
-          data={chartRows}
-          xKey="label"
-          layout="rows"
-          series={[{ key: "amount", name: t.total }]}
-          toneKey="tone"
-          legend={[
-            { name: t.owned, tone: "navy" },
-            { name: t.owed, tone: "negative" },
+      <ReportSection label={t.title}>
+        <ReportHeadline>{netWorthNarrative({ assets: ownedTotal, liabilities: owedTotal })}</ReportHeadline>
+        <KpiBand
+          items={[
+            {
+              label: t.total,
+              value: <span className={netWorth < 0 ? "text-negative" : undefined}>{formatMoney(netWorth)}</span>,
+            },
+            {
+              label: T.liquidity,
+              value: ownedTotal > 0 ? formatPercent(amountOf.cash / ownedTotal, { digits: 0 }) : "—",
+              sub: T.liquiditySub,
+            },
+            {
+              label: T.leverage,
+              value: ownedTotal > 0 ? formatPercent(owedTotal / ownedTotal, { digits: 0 }) : "—",
+              sub: T.leverageSub,
+            },
+            { label: T.property, value: formatMoney(propertyValue), sub: T.propertySub(property.length) },
           ]}
         />
-      )}
 
-      <div className="grid min-w-0 grid-cols-1 gap-8 md:grid-cols-2">
-        <ComponentTable title={t.owned} components={owned} amountOf={amountOf} itemsOf={itemsOf} />
-        <ComponentTable title={t.owed} components={owed} amountOf={amountOf} itemsOf={itemsOf} />
-      </div>
+        {ownedTotal + owedTotal > 0 && (
+          <ReportChart title={T.compositionTitle} caption={T.compositionCaption}>
+            <CompositionBars rows={composition} label={el.reports.netWorthChartLabel} />
+          </ReportChart>
+        )}
 
-      <section className="flex min-w-0 flex-col gap-4">
-        <SectionHeader title={t.assetsTitle} actions={<AssetFormModal action={saveAsset} />} />
+        {(liquidAccounts ?? []).length > 0 && (
+          <ReportChart title={T.liquidTitle} caption={T.liquidCaption}>
+            <BandChart data={liquid} xKey="label" series={[{ key: "liquid", name: T.liquidSeries }]} label={T.liquidTitle} markBelow={false} />
+          </ReportChart>
+        )}
+
+        <ReportDetail title={T.components}>
+          <div className="grid min-w-0 grid-cols-1 gap-8 md:grid-cols-2">
+            <ComponentTable title={t.owned} components={owned} amountOf={amountOf} itemsOf={itemsOf} />
+            <ComponentTable title={t.owed} components={owed} amountOf={amountOf} itemsOf={itemsOf} />
+          </div>
+        </ReportDetail>
+
+        {/* The «add» triggers sit in the body, never inside the <summary>
+            (a form in a summary toggles it on space). */}
+        <ReportDetail title={t.assetsTitle} meta={(assets ?? []).length || undefined}>
+        <div className="present-hide print-hide -mt-1 mb-3 flex justify-end">
+          <AssetFormModal action={saveAsset} />
+        </div>
         {(assets ?? []).length === 0 ? (
           <p className="text-body text-muted">{t.empty}</p>
         ) : (
@@ -129,7 +228,7 @@ export default async function NetWorthPage() {
                         {formatMoney(a.estimated_value)}
                       </Td>
                       <Td className="py-1.5">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="present-hide print-hide flex items-center justify-end gap-1.5">
                           <AssetFormModal
                             action={saveAsset}
                             id={a.id}
@@ -153,11 +252,15 @@ export default async function NetWorthPage() {
             </tbody>
           </SpecTable>
         )}
-      </section>
+        </ReportDetail>
 
-      <section className="flex min-w-0 flex-col gap-4">
-        <SectionHeader title={t.liabilitiesTitle} actions={<LiabilityFormModal action={saveLiability} />} />
-        <p className="text-small text-muted">{t.liabilitiesHint}</p>
+        <ReportDetail title={t.liabilitiesTitle} meta={(liabilities ?? []).length || undefined}>
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+          <p className="min-w-0 flex-1 text-small text-muted">{t.liabilitiesHint}</p>
+          <span className="present-hide print-hide shrink-0">
+            <LiabilityFormModal action={saveLiability} />
+          </span>
+        </div>
         {(liabilities ?? []).length === 0 ? (
           <p className="text-body text-muted">{t.empty}</p>
         ) : (
@@ -180,7 +283,7 @@ export default async function NetWorthPage() {
                         {formatMoney(l.principal)}
                       </Td>
                       <Td className="py-1.5">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="present-hide print-hide flex items-center justify-end gap-1.5">
                           <LiabilityFormModal
                             action={saveLiability}
                             id={l.id}
@@ -204,7 +307,16 @@ export default async function NetWorthPage() {
             </tbody>
           </SpecTable>
         )}
-      </section>
+        </ReportDetail>
+
+        <ReportMethod>
+          <p>{t.intro}</p>
+          {T.method.map((m, i) => (
+            <p key={i}>{m}</p>
+          ))}
+        </ReportMethod>
+        <ReportFooter dataUntil={todayAthens()} />
+      </ReportSection>
     </div>
   );
 }
