@@ -46,11 +46,8 @@ export async function updateSession(request: NextRequest) {
   // hit anonymously by the keepalive cron) and should return a JSON error,
   // not an HTML redirect to /login.
   const isApiRoute = pathname.startsWith("/api/");
-  // "/" alone is public: the Kansha page for visitors (src/app/landing).
-  // Every other page still needs a session.
-  const isPublicLanding = pathname === "/";
 
-  if (!user && !isAuthRoute && !isAuthCallback && !isApiRoute && !isPublicLanding) {
+  if (!user && !isAuthRoute && !isAuthCallback && !isApiRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -76,7 +73,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
-    // "/" leads to the dashboard for staff; the partner gate above sends a
+    // "/" leads to the tiles (or the chosen start page) for staff; the partner gate above sends a
     // partner's next request on to /collab instead.
     url.pathname = "/";
     url.search = "";

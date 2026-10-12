@@ -92,7 +92,7 @@ export function Nav({
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <nav className="min-w-0 border-b border-hairline bg-canvas md:sticky md:top-0 md:flex md:h-screen md:w-rail md:shrink-0 md:flex-col md:overflow-y-auto md:border-b-0 md:border-r">
-        <Link href="/dashboard" aria-label="Kansha" className="flex min-h-11 items-center px-4 pt-5 pb-3">
+        <Link href="/" aria-label="Kansha" className="flex min-h-11 items-center px-4 pt-5 pb-3">
           <Brand />
         </Link>
         <OrgSwitcher orgs={orgs} currentOrgId={currentOrgId} />

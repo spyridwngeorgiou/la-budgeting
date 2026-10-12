@@ -4,9 +4,13 @@
 // Pure, so vitest covers it; used by the settings form and src/app/page.tsx.
 import { el } from "@/lib/i18n/el";
 
-export const DEFAULT_HOME_PATH = "/dashboard";
+// "/" itself: the tiles page (src/app/(app)/page.tsx). Stored as null, so
+// the 0092 check constraint needs no change.
+export const HOME_TILES_PATH = "/";
+export const DEFAULT_HOME_PATH = HOME_TILES_PATH;
 
 export const HOME_PATHS = [
+  { path: "/", label: "Πλακίδια (επιλογή ενότητας)" },
   { path: "/dashboard", label: el.nav.dashboard },
   { path: "/inbox", label: el.nav.inbox },
   { path: "/transactions", label: el.nav.transactions },
@@ -24,7 +28,7 @@ export function isHomePath(value: unknown): value is HomePath {
 }
 
 // Where / sends a signed-in internal user: their choice if it is still on
-// the list, otherwise the dashboard.
+// the list, otherwise the tiles page.
 export function resolveHomePath(value: unknown): HomePath {
   return isHomePath(value) ? value : DEFAULT_HOME_PATH;
 }

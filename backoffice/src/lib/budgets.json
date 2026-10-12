@@ -1,4 +1,4 @@
 {
-  "$comment": "Size budget checked by budgets.test.ts. appPagesMax may only go DOWN, unless the owner approves a new page. It was 32 after the v2 redesign was removed. 2026-10-11 owner-approved plan: +/calendar (Ημερολόγιο), +/accounts/[id] (per-account ledger), +/inbox/new (one capture screen), while /documents/new and /aade became redirects to /inbox/new: net 33. 2026-10-11 owner-approved plan (Αναφορές): +/reports/portfolio (Χαρτοφυλάκιο έργων, a new report tab from existing data): 34.",
-  "appPagesMax": 34
+  "$comment": "Size budget checked by budgets.test.ts. appPagesMax may only go DOWN, unless the owner approves a new page. It was 32 after the v2 redesign was removed. 2026-10-11 owner-approved plan: +/calendar (Ημερολόγιο), +/accounts/[id] (per-account ledger), +/inbox/new (one capture screen), while /documents/new and /aade became redirects to /inbox/new: net 33. 2026-10-11 owner-approved plan (Αναφορές): +/reports/portfolio (Χαρτοφυλάκιο έργων, a new report tab from existing data): 34. 2026-10-12 owner request: + (app)/page.tsx, the signed-in tiles page at / (the public landing page was dropped): 35.",
+  "appPagesMax": 35
 }

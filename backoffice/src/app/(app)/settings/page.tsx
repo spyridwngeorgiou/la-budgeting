@@ -62,7 +62,7 @@ export default async function SettingsPage() {
           </Field>
           <Button type="submit">{el.common.save}</Button>
         </ActionForm>
-        <p className="text-small text-muted">Η σελίδα που ανοίγει μετά τη σύνδεση. Η «Επισκόπηση» μένει πάντα πρώτη στο μενού.</p>
+        <p className="text-small text-muted">Η σελίδα που ανοίγει μετά τη σύνδεση. Προεπιλογή: τα πλακίδια για να διαλέγετε ενότητα.</p>
         <div className="flex flex-col gap-3">
           <h3 className="eyebrow text-muted">Αλλαγή Κωδικού</h3>
           <ChangePasswordForm />
