@@ -4,7 +4,10 @@
 //   node scripts/ship.mjs check              typecheck + lint + vitest
 //   node scripts/ship.mjs ci                 wait for CI on HEAD, print failing lines
 //   node scripts/ship.mjs smoke <env> [paths...]   logged-in GETs as a throwaway owner
-//   node scripts/ship.mjs staging [paths...]       check -> push -> ci -> deploy -> smoke
+//   node scripts/ship.mjs staging [paths...]       push -> (ci only if migrations are pending) -> migrate -> deploy -> smoke
+//                                                  No local check and no wait for CI: CI runs on the push anyway and
+//                                                  `prod` waits for it green, and the deploy build fails on a type
+//                                                  error by itself. STRICT=1 restores check + ci first.
 //   node scripts/ship.mjs prod [paths...]          ci green on HEAD -> backup -> migrate -> deploy -> light smoke -> tag prod-<date>-<sha>
 //   node scripts/ship.mjs rollback <staging|prod> [version-id]
 //                                                  the Worker back to the previous version (or the one given) in
@@ -237,17 +240,36 @@ if (cmd === "check") check();
 else if (cmd === "ci") await ci();
 else if (cmd === "smoke") await smoke(args[0], args.slice(1), { gapMs: args[0] === "prod" ? 1500 : 0 });
 else if (cmd === "staging") {
-  check();
+  const t0 = Date.now();
+  const lap = (what, since) => console.log(`  ${what} ${Math.round((Date.now() - since) / 1000)}s`);
+  if (process.env.STRICT === "1") check();
   const push = sh("git push -q origin HEAD:main");
-  if (!push.ok) fail(`push\n${push.out.slice(-800)}`);
-  await ci();
-  // Destructive migrations refuse to run here (no fresh backup): run
-  // backup-json.mjs + migrate-remote.mjs --confirm-destructive by hand.
-  const m = sh(`node scripts/migrate-remote.mjs ${ENVS.staging.ref}`);
-  if (!m.ok) fail(`migrate staging\n${m.out.slice(-1500)}`);
-  console.log(`✓ migrate staging ${tail(m.out, /pending/, 1).trim()}`);
+  if (!push.ok) fail(`push
+${push.out.slice(-800)}`);
+  // A new migration is the one thing staging should not take untested: wait
+  // for CI's db job (fresh database + pgTAP) first. Code-only: no wait.
+  const dry = sh(`node scripts/migrate-remote.mjs ${ENVS.staging.ref} --dry-run`);
+  const pending = !/0 pending/.test(dry.out);
+  if (pending || process.env.STRICT === "1") {
+    const t = Date.now();
+    await ci();
+    lap("ci", t);
+  }
+  if (pending) {
+    // Destructive migrations refuse to run here (no fresh backup): run
+    // backup-json.mjs + migrate-remote.mjs --confirm-destructive by hand.
+    const m = sh(`node scripts/migrate-remote.mjs ${ENVS.staging.ref}`);
+    if (!m.ok) fail(`migrate staging
+${m.out.slice(-1500)}`);
+    console.log(`✓ migrate staging ${tail(m.out, /pending/, 1).trim()}`);
+  } else console.log("✓ migrate staging: nothing pending");
+  let t = Date.now();
   deploy("staging");
+  lap("deploy", t);
+  t = Date.now();
   await smoke("staging", args);
+  lap("smoke", t);
+  console.log(`  total ${Math.round((Date.now() - t0) / 1000)}s · CI keeps running on GitHub; ship:prod waits for it green`);
 } else if (cmd === "prod") {
   await ci();
   const b = sh(`node scripts/backup-json.mjs ${ENVS.prod.ref}`);
