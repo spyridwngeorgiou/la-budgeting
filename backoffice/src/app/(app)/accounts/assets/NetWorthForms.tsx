@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Field, FormDrawer, Input, Label, Select } from "@/components/ui";
+import { Button, Field, FormDrawer, Input, Label, Select, useToast, type ButtonSize, type ButtonVariant } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { ASSET_STATE, LIABILITY_KIND, LIABILITY_STATE } from "@/lib/domain/enums";
 import type { ActionResult } from "@/lib/actions";
@@ -22,9 +22,12 @@ function OwnerSelect({ value }: { value?: string }) {
   );
 }
 
-function Trigger({ edit, label, onClick }: { edit: boolean; label: string; onClick: () => void }) {
+// A row's «Επεξεργασία», or the page header's «+ Νέο …» (variant / size).
+type TriggerStyle = { variant?: ButtonVariant; size?: ButtonSize };
+
+function Trigger({ edit, label, onClick, variant = "secondary", size = "sm" }: { edit: boolean; label: string; onClick: () => void } & TriggerStyle) {
   return (
-    <Button variant="secondary" size="sm" onClick={onClick}>
+    <Button variant={variant} size={size} onClick={onClick}>
       {edit ? el.common.edit : `+ ${label}`}
     </Button>
   );
@@ -41,14 +44,26 @@ export interface AssetInitial {
   notes: string | null;
 }
 
-export function AssetFormModal({ action, id = null, initial }: { action: Action; id?: string | null; initial?: AssetInitial }) {
+export function AssetFormModal({
+  action,
+  id = null,
+  initial,
+  variant,
+  size,
+}: { action: Action; id?: string | null; initial?: AssetInitial } & TriggerStyle) {
   const [open, setOpen] = useState(false);
+  const { show } = useToast();
   const t = el.netWorth;
   return (
     <>
-      <Trigger edit={!!initial} label={t.addAsset} onClick={() => setOpen(true)} />
+      <Trigger edit={!!initial} label={t.addAsset} onClick={() => setOpen(true)} variant={variant} size={size} />
       {open && (
-        <FormDrawer onClose={() => setOpen(false)} title={initial ? t.editAsset : t.addAsset} action={(formData: FormData) => action(id, formData)}>
+        <FormDrawer
+          onClose={() => setOpen(false)}
+          title={initial ? t.editAsset : t.addAsset}
+          action={(formData: FormData) => action(id, formData)}
+          onSuccess={() => show(el.common.saved)}
+        >
           <Field>
             <Label>{t.name}</Label>
             <Input name="name" defaultValue={initial?.name} required />
@@ -114,14 +129,26 @@ export interface LiabilityInitial {
   terms: string | null;
 }
 
-export function LiabilityFormModal({ action, id = null, initial }: { action: Action; id?: string | null; initial?: LiabilityInitial }) {
+export function LiabilityFormModal({
+  action,
+  id = null,
+  initial,
+  variant,
+  size,
+}: { action: Action; id?: string | null; initial?: LiabilityInitial } & TriggerStyle) {
   const [open, setOpen] = useState(false);
+  const { show } = useToast();
   const t = el.netWorth;
   return (
     <>
-      <Trigger edit={!!initial} label={t.addLiability} onClick={() => setOpen(true)} />
+      <Trigger edit={!!initial} label={t.addLiability} onClick={() => setOpen(true)} variant={variant} size={size} />
       {open && (
-        <FormDrawer onClose={() => setOpen(false)} title={initial ? t.editLiability : t.addLiability} action={(formData: FormData) => action(id, formData)}>
+        <FormDrawer
+          onClose={() => setOpen(false)}
+          title={initial ? t.editLiability : t.addLiability}
+          action={(formData: FormData) => action(id, formData)}
+          onSuccess={() => show(el.common.saved)}
+        >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field>
               <Label>{t.lender}</Label>

@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate, formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { PageHeader, SUB_CLASS, SectionHeader, SpecTable, Td, Tr, cn } from "@/components/ui";
+import { EmptyState, PageHeader, SUB_CLASS, SectionHeader, SpecTable, Td, Th, Tr, cn } from "@/components/ui";
+import { shell } from "@/lib/i18n/v2/shell";
 import { AssetFormModal, LiabilityFormModal } from "./NetWorthForms";
 import { RowDeleteMenu } from "./RowDeleteMenu";
 import { deleteAsset, deleteLiability, saveAsset, saveLiability } from "./actions";
@@ -41,14 +42,29 @@ export default async function AssetsPage() {
             .
           </>
         }
+        actions={
+          <>
+            <AssetFormModal action={saveAsset} variant="primary" size="md" />
+            <LiabilityFormModal action={saveLiability} variant="secondary" size="md" />
+          </>
+        }
       />
 
-      <section className="flex min-w-0 flex-col gap-4">
-        <SectionHeader title={t.assetsTitle} actions={<AssetFormModal action={saveAsset} />} />
+      <section className="flex min-w-0 flex-col gap-3">
+        <SectionHeader title={t.assetsTitle} />
         {(assets ?? []).length === 0 ? (
-          <p className="text-body text-muted">{t.empty}</p>
+          <EmptyState title={t.empty} />
         ) : (
           <SpecTable label={t.assetsTitle}>
+            <thead>
+              <tr>
+                <Th>{t.name}</Th>
+                <Th numeric>{t.value}</Th>
+                <Th>
+                  <span className="sr-only">{shell.ui.actions}</span>
+                </Th>
+              </tr>
+            </thead>
             <tbody>
               {(assets ?? []).map((a) => {
                 const counted = a.state === "held";
@@ -94,13 +110,22 @@ export default async function AssetsPage() {
         )}
       </section>
 
-      <section className="flex min-w-0 flex-col gap-4">
-        <SectionHeader title={t.liabilitiesTitle} actions={<LiabilityFormModal action={saveLiability} />} />
+      <section className="flex min-w-0 flex-col gap-3">
+        <SectionHeader title={t.liabilitiesTitle} />
         <p className="text-small text-muted">{t.liabilitiesHint}</p>
         {(liabilities ?? []).length === 0 ? (
-          <p className="text-body text-muted">{t.empty}</p>
+          <EmptyState title={t.empty} />
         ) : (
           <SpecTable label={t.liabilitiesTitle}>
+            <thead>
+              <tr>
+                <Th>{t.lender}</Th>
+                <Th numeric>{t.principal}</Th>
+                <Th>
+                  <span className="sr-only">{shell.ui.actions}</span>
+                </Th>
+              </tr>
+            </thead>
             <tbody>
               {(liabilities ?? []).map((l) => {
                 const counted = l.state === "disbursed";

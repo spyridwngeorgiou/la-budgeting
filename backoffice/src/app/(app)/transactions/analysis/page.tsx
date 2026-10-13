@@ -2,9 +2,11 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatMoney } from "@/lib/format";
 import type { TxDirection, TxScope } from "@/lib/domain/enums";
-import { AiSpark, FilterChip, LINK_CLASS, PageHeader, SpecTable, Td, Th, Tr, buttonClass } from "@/components/ui";
+import { AiSpark, LINK_CLASS, PageHeader, SpecTable, Td, Th, Tr, ViewSwitch, buttonClass } from "@/components/ui";
 import { addMonths, currentMonthKey, monthRange, monthsBetween, shortMonthYearLabel } from "@/lib/dates";
 import { getCurrentOrgId } from "@/lib/supabase/org";
+import { withParams } from "@/lib/url";
+import { StickyHead } from "./StickyHead";
 
 type GroupBy = "project" | "category" | "contact" | "account";
 
@@ -210,145 +212,139 @@ export default async function AnalysisPage({
         }
       />
 
-      <div className="grid grid-cols-1 gap-x-8 gap-y-4 border-b border-hairline pb-4 md:flex md:flex-wrap md:items-start">
-        <FilterGroup label="Ομαδοποίηση κατά" param="group_by" value={groupBy} current={params}
-          options={[
-            { value: "project", label: "Έργο" },
-            { value: "category", label: "Κατηγορία" },
-            { value: "contact", label: "Επαφή" },
-            { value: "account", label: "Λογαριασμός" },
-          ]}
-        />
-        <FilterGroup label="Κατεύθυνση" param="direction" value={direction} current={params}
-          options={[
-            { value: "all", label: "Όλα (καθαρό)" },
-            { value: "expense", label: "Έξοδα" },
-            { value: "income", label: "Έσοδα" },
-          ]}
-        />
-        <FilterGroup label="Πεδίο" param="scope" value={scope} current={params}
-          options={[
-            { value: "all", label: "Όλα" },
-            { value: "business", label: "Επιχειρηματικό" },
-            { value: "personal", label: "Προσωπικό" },
-          ]}
-        />
-        <FilterGroup label="Περίοδος" param="range" value={range} current={params}
-          options={[
-            { value: "12m", label: "Τελευταίοι 12 μήνες" },
-            { value: "all", label: "Όλο το ιστορικό" },
-          ]}
-        />
+      <div className="flex flex-wrap items-start gap-x-8 gap-y-4 border-b border-hairline pb-4">
+        {VIEWS.map((v) => (
+          <ViewSwitch
+            key={v.param}
+            label={v.label}
+            active={{ group_by: groupBy, direction, scope, range }[v.param]}
+            options={v.options.map((o) => ({
+              key: o.value,
+              label: o.label,
+              // The default leaves the URL; every other view is kept.
+              href: withParams("/transactions/analysis", { ...params }, { [v.param]: o.value === v.options[0].value ? null : o.value }),
+            }))}
+          />
+        ))}
       </div>
 
       {rows.length === 0 ? (
         <p className="border-y border-hairline py-6 text-body text-muted">Δεν βρέθηκαν κινήσεις για αυτά τα φίλτρα.</p>
       ) : (
         // The months ARE the content: the table scrolls sideways inside its
-        // own frame on a phone, the first column stays put.
-        <SpecTable label="Ανάλυση κινήσεων ανά μήνα" stickyFirst tableClassName="text-small">
-          <thead>
-            <tr>
-              <Th>{dim.label}</Th>
-              {months.map((m) => (
-                <Th key={m} numeric aria-current={m === todayMonth ? "date" : undefined}>
-                  <Link
-                    href={columnHref(m)}
-                    className={`underline-offset-4 hover:text-ink hover:underline ${m === todayMonth ? "text-ink" : ""}`}
-                  >
-                    {shortMonthYearLabel(m)}
-                  </Link>
-                  {m === todayMonth && <div className="mt-0.5 text-small font-medium tracking-normal normal-case text-accent-ink">σήμερα</div>}
-                </Th>
-              ))}
-              <Th numeric>
-                <span className="text-ink">Σύνολο</span>
-              </Th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => {
-              const rowMax = Math.max(0, ...[...row.byMonth.values()].map((v) => Math.abs(v)));
-              return (
-                <Tr key={row.id ?? row.label}>
-                  <Td className="whitespace-nowrap">
-                    <Link href={rowHref(row.id)} className={LINK_CLASS}>
-                      {row.label}
+        // own frame on a phone, the first column stays put, and the head
+        // follows the page down (StickyHead).
+        <StickyHead>
+          <SpecTable
+            label="Ανάλυση κινήσεων ανά μήνα"
+            stickyFirst
+            tableClassName="border-separate border-spacing-0 text-small [&_tbody>tr:last-child>td]:border-b-0"
+          >
+            <thead>
+              <tr>
+                <Th>{dim.label}</Th>
+                {months.map((m) => (
+                  <Th key={m} numeric aria-current={m === todayMonth ? "date" : undefined}>
+                    <Link
+                      href={columnHref(m)}
+                      className={`underline-offset-4 hover:text-ink hover:underline ${m === todayMonth ? "text-ink" : ""}`}
+                    >
+                      {shortMonthYearLabel(m)}
                     </Link>
+                    {m === todayMonth && <div className="mt-0.5 text-small font-medium tracking-normal normal-case text-accent-ink">σήμερα</div>}
+                  </Th>
+                ))}
+                <Th numeric>
+                  <span className="text-ink">Σύνολο</span>
+                </Th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => {
+                const rowMax = Math.max(0, ...[...row.byMonth.values()].map((v) => Math.abs(v)));
+                return (
+                  <Tr key={row.id ?? row.label}>
+                    <Td className="whitespace-nowrap">
+                      <Link href={rowHref(row.id)} className={LINK_CLASS}>
+                        {row.label}
+                      </Link>
+                    </Td>
+                    {months.map((m) => {
+                      const v = row.byMonth.get(m);
+                      return (
+                        <Td key={m} numeric style={{ backgroundColor: cellShade(v, rowMax) }}>
+                          {v ? (
+                            <Link href={cellHref(row.id, m)} className="underline-offset-4 hover:text-ink hover:underline">
+                              {fmt(v)}
+                            </Link>
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                        </Td>
+                      );
+                    })}
+                    <Td numeric strong className="font-medium">
+                      {fmt(row.total)}
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <Tr total>
+                <Td>Σύνολο</Td>
+                {columnTotals.map((v, i) => (
+                  <Td key={months[i]} numeric>
+                    {fmt(v)}
                   </Td>
-                  {months.map((m) => {
-                    const v = row.byMonth.get(m);
-                    return (
-                      <Td key={m} numeric style={{ backgroundColor: cellShade(v, rowMax) }}>
-                        {v ? (
-                          <Link href={cellHref(row.id, m)} className="underline-offset-4 hover:text-ink hover:underline">
-                            {fmt(v)}
-                          </Link>
-                        ) : (
-                          <span className="text-muted">—</span>
-                        )}
-                      </Td>
-                    );
-                  })}
-                  <Td numeric strong className="font-medium">
-                    {fmt(row.total)}
-                  </Td>
-                </Tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <Tr total>
-              <Td>Σύνολο</Td>
-              {columnTotals.map((v, i) => (
-                <Td key={months[i]} numeric>
-                  {fmt(v)}
-                </Td>
-              ))}
-              <Td numeric>{fmt(grandTotal)}</Td>
-            </Tr>
-          </tfoot>
-        </SpecTable>
+                ))}
+                <Td numeric>{fmt(grandTotal)}</Td>
+              </Tr>
+            </tfoot>
+          </SpecTable>
+        </StickyHead>
       )}
     </div>
   );
 }
 
-function FilterGroup({
-  label,
-  param,
-  value,
-  current,
-  options,
-}: {
-  label: string;
-  param: string;
-  value: string;
-  current: SearchParams;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <div role="group" aria-label={label} className="flex min-w-0 flex-none flex-col gap-1.5">
-      <span className="eyebrow text-muted">{label}</span>
-      <div className="flex flex-wrap gap-2">
-        {options.map((o) => {
-          const p = new URLSearchParams();
-          for (const [k, v] of Object.entries(current)) {
-            if (typeof v === "string") p.set(k, v);
-          }
-          p.set(param, o.value);
-          return (
-            <FilterChip
-              key={o.value}
-              href={`/transactions/analysis?${p.toString()}`}
-              active={value === o.value}
-              className="max-md:min-h-11"
-            >
-              {o.label}
-            </FilterChip>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+// The four view switches above the table; the first option of each is the
+// default (no param in the URL).
+const VIEWS: { param: "group_by" | "direction" | "scope" | "range"; label: string; options: { value: string; label: string }[] }[] = [
+  {
+    param: "group_by",
+    label: "Ομαδοποίηση κατά",
+    options: [
+      { value: "project", label: "Έργο" },
+      { value: "category", label: "Κατηγορία" },
+      { value: "contact", label: "Επαφή" },
+      { value: "account", label: "Λογαριασμός" },
+    ],
+  },
+  {
+    param: "direction",
+    label: "Κατεύθυνση",
+    options: [
+      { value: "all", label: "Όλα (καθαρό)" },
+      { value: "expense", label: "Έξοδα" },
+      { value: "income", label: "Έσοδα" },
+    ],
+  },
+  {
+    param: "scope",
+    label: "Πεδίο",
+    options: [
+      { value: "all", label: "Όλα" },
+      { value: "business", label: "Επιχειρηματικό" },
+      { value: "personal", label: "Προσωπικό" },
+    ],
+  },
+  {
+    param: "range",
+    label: "Περίοδος",
+    options: [
+      { value: "12m", label: "Τελευταίοι 12 μήνες" },
+      { value: "all", label: "Όλο το ιστορικό" },
+    ],
+  },
+];

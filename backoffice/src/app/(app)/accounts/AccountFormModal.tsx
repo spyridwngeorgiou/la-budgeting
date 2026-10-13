@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Button, Input, Select, Label, Field, Modal, Notice, type ButtonSize, type ButtonVariant } from "@/components/ui";
-import { SubmitButton } from "@/components/SubmitButton";
+import { useId, useState } from "react";
+import { Button, Checkbox, Field, FormDrawer, Input, MoneyInput, Select, useToast, type ButtonSize, type ButtonVariant } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { ACCOUNT_KIND, OWNER_SCOPE, type AccountKind, type OwnerScope } from "@/lib/domain/enums";
 import { todayAthens } from "@/lib/dates";
-import { errorOf } from "@/lib/actions";
+import { amountInputValue } from "@/lib/amountInput";
 import { createAccount, updateAccount } from "./actions";
 
 export interface AccountFormValues {
@@ -21,9 +20,9 @@ export interface AccountFormValues {
   account_number: string | null;
 }
 
-// New account, or with `account` the same form filled in for editing
-// (updateAccount). The id travels as a plain prop; the actions are imported
-// here, so the server page passes no function.
+// «Νέος λογαριασμός», or with `account` «Επεξεργασία λογαριασμού» (the same
+// form, filled in), in the side drawer. The id travels as a plain prop; the
+// actions are imported here, so the server page passes no function.
 export function AccountFormModal({
   account,
   variant = account ? "ghost" : "primary",
@@ -34,93 +33,74 @@ export function AccountFormModal({
   size?: ButtonSize;
 }) {
   const [open, setOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { show } = useToast();
+  const uid = useId();
+  const id = (name: string) => `${uid}-${name}`;
+  const a = el.account;
 
   return (
     <>
       <Button variant={variant} size={size} onClick={() => setOpen(true)}>
-        {account ? el.common.edit : "+ Νέος Λογαριασμός"}
+        {account ? el.common.edit : a.newButton}
       </Button>
       {open && (
-        <Modal
+        <FormDrawer
           onClose={() => setOpen(false)}
-          className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto border border-hairline bg-raised p-5 md:p-6"
-          closeOnBackdrop={false}
+          title={account ? a.editTitle : a.newTitle}
+          eyebrow={account?.name}
+          action={(formData) => (account ? updateAccount(account.id, formData) : createAccount(formData))}
+          onSuccess={() => show(el.common.saved)}
         >
-          <form
-            action={async (formData) => {
-              setError(null);
-              const result = account ? await updateAccount(account.id, formData) : await createAccount(formData);
-              const message = errorOf(result);
-              if (message) return setError(message);
-              setOpen(false);
-            }}
-            className="flex flex-col gap-4"
-          >
-            {account && <p className="eyebrow text-muted">{el.common.edit} · {account.name}</p>}
-            <Field>
-              <Label>{el.account.name}</Label>
-              <Input name="name" required defaultValue={account?.name} />
-            </Field>
-            <Field>
-              <Label>{el.account.kind}</Label>
-              <Select name="kind" defaultValue={account?.kind ?? "bank"}>
+          <Field label={a.name} htmlFor={id("name")} required>
+            <Input id={id("name")} name="name" required defaultValue={account?.name} />
+          </Field>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label={a.kind} htmlFor={id("kind")}>
+              <Select id={id("kind")} name="kind" defaultValue={account?.kind ?? "bank"}>
                 {ACCOUNT_KIND.map((k) => (
                   <option key={k} value={k}>
-                    {el.account.kindValues[k]}
+                    {a.kindValues[k]}
                   </option>
                 ))}
               </Select>
             </Field>
-            <Field>
-              <Label>{el.account.ownerScope}</Label>
-              <Select name="owner_scope" defaultValue={account?.owner_scope ?? "corporate"}>
+            <Field label={a.ownerScope} htmlFor={id("owner")}>
+              <Select id={id("owner")} name="owner_scope" defaultValue={account?.owner_scope ?? "corporate"}>
                 {OWNER_SCOPE.map((o) => (
                   <option key={o} value={o}>
-                    {el.account.ownerValues[o]}
+                    {a.ownerValues[o]}
                   </option>
                 ))}
               </Select>
             </Field>
-            <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 self-start text-body text-ink md:min-h-10">
-              <input type="checkbox" name="is_liquid" defaultChecked={account?.is_liquid ?? true} className="h-4 w-4 accent-navy" />
-              Ρευστό διαθέσιμο
-            </label>
-            <Field>
-              <Label>{el.account.openingBalance}</Label>
-              <Input type="number" step="0.01" name="opening_balance" defaultValue={String(account?.opening_balance ?? 0)} />
+          </div>
+          <Checkbox label={a.liquid} name="is_liquid" defaultChecked={account?.is_liquid ?? true} className="self-start pointer-coarse:min-h-11" />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label={a.openingBalance} htmlFor={id("opening")}>
+              <MoneyInput
+                id={id("opening")}
+                name="opening_balance"
+                defaultValue={amountInputValue(account?.opening_balance ?? 0)}
+                className="w-full"
+              />
             </Field>
-            <Field>
-              <Label>{el.account.iban}</Label>
-              <Input name="iban" autoComplete="off" spellCheck={false} placeholder="GR.." defaultValue={account?.iban ?? ""} />
-            </Field>
-            <Field>
-              <Label>{el.account.accountNumber}</Label>
-              <Input name="account_number" inputMode="numeric" autoComplete="off" defaultValue={account?.account_number ?? ""} />
-              <p className="text-small text-muted">{el.account.statementHint}</p>
-            </Field>
-            <Field>
-              <Label>Ημ/νία Υπολοίπου Έναρξης</Label>
+            <Field label={a.openingDate} htmlFor={id("openingDate")} required>
               <Input
+                id={id("openingDate")}
                 type="date"
                 name="opening_balance_date"
                 defaultValue={account?.opening_balance_date ?? todayAthens()}
                 required
               />
             </Field>
-            {error && (
-              <Notice tone="negative" role="alert">
-                {error}
-              </Notice>
-            )}
-            <div className="mt-2 flex justify-end gap-2">
-              <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-                {el.common.cancel}
-              </Button>
-              <SubmitButton>{el.common.save}</SubmitButton>
-            </div>
-          </form>
-        </Modal>
+          </div>
+          <Field label={a.iban} htmlFor={id("iban")}>
+            <Input id={id("iban")} name="iban" autoComplete="off" spellCheck={false} placeholder="GR.." defaultValue={account?.iban ?? ""} />
+          </Field>
+          <Field label={a.accountNumber} hint={a.statementHint} htmlFor={id("number")}>
+            <Input id={id("number")} name="account_number" inputMode="numeric" autoComplete="off" defaultValue={account?.account_number ?? ""} />
+          </Field>
+        </FormDrawer>
       )}
     </>
   );

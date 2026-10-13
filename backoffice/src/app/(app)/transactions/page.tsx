@@ -3,14 +3,15 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { el } from "@/lib/i18n/el";
 import { formatDate, formatMoney } from "@/lib/format";
-import { AiSpark, FilterChip, Notice, buttonClass } from "@/components/ui";
-import { TransactionsTable } from "./TransactionsTable";
+import { Notice, Pager } from "@/components/ui";
+import { TransactionsTable, type TxRow } from "./TransactionsTable";
 import { TransactionFilters } from "./TransactionFilters";
 import { TX_STATUS, TX_DIRECTION, type TxStatus, type TxDirection } from "@/lib/domain/enums";
 import { loadLookups } from "@/lib/data/lookups";
 import { txSearchFilter } from "@/lib/data/txSearch";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { withParams } from "@/lib/url";
+import { TX_BASE, hasAnyFilter, txFilterHref, type TxParams } from "./filterHref";
 
 function parseStatus(value: string | undefined): TxStatus | null {
   return TX_STATUS.includes(value as TxStatus) ? (value as TxStatus) : null;
@@ -39,12 +40,17 @@ interface SearchParams {
   new?: string;
 }
 
+const PAGE_SIZE = 50;
+
 export default async function TransactionsPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
+  // Every param as plain values, for the filter row, the pager and the
+  // links: whatever changes one filter keeps the rest (the search too).
+  const all: TxParams = { ...params };
   const status = parseStatus(params.status);
   const direction = parseDirection(params.direction);
   const projectId = params.project_id || null;
@@ -54,9 +60,8 @@ export default async function TransactionsPage({
   const scope = params.scope === "business" || params.scope === "personal" ? params.scope : null;
   const from = params.from || null;
   const to = params.to || null;
-  // Explicit id list -- used by the AI assistant's drill-down link, where
-  // the relevant rows don't share a single common filter (e.g. "every
-  // transaction that made up this answer" can span several projects/months).
+  // Explicit id list -- used by the AI assistant's drill-down link and an
+  // account's ledger row, where the rows don't share a single filter.
   const ids = params.ids ? params.ids.split(",").filter(Boolean) : null;
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
@@ -65,7 +70,6 @@ export default async function TransactionsPage({
   // with project_id / account_id / contact_id / category_id / scope / from /
   // to so any figure shown elsewhere is one click away from the actual rows
   // behind it, not just a total you have to trust.
-  const PAGE_SIZE = 50;
   const requestedPage = Math.max(1, Math.floor(Number(params.page) || 1));
   // count: "exact" alongside the row fetch, so the page knows how many
   // pages there are and says so -- rows are never silently cut off.
@@ -107,38 +111,35 @@ export default async function TransactionsPage({
   // Flatten embedded relations here (server-side, once) rather than passing
   // the raw {contacts: {...}} shape down -- the client table only needs the
   // display name, not the whole embed machinery.
-  const rows = (transactions ?? []).map((tx) => {
-    const contact = Array.isArray(tx.contacts) ? tx.contacts[0] : tx.contacts;
-    const project = Array.isArray(tx.projects) ? tx.projects[0] : tx.projects;
-    const category = Array.isArray(tx.categories) ? tx.categories[0] : tx.categories;
-    return {
-      id: tx.id,
-      tx_date: tx.tx_date,
-      due_date: tx.due_date,
-      paid_on: tx.paid_on,
-      plan_id: tx.plan_id,
-      property_project_id: tx.property_project_id,
-      description: tx.description,
-      direction: tx.direction,
-      status: tx.status,
-      scope: tx.scope,
-      gross_amount: tx.gross_amount,
-      net_amount: tx.net_amount,
-      vat_rate: tx.vat_rate,
-      withholding_amount: tx.withholding_amount,
-      has_invoice: tx.has_invoice,
-      invoice_number: tx.invoice_number,
-      contact_id: tx.contact_id,
-      project_id: tx.project_id,
-      category_id: tx.category_id,
-      account_id: tx.account_id,
-      origin: tx.origin,
-      has_source_document: tx.source_document_id != null,
-      contact_name: contact?.name ?? null,
-      project_name: project?.display_name ?? null,
-      category_name: category?.name ?? null,
-    };
-  });
+  const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
+  const rows: TxRow[] = (transactions ?? []).map((tx) => ({
+    id: tx.id,
+    tx_date: tx.tx_date,
+    due_date: tx.due_date,
+    paid_on: tx.paid_on,
+    plan_id: tx.plan_id,
+    property_project_id: tx.property_project_id,
+    description: tx.description,
+    direction: tx.direction,
+    status: tx.status,
+    scope: tx.scope,
+    gross_amount: tx.gross_amount,
+    net_amount: tx.net_amount,
+    vat_rate: tx.vat_rate,
+    withholding_amount: tx.withholding_amount,
+    has_invoice: tx.has_invoice,
+    invoice_number: tx.invoice_number,
+    contact_id: tx.contact_id,
+    project_id: tx.project_id,
+    category_id: tx.category_id,
+    account_id: tx.account_id,
+    origin: tx.origin,
+    has_source_document: tx.source_document_id != null,
+    contact_name: one(tx.contacts)?.name ?? null,
+    project_name: one(tx.projects)?.display_name ?? null,
+    category_name: one(tx.categories)?.name ?? null,
+    account_name: one(tx.accounts)?.name ?? null,
+  }));
 
   const contactOptions = (contacts ?? []).map((c) => ({ id: c.id, label: c.name }));
   const projectOptions = (projects ?? []).map((p) => ({ id: p.id, label: p.display_name }));
@@ -149,12 +150,11 @@ export default async function TransactionsPage({
   const activeAccountName = accountId ? accountOptions.find((a) => a.id === accountId)?.label : null;
   const activeContactName = contactId ? contactOptions.find((c) => c.id === contactId)?.label : null;
   const activeCategoryName = categoryId ? categoryOptions.find((c) => c.id === categoryId)?.label : null;
-  const hasDrillFilter = projectId || accountId || contactId || categoryId || scope || from || to || ids;
   const total = totalCount ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const page = Math.min(requestedPage, pageCount);
   // A page past the end (rows deleted, filters narrowed): go to the last one.
-  if (requestedPage > pageCount) redirect(withParams("/transactions", { ...params }, { page: pageCount > 1 ? String(pageCount) : null }));
+  if (requestedPage > pageCount) redirect(withParams(TX_BASE, all, { page: pageCount > 1 ? String(pageCount) : null }));
 
   // Same filters as the on-screen table, but the export route itself has no
   // row cap and no paging -- "export what I'm looking at" always gets every
@@ -191,121 +191,56 @@ export default async function TransactionsPage({
   // React logs a spurious (but real, reproducible) missing-key warning on
   // every navigation to this page.
   const filterBar = (
-    <div key="filter-bar" className="flex flex-col gap-4">
+    <div key="filter-bar" className="flex flex-col gap-3">
       <TransactionFilters
-        key="entity-filters"
-        current={{
-          status: params.status,
-          direction: params.direction,
-          scope: params.scope,
-          from: params.from,
-          to: params.to,
-          project_id: params.project_id,
-          contact_id: params.contact_id,
-          category_id: params.category_id,
-          account_id: params.account_id,
-        }}
+        key="filters"
+        params={all}
         projects={projectOptions}
-        contacts={contactOptions}
         categories={categoryOptions}
         accounts={accountOptions}
+        contactName={activeContactName ?? null}
       />
-      {hasDrillFilter && (
-        <Notice key="drill-banner" as="div" size="small" className="flex flex-col gap-1">
-          <div key="line1" className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span key="label" className="eyebrow text-muted">Ανάλυση κινήσεων:</span>
-            {activeProjectName && <strong key="project" className="font-medium text-ink">{activeProjectName}</strong>}
-            {activeAccountName && <strong key="account" className="font-medium text-ink">{activeAccountName}</strong>}
-            {activeContactName && <strong key="contact" className="font-medium text-ink">{activeContactName}</strong>}
-            {activeCategoryName && <strong key="category" className="font-medium text-ink">{activeCategoryName}</strong>}
-            {scope && (
-              <strong key="scope" className="font-medium text-ink">
-                {scope === "business" ? "Επιχειρηματικό" : "Προσωπικό"}
-              </strong>
-            )}
-            {(from || to) && (
-              <strong key="range" className="num font-medium text-ink">
-                {from ? formatDate(from) : "…"} – {to ? formatDate(to) : "…"}
-              </strong>
-            )}
-            {status && <strong key="status" className="font-medium text-ink">({el.transaction[status]})</strong>}
-            {ids && <strong key="ids" className="font-medium text-ink">Από τον Βοηθό AI</strong>}
-            <Link
-              key="clear"
-              href="/transactions"
-              className="ml-auto inline-flex min-h-11 items-center text-ink underline underline-offset-4 hover:text-navy md:min-h-0"
-            >
-              Καθαρισμός
-            </Link>
-          </div>
-          {accountBalance && (
-            <p key="line2" className="text-small text-muted">
-              Υπόλοιπο Έναρξης {formatDate(accountBalance.opening_balance_date)}:{" "}
-              <span className="num">{formatMoney(accountBalance.opening_balance)}</span> · Τρέχον Υπόλοιπο:{" "}
-              <span className="num">{formatMoney(accountBalance.current_balance)}</span>. Κινήσεις πριν την ημερομηνία
-              έναρξης εμφανίζονται εδώ αλλά δεν προσμετρώνται στο υπόλοιπο.
-            </p>
-          )}
+      {/* The drill-down notice: only for an explicit ?ids= list (every other
+          filter is visible in the row above). */}
+      {ids && (
+        <Notice key="ids" as="div" size="small" className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span key="text">{el.transaction.selected.replace("{n}", String(total))}</span>
+          <Link
+            key="all"
+            href={txFilterHref(all, { ids: null })}
+            className="inline-flex min-h-11 items-center text-ink underline underline-offset-4 hover:text-navy md:min-h-0"
+          >
+            {el.transaction.showAll}
+          </Link>
         </Notice>
       )}
-      <div key="status-chips" className="flex flex-wrap items-center gap-2">
-        {["", "paid", "pending", "scheduled"].map((s) => {
-          const on = status === s || (!status && !s);
-          return (
-            <FilterChip
-              key={s || "all"}
-              // Keeps the project / account / date filters already applied
-              // (it used to reset to ?status= alone).
-              href={withParams("/transactions", { ...params }, { status: s || null, page: null })}
-              active={on}
-              className="max-md:min-h-11"
-            >
-              {s ? el.transaction[s as "paid" | "pending" | "scheduled"] : "Όλα"}
-            </FilterChip>
-          );
-        })}
-        <Link
-          key="ask-ai"
-          href={`/assistant?q=${encodeURIComponent(askPrompt)}`}
-          className={buttonClass("ai", "md", "ml-auto max-md:w-full max-md:whitespace-normal")}
-        >
-          <AiSpark />
-          Ρώτα το Kansha AI γι&apos; αυτόν τον πίνακα →
-        </Link>
-      </div>
+      {accountBalance && (
+        <p key="balance" className="text-small text-muted">
+          Υπόλοιπο έναρξης {formatDate(accountBalance.opening_balance_date)}:{" "}
+          <span className="num">{formatMoney(accountBalance.opening_balance)}</span> · Τρέχον υπόλοιπο:{" "}
+          <span className="num">{formatMoney(accountBalance.current_balance)}</span>. Κινήσεις πριν την ημερομηνία έναρξης
+          εμφανίζονται εδώ αλλά δεν προσμετρώνται στο υπόλοιπο.
+        </p>
+      )}
     </div>
   );
 
-  // «Σελίδα 2 από 14» with previous / next: plain links that keep every
-  // filter (withParams), so a page is shareable like any filter.
-  const pageHref = (n: number) => withParams("/transactions", { ...params }, { page: n > 1 ? String(n) : null, new: null });
-  const pager =
-    pageCount > 1 ? (
-      <nav key="pager" aria-label="Σελίδες κινήσεων" className="flex flex-wrap items-center justify-between gap-3 text-small text-muted">
-        <span key="where">
-          Σελίδα <span className="num text-ink">{page}</span> από <span className="num">{pageCount}</span> ·{" "}
-          <span className="num">{(page - 1) * PAGE_SIZE + 1}</span>–<span className="num">{Math.min(page * PAGE_SIZE, total)}</span> από{" "}
-          <span className="num">{total}</span> κινήσεις
-        </span>
-        <span key="links" className="flex gap-2">
-          {page > 1 ? (
-            <Link key="prev" href={pageHref(page - 1)} rel="prev" className={buttonClass("secondary", "sm")}>
-              ‹ Προηγούμενη
-            </Link>
-          ) : null}
-          {page < pageCount ? (
-            <Link key="next" href={pageHref(page + 1)} rel="next" className={buttonClass("secondary", "sm")}>
-              Επόμενη ›
-            </Link>
-          ) : null}
-        </span>
-      </nav>
-    ) : null;
-
   return (
     <TransactionsTable
-      pager={pager}
+      pager={
+        <Pager
+          key="pager"
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          noun="κινήσεις"
+          basePath={TX_BASE}
+          params={all}
+          label="Σελίδες κινήσεων"
+        />
+      }
       pageTotalsOnly={pageCount > 1}
+      filtered={hasAnyFilter(all)}
       transactions={rows}
       contacts={contactOptions}
       projects={projectOptions}
@@ -313,7 +248,9 @@ export default async function TransactionsPage({
       accounts={accountOptions}
       filters={filterBar}
       exportHref={exportHref}
+      askHref={`/assistant?q=${encodeURIComponent(askPrompt)}`}
       startCreating={params.new === "1"}
+      newCloseHref={params.new === "1" ? withParams(TX_BASE, all, { new: null }) : undefined}
     />
   );
 }
