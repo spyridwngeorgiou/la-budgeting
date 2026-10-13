@@ -212,7 +212,9 @@ export function ScenarioPanel({
   // The scenarios discussed with the user, one button each. Each starts from
   // "only certain" and switches on what the name says.
   const ids = (pick: (l: Lever) => boolean) => Object.fromEntries(levers.filter(pick).map((l) => [l.id, true]));
-  const isStudy = (l: Lever) => l.kind === "forecast" && !l.group && !l.items;
+  const isVk = (l: Lever) => l.kind === "forecast" && /^Προσφορά VK/.test(l.label);
+  const isRenovation = (l: Lever) => l.kind === "forecast" && l.group === "Ανακαίνιση Αγ. Κωνσταντίνου";
+  const isStudy = (l: Lever) => l.kind === "forecast" && !l.group && !l.items && !isVk(l);
   const isSeries = (l: Lever) => l.kind === "forecast" && !l.group && !!l.items;
   const isUncertain = (l: Lever) => l.kind === "inflow" && !l.certain;
   const isSamino = (l: Lever) => l.kind === "inflow" && /Σαμινό/.test(l.label);
@@ -226,12 +228,13 @@ export function ScenarioPanel({
     { label: "+ Ρυθμίσεις ιδιοκτητών", choices: { ...base, on: { ...base.on, ...ids(isStudy), ...ids(isSeries) } } },
     { label: "Χωρίς προσύμφωνο Λαζαράκη", choices: { ...base, on: { ...base.on, ...off(isContract) } } },
     ...(daily ? [{ label: `Καθημερινά: μέσος όρος ${daily.months.map((m) => monthLabel(m)).join("–")}`, choices: { ...base, ...avgDaily } }] : []),
+    { label: "Ανακαίνιση με την προσφορά VK", choices: { ...base, on: { ...base.on, ...off(isRenovation), ...ids(isVk) } } },
     { label: "Χωρίς δάνειο, χωρίς Σαμινό", choices: { ...base, on: { ...base.on, ...off(isSamino) } } },
     { label: "Με δάνειο, χωρίς Σαμινό", choices: { ...base, on: { ...base.on, ...ids(isStudy), ...off(isSamino), "bank-loan": true } } },
     { label: "Έρχονται Άλμπερτ & Ψυρρή", choices: { ...base, on: { ...base.on, ...ids(isUncertain) } } },
     { label: "Με δάνειο & κατασκευή", choices: { ...base, on: { ...base.on, ...ids(isStudy), ...ids(isSeries), "bank-loan": true } } },
     { label: "Δύσκολο: όλα τα έξοδα, χωρίς αβέβαια έσοδα", choices: { ...base, ...worstDaily, on: { ...base.on, ...ids(isStudy), ...ids(isSeries) } } },
-    { label: "Όλα μέσα", choices: { ...base, on: ids(() => true) } },
+    { label: "Όλα μέσα", choices: { ...base, on: ids((l) => !isVk(l)) } }, // VK is an alternative to the renovation plan, not extra
   ];
   const [choices, setChoices] = useState<Choices>(base);
   const [preset, setPreset] = useState<string | null>(presets[0].label);
