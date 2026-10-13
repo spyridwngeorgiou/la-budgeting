@@ -1,24 +1,23 @@
 "use client";
 
+import type { MouseEvent } from "react";
 import { ArgsActionForm } from "@/components/ArgsActionForm";
-import { Menu, MenuItem } from "@/components/ui";
+import { Button } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
-import { shell } from "@/lib/i18n/v2/shell";
 import type { ActionResult } from "@/lib/actions";
 
-// The row's «⋯» menu holding its delete (the same ArgsActionForm the row's
-// own button used). The item keeps its click from reaching the menu: the
-// menu closes by unmounting, which would take the form out of the page
-// before the browser submits it. The row leaves the list when the action
-// revalidates; an error shows in the still-open menu.
+// The row's delete as a visible button (one click, then a browser confirm),
+// with the same ArgsActionForm the row used. The row leaves the list when the
+// action revalidates; an error shows under the button.
 export function RowDeleteMenu({ action, id }: { action: (id: string) => Promise<ActionResult>; id: string }) {
+  function confirmFirst(e: MouseEvent<HTMLButtonElement>) {
+    if (!window.confirm(`${el.common.delete}; Δεν αναιρείται.`)) e.preventDefault();
+  }
   return (
-    <Menu label={shell.ui.actions}>
-      <ArgsActionForm action={action} args={[id]}>
-        <MenuItem type="submit" tone="danger" onClick={(e) => e.stopPropagation()}>
-          {el.common.delete}
-        </MenuItem>
-      </ArgsActionForm>
-    </Menu>
+    <ArgsActionForm action={action} args={[id]}>
+      <Button type="submit" variant="ghost" size="sm" onClick={confirmFirst} className="text-negative hover:text-negative">
+        {el.common.delete}
+      </Button>
+    </ArgsActionForm>
   );
 }

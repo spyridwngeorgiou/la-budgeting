@@ -1,14 +1,15 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { ActionForm } from "@/components/ActionForm";
-import { Menu, MenuItem } from "@/components/ui";
+import { Button } from "@/components/ui";
 import type { ActionResult } from "@/lib/actions";
 
-// A row's «⋯» menu holding its delete: the same form (ActionForm, or a plain
-// <form> with `plain`) and server action the row's delete button had. The click does not bubble to the
-// menu, so the menu stays open (and the form mounted) while the form
-// submits; any error shows under the item, and on success the row is gone.
+// A row's delete, shown as a visible button on the row (as on 7 Oct) rather
+// than inside a «⋯» menu: one click, then a browser confirm. The same form
+// (ActionForm, or a plain <form> with `plain`) and server action as before;
+// any error shows under the button, and on success the row is gone. `label`
+// is kept as the accessible name prefix so callers need no change.
 export function RowDeleteMenu({
   action,
   label,
@@ -22,19 +23,19 @@ export function RowDeleteMenu({
   title?: string;
   plain?: boolean;
 }) {
-  const item = (
-    <MenuItem type="submit" tone="danger" title={title} onClick={(e) => e.stopPropagation()}>
+  const what = typeof children === "string" ? children : label;
+  function confirmFirst(e: MouseEvent<HTMLButtonElement>) {
+    if (!window.confirm(`${what}; Δεν αναιρείται.`)) e.preventDefault();
+  }
+  const button = (
+    <Button type="submit" variant="ghost" size="sm" title={title} onClick={confirmFirst} className="text-negative hover:text-negative">
       {children}
-    </MenuItem>
+    </Button>
   );
-  return (
-    <Menu label={label}>
-      {plain ? (
-        // A plain form ignores the result, as the row's own form did.
-        <form action={action as (formData: FormData) => Promise<void>}>{item}</form>
-      ) : (
-        <ActionForm action={action}>{item}</ActionForm>
-      )}
-    </Menu>
+  return plain ? (
+    // A plain form ignores the result, as the row's own form did.
+    <form action={action as (formData: FormData) => Promise<void>}>{button}</form>
+  ) : (
+    <ActionForm action={action}>{button}</ActionForm>
   );
 }
