@@ -29,6 +29,8 @@ import { UtilityFormModal, UTILITY_KIND_LABELS } from "../LegacyFormModals";
 import { saveUtility, deleteUtility } from "./finance-actions";
 import { saveProjectNote, resolveProjectNote } from "../actions";
 import { setScenarioRevenuePlan } from "./scenario-actions";
+import { selectScenario } from "@/lib/projects/scenarioCode";
+import { fillText } from "@/lib/collab/text";
 import { AiCreateForm } from "../revenue-plans/AiCreateForm";
 import { RowDeleteMenu } from "@/components/RowDeleteMenu";
 import { ManualPlanForm } from "../revenue-plans/ManualPlanForm";
@@ -41,7 +43,13 @@ import { ManualPlanForm } from "../revenue-plans/ManualPlanForm";
 //
 // Blocks render only when their data exists, so the six thin projects degrade
 // to just ΕΠΕΝΔΥΣΗ + ΠΟΡΕΙΑ without looking unfinished.
-export async function LegacyProjectPage({ id }: { id: string }) {
+export async function LegacyProjectPage({
+  id,
+  requestedScenario,
+}: {
+  id: string;
+  requestedScenario?: string | string[];
+}) {
   const supabase = await createClient();
   const access = await getAccessContext();
   const isOrgAdmin =
@@ -73,9 +81,10 @@ export async function LegacyProjectPage({ id }: { id: string }) {
       .eq("project_id", id)
       .eq("is_current", true)
       .maybeSingle(),
-    // Lease, loans, the base scenario and its revenue plan: one loader shared
-    // with the comparison page and «Στείλε στο ταμείο» (projectModel.ts).
-    loadScenarioInputs(supabase, id, { baseOnly: true }),
+    // Lease, loans, every scenario and their revenue plans: one loader
+    // shared with the comparison page and «Στείλε στο ταμείο»
+    // (projectModel.ts). All scenarios, for the «Σενάρια» list and ?s=.
+    loadScenarioInputs(supabase, id),
     supabase
       .from("project_notes")
       .select("id, kind, severity, body, exposure_amount, due_date")
@@ -107,7 +116,10 @@ export async function LegacyProjectPage({ id }: { id: string }) {
 
   const twelveMonthsAgo = firstOfMonth(addMonths(currentMonthKey(), -11));
   const today = todayAthens();
-  const baseScenarioId = inputs?.scenarios[0]?.id ?? null;
+  // The scenario the page shows and edits: ?s= or the base (not simply the
+  // first row). «Στείλε στο ταμείο» and the revenue-plan link act on it.
+  const scenario = selectScenario(inputs?.scenarios ?? [], requestedScenario);
+  const selectedScenarioId = scenario?.id ?? null;
   const [{ data: utilities }, { data: monthlyCostRows }, projectFlows, { count: sentToCash }, { data: nextMilestone }] = await Promise.all([
     supabase.from("property_utilities").select("*").eq("project_id", id).order("kind"),
     supabase
@@ -116,11 +128,11 @@ export async function LegacyProjectPage({ id }: { id: string }) {
       .eq("project_id", id)
       .gte("month", twelveMonthsAgo),
     loadProjectFlows(supabase, id, today),
-    baseScenarioId
+    selectedScenarioId
       ? supabase
           .from("expected_income")
           .select("id", { count: "exact", head: true })
-          .eq("scenario_id", baseScenarioId)
+          .eq("scenario_id", selectedScenarioId)
           .eq("status", "expected")
       : Promise.resolve({ count: 0 }),
     // «Επόμενο ορόσημο» in «Με μια ματιά»: one row.
@@ -146,15 +158,17 @@ export async function LegacyProjectPage({ id }: { id: string }) {
   const lines = budget?.budget_lines ?? [];
   const budgetTotal = lines.reduce((s, l) => s + Number(l.amount ?? 0), 0);
 
-  // Lease, loans and the base scenario (projectModel.ts): the ΛΕΙΤΟΥΡΓΙΑ
-  // and ΤΑΜΕΙΑΚΗ ΡΟΗ blocks below come from one computeScenarioFromInputs()
-  // run -- the same one the comparison page and «Στείλε στο ταμείο» use.
+  // Lease, loans and the scenarios (projectModel.ts): the «Σενάρια» list,
+  // ΛΕΙΤΟΥΡΓΙΑ and ΤΑΜΕΙΑΚΗ ΡΟΗ below all come from computeScenarioFromInputs()
+  // -- the same function the comparison page and «Στείλε στο ταμείο» use.
   const lease = inputs?.lease ?? null;
   const leaseSchedule = inputs?.leaseSchedule ?? null;
   const loanRows = inputs?.loans ?? [];
   const loanSchedule = inputs?.loanSchedule ?? null;
-  const scenario = inputs?.scenarios[0] ?? null;
-  const scenarioResult = inputs && scenario ? computeScenarioFromInputs(inputs, scenario) : null;
+  const scenarioResults = inputs
+    ? inputs.scenarios.map((sc) => ({ scenario: sc, result: computeScenarioFromInputs(inputs, sc) }))
+    : [];
+  const scenarioResult = scenarioResults.find((r) => r.scenario.id === selectedScenarioId)?.result ?? null;
   const firstYearRent = leaseSchedule?.rows[0];
 
   // Απόδοση: «IRR έργου (χωρίς ΦΠΑ)» -- every project flow net of VAT and
@@ -422,12 +436,15 @@ export async function LegacyProjectPage({ id }: { id: string }) {
 
             {scenario && (
               <form
+                key={scenario.id}
                 action={setScenarioRevenuePlan.bind(null, id, scenario.id)}
                 className="flex flex-wrap items-end gap-3"
               >
                 <div className="flex min-w-0 flex-col gap-1">
                   <label htmlFor="scenario-revenue-plan" className="text-small text-muted">
-                    Ποια τροφοδοτεί τη ΛΕΙΤΟΥΡΓΙΑ παρακάτω
+                    {scenarioResults.length > 1
+                      ? fillText(el.projectScenarios.feedsScenario, { name: scenario.name })
+                      : "Ποια τροφοδοτεί τη ΛΕΙΤΟΥΡΓΙΑ παρακάτω"}
                   </label>
                   <Select
                     id="scenario-revenue-plan"
@@ -456,6 +473,14 @@ export async function LegacyProjectPage({ id }: { id: string }) {
           projectId={id}
           scenario={scenario}
           result={scenarioResult}
+          scenarios={scenarioResults.map(({ scenario: sc, result }) => ({
+            id: sc.id,
+            name: sc.name,
+            isBase: sc.is_base,
+            operatingResult: result.hasOperation ? result.operatingResult : null,
+            npv: result.cashflow?.kpis.npv ?? null,
+            minDscr: result.cashflow?.kpis.minDscr?.value ?? null,
+          }))}
           annualRent={annualRent}
           monthlyRent={monthlyRent}
           sentToCash={sentToCash ?? 0}

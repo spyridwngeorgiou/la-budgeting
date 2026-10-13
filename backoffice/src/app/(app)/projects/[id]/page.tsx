@@ -6,8 +6,16 @@ import { LegacyProjectPage } from "./LegacyProjectPage";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Σύνοψη Έργου: the one-pager (./LegacyProjectPage.tsx).
-export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+// ?s=<scenario id> picks the scenario the page shows and edits (default:
+// the base).
+export default async function ProjectPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ s?: string | string[] }>;
+}) {
+  const [{ id }, { s }] = await Promise.all([params, searchParams]);
   if (!UUID.test(id)) notFound();
-  return <LegacyProjectPage id={id} />;
+  return <LegacyProjectPage id={id} requestedScenario={s} />;
 }

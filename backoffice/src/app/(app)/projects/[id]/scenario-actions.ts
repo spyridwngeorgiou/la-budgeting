@@ -9,8 +9,19 @@ import { computeScenarioFromInputs, loadScenarioInputs } from "@/lib/finance/pro
 import type { OpexLineKind } from "@/lib/domain/enums";
 import { el } from "@/lib/i18n/el";
 import { projects as t2 } from "@/lib/i18n/v2/projects";
-import { planNewScenario } from "@/lib/projects/scenarioCode";
+import {
+  OPEX_COPY_FIELDS,
+  SCENARIO_COPY_FIELDS,
+  newScenarioName,
+  opexLinesCopy,
+  planNewScenario,
+  scenarioCopy,
+} from "@/lib/projects/scenarioCode";
+import type { Database } from "@/lib/db/types";
 import { revalidateProject } from "../revalidate";
+
+type ScenarioDbRow = Database["public"]["Tables"]["project_scenarios"]["Row"];
+type OpexDbRow = Database["public"]["Tables"]["opex_lines"]["Row"];
 
 // Σενάρια: a project's scenarios, their opex lines, which one is the base,
 // and «Στείλε στο ταμείο». One of the four action files of the project page
@@ -101,6 +112,78 @@ export async function createScenario(projectId: string, formData: FormData): Pro
     const id = await insertScenario(supabase, orgId, projectId, scenarioFieldsFromForm(formData));
     revalidateProject(projectId);
     return { id };
+  });
+}
+
+// «+ Νέο σενάριο» → «αντιγραφή του …»: a new alternative scenario with the
+// source's assumptions and a copy of its opex lines. Two inserts; if the
+// lines fail, the half-made scenario is removed again.
+export async function duplicateScenario(
+  projectId: string,
+  sourceId: string,
+  name: string | null,
+): Promise<ActionResult<{ id: string }>> {
+  return action(async () => {
+    const t = el.projectScenarios;
+    const supabase = await createClient();
+    const orgId = await getCurrentOrgId(supabase);
+    const [{ data: source, error: srcError }, { data: lines, error: linesError }] = await Promise.all([
+      supabase
+        .from("project_scenarios")
+        .select(`name, ${SCENARIO_COPY_FIELDS.join(", ")}`)
+        .eq("id", sourceId)
+        .eq("project_id", projectId)
+        .maybeSingle(),
+      supabase.from("opex_lines").select(OPEX_COPY_FIELDS.join(", ")).eq("scenario_id", sourceId).order("sort_order"),
+    ]);
+    if (srcError) throw srcError;
+    if (linesError) throw linesError;
+    if (!source) throw new UserError(t.notFound);
+    const src = source as unknown as Pick<ScenarioDbRow, "name" | (typeof SCENARIO_COPY_FIELDS)[number]>;
+    const copyName = newScenarioName(name, src.name, t.copySuffix);
+    if (!copyName) throw new UserError(t.nameRequired);
+
+    const { data: existing, error: readError } = await supabase
+      .from("project_scenarios")
+      .select("code, is_base, sort_order")
+      .eq("project_id", projectId);
+    if (readError) throw readError;
+    const { data: created, error } = await supabase
+      .from("project_scenarios")
+      .insert({ ...scenarioCopy(src), name: copyName, org_id: orgId, project_id: projectId, ...planNewScenario(existing ?? []) })
+      .select("id")
+      .single();
+    if (error) throw error;
+
+    const copies = opexLinesCopy((lines ?? []) as unknown as Pick<OpexDbRow, (typeof OPEX_COPY_FIELDS)[number]>[], {
+      scenarioId: created.id,
+      orgId,
+    });
+    if (copies.length > 0) {
+      const { error: opexError } = await supabase.from("opex_lines").insert(copies);
+      if (opexError) {
+        await supabase.from("project_scenarios").delete().eq("id", created.id);
+        throw opexError;
+      }
+    }
+    revalidateProject(projectId);
+    return { id: created.id };
+  });
+}
+
+// «⋯ → Μετονομασία»: the name only; the assumptions stay as they are.
+export async function renameScenario(projectId: string, scenarioId: string, name: string): Promise<ActionResult> {
+  return action(async () => {
+    const trimmed = name.trim().slice(0, 120);
+    if (!trimmed) throw new UserError(el.projectScenarios.nameRequired);
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("project_scenarios")
+      .update({ name: trimmed })
+      .eq("id", scenarioId)
+      .eq("project_id", projectId);
+    if (error) throw error;
+    revalidateProject(projectId);
   });
 }
 
