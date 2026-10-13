@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Paperclip } from "lucide-react";
+import { Paperclip, Pencil } from "lucide-react";
 import { formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { shell } from "@/lib/i18n/v2/shell";
@@ -13,6 +13,8 @@ import {
   Badge,
   Button,
   EmptyState,
+  Menu,
+  MenuItem,
   PageHeader,
   SUB_CLASS,
   SpecTable,
@@ -44,15 +46,18 @@ const STATUS_LABEL = {
   cancelled: el.transaction.cancelled,
 } as const;
 
-// One list, laid out by CSS (never rendered twice): a spec table from lg
-// up, a stack of hairline cards below. With the 240px menu rail the content
-// column is only 464–719px at md, too narrow for these columns, so the
-// table starts at lg and the account column at xl. No inner scroll box: the
-// table always fits (long words wrap anywhere) and its head sticks to the
-// top of the page (separate borders, so the rule moves with the head).
+// One list, laid out by CSS (never rendered twice): a spec table from xl
+// up, a stack of hairline cards below. Every table row is ONE line, as in
+// late September: the description takes the free width and the text columns
+// cut off with «…» (the full text on hover); the row actions are
+// «Πληρώθηκε», an edit icon and «⋯» (partial payment, delete). Below xl
+// those columns would leave the description no room, so cards. No inner
+// scroll box: the table always fits, and its head sticks to the top of the
+// page (separate borders, so the rule moves with the head).
 const TH = "sticky top-[var(--sticky-top,0px)] z-10 bg-canvas";
-const CELL = "block max-lg:border-b-0 max-lg:p-0 lg:table-cell";
-const WRAP = "[overflow-wrap:anywhere]";
+const CELL = "block max-xl:border-b-0 max-xl:p-0 xl:table-cell";
+// A secondary text column: one line, cut off with «…».
+const CLIP = "hidden text-small xl:table-cell xl:py-2";
 
 interface Option {
   id: string;
@@ -266,8 +271,8 @@ export function TransactionsTable({
             )}
           </div>
 
-          <SpecTable frame="none" tableClassName="block border-separate border-spacing-0 lg:table">
-            <thead className="hidden lg:table-header-group">
+          <SpecTable frame="none" tableClassName="block border-separate border-spacing-0 xl:table">
+            <thead className="hidden xl:table-header-group">
               <tr>
                 <Th className={TH}>{el.transaction.date}</Th>
                 <Th className={TH}>{el.transaction.description}</Th>
@@ -283,7 +288,7 @@ export function TransactionsTable({
                 </Th>
               </tr>
             </thead>
-            <tbody className="block border-t border-rule lg:table-row-group lg:border-t-0">
+            <tbody className="block border-t border-rule xl:table-row-group xl:border-t-0">
               {transactions.map((tx) => {
                 const overdue = isOverdue(tx);
                 const awaiting = tx.status === "pending" || tx.status === "scheduled";
@@ -293,49 +298,62 @@ export function TransactionsTable({
                   <Tr
                     key={tx.id}
                     className={cn(
-                      "grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 border-b border-hairline py-3 lg:table-row lg:border-b-0 lg:py-0",
-                      overdue && "border-l-2 border-l-negative pl-3 lg:border-l-0 lg:pl-0",
+                      "grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 border-b border-hairline py-3 xl:table-row xl:border-b-0 xl:py-0",
+                      overdue && "border-l-2 border-l-negative pl-3 xl:border-l-0 xl:pl-0",
                     )}
                   >
                     <Td
                       className={cn(
                         CELL,
-                        "col-start-1 row-start-1 max-lg:text-small max-lg:text-muted lg:whitespace-nowrap",
-                        overdue && "lg:border-l-2 lg:border-l-negative lg:first:pl-2",
+                        "col-start-1 row-start-1 max-xl:text-small max-xl:text-muted xl:py-2 xl:whitespace-nowrap",
+                        overdue && "xl:border-l-2 xl:border-l-negative xl:first:pl-2",
                       )}
                     >
                       <span className="num">{formatDate(tx.tx_date)}</span>
                     </Td>
-                    <Td className={cn(CELL, "col-start-1 row-start-2 min-w-0 lg:min-w-40", WRAP)}>
-                      <span className="text-ink">{tx.description || tx.contact_name || "—"}</span>
-                      {AI_ORIGINS.has(tx.origin ?? "") && (
-                        <span title="Καταχωρήθηκε μέσω AI, επιβεβαιωμένη από άνθρωπο πριν καταγραφεί" className="ml-1.5 inline-block">
-                          <AiSpark className="text-ai" />
-                        </span>
-                      )}
-                      {tx.has_source_document && (
-                        <button
-                          type="button"
-                          onClick={() => handleViewSource(tx)}
-                          disabled={busy === `${tx.id}:source`}
-                          aria-label={el.transaction.source}
-                          title={el.transaction.source}
-                          className="-my-1.5 ml-1 inline-flex h-8 w-8 items-center justify-center align-middle text-muted hover:bg-hover hover:text-ink disabled:opacity-50 pointer-coarse:-my-3 pointer-coarse:h-11 pointer-coarse:w-11"
-                        >
-                          <Paperclip className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-                        </button>
-                      )}
-                      {tx.description && tx.contact_name && <span className={SUB_CLASS}>{tx.contact_name}</span>}
-                      {meta && <span className={cn(SUB_CLASS, "lg:hidden")}>{meta}</span>}
+                    <Td
+                      className={cn(CELL, "col-start-1 row-start-2 min-w-0 max-xl:[overflow-wrap:anywhere] xl:w-full xl:max-w-0 xl:py-2")}
+                      title={[tx.description, tx.contact_name].filter(Boolean).join(" · ") || undefined}
+                    >
+                      <div className="xl:flex xl:items-center">
+                        <span className="text-ink xl:truncate">{tx.description || tx.contact_name || "—"}</span>
+                        {tx.description && tx.contact_name && (
+                          <span className={cn(SUB_CLASS, "xl:ml-2 xl:min-w-0 xl:shrink-[2] xl:truncate")}>{tx.contact_name}</span>
+                        )}
+                        {AI_ORIGINS.has(tx.origin ?? "") && (
+                          <span title="Καταχωρήθηκε μέσω AI, επιβεβαιωμένη από άνθρωπο πριν καταγραφεί" className="ml-1.5 inline-block shrink-0">
+                            <AiSpark className="text-ai" />
+                          </span>
+                        )}
+                        {tx.has_source_document && (
+                          <button
+                            type="button"
+                            onClick={() => handleViewSource(tx)}
+                            disabled={busy === `${tx.id}:source`}
+                            aria-label={el.transaction.source}
+                            title={el.transaction.source}
+                            className="-my-1.5 ml-1 inline-flex h-8 w-8 shrink-0 items-center justify-center align-middle text-muted hover:bg-hover hover:text-ink disabled:opacity-50 pointer-coarse:-my-3 pointer-coarse:h-11 pointer-coarse:w-11"
+                          >
+                            <Paperclip className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                          </button>
+                        )}
+                      </div>
+                      {meta && <span className={cn(SUB_CLASS, "xl:hidden")}>{meta}</span>}
                     </Td>
-                    <Td className={cn("hidden lg:table-cell", WRAP)}>{tx.project_name ?? "—"}</Td>
-                    <Td className={cn("hidden lg:table-cell", WRAP)}>{tx.category_name ?? "—"}</Td>
-                    <Td className={cn("hidden xl:table-cell", WRAP)}>{tx.account_name ?? "—"}</Td>
-                    <Td numeric strong className={cn(CELL, "col-start-2 row-start-2")}>
+                    <Td className={CLIP} title={tx.project_name ?? undefined}>
+                      <div className="max-w-32 truncate">{tx.project_name ?? "—"}</div>
+                    </Td>
+                    <Td className={CLIP} title={tx.category_name ?? undefined}>
+                      <div className="max-w-32 truncate">{tx.category_name ?? "—"}</div>
+                    </Td>
+                    <Td className={CLIP} title={tx.account_name ?? undefined}>
+                      <div className="max-w-32 truncate">{tx.account_name ?? "—"}</div>
+                    </Td>
+                    <Td numeric strong className={cn(CELL, "col-start-2 row-start-2 xl:py-2")}>
                       <Amount value={tx.direction === "income" ? gross : -gross} />
                     </Td>
-                    <Td className={cn(CELL, "col-start-2 row-start-1 justify-self-end lg:justify-self-auto")}>
-                      <span className="flex flex-wrap items-center justify-end gap-1.5 lg:justify-start">
+                    <Td className={cn(CELL, "col-start-2 row-start-1 justify-self-end xl:justify-self-auto xl:py-2 xl:text-small")}>
+                      <span className="flex flex-wrap items-center justify-end gap-1.5 xl:flex-nowrap xl:justify-start">
                         <StatusDot
                           tone={STATUS_TONE[tx.status as keyof typeof STATUS_TONE]}
                           label={STATUS_LABEL[tx.status as keyof typeof STATUS_LABEL]}
@@ -344,8 +362,9 @@ export function TransactionsTable({
                         {overdue && <Badge tone="negative">εκπρόθεσμη</Badge>}
                       </span>
                     </Td>
-                    <Td className={cn(CELL, "col-span-2 col-start-1 row-start-3 max-lg:pt-2 lg:py-2")}>
-                      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                    <Td className={cn(CELL, "col-span-2 col-start-1 row-start-3 max-xl:pt-2 xl:py-1")}>
+                      {/* Cards: every action as a button. */}
+                      <div className="flex flex-wrap items-center gap-2 xl:hidden">
                         {/* Paid / partly paid: only while the row still awaits payment. */}
                         {awaiting && (
                           <Button
@@ -374,6 +393,28 @@ export function TransactionsTable({
                         >
                           {busy === `${tx.id}:delete` ? "…" : el.common.delete}
                         </Button>
+                      </div>
+                      {/* Table: one line -- «Πληρώθηκε», edit, «⋯» (partial payment, delete). */}
+                      <div className="hidden items-center justify-end gap-1 whitespace-nowrap xl:flex">
+                        {awaiting && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={busy === `${tx.id}:paid`}
+                            onClick={() => run(`${tx.id}:paid`, () => markPaid(tx.id), el.common.saved)}
+                          >
+                            {busy === `${tx.id}:paid` ? "…" : el.common.markPaid}
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={() => setTarget(tx)} aria-label={el.common.edit} title={el.common.edit}>
+                          <Pencil className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                        </Button>
+                        <Menu>
+                          {awaiting && !tx.plan_id && <MenuItem onClick={() => setPaying(tx)}>{el.transaction.partial} πληρωμή</MenuItem>}
+                          <MenuItem tone="danger" disabled={busy === `${tx.id}:delete`} onClick={() => handleDelete(tx)}>
+                            {el.common.delete}
+                          </MenuItem>
+                        </Menu>
                       </div>
                     </Td>
                   </Tr>
