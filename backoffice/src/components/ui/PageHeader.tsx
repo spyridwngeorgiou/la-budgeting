@@ -69,7 +69,9 @@ export function SectionHeader({
         {n && <span className="num text-numeral font-light text-accent">{n}</span>}
         <span>{title}</span>
       </Tag>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {/* -my-2.5: a 44px action link keeps its touch target without making
+          this header taller than one without actions (side-by-side headers align). */}
+      {actions && <div className="-my-2.5 flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
   );
 }

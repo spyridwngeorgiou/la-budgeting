@@ -355,8 +355,9 @@ export default async function DashboardPage() {
                 {upcoming.shown.map((u) => (
                   <Tr key={u.id}>
                     <Td className="num whitespace-nowrap text-muted">{formatDate(u.date)}</Td>
-                    <Td strong>
-                      <Link href={`/transactions?ids=${u.id}`} className={LINK_CLASS}>
+                    {/* One line, cut off with «…» (the full text on hover). */}
+                    <Td strong className="w-full max-w-0" title={u.label}>
+                      <Link href={`/transactions?ids=${u.id}`} className={`block truncate ${LINK_CLASS}`}>
                         {u.label}
                       </Link>
                     </Td>
@@ -366,7 +367,7 @@ export default async function DashboardPage() {
               </tbody>
               <tfoot>
                 <Tr total>
-                  <Td>{upcoming.more > 0 ? `Σύνολο (και ${upcoming.more} ακόμα)` : "Σύνολο"}</Td>
+                  <Td className="whitespace-nowrap">{upcoming.more > 0 ? `Σύνολο (+${upcoming.more})` : "Σύνολο"}</Td>
                   <Td className="text-small font-normal text-muted">
                     Εισπράξεις {formatSignedMoney(upcoming.income)} · Πληρωμές {formatSignedMoney(upcoming.outflow)}
                   </Td>

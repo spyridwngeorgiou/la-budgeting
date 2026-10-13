@@ -368,8 +368,8 @@ export const el = {
       drawdown: "Εκταμίευση",
       amortisation_start: "Έναρξη αποπληρωμής",
     },
-    // One-pager section titles are caps without tonos (ΚΑΤΑΣΤΑΣΗ, ΔΑΝΕΙΟ).
-    projectSection: "ΠΛΑΝΟ ΕΡΓΟΥ",
+    // One-pager section titles in sentence case (Κατάσταση, Δάνειο), since 13/10/2026.
+    projectSection: "Πλάνο έργου",
     openTasks: "ανοιχτές εργασίες",
     nextMilestone: "Επόμενο ορόσημο",
     openPlanner: "Άνοιγμα στο Πλάνο",
@@ -1032,7 +1032,7 @@ export const el = {
   },
   // Project development / own return (development.ts)
   development: {
-    title: "ΑΝΑΠΤΥΞΗ & ΠΩΛΗΣΗ",
+    title: "Ανάπτυξη & πώληση",
     subtitle: "Όλες οι ροές του έργου χωρίς ΦΠΑ, πριν τη χρηματοδότηση: πληρωμένες, ανοιχτές, αναμενόμενες και ο προϋπολογισμός που δεν έχει δεσμευτεί ακόμη.",
     revenue: "Έσοδα (πωλήσεις)",
     cost: "Κόστος",
@@ -1141,7 +1141,7 @@ export const el = {
       cannotUndo: "Δεν αναιρείται.",
     },
     budget: {
-      title: "ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ",
+      title: "Προϋπολογισμός",
       subtitle: "Μόνο οι κεφαλαιουχικές δαπάνες καταναλώνουν τον προϋπολογισμό.",
       budget: "Προϋπολογισμός",
       none: "Δεν έχει καταχωρηθεί.",
@@ -1160,14 +1160,14 @@ export const el = {
     },
     development: { revenueAndCost: "Έσοδα και κόστος" },
     revenue: {
-      title: "ΕΣΟΔΑ",
+      title: "Έσοδα",
       signed: "υπογραφή",
       contract: "Συμβατική αξία",
       toDate: "Έσοδα έως σήμερα",
       toInvoice: "Υπόλοιπο τιμολόγησης",
     },
     loan: {
-      title: "ΔΑΝΕΙΟ",
+      title: "Δάνειο",
       total: "Σύνολο",
       monthly: "Μηνιαία δόση",
       monthlyNote: "Μετά τη χάρη.",
@@ -1182,7 +1182,7 @@ export const el = {
       interest: "Συνολικοί τόκοι",
     },
     operation: {
-      title: "ΛΕΙΤΟΥΡΓΙΑ",
+      title: "Λειτουργία",
       referenceYear: "έτος αναφοράς",
       revenueGrowth: "Ανάπτυξη εσόδων",
       discount: "προεξόφληση",
@@ -1208,7 +1208,7 @@ export const el = {
       newPlan: "Νέα ανάλυση εσόδων",
     },
     cashflow: {
-      title: "ΤΑΜΕΙΑΚΗ ΡΟΗ",
+      title: "Ταμειακή ροή",
       horizon: "{years}-ετής προβολή",
       minDscr: "Χαμηλότερη κάλυψη",
       minDscrHint: "Η χαμηλότερη κάλυψη δόσης δανείου (DSCR) στην προβολή, και σε ποιο έτος.",
@@ -1226,7 +1226,7 @@ export const el = {
       until: "Έως {year}.",
     },
     property: {
-      title: "ΑΚΙΝΗΤΟ",
+      title: "Ακίνητο",
       perMonth: "Κόστος χρήσης / μήνα",
       perMonthRent: "Μίσθωμα προς ιδιοκτήτες.",
       perMonthSettlements: "Μίσθωμα και ρυθμίσεις.",
@@ -1241,7 +1241,7 @@ export const el = {
       instalmentsFrom: "Από {date}.",
     },
     status: {
-      title: "ΚΑΤΑΣΤΑΣΗ",
+      title: "Κατάσταση",
       resolve: "Επίλυση",
       rest: "Λοιπές",
     },
