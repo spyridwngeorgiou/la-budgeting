@@ -144,7 +144,10 @@ export async function LegacyProjectPage({
       .from("v_property_monthly_cost")
       .select("month, paid_amount")
       .eq("project_id", id)
-      .gte("month", twelveMonthsAgo),
+      .gte("month", twelveMonthsAgo)
+      // The last 12 months up to this one, as in late September: scheduled
+      // future months (zeros until paid) stay out of «Ανά μήνα».
+      .lte("month", firstOfMonth(currentMonthKey())),
     loadProjectFlows(supabase, id, today),
     selectedScenarioId
       ? supabase
@@ -176,7 +179,7 @@ export async function LegacyProjectPage({
   for (const r of monthlyCostRows ?? []) {
     if (r.month) monthlyCost.set(r.month, (monthlyCost.get(r.month) ?? 0) + Number(r.paid_amount ?? 0));
   }
-  const monthlyCostList = [...monthlyCost.entries()].sort(([a], [b]) => b.localeCompare(a));
+  const monthlyCostList = [...monthlyCost.entries()].filter(([, v]) => v !== 0).sort(([a], [b]) => b.localeCompare(a));
 
   if (!rollup) notFound();
 
