@@ -5,7 +5,12 @@
 //   node scripts/ship.mjs ci                 wait for CI on HEAD, print failing lines
 //   node scripts/ship.mjs smoke <env> [paths...]   logged-in GETs as a throwaway owner
 //   node scripts/ship.mjs staging [paths...]       check -> push -> ci -> deploy -> smoke
-//   node scripts/ship.mjs prod [paths...]          ci green on HEAD -> backup -> migrate -> deploy -> light smoke
+//   node scripts/ship.mjs prod [paths...]          ci green on HEAD -> backup -> migrate -> deploy -> light smoke -> tag prod-<date>-<sha>
+//   node scripts/ship.mjs rollback <staging|prod> [version-id]
+//                                                  the Worker back to the previous version (or the one given) in
+//                                                  seconds, no build; then the light smoke. Code only: the database
+//                                                  is not touched (migrations only add, so the older code still runs).
+//                                                  Then `git revert` the bad commit so the next ship doesn't bring it back.
 //
 // <env> is staging | prod. Needs SUPABASE_ACCESS_TOKEN (backoffice/.env.migrate).
 // smoke on prod hits only a few pages, slowly: the Workers Free plan has a tiny
@@ -249,7 +254,22 @@ else if (cmd === "staging") {
   console.log(`✓ migrate ${tail(m.out, /pending|applying/, 10).replace(/\n/g, "; ")}`);
   deploy("prod");
   await smoke("prod", args.length ? args : ["/dashboard", "/transactions", "/projects"], { gapMs: 1500 });
+  // What is live, by name: `git tag -l "prod-*"` lists every release, and a
+  // tag is what a rollback or a revert is measured against.
+  const sha = sh("git rev-parse --short HEAD").out.trim();
+  const tag = `prod-${new Date().toISOString().slice(0, 16).replace(/[-:]/g, "").replace("T", "-")}-${sha}`;
+  const t = sh(`git tag ${tag} HEAD && git push -q origin ${tag}`);
+  console.log(t.ok ? `✓ tag ${tag}` : `⚠ tag ${tag} not pushed: ${t.out.slice(-300)}`);
+} else if (cmd === "rollback") {
+  const envName = args[0];
+  if (!ENVS[envName]) fail("usage: node scripts/ship.mjs rollback <staging|prod> [version-id]");
+  const version = args[1] ?? "";
+  const r = sh(`npx wrangler rollback ${version} ${envName === "staging" ? "--env staging" : ""} --yes --message "ship.mjs rollback"`);
+  if (!r.ok) fail(`rollback ${envName}
+${r.out.slice(-1500)}`);
+  console.log(`✓ rollback ${envName} ${tail(r.out, /rolled back|Rolled back|version/i, 2).trim()}`);
+  await smoke(envName, envName === "prod" ? ["/dashboard", "/transactions", "/projects"] : args.slice(2), { gapMs: envName === "prod" ? 1500 : 0 });
 } else {
-  console.error("usage: node scripts/ship.mjs check | ci | smoke <staging|prod> [paths] | staging [paths] | prod [paths]");
+  console.error("usage: node scripts/ship.mjs check | ci | smoke <staging|prod> [paths] | staging [paths] | prod [paths] | rollback <staging|prod> [version-id]");
   process.exit(2);
 }

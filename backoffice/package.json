@@ -18,6 +18,8 @@
     "check": "node scripts/ship.mjs check",
     "ship:staging": "node scripts/ship.mjs staging",
     "ship:prod": "node scripts/ship.mjs prod",
+    "rollback:prod": "node scripts/ship.mjs rollback prod",
+    "rollback:staging": "node scripts/ship.mjs rollback staging",
     "smoke": "node scripts/ship.mjs smoke",
     "cf:typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
