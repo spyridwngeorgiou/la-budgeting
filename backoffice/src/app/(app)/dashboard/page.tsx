@@ -63,7 +63,9 @@ export default async function DashboardPage() {
     // One read for both the portfolio table and «εκτός προϋπολογισμού».
     supabase
       .from("v_project_rollup")
-      .select("project_id, display_name, code, business_line, status, total_budget, spent, remaining_budget, net_result, pending, vat_on_expenses")
+      .select(
+        "project_id, display_name, code, business_line, status, total_budget, spent, remaining_budget, net_result, capex_paid, capex_committed, vat_on_expenses",
+      )
       .eq("org_id", orgId)
       .order("code"),
     supabase
@@ -358,8 +360,8 @@ export default async function DashboardPage() {
                 <Th numeric className="hidden sm:table-cell">
                   Υπόλοιπο
                 </Th>
-                <Th numeric>Δαπανηθέντα</Th>
-                <Th numeric>Εκκρεμούν</Th>
+                <Th numeric>{el.projectPage.budget.paid}</Th>
+                <Th numeric>{el.projectPage.budget.committed}</Th>
                 <Th numeric className="hidden sm:table-cell">
                   + ΦΠΑ
                 </Th>
@@ -382,12 +384,12 @@ export default async function DashboardPage() {
                   </Td>
                   <Td numeric>
                     <Link href={`/transactions?project_id=${p.id}&direction=expense&status=paid`} className={LINK_CLASS}>
-                      {moneyOrDash(p.spent)}
+                      {moneyOrDash(p.paid)}
                     </Link>
                   </Td>
                   <Td numeric>
                     <Link href={`/transactions?project_id=${p.id}&direction=expense&status=pending`} className={LINK_CLASS}>
-                      {moneyOrDash(p.pending)}
+                      {moneyOrDash(p.committed)}
                     </Link>
                   </Td>
                   <Td numeric className="hidden sm:table-cell">

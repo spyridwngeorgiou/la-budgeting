@@ -149,7 +149,8 @@ export function upcomingObligations(
 
 // ── Χαρτοφυλάκιο έργων: the 7/10 table, from lib/finance/portfolio ──
 export interface DashboardRollupRow extends PortfolioRollupRow {
-  pending: number | string | null;
+  capex_paid: number | string | null;
+  capex_committed: number | string | null;
   vat_on_expenses: number | string | null;
 }
 
@@ -158,19 +159,23 @@ export interface DashboardPortfolioRow {
   name: string;
   // null: no budget on file («—»).
   budget: number | null;
-  spent: number;
-  pending: number;
+  // Capex paid, and committed (pending + scheduled): what consumes a budget
+  // (0020). The same v_project_rollup columns as the project page's
+  // ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ and the projects list, so budget − paid − committed =
+  // remaining on all three.
+  paid: number;
+  committed: number;
   vat: number;
-  // Budget left after capex paid + committed (v_project_rollup); null with no budget.
+  // remaining_budget; null with no budget.
   remaining: number | null;
   overBudget: boolean;
 }
 
 export const PORTFOLIO_MAX = 8;
 
-// Projects with something on them (a budget, a spend or a pending bill),
-// largest budget first (portfolioRows' order, cancelled ones left out); the
-// rest counted for «όλα (N) →».
+// Projects with a budget or capex on them, largest budget first
+// (portfolioRows' order, cancelled ones left out); the rest counted for
+// «όλα (N) →».
 export function dashboardPortfolio(
   rollup: DashboardRollupRow[],
   max = PORTFOLIO_MAX,
@@ -183,14 +188,14 @@ export function dashboardPortfolio(
         id: p.id,
         name: p.name,
         budget: p.budget > 0 ? p.budget : null,
-        spent: p.spent,
-        pending: round2(num(r?.pending)),
+        paid: round2(num(r?.capex_paid)),
+        committed: round2(num(r?.capex_committed)),
         vat: round2(num(r?.vat_on_expenses)),
         remaining: p.budget > 0 ? p.remaining : null,
         overBudget: p.overBudget,
       };
     })
-    .filter((p) => p.budget !== null || p.spent !== 0 || p.pending !== 0);
+    .filter((p) => p.budget !== null || p.paid !== 0 || p.committed !== 0);
   return { shown: all.slice(0, max), more: Math.max(0, all.length - max) };
 }
 

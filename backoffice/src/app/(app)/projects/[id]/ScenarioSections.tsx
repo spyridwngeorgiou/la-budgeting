@@ -15,6 +15,7 @@ import {
 } from "./scenario-actions";
 import { ArgsDeleteButton, OpexLineFormModal, ScenarioFormModal } from "../LegacyFormModals";
 import { el } from "@/lib/i18n/el";
+import { projects } from "@/lib/i18n/v2/projects";
 import { NewScenarioButton, ScenarioRowActions, SendToCashButton } from "./ScenarioListControls";
 import { AiCreateForm } from "../revenue-plans/AiCreateForm";
 import { ManualPlanForm } from "../revenue-plans/ManualPlanForm";
@@ -197,9 +198,9 @@ export function OperationSection({
       {scenario ? (
         <p className="num border-b border-hairline py-2 text-small text-text">
           {p.revenueGrowth} {formatPercent(Number(scenario.revenue_growth_pct), { fixed: true })} ·{" "}
-          <Term title={el.projectPage.terms.opex}>opex</Term> {formatPercent(Number(scenario.opex_growth_pct), { fixed: true })} ·{" "}
+          <Term title={projects.forms.hint.opex}>opex</Term> {formatPercent(Number(scenario.opex_growth_pct), { fixed: true })} ·{" "}
           {p.discount} {formatPercent(Number(scenario.discount_rate_pct), { fixed: true })} ·{" "}
-          <Term title={el.projectPage.terms.dscr}>DSCR</Term> ≥ {formatMultiple(Number(scenario.dscr_covenant_min))}
+          <Term title={projects.forms.hint.dscr}>DSCR</Term> ≥ {formatMultiple(Number(scenario.dscr_covenant_min))}
         </p>
       ) : (
         <p className="border-b border-hairline py-2 text-body text-muted">{p.noScenario}</p>
@@ -381,7 +382,7 @@ export function CashflowSection({
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-hairline py-2 text-body">
         <div className="flex flex-wrap items-center gap-x-2 text-text">
           <span>{p.inCash}:</span>
-          <span className="num text-ink">{sentToCash > 0 ? `${sentToCash} ${el.sendToCash.sent}` : p.notYet}</span>
+          <span className="num text-ink">{sentToCash > 0 ? fillText(p.lines, { count: sentToCash }) : p.notYet}</span>
           {sentToCash > 0 && (
             <ArgsActionForm action={removeScenarioFromCash} args={[id, scenarioId]} className="inline-flex flex-wrap items-center">
               <button type="submit" className="inline-flex items-center text-small text-ink underline underline-offset-4 max-md:min-h-11">

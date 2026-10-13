@@ -3,6 +3,7 @@ import { OnePagerRow, OnePagerSection } from "@/components/onepager";
 import { ArgsActionForm } from "@/components/ArgsActionForm";
 import { Notice, ReportHistory, SpecTable, Td, Term, Th, Tr } from "@/components/ui";
 import { formatDate, formatMoney, formatPercent, moneyOrDash } from "@/lib/format";
+import { fillText } from "@/lib/collab/text";
 import { el } from "@/lib/i18n/el";
 import type { Tables } from "@/lib/db/types";
 import type { DevelopmentResult } from "@/lib/finance/development";
@@ -80,7 +81,13 @@ export function BudgetSection({
       {f.budget != null && (
         <OnePagerRow label={t.remaining} amount={f.remaining} negative={f.remaining < 0} alert={f.remaining < 0} emphasis />
       )}
-      {f.unclassified > 0 && <OnePagerRow label={t.unclassified} amount={f.unclassified} note={t.unclassifiedNote} />}
+      {f.unclassified > 0 && (
+        <OnePagerRow
+          label={<Term title={t.unclassifiedHint}>{t.unclassified}</Term>}
+          amount={f.unclassified}
+          note={t.unclassifiedNote}
+        />
+      )}
       {(byLine.length > 0 || outside || notes) && (
         <ReportHistory level={3} title={byLine.length > 0 ? t.byLine : t.outside} count={byLine.length > 0 ? byLine.length : undefined}>
           {notes && <p className="text-small text-muted">{notes}</p>}
@@ -106,7 +113,7 @@ function BudgetLineTable({ rows }: { rows: BudgetLineRow[] }) {
   const t = el.budgetLines;
   const p = el.projectPage.budget;
   return (
-    <SpecTable label={t.title}>
+    <SpecTable label={t.title} tableClassName="text-small">
       <thead>
         <tr>
           <Th>
@@ -210,7 +217,7 @@ export function PropertySection({
 }: {
   projectId: string;
   monthlyRent: number;
-  settlements: { label: string; amount_per_installment: number; installment_count: number; first_due_date: string }[];
+  settlements: { label: string; amount_per_installment: number; installment_count: number | null; first_due_date: string }[];
   utilities: Utility[];
   // [YYYY-MM-01, paid] newest first, the last 12 months.
   months: [string, number][];
@@ -224,7 +231,7 @@ export function PropertySection({
       {perMonth > 0 && (
         <OnePagerRow label={t.perMonth} amount={perMonth} note={settlements.length > 0 ? t.perMonthSettlements : t.perMonthRent} />
       )}
-      {months.length > 0 && <OnePagerRow label={t.lastYear} amount={lastYear} note={t.lastYearNote} />}
+      {months.length > 0 && <OnePagerRow label={<Term title={t.lastYearHint}>{t.lastYear}</Term>} amount={lastYear} />}
 
       {utilities.length > 0 && (
         <ReportHistory level={3} title={t.utilities} count={utilities.length} meta={providers.join(" · ")}>
@@ -241,7 +248,7 @@ export function PropertySection({
                   <span className="num">{u.supply_number ?? "—"}</span>
                   {u.rf_code && <span className="num ml-2 text-small text-muted">{u.rf_code}</span>}
                 </span>
-                <span className="flex flex-wrap items-center gap-2">
+                <span className="flex shrink-0 items-center gap-2">
                   <UtilityFormModal
                     action={saveUtility}
                     args={[id, u.id]}
@@ -291,7 +298,10 @@ export function PropertySection({
                 key={p.label}
                 label={p.label}
                 amount={Number(p.amount_per_installment)}
-                note={`${p.installment_count} δόσεις από ${formatDate(p.first_due_date)}.`}
+                note={fillText(p.installment_count != null ? t.instalments : t.instalmentsFrom, {
+                  count: String(p.installment_count ?? ""),
+                  date: formatDate(p.first_due_date),
+                })}
               />
             ))}
           </div>

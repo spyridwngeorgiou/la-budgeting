@@ -90,7 +90,7 @@ export function LoanSection({
                   {l.term_years} έτη
                 </span>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <LoanFormModal
                   action={saveLoan}
                   args={[id, l.id]}

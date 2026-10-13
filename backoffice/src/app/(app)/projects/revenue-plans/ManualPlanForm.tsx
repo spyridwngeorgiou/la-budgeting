@@ -14,13 +14,13 @@ export function ManualPlanForm({ projectId }: { projectId?: string }) {
       </summary>
       <form action={createRevenuePlan} className="flex flex-wrap items-end gap-3 pb-4">
         {projectId && <input type="hidden" name="project_id" value={projectId} />}
-        <Field label="Όνομα" htmlFor={id("name")} className="min-w-48 flex-1">
+        <Field label="Όνομα" htmlFor={id("name")} required className="min-w-48 flex-1">
           <Input id={id("name")} name="name" required />
         </Field>
-        <Field label="Έτος Έναρξης" htmlFor={id("start")}>
+        <Field label="Έτος Έναρξης" htmlFor={id("start")} required>
           <Input id={id("start")} name="start_year" type="number" defaultValue={currentYear()} required className="num w-28" />
         </Field>
-        <Field label="Έτη" htmlFor={id("years")}>
+        <Field label="Έτη" htmlFor={id("years")} required>
           <Input id={id("years")} name="years" type="number" min={1} max={10} defaultValue={3} required className="num w-20" />
         </Field>
         <Button type="submit" variant="secondary">

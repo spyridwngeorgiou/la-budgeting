@@ -78,23 +78,35 @@ describe("dashboardPortfolio", () => {
     spent: 0,
     remaining_budget: 0,
     net_result: 0,
-    pending: 0,
+    capex_paid: 0,
+    capex_committed: 0,
     vat_on_expenses: 0,
     ...extra,
   });
-  it("orders by budget, joins pending and VAT, hides empty and cancelled projects", () => {
+  it("orders by budget, joins capex paid / committed and VAT, hides empty and cancelled projects", () => {
     const r = dashboardPortfolio([
-      row("A", { total_budget: 100, spent: 40, remaining_budget: 60, pending: "5", vat_on_expenses: 9.6 }),
-      row("B", { total_budget: 500, spent: 600, remaining_budget: -100 }),
+      row("A", { total_budget: 100, spent: 40, capex_paid: 35, capex_committed: "5", remaining_budget: 60, vat_on_expenses: 9.6 }),
+      row("B", { total_budget: 500, spent: 600, capex_paid: 600, remaining_budget: -100 }),
       row("C", {}),
-      row("D", { spent: 10 }),
+      row("D", { capex_committed: 10 }),
       row("E", { total_budget: 900, status: "cancelled" }),
     ]);
     expect(r.shown.map((p) => p.id)).toEqual(["B", "A", "D"]);
     expect(r.shown[0].overBudget).toBe(true);
-    expect([r.shown[1].pending, r.shown[1].vat]).toEqual([5, 9.6]);
+    expect([r.shown[1].paid, r.shown[1].committed, r.shown[1].vat]).toEqual([35, 5, 9.6]);
     expect(r.shown[2].budget).toBeNull();
     expect([r.shown[0].remaining, r.shown[2].remaining]).toEqual([-100, null]);
+  });
+
+  it("the figures are the budget's: budget − paid − committed = remaining; non-capex spend alone is not listed", () => {
+    const r = dashboardPortfolio([
+      row("A", { total_budget: 100, spent: 70, capex_paid: 30, capex_committed: 20, remaining_budget: 50 }),
+      // Rent only (paid, not capex): nothing against a budget.
+      row("R", { spent: 25 }),
+    ]);
+    const [a] = r.shown;
+    expect(r.shown.map((p) => p.id)).toEqual(["A"]);
+    expect((a.budget ?? 0) - a.paid - a.committed).toBe(a.remaining);
   });
 
   it("caps and counts the rest", () => {

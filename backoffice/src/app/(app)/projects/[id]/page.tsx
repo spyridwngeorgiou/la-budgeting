@@ -5,7 +5,8 @@ import { LegacyProjectPage } from "./LegacyProjectPage";
 // error on the error page.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Σύνοψη Έργου: the one-pager (./LegacyProjectPage.tsx).
+// Σύνοψη Έργου: the one-pager (./LegacyProjectPage.tsx) -- «Σύνοψη +
+// ανάπτυξη»: three or four figures per block, the details behind «▸».
 // ?s=<scenario id> picks the scenario the page shows and edits (default:
 // the base). ?show=plan | partners opens the full planner block or the
 // partner management in place of its summary line.
