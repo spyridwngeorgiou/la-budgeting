@@ -4494,6 +4494,8 @@ export type Database = {
       }
       property_utilities: {
         Row: {
+          monthly_amount: number | null
+          billing_frequency: Database["public"]["Enums"]["plan_frequency"] | null
           contract_account: string | null
           created_at: string
           id: string
@@ -4510,6 +4512,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          monthly_amount?: number | null
+          billing_frequency?: Database["public"]["Enums"]["plan_frequency"] | null
           contract_account?: string | null
           created_at?: string
           id?: string
@@ -4525,6 +4529,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          monthly_amount?: number | null
+          billing_frequency?: Database["public"]["Enums"]["plan_frequency"] | null
           contract_account?: string | null
           created_at?: string
           id?: string
