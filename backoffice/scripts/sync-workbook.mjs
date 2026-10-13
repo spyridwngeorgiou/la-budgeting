@@ -33,13 +33,15 @@ const EDIT_ROWS = new Set([8, 43, 51, 70, 78, 118]);
 const PENDING_ROWS = new Set([49, 50, 54, 71, 72]);
 // Accounts whose opening balance/date follow the workbook. The others are
 // plugs (see promote_staging.py) and are only reported.
-const OPENING_ACCOUNTS = new Set(["Πειραιώς Προσωπικός"]);
+// Owner decision 13/10: Μετρητά follows the workbook too.
+const OPENING_ACCOUNTS = new Set(["Πειραιώς Προσωπικός", "Μετρητά"]);
 // Projects whose budget lines follow «Προϋπολογισμοί».
 const BUDGET_PROJECTS = ["Q003"];
 // Καθημερινά: cash/app rows from the opening-balance month on; monthly bank
 // aggregates («Τραπεζικό αρχείο») only from this month on -- the earlier ones
 // were left out by the original import and are listed for a decision.
-const KATH_AGGREGATE_FROM_MONTH = "2026-09";
+// Owner decision 13/10: the August aggregates (rows 88–98) are imported too.
+const KATH_AGGREGATE_FROM_MONTH = "2026-08";
 const KATH_CATEGORY = "Προσωπικά έξοδα";
 
 // ── Literal maps (mirror of tools/mappings.py) ──
@@ -837,7 +839,7 @@ async function writeReport(path, P, meta) {
     ...P.accounts.map((a) => ({ kind: "Λογαριασμός — άνοιγμα", name: a.name, field: "opening_balance / opening_balance_date",
       from: `${a.from.opening} @ ${a.from.date}`, to: `${a.to.opening} @ ${a.to.date}`, what: "Εφαρμόζεται" })),
     ...P.accountsInfo.map((a) => ({ kind: "Λογαριασμός — άνοιγμα", name: a.name, field: "opening_balance / opening_balance_date",
-      from: `${a.from.opening} @ ${a.from.date}`, to: `${a.to.opening} @ ${a.to.date}`, what: "ΔΕΝ εφαρμόζεται (μόνο Πειραιώς κατά την απόφαση)" })),
+      from: `${a.from.opening} @ ${a.from.date}`, to: `${a.to.opening} @ ${a.to.date}`, what: "ΔΕΝ εφαρμόζεται (εκτός απόφασης)" })),
     ...P.liabilities.map((l) => ({ kind: "Υποχρέωση", name: l.lender, field: Object.keys(l.set).join(", "),
       from: Object.keys(l.set).map((k) => l.from[k]).join(" · "), to: Object.values(l.set).join(" · "), what: "Εφαρμόζεται" })),
     ...P.expected.map((e) => ({ kind: "Αναμενόμενο έσοδο", name: e.source, field: Object.keys(e.set).join(", "),
