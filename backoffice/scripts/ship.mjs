@@ -178,7 +178,7 @@ async function browserSmoke(base, list, jar, { gapMs }) {
         const found = await pg.evaluate(() => ({
           boundary: document.body?.innerText.includes("Κάτι πήγε στραβά") ?? false,
           overflow: document.documentElement.scrollWidth - window.innerWidth,
-          height: document.documentElement.scrollHeight,
+          height: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, ...[...document.querySelectorAll("main")].map((m) => m.scrollHeight)),
         }));
         pg.off("pageerror", onErr);
         // A 503 that survives the retries is the Workers Free CPU limit, not a
