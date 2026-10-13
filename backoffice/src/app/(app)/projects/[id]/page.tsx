@@ -7,15 +7,17 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Σύνοψη Έργου: the one-pager (./LegacyProjectPage.tsx).
 // ?s=<scenario id> picks the scenario the page shows and edits (default:
-// the base).
+// the base). ?show=plan | partners opens the full planner block or the
+// partner management in place of its summary line.
 export default async function ProjectPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ s?: string | string[] }>;
+  searchParams: Promise<{ s?: string | string[]; show?: string | string[] }>;
 }) {
-  const [{ id }, { s }] = await Promise.all([params, searchParams]);
+  const [{ id }, { s, show }] = await Promise.all([params, searchParams]);
   if (!UUID.test(id)) notFound();
-  return <LegacyProjectPage id={id} requestedScenario={s} />;
+  const panel = show === "plan" || show === "partners" ? show : undefined;
+  return <LegacyProjectPage id={id} requestedScenario={s} show={panel} />;
 }

@@ -1,16 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate, formatMoney, formatPercent } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge, Button, ButtonLink, GlancePanel, MetaList, Notice, PageHeader, Select, Stat, AiSpark } from "@/components/ui";
-import { projectHeadline } from "@/lib/finance/portfolio";
+import { Badge, Button, ButtonLink, MetaList, Notice, PageHeader, Select, AiSpark } from "@/components/ui";
 import { OnePagerSection, OnePagerRow, StatusNotes, type ProjectNote } from "@/components/onepager";
 import { computeScenarioFromInputs, loadProjectFlows, loadScenarioInputs } from "@/lib/finance/projectModel";
 import { computeDevelopmentResult } from "@/lib/finance/development";
 import { BudgetLineRows, DevelopmentSection, LeaseSyncButton } from "./FinanceSections";
 import { FundingSections } from "./FundingSections";
-import { ScenarioSections } from "./ScenarioSections";
+import { ScenarioBar, ScenarioSections } from "./ScenarioSections";
 import { aiEnabled } from "@/lib/ai/client";
 import { ProjectHealthCheck } from "./ProjectHealthCheck";
 import { PartnersPanel } from "./PartnersPanel";
@@ -46,9 +45,13 @@ import { ManualPlanForm } from "../revenue-plans/ManualPlanForm";
 export async function LegacyProjectPage({
   id,
   requestedScenario,
+  show,
 }: {
   id: string;
   requestedScenario?: string | string[];
+  // ?show=plan | partners: the full planner block or partner management
+  // in place of its one summary line (loaded only then).
+  show?: "plan" | "partners";
 }) {
   const supabase = await createClient();
   const access = await getAccessContext();
@@ -120,7 +123,15 @@ export async function LegacyProjectPage({
   // first row). «Στείλε στο ταμείο» and the revenue-plan link act on it.
   const scenario = selectScenario(inputs?.scenarios ?? [], requestedScenario);
   const selectedScenarioId = scenario?.id ?? null;
-  const [{ data: utilities }, { data: monthlyCostRows }, projectFlows, { count: sentToCash }, { data: nextMilestone }] = await Promise.all([
+  const [
+    { data: utilities },
+    { data: monthlyCostRows },
+    projectFlows,
+    { count: sentToCash },
+    { data: nextMilestone },
+    { count: openTasks },
+    { count: partnerCount },
+  ] = await Promise.all([
     supabase.from("property_utilities").select("*").eq("project_id", id).order("kind"),
     supabase
       .from("v_property_monthly_cost")
@@ -135,7 +146,8 @@ export async function LegacyProjectPage({
           .eq("scenario_id", selectedScenarioId)
           .eq("status", "expected")
       : Promise.resolve({ count: 0 }),
-    // «Επόμενο ορόσημο» in «Με μια ματιά»: one row.
+    // The «Πλάνο» summary line: the next milestone and the open tasks
+    // (a head count), and the «Συνεργάτες» line: the members (a head count).
     supabase
       .from("project_milestones")
       .select("title, due_date")
@@ -145,6 +157,13 @@ export async function LegacyProjectPage({
       .order("due_date")
       .limit(1)
       .maybeSingle(),
+    supabase
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("project_id", id)
+      .is("archived_at", null)
+      .neq("status", "done"),
+    supabase.from("project_members").select("user_id", { count: "exact", head: true }).eq("project_id", id),
   ]);
   const monthlyCost = new Map<string, number>();
   for (const r of monthlyCostRows ?? []) {
@@ -189,9 +208,13 @@ export async function LegacyProjectPage({
     0,
   );
   const monthlyRent = firstYearRent?.monthlyAmount ?? 0;
+  // This page as it is now (the scenario kept unless it is the base): the
+  // summary lines' «Ορόσημα» / «Διαχείριση» / «Κλείσιμο» links add or drop
+  // ?show= on it.
+  const pageHref = scenario && !scenario.is_base ? `/projects/${id}?s=${scenario.id}` : `/projects/${id}`;
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         eyebrow={el.nav.projects}
         title={rollup.display_name}
@@ -236,60 +259,42 @@ export async function LegacyProjectPage({
           <ButtonLink href={`/transactions?project_id=${id}`}>
             {el.nav.transactions}
           </ButtonLink>
+          <ButtonLink href={`/projects/${id}/compare`}>
+            {el.projectScenarios.compare}
+          </ButtonLink>
           <ButtonLink href={`/planner?project=${id}`}>
             {el.nav.planner}
-          </ButtonLink>
-          {lease?.kind === "indexed_rent" && <LeaseSyncButton leaseId={lease.id} />}
-          <ButtonLink href={`/projects/${id}/compare`}>
-            Σύγκριση σεναρίων
           </ButtonLink>
           <ButtonLink href={`/collab/${id}`}>
             {el.collab.navLabel}
           </ButtonLink>
+          {lease?.kind === "indexed_rent" && <LeaseSyncButton leaseId={lease.id} />}
           </>
         }
       >
         {aiEnabled() && <ProjectHealthCheck projectId={id} />}
       </PageHeader>
 
-      {/* Με μια ματιά -- the investor-ready summary: figures this page
-          already computes (rollup, budget, «IRR έργου») and the next
-          milestone. Every block below stays as it was. */}
-      <GlancePanel>
-        <p className="max-w-4xl text-section font-normal break-words text-panel-ink">
-          {projectHeadline({
-            budget: hasBudget ? budgetTotal : null,
-            spent: Number(rollup.spent ?? 0),
-            remaining: Number(rollup.remaining_budget ?? 0),
-            irr: projectIrr,
-          })}
-        </p>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-3 xl:grid-cols-6">
-          <Stat onPanel label="Επένδυση" value={hasBudget ? formatMoney(budgetTotal) : "—"} sub={hasBudget ? undefined : "χωρίς προϋπολογισμό"} />
-          <Stat
-            onPanel
-            label="Δαπανήθηκε"
-            value={formatMoney(rollup.spent)}
-            sub={hasBudget && budgetTotal > 0 ? `${formatPercent(Number(rollup.spent ?? 0) / budgetTotal, { digits: 0 })} του προϋπολογισμού` : undefined}
-          />
-          <Stat
-            onPanel
-            label="Υπόλοιπο"
-            value={hasBudget ? formatMoney(rollup.remaining_budget) : "—"}
-            sub={hasBudget && Number(rollup.remaining_budget ?? 0) < 0 ? "εκτός προϋπολογισμού" : undefined}
-          />
-          <Stat onPanel label="Αποτέλεσμα" value={formatMoney(rollup.net_result)} sub="μέχρι σήμερα" />
-          <Stat onPanel label="IRR" value={projectIrr == null ? "—" : formatPercent(projectIrr)} sub="έργου, χωρίς ΦΠΑ" />
-          <Stat
-            onPanel
-            label="Επόμενο ορόσημο"
-            value={nextMilestone ? formatDate(nextMilestone.due_date) : "—"}
-            sub={nextMilestone?.title}
-          />
-        </div>
-      </GlancePanel>
+      {/* The scenario bar: every scenario one click away (?s=), the
+          selected one's figures and actions -- the blocks below show and
+          edit it. Replaces the old «Σενάρια» list mid-page. */}
+      <ScenarioBar
+        projectId={id}
+        selectedId={selectedScenarioId}
+        scenarios={scenarioResults.map(({ scenario: sc, result }) => ({
+          id: sc.id,
+          name: sc.name,
+          isBase: sc.is_base,
+          operatingResult: result.hasOperation ? result.operatingResult : null,
+          npv: result.cashflow?.kpis.npv ?? null,
+          minDscr: result.cashflow?.kpis.minDscr?.value ?? null,
+        }))}
+      />
 
-      <div className="grid grid-cols-1 gap-x-12 gap-y-10 lg:grid-cols-2">
+      {/* Two balanced columns (CSS columns: the blocks keep the 7 Oct
+          order, down the first column then the second, and never split --
+          OnePagerSection is break-inside-avoid). One column on a phone. */}
+      <div className="flex flex-col gap-6 lg:block lg:columns-2 lg:gap-6 lg:*:mb-6">
         {/* ΕΠΕΝΔΥΣΗ — the capex budget, line by line */}
         <OnePagerSection title="ΕΠΕΝΔΥΣΗ" subtitle={budget?.notes ?? undefined}>
           {hasBudget ? (
@@ -401,15 +406,20 @@ export async function LegacyProjectPage({
             optimistic scenarios, revisions over time), previously only
             reachable one-at-a-time through whichever plan happened to be
             wired into the scenario, with no way to browse or create one
-            scoped to this project. Creation goes first (most projects here
-            still need their first analysis), then the full browsable list,
-            then -- as a clearly separate, secondary concern -- which one of
-            them currently feeds the ΛΕΙΤΟΥΡΓΙΑ model below. */}
+            scoped to this project. Creation (AI or by hand) sits behind one
+            «+ Νέα ανάλυση εσόδων», open while the project has none; then
+            the browsable list, then which one feeds the ΛΕΙΤΟΥΡΓΙΑ below. */}
         <OnePagerSection title="Αναλύσεις Εσόδων">
-          <div className="flex flex-col gap-4 pt-2">
-            {aiEnabled() && <AiCreateForm projectId={id} />}
-
-            <ManualPlanForm projectId={id} />
+          <div className="flex flex-col gap-3 pt-1">
+            <details open={linkedPlans.length === 0} className="border-b border-hairline">
+              <summary className="flex min-h-10 cursor-pointer items-center text-body text-ink hover:underline">
+                {el.projectSummary.newRevenuePlan}
+              </summary>
+              <div className="flex flex-col gap-3 pb-3">
+                {aiEnabled() && <AiCreateForm projectId={id} />}
+                <ManualPlanForm projectId={id} />
+              </div>
+            </details>
 
             {linkedPlans.length === 0 ? (
               <p className="text-body text-muted">Καμία ανάλυση εσόδων ακόμα για αυτό το έργο.</p>
@@ -473,14 +483,6 @@ export async function LegacyProjectPage({
           projectId={id}
           scenario={scenario}
           result={scenarioResult}
-          scenarios={scenarioResults.map(({ scenario: sc, result }) => ({
-            id: sc.id,
-            name: sc.name,
-            isBase: sc.is_base,
-            operatingResult: result.hasOperation ? result.operatingResult : null,
-            npv: result.cashflow?.kpis.npv ?? null,
-            minDscr: result.cashflow?.kpis.minDscr?.value ?? null,
-          }))}
           annualRent={annualRent}
           monthlyRent={monthlyRent}
           sentToCash={sentToCash ?? 0}
@@ -511,7 +513,7 @@ export async function LegacyProjectPage({
           {(utilities ?? []).map((u) => (
             <div
               key={u.id}
-              className="flex flex-col gap-2 border-b border-hairline py-3 text-body md:flex-row md:flex-wrap md:items-center md:gap-x-3"
+              className="flex flex-col gap-2 border-b border-hairline py-2 text-body md:flex-row md:flex-wrap md:items-center md:gap-x-3"
             >
               <span className="text-muted md:w-28">{UTILITY_KIND_LABELS[u.kind]}</span>
               <span className="min-w-0 flex-1 break-words text-ink">
@@ -542,34 +544,30 @@ export async function LegacyProjectPage({
           {(utilities ?? []).length === 0 && (
             <p className="border-b border-hairline py-3 text-body text-muted">Δεν έχουν καταχωρηθεί παροχές.</p>
           )}
-          <div className="pt-3">
+          <div className="pt-2">
             <UtilityFormModal action={saveUtility.bind(null, id, null)} />
           </div>
         </OnePagerSection>
 
         {monthlyCostList.length > 0 && (
           <OnePagerSection title="ΚΟΣΤΟΣ ΛΕΙΤΟΥΡΓΙΑΣ ΑΝΑ ΜΗΝΑ" subtitle="Ενοίκιο, παροχές, κοινόχρηστα — τελευταίοι 12 μήνες.">
-            {monthlyCostList.map(([month, amount]) => (
-              <OnePagerRow
-                key={month}
-                label={formatDate(month).slice(3)}
-                amount={amount}
-                href={`/projects/properties?month=${month.slice(0, 7)}`}
-              />
-            ))}
+            {/* Twelve months in a compact grid (newest first), each a link
+                to that month's property costs. */}
+            <ul className="grid grid-cols-2 gap-x-6 sm:grid-cols-3">
+              {monthlyCostList.map(([month, amount]) => (
+                <li key={month}>
+                  <Link
+                    href={`/projects/properties?month=${month.slice(0, 7)}`}
+                    className="flex min-h-10 items-baseline justify-between gap-3 border-b border-hairline py-2 text-body hover:bg-hover"
+                  >
+                    <span className="num text-text">{formatDate(month).slice(3)}</span>
+                    <span className="num text-ink underline-offset-4 hover:underline">{formatMoney(amount)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </OnePagerSection>
         )}
-
-        {/* ΠΛΑΝΟ ΕΡΓΟΥ -- the planner's view of this project (0040). Dated
-            to-dos and milestones used to be ΚΑΤΑΣΤΑΣΗ notes; they live here
-            now, and ΚΑΤΑΣΤΑΣΗ keeps the status and risk bullets. */}
-        <ProjectPlanSection
-          projectId={id}
-          canEdit={
-            access.kind === "internal" &&
-            plannerCapabilities({ kind: "member", role: access.membership.role }).canEditSchedule
-          }
-        />
 
         {/* ΚΑΤΑΣΤΑΣΗ -- always rendered now (not gated on notes.length), so
             "+ Σημείωση" is reachable even with zero open notes. Previously
@@ -607,7 +605,52 @@ export async function LegacyProjectPage({
         </OnePagerSection>
       </div>
 
-      <PartnersPanel projectId={id} isAdmin={isOrgAdmin} />
+      {/* ΠΛΑΝΟ ΕΡΓΟΥ and the partners: one summary line each. The full
+          block (milestones, partner management) opens in place with
+          ?show=, and only then is its data loaded. */}
+      <div className="flex flex-col border-t border-hairline">
+        <SummaryLine
+          label={el.projectSummary.plan}
+          href={`/planner?project=${id}`}
+          moreHref={show === "plan" ? pageHref : `${pageHref}${pageHref.includes("?") ? "&" : "?"}show=plan#plan`}
+          moreLabel={show === "plan" ? el.projectSummary.close : el.projectSummary.milestones}
+        >
+          <span className="num">{openTasks ?? 0}</span> {el.planner.openTasks} ·{" "}
+          {nextMilestone ? (
+            <>
+              {el.projectSummary.nextMilestone} {nextMilestone.title}{" "}
+              <span className="num">{formatDate(nextMilestone.due_date)}</span>
+            </>
+          ) : (
+            el.projectSummary.noMilestone
+          )}
+        </SummaryLine>
+        <SummaryLine
+          label={el.projectSummary.partners}
+          href={`/collab/${id}`}
+          moreHref={show === "partners" ? pageHref : `${pageHref}${pageHref.includes("?") ? "&" : "?"}show=partners#partners`}
+          moreLabel={show === "partners" ? el.projectSummary.close : el.projectSummary.manage}
+        >
+          <span className="num">{partnerCount ?? 0}</span>
+        </SummaryLine>
+      </div>
+
+      {show === "plan" && (
+        <div id="plan">
+          <ProjectPlanSection
+            projectId={id}
+            canEdit={
+              access.kind === "internal" &&
+              plannerCapabilities({ kind: "member", role: access.membership.role }).canEditSchedule
+            }
+          />
+        </div>
+      )}
+      {show === "partners" && (
+        <div id="partners">
+          <PartnersPanel projectId={id} isAdmin={isOrgAdmin} />
+        </div>
+      )}
 
       {leaseSchedule && leaseSchedule.diagnostics.length > 0 && (
         <Notice as="aside" tone="warning" className="flex max-w-prose flex-col gap-1.5">
@@ -622,6 +665,41 @@ export async function LegacyProjectPage({
           </ul>
         </Notice>
       )}
+    </div>
+  );
+}
+
+// One closing summary line: «Label: what it counts →» (a link to where the
+// work lives) and, on the right, the link that opens or closes the full
+// block on this page.
+function SummaryLine({
+  label,
+  href,
+  moreHref,
+  moreLabel,
+  children,
+}: {
+  label: string;
+  href: string;
+  moreHref: string;
+  moreLabel: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-4 border-b border-hairline text-body">
+      <Link href={href} className="inline-flex min-h-10 min-w-0 items-center text-ink underline-offset-4 hover:underline max-md:min-h-11">
+        <span>
+          <span className="font-medium">{label}:</span> {children} →
+        </span>
+      </Link>
+      <Link
+        href={moreHref}
+        // Opening scrolls to the block (#plan / #partners); closing stays put.
+        scroll={moreHref.includes("#")}
+        className="inline-flex min-h-10 items-center text-small text-muted underline-offset-4 hover:text-ink hover:underline max-md:min-h-11"
+      >
+        {moreLabel}
+      </Link>
     </div>
   );
 }
