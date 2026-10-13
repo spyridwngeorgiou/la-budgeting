@@ -9,15 +9,25 @@ import { el } from "@/lib/i18n/el";
 import { findPossibleDuplicates, transactionWriteError, type WriteResult } from "@/lib/ingest/duplicates";
 import { todayAthens } from "@/lib/dates";
 import { action, UserError, type ActionResult } from "@/lib/actions";
+import { parseAmountInput } from "@/lib/amountInput";
+
+// An amount typed in a MoneyInput («1.234,56», «12,5»); a blank optional
+// field is `fallback`, anything unreadable an error the form shows.
+function amountField(formData: FormData, name: string, fallback?: number): number {
+  const raw = formString(formData, name);
+  const n = raw === null || raw.trim() === "" ? (fallback ?? null) : parseAmountInput(raw);
+  if (n === null) throw new UserError(el.transaction.invalidAmount);
+  return n;
+}
 
 // The one place transaction money fields get computed for the manual-entry
 // path -- gross_amount is a plain stored column (not a DB-generated one), so
 // the server must derive it itself. Never trust a client-submitted gross.
 function deriveMoney(formData: FormData) {
-  const netAmount = Number(formData.get("net_amount"));
+  const netAmount = amountField(formData, "net_amount");
   const vatRate = Number(formData.get("vat_rate") ?? 0);
-  const withholding = Number(formData.get("withholding_amount") ?? 0);
   const hasInvoice = formData.get("has_invoice") === "on";
+  const withholding = hasInvoice ? amountField(formData, "withholding_amount", 0) : 0;
 
   const breakdown = hasInvoice
     ? deriveFromNet(netAmount, vatRate, withholding)
@@ -146,7 +156,8 @@ export async function recordPartialPayment(parentId: string, formData: FormData)
       .single();
     if (loadError) throw loadError;
 
-    const amount = Number(formData.get("amount"));
+    const amount = amountField(formData, "amount");
+    if (amount <= 0 || toCents(amount) > toCents(Number(parent.gross_amount))) throw new UserError(el.transaction.partialTooMuch);
     const paidOn = String(formData.get("paid_on") || todayAthens());
     const accountId = formString(formData, "account_id") ?? parent.account_id;
 

@@ -29,7 +29,7 @@ export default async function AccountsPage() {
   }
   const idsOf = new Map((identifiers ?? []).map((a) => [a.id, a]));
 
-  const rows: (AccountListRow & { owner_scope: string | null })[] = (accounts ?? []).map((a) => {
+  const rows: AccountListRow[] = (accounts ?? []).map((a) => {
     const check = latestCheck.get(a.account_id!);
     const status: AccountStatus = !check ? "never_counted" : okGap(check.total_gap) ? "ok" : "drift";
     const ids = idsOf.get(a.account_id!);
@@ -42,7 +42,6 @@ export default async function AccountsPage() {
       status,
       last_check: check?.as_of_date ?? null,
       check_from: check?.as_of_date ?? a.opening_balance_date!,
-      owner_scope: a.owner_scope,
       form: {
         id: a.account_id!,
         name: a.name!,
@@ -57,7 +56,9 @@ export default async function AccountsPage() {
     };
   });
   const totalLiquid = rows.filter((a) => a.is_liquid).reduce((sum, a) => sum + a.current_balance, 0);
-  const today = todayAthens();
+  const groups = (["corporate", "personal"] as const)
+    .map((scope) => ({ scope, rows: rows.filter((a) => a.form.owner_scope === scope) }))
+    .filter((group) => group.rows.length > 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -68,20 +69,11 @@ export default async function AccountsPage() {
       />
 
       {rows.length === 0 ? (
-        <EmptyState title="Δεν υπάρχουν ακόμα λογαριασμοί. Πατήστε «+ Νέος Λογαριασμός» για να ξεκινήσετε." />
+        <EmptyState title={el.account.empty} body={el.account.emptyHint} />
       ) : (
         <>
           <Stat size="lg" label={el.account.totalLiquid} value={formatMoney(totalLiquid)} />
-
-          {(["corporate", "personal"] as const)
-            .map((scope) => ({ scope, rows: rows.filter((a) => a.owner_scope === scope) }))
-            .filter((group) => group.rows.length > 0)
-            .map((group) => (
-              <section key={group.scope} className="flex flex-col gap-4">
-                <h2 className="eyebrow text-muted">{el.account.groups[group.scope]}</h2>
-                <AccountsTable accounts={group.rows} today={today} />
-              </section>
-            ))}
+          <AccountsTable groups={groups} today={todayAthens()} />
         </>
       )}
     </div>

@@ -1,10 +1,8 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
-import { Badge, Notice, Stat } from "@/components/ui";
+import { Badge, Notice, ReportHistory, SectionHeader, Stat, StatusDot, cn } from "@/components/ui";
 import { formatMoney, formatDate } from "@/lib/format";
-import { okGap } from "./status";
+import { el } from "@/lib/i18n/el";
+import { STATUS_LABEL, STATUS_TONE, isStale, okGap, statusOf } from "./status";
 
 // One row of v_balance_checks (0035): a real balance on a date, and whether
 // the movements recorded for the period leading up to it explain it.
@@ -31,6 +29,9 @@ const START_LABEL = {
   app: "Υπόλοιπο εφαρμογής (μη επιβεβαιωμένο)",
 } as const;
 
+const periodHref = (accountId: string, c: BalanceCheck) =>
+  `/transactions?account_id=${accountId}&from=${c.period_start}&to=${c.as_of_date}`;
+
 // A period-breakdown line: label left, monospace figure right -- the same
 // grammar OnePagerRow uses everywhere else in the app.
 function BreakdownRow({ label, value, emphasis, tone }: { label: string; value: string; emphasis?: boolean; tone?: string }) {
@@ -49,15 +50,7 @@ function BreakdownRow({ label, value, emphasis, tone }: { label: string; value: 
 // Positive gap = there is MORE money in reality than the app knows about:
 // an income wasn't recorded (or an expense was recorded that never happened).
 // Negative = LESS money than the app thinks: an expense wasn't recorded.
-function GapHeadline({ gap, isCash, gapPeriods }: { gap: number; isCash: boolean; gapPeriods: BalanceCheck[] }) {
-  if (okGap(gap)) {
-    return (
-      <div className="flex items-center gap-2">
-        <Badge tone="neutral">Συμφωνεί</Badge>
-        <span className="text-body text-text">Δεν λείπουν κινήσεις</span>
-      </div>
-    );
-  }
+function GapWarning({ gap, isCash, gapPeriods, accountId }: { gap: number; isCash: boolean; gapPeriods: BalanceCheck[]; accountId: string }) {
   const where = isCash ? "στο ταμείο" : "στην τράπεζα";
   return (
     <Notice tone="negative" as="div">
@@ -71,8 +64,13 @@ function GapHeadline({ gap, isCash, gapPeriods }: { gap: number; isCash: boolean
           : `Υπάρχουν ${formatMoney(gap)} περισσότερα ${where} από όσα δείχνει η εφαρμογή — κάποια είσπραξη δεν έχει περαστεί (ή περάστηκε πληρωμή που δεν έγινε).`}
       </p>
       {gapPeriods.length > 0 && (
-        <p className="mt-1.5 text-small font-medium text-negative">
-          Η διαφορά προέκυψε: {gapPeriods.map((c) => `${formatDate(c.period_start)} → ${formatDate(c.as_of_date)}`).join(", ")}
+        <p className="mt-1.5 flex flex-wrap gap-x-3 text-small font-medium text-negative">
+          <span>Η διαφορά προέκυψε:</span>
+          {gapPeriods.map((c) => (
+            <Link key={c.id} href={periodHref(accountId, c)} className="num underline underline-offset-4 hover:text-ink max-md:inline-flex max-md:min-h-11 max-md:items-center">
+              {formatDate(c.period_start)} → {formatDate(c.as_of_date)}
+            </Link>
+          ))}
         </p>
       )}
     </Notice>
@@ -101,7 +99,7 @@ function PeriodBreakdown({ check, accountId }: { check: BalanceCheck; accountId:
         tone={okGap(check.period_gap) ? "text-ink" : "text-negative"}
       />
       <Link
-        href={`/transactions?account_id=${accountId}&from=${check.period_start}&to=${check.as_of_date}`}
+        href={periodHref(accountId, check)}
         className="mt-1 inline-flex min-h-11 items-center self-start text-small text-muted underline underline-offset-4 hover:text-ink md:min-h-8"
       >
         Κινήσεις της περιόδου →
@@ -110,46 +108,60 @@ function PeriodBreakdown({ check, accountId }: { check: BalanceCheck; accountId:
   );
 }
 
-// Pure display: the read-only check history shown in the «Έλεγχος
-// υπολοίπου» drawer of an account page (accounts/CheckDrawer.tsx). Entering a new check is a separate
-// concern -- NewCheckModal -- so this never mounts a form.
-export function BalanceAssertion({
+// «Έλεγχοι υπολοίπου» on the account page, from the checks the page already
+// loads (v_balance_checks, newest first): the last check's state, the
+// «Λείπουν …» warning when the real balance and the app disagree, and every
+// period's breakdown under «▸ Ιστορικό ελέγχων (N)». Read-only; a new check
+// is the «Νέος έλεγχος» drawer (CheckDrawer). No hooks -- renders on the server.
+export function BalanceChecks({
   accountId,
   checks,
   isCash,
+  today,
 }: {
   accountId: string;
-  checks: BalanceCheck[]; // newest first
+  checks: BalanceCheck[];
   isCash: boolean;
+  today: string;
 }) {
-  const [showHistory, setShowHistory] = useState(false);
-  const latest = checks[0];
-
-  if (!latest) {
-    return (
-      <Notice tone="warning" size="small">
-        Δεν έχει γίνει έλεγχος. Βάλτε το πραγματικό υπόλοιπο από {isCash ? "την καταμέτρηση του ταμείου" : "το e-banking"} για να
-        δείτε αν λείπουν κινήσεις.
-      </Notice>
-    );
-  }
-
+  const { status, latest } = statusOf(checks);
   return (
-    <div className="flex flex-col gap-3">
-      <GapHeadline gap={latest.total_gap} isCash={isCash} gapPeriods={checks.filter((c) => !okGap(c.period_gap))} />
-      {/* Periods where a gap arose are always shown; clean older ones fold away. */}
-      {checks
-        .filter((c, i) => showHistory || i === 0 || !okGap(c.period_gap))
-        .map((c) => (
-          <PeriodBreakdown key={c.id} check={c} accountId={accountId} />
-        ))}
-      {checks.some((c, i) => i > 0 && okGap(c.period_gap)) && (
-        <button type="button" onClick={() => setShowHistory(!showHistory)} className="inline-flex min-h-11 items-center self-start text-small text-muted underline underline-offset-4 hover:text-ink md:min-h-8">
-          {showHistory
-            ? "Απόκρυψη παλαιότερων ελέγχων"
-            : `Παλαιότεροι έλεγχοι χωρίς διαφορά (${checks.filter((c, i) => i > 0 && okGap(c.period_gap)).length})`}
-        </button>
+    <section className="flex flex-col gap-3">
+      <SectionHeader title={el.account.checks} />
+      {!latest ? (
+        <Notice tone="warning" size="small">
+          Δεν έχει γίνει έλεγχος. Βάλτε το πραγματικό υπόλοιπο από {isCash ? "την καταμέτρηση του ταμείου" : "το e-banking"} για να
+          δείτε αν λείπουν κινήσεις.
+        </Notice>
+      ) : (
+        <>
+          <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-small text-muted">
+            <StatusDot tone={STATUS_TONE[status]} label={STATUS_LABEL[status]} />
+            <span className={cn("num", isStale(latest.as_of_date, today) && "text-warning")}>
+              {el.account.lastCheck} {formatDate(latest.as_of_date)}
+            </span>
+            <span>
+              {el.account.asserted} <span className="num text-ink">{formatMoney(latest.asserted_balance)}</span>
+            </span>
+            {status === "ok" && <span>Δεν λείπουν κινήσεις</span>}
+          </p>
+          {status === "drift" && (
+            <GapWarning
+              gap={latest.total_gap}
+              isCash={isCash}
+              gapPeriods={checks.filter((c) => !okGap(c.period_gap))}
+              accountId={accountId}
+            />
+          )}
+          <ReportHistory title={el.account.checkHistory} count={checks.length} level={3}>
+            <div className="flex flex-col gap-5">
+              {checks.map((c) => (
+                <PeriodBreakdown key={c.id} check={c} accountId={accountId} />
+              ))}
+            </div>
+          </ReportHistory>
+        </>
       )}
-    </div>
+    </section>
   );
 }

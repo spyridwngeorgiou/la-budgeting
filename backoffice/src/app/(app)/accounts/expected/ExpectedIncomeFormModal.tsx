@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Field, FormDrawer, Input, Label, Select } from "@/components/ui";
+import { Button, Field, FormDrawer, Input, Label, Select, useToast, type ButtonSize, type ButtonVariant } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import type { ActionResult } from "@/lib/actions";
 
@@ -21,6 +21,8 @@ export function ExpectedIncomeFormModal({
   initial,
   projects,
   trigger,
+  variant = "secondary",
+  size = "sm",
 }: {
   // The plain server action and the row id (null = new): no per-row .bind.
   action: (id: string | null, formData: FormData) => Promise<ActionResult>;
@@ -28,16 +30,25 @@ export function ExpectedIncomeFormModal({
   initial?: ExpectedIncomeInitial;
   projects: { id: string; display_name: string }[];
   trigger?: string;
+  // The page header's «+ Νέο …» is the primary button; a row's edit is not.
+  variant?: ButtonVariant;
+  size?: ButtonSize;
 }) {
   const [open, setOpen] = useState(false);
+  const { show } = useToast();
   const t = el.reports;
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+      <Button variant={variant} size={size} onClick={() => setOpen(true)}>
         {trigger ?? `+ ${t.expectedAdd}`}
       </Button>
       {open && (
-        <FormDrawer onClose={() => setOpen(false)} title={initial ? t.expectedEdit : t.expectedAdd} action={(formData: FormData) => action(id, formData)}>
+        <FormDrawer
+          onClose={() => setOpen(false)}
+          title={initial ? t.expectedEdit : t.expectedAdd}
+          action={(formData: FormData) => action(id, formData)}
+          onSuccess={() => show(el.common.saved)}
+        >
           <Field>
             <Label>{t.expectedSource}</Label>
             <Input name="source" defaultValue={initial?.source} required />

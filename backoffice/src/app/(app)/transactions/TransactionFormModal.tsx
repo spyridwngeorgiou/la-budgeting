@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { useId, useMemo, useRef, useState, useTransition } from "react";
 import { Badge, Button, Checkbox, Drawer, Field, Input, MoneyInput, Notice, Select, useToast } from "@/components/ui";
 import { DuplicateWarning } from "@/components/DuplicateWarning";
 import { el } from "@/lib/i18n/el";
@@ -10,6 +10,7 @@ import { VAT_RATES } from "@/lib/domain/enums";
 import type { DuplicateCandidate, WriteResult } from "@/lib/ingest/duplicates";
 import { amountInputValue, parseAmountInput } from "@/lib/amountInput";
 import { suggestForContact } from "./actions";
+import { FieldGroup as Group } from "./FieldGroup";
 import { todayAthens } from "@/lib/dates";
 
 const t = el.transaction;
@@ -49,16 +50,6 @@ interface Props {
   // Above the title when editing: which movement.
   eyebrow?: string;
   onClose: () => void;
-}
-
-// One of the form's three titled groups.
-function Group({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <fieldset className="min-w-0">
-      <legend className="eyebrow w-full border-b border-hairline pb-2 text-muted">{title}</legend>
-      <div className="mt-3 flex flex-col gap-3">{children}</div>
-    </fieldset>
-  );
 }
 
 // Keeps a message the form just raised (an error, the duplicate warning) in

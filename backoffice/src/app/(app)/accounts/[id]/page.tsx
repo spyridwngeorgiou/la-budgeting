@@ -3,11 +3,12 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatDate, formatMoney } from "@/lib/format";
-import { addMonths, currentMonthKey, isMonthKey, monthLabel, monthRange, monthsBetween, shortMonthYearLabel } from "@/lib/dates";
+import { addMonths, currentMonthKey, isMonthKey, monthLabel, monthRange, monthsBetween, shortMonthYearLabel, todayAthens } from "@/lib/dates";
 import { el } from "@/lib/i18n/el";
 import type { AccountKind } from "@/lib/domain/enums";
-import { ButtonLink, EmptyState, PageHeader, Stat, StatRow, StatusDot, cn } from "@/components/ui";
-import { STATUS_LABEL, STATUS_TONE, statusOf, toBalanceCheck } from "../status";
+import { Amount, EmptyState, LINK_CLASS, PageHeader, Pager, SUB_CLASS, SectionHeader, SpecTable, Stat, StatRow, Td, Th, Tr, cn } from "@/components/ui";
+import { toBalanceCheck } from "../status";
+import { BalanceChecks } from "../BalanceAssertion";
 import { CheckDrawer } from "../CheckDrawer";
 import { AccountFormModal } from "../AccountFormModal";
 import { LedgerChart } from "./LedgerChart";
@@ -15,9 +16,13 @@ import { MonthFilter } from "./MonthFilter";
 
 const PAGE_SIZE = 100;
 
+// Below md each ledger row is a card (CSS grid), from md up a table row.
+const CELL = "block max-md:border-b-0 max-md:p-0 md:table-cell";
+
 // «Ανάλυση κινήσεων» of one account: its balance today, the month's in/out,
-// 12 months of in/out, and the paid transactions that make up the balance
-// (v_account_ledger, 0091) with the running balance on every row.
+// the balance checks («Έλεγχοι υπολοίπου»), 12 months of in/out, and the
+// paid transactions that make up the balance (v_account_ledger, 0091) with
+// the running balance on every row.
 export default async function AccountLedgerPage({
   params,
   searchParams,
@@ -63,7 +68,6 @@ export default async function AccountLedgerPage({
   if (!account) notFound();
 
   const checks = (checkRows ?? []).map(toBalanceCheck);
-  const { status, latest } = statusOf(checks);
   const balance = Number(account.current_balance ?? 0);
 
   const byMonth = new Map((monthly ?? []).map((m) => [m.month!, { inflow: Number(m.inflow), outflow: Number(m.outflow) }]));
@@ -81,14 +85,6 @@ export default async function AccountLedgerPage({
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   // The ledger starts from the opening balance: show it under the oldest row.
   const showOpening = !month && page >= pages;
-  const pageHref = (p: number) => {
-    const q = new URLSearchParams();
-    if (month) q.set("month", month);
-    if (p > 1) q.set("page", String(p));
-    const s = q.toString();
-    return `/accounts/${id}${s ? `?${s}` : ""}`;
-  };
-  const signed = (n: number) => `${n < 0 ? "−" : n > 0 ? "+" : ""}${formatMoney(Math.abs(n))}`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -100,18 +96,10 @@ export default async function AccountLedgerPage({
         }
         title={account.name}
         meta={
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span>
-              {el.account.kindValues[account.kind as AccountKind]} · {el.account.ownerValues[account.owner_scope!]}
-              {!account.is_liquid && ` · ${el.account.illiquid}`}
-            </span>
-            <StatusDot tone={STATUS_TONE[status]} label={STATUS_LABEL[status]} />
-            {latest && (
-              <span className="num">
-                {el.account.lastCheck} {formatDate(latest.as_of_date)}
-              </span>
-            )}
-          </span>
+          <>
+            {el.account.kindValues[account.kind as AccountKind]} · {el.account.ownerValues[account.owner_scope!]}
+            {!account.is_liquid && ` · ${el.account.illiquid}`}
+          </>
         }
         actions={
           <>
@@ -133,91 +121,102 @@ export default async function AccountLedgerPage({
             <CheckDrawer
               accountId={id}
               accountName={account.name!}
-              isCash={account.kind === "cash"}
               expectedToday={balance}
               defaultFrom={checks[0]?.as_of_date ?? account.opening_balance_date!}
-              checks={checks}
             />
           </>
         }
       />
 
       <StatRow>
-        <Stat size="lg" label={el.account.balanceToday} value={`${balance < 0 ? "−" : ""}${formatMoney(Math.abs(balance))}`} />
+        <Stat size="lg" label={el.account.balanceToday} value={formatMoney(balance)} />
         <Stat label={`${el.account.monthIn} · ${monthLabel(statMonth)}`} value={formatMoney(stat.inflow)} />
         <Stat label={`${el.account.monthOut} · ${monthLabel(statMonth)}`} value={formatMoney(stat.outflow)} />
       </StatRow>
 
-      <section className="flex flex-col gap-4">
-        <h2 className="eyebrow text-muted">{el.account.last12}</h2>
+      <BalanceChecks accountId={id} checks={checks} isCash={account.kind === "cash"} today={todayAthens()} />
+
+      <section className="flex flex-col gap-3">
+        <SectionHeader title={el.account.last12} />
         <LedgerChart data={chart} inflowLabel={el.account.inflow} outflowLabel={el.account.outflow} label={el.account.last12} />
       </section>
 
-      <section className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="eyebrow text-muted">
-            {el.account.ledger} <span className="num">({total})</span>
-          </h2>
-          <MonthFilter accountId={id} month={month} options={monthOptions} />
-        </div>
+      <section className="flex flex-col gap-3">
+        <SectionHeader
+          title={
+            <>
+              {el.account.ledger} <span className="num text-muted">({total})</span>
+            </>
+          }
+          actions={<MonthFilter accountId={id} month={month} options={monthOptions} />}
+        />
 
         {total === 0 && !showOpening ? (
           <EmptyState title={el.account.noRows} />
         ) : (
-          <ul className="flex flex-col border-t border-rule">
-            {(ledger ?? []).map((r) => {
-              const amount = Number(r.signed_amount);
-              return (
-                <li key={r.transaction_id} className="border-b border-hairline">
-                  <Link
-                    href={`/transactions?ids=${r.transaction_id}`}
-                    className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-0.5 py-3 hover:bg-hover md:grid-cols-[6.5rem_minmax(0,1fr)_9rem_9rem] md:px-3"
+          <SpecTable label={el.account.ledger} tableClassName="block md:table">
+            <thead className="hidden md:table-header-group">
+              <tr>
+                <Th className="w-28">{el.transaction.date}</Th>
+                <Th>{el.transaction.description}</Th>
+                <Th numeric>{el.transaction.amount}</Th>
+                <Th numeric>{el.account.runningBalance}</Th>
+              </tr>
+            </thead>
+            <tbody className="block border-t border-rule md:table-row-group md:border-t-0">
+              {(ledger ?? []).map((r) => {
+                const running = Number(r.running_balance);
+                return (
+                  <Tr
+                    key={r.transaction_id}
+                    className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-0.5 border-b border-hairline py-3 md:table-row md:border-b-0 md:py-0"
                   >
-                    <span className="num col-start-1 row-start-2 text-small text-muted md:row-start-1 md:text-body">
-                      {formatDate(r.paid_date)}
-                    </span>
-                    <span className="col-start-1 row-start-1 min-w-0 truncate text-body text-ink md:col-start-2">
-                      {r.party_name || r.description || "—"}
-                      {r.party_name && r.description && <span className="text-muted"> · {r.description}</span>}
-                    </span>
-                    <span
-                      className={cn(
-                        "num col-start-2 row-start-1 text-right text-body md:col-start-3",
-                        amount < 0 ? "text-text" : "text-positive",
-                      )}
+                    <Td className={cn(CELL, "col-start-1 row-start-2 max-md:text-small max-md:text-muted md:whitespace-nowrap")}>
+                      <span className="num">{formatDate(r.paid_date)}</span>
+                    </Td>
+                    <Td className={cn(CELL, "col-start-1 row-start-1 min-w-0 [overflow-wrap:anywhere]")}>
+                      <Link href={`/transactions?ids=${r.transaction_id}`} className={LINK_CLASS}>
+                        {r.party_name || r.description || "—"}
+                      </Link>
+                      {r.party_name && r.description && <span className={SUB_CLASS}>{r.description}</span>}
+                    </Td>
+                    <Td numeric strong className={cn(CELL, "col-start-2 row-start-1")}>
+                      <Amount value={Number(r.signed_amount)} />
+                    </Td>
+                    <Td
+                      numeric
+                      className={cn(CELL, "col-start-2 row-start-2 max-md:text-small", running < 0 ? "text-negative" : "max-md:text-muted")}
                     >
-                      {signed(amount)}
-                    </span>
-                    <span className="num col-start-2 row-start-2 text-right text-small text-muted md:col-start-4 md:row-start-1 md:text-body">
-                      {formatMoney(Number(r.running_balance))}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-            {showOpening && (
-              <li className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 border-b border-hairline py-3 md:grid-cols-[6.5rem_minmax(0,1fr)_9rem_9rem] md:px-3">
-                <span className="num col-start-1 row-start-2 text-small text-muted md:row-start-1 md:text-body">
-                  {formatDate(account.opening_balance_date)}
-                </span>
-                <span className="col-start-1 row-start-1 text-body text-muted md:col-start-2">{el.account.opening}</span>
-                <span className="num col-start-2 row-start-2 text-right text-small text-muted md:col-start-4 md:row-start-1 md:text-body">
-                  {formatMoney(Number(account.opening_balance))}
-                </span>
-              </li>
-            )}
-          </ul>
+                      {formatMoney(running)}
+                    </Td>
+                  </Tr>
+                );
+              })}
+              {showOpening && (
+                <Tr className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-0.5 border-b border-hairline py-3 md:table-row md:border-b-0 md:py-0">
+                  <Td className={cn(CELL, "col-start-1 row-start-2 max-md:text-small max-md:text-muted md:whitespace-nowrap")}>
+                    <span className="num">{formatDate(account.opening_balance_date)}</span>
+                  </Td>
+                  <Td className={cn(CELL, "col-start-1 row-start-1 text-muted")}>{el.account.opening}</Td>
+                  <Td className="hidden md:table-cell" />
+                  <Td numeric className={cn(CELL, "col-start-2 row-start-2 max-md:text-small max-md:text-muted")}>
+                    {formatMoney(Number(account.opening_balance))}
+                  </Td>
+                </Tr>
+              )}
+            </tbody>
+          </SpecTable>
         )}
 
-        {pages > 1 && (
-          <nav aria-label="Σελίδες" className="flex items-center justify-between gap-3 text-small text-muted">
-            {page > 1 ? <ButtonLink href={pageHref(page - 1)} size="sm">← Νεότερες</ButtonLink> : <span />}
-            <span className="num">
-              {page} / {pages}
-            </span>
-            {page < pages ? <ButtonLink href={pageHref(page + 1)} size="sm">Παλαιότερες →</ButtonLink> : <span />}
-          </nav>
-        )}
+        <Pager
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          noun={el.account.movements}
+          basePath={`/accounts/${id}`}
+          params={{ ...sp }}
+          label={el.account.ledgerPages}
+        />
       </section>
     </div>
   );

@@ -3,12 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Button, LINK_CLASS, PageHeader, SpecTable, Td, Tr } from "@/components/ui";
+import { Button, EmptyState, LINK_CLASS, PageHeader, SpecTable, Td, Th, Tr } from "@/components/ui";
+import { shell } from "@/lib/i18n/v2/shell";
 import { ArgsActionForm } from "@/components/ArgsActionForm";
 import { loadLookups } from "@/lib/data/lookups";
 import { monthKeyOf, monthLabel } from "@/lib/dates";
 import type { ForecastScope } from "@/lib/finance/forecastParams";
 import { ExpectedIncomeFormModal } from "./ExpectedIncomeFormModal";
+import { CancelExpectedButton } from "./CancelExpectedButton";
 import { saveExpectedIncome, setExpectedIncomeStatus } from "./actions";
 
 // Αναμενόμενα έσοδα: the hand-kept list of likely money (0008 + 0065),
@@ -44,13 +46,24 @@ export default async function ExpectedIncomePage() {
             με την πιθανότητά τους.
           </>
         }
-        actions={<ExpectedIncomeFormModal action={saveExpectedIncome} projects={lookups.projects} />}
+        actions={<ExpectedIncomeFormModal action={saveExpectedIncome} projects={lookups.projects} variant="primary" size="md" />}
       />
 
       {(expected ?? []).length === 0 ? (
-        <p className="text-body text-muted">{t.expectedEmpty}</p>
+        <EmptyState title={t.expectedEmpty} />
       ) : (
         <SpecTable label={t.expectedTitle}>
+          <thead>
+            <tr>
+              <Th>{t.expectedSource}</Th>
+              <Th>{t.month}</Th>
+              <Th numeric>{t.expectedAmount}</Th>
+              <Th numeric>{t.probability}</Th>
+              <Th>
+                <span className="sr-only">{shell.ui.actions}</span>
+              </Th>
+            </tr>
+          </thead>
           <tbody>
             {(expected ?? []).map((e) => {
               const project = Array.isArray(e.projects) ? e.projects[0] : e.projects;
@@ -109,11 +122,7 @@ export default async function ExpectedIncomePage() {
                             {t.expectedReceived}
                           </Button>
                         </ArgsActionForm>
-                        <ArgsActionForm action={setExpectedIncomeStatus} args={[e.id, "cancelled"]}>
-                          <Button type="submit" variant="ghost" size="sm">
-                            {t.expectedCancel}
-                          </Button>
-                        </ArgsActionForm>
+                        <CancelExpectedButton id={e.id} source={e.source} />
                       </div>
                     )}
                   </Td>

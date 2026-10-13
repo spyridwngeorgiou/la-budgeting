@@ -1,142 +1,88 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { formatPercent } from "@/lib/format";
-import { Button, Input, Select, Label, Field, Modal, Notice } from "@/components/ui";
-import { SubmitButton } from "@/components/SubmitButton";
+import { Button, Checkbox, Field, FormDrawer, Input, MoneyInput, Select, useToast } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { VAT_RATES } from "@/lib/domain/enums";
 import { todayAthens } from "@/lib/dates";
+import { FieldGroup } from "../FieldGroup";
+import { createInstallmentPlan } from "./actions";
+
+const t = el.transaction;
 
 interface Option {
   id: string;
   label: string;
 }
 
-interface Props {
-  action: (formData: FormData) => Promise<void>;
+// «+ Νέο σχέδιο δόσεων» and its side drawer. The action is imported here,
+// so the server page passes only the option lists.
+export function InstallmentPlanFormModal({
+  contacts,
+  projects,
+  categories,
+  accounts,
+}: {
   contacts: Option[];
   projects: Option[];
   categories: Option[];
   accounts: Option[];
-}
-
-export function InstallmentPlanFormModal({ action, contacts, projects, categories, accounts }: Props) {
+}) {
   const [open, setOpen] = useState(false);
   const [hasInvoice, setHasInvoice] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { show } = useToast();
+  const uid = useId();
+  const id = (name: string) => `${uid}-${name}`;
+  const close = () => {
+    setOpen(false);
+    setHasInvoice(false);
+  };
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>
-        + Νέο Σχέδιο Δόσεων
-      </Button>
+      <Button onClick={() => setOpen(true)}>{t.plans.newButton}</Button>
       {open && (
-        <Modal
-          onClose={() => setOpen(false)}
-          className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto border border-hairline bg-raised p-5 md:p-6"
-          closeOnBackdrop={false}
-        >
-          <form
-            action={async (formData) => {
-              setError(null);
-              try {
-                await action(formData);
-                setOpen(false);
-              } catch (e) {
-                setError(e instanceof Error ? e.message : "Σφάλμα");
-              }
-            }}
-            className="flex flex-col gap-4"
-          >
-            <Field>
-              <Label>Ετικέτα Σχεδίου</Label>
-              <Input name="label" required placeholder="π.χ. Μίσθωμα Λαζαράκη" />
+        <FormDrawer onClose={close} title={t.plans.newTitle} action={createInstallmentPlan} onSuccess={() => show(el.common.saved)}>
+          <FieldGroup title={t.groups.basics}>
+            <Field label="Ετικέτα σχεδίου" htmlFor={id("label")} required>
+              <Input id={id("label")} name="label" required placeholder="π.χ. Ρύθμιση ΕΦΚΑ" />
             </Field>
 
-            <div className="flex">
-              {(["expense", "income"] as const).map((d, i) => (
-                <label
-                  key={d}
-                  className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 border border-chip-border px-3 py-2 text-body text-text has-[:checked]:border-navy has-[:checked]:bg-navy has-[:checked]:text-panel-ink md:min-h-10 ${
-                    i > 0 ? "-ml-px" : ""
-                  }`}
-                >
-                  <input type="radio" name="direction" value={d} defaultChecked={d === "expense"} className="accent-navy" />
-                  {d === "expense" ? el.transaction.expense : el.transaction.income}
-                </label>
-              ))}
+            <div className="flex flex-col">
+              <span id={id("type")} className="mb-1 block text-small font-medium text-muted">
+                {t.type}
+              </span>
+              <div role="radiogroup" aria-labelledby={id("type")} className="flex">
+                {(["expense", "income"] as const).map((d, i) => (
+                  <label
+                    key={d}
+                    className={`flex min-h-10 flex-1 cursor-pointer items-center justify-center gap-2 border border-chip-border px-3 py-2 text-body text-text has-[:checked]:border-navy has-[:checked]:bg-navy has-[:checked]:text-panel-ink pointer-coarse:min-h-11 ${
+                      i > 0 ? "-ml-px" : ""
+                    }`}
+                  >
+                    <input type="radio" name="direction" value={d} defaultChecked={d === "expense"} className="accent-navy" />
+                    {d === "expense" ? t.expense : t.income}
+                  </label>
+                ))}
+              </div>
             </div>
 
-            <Field>
-              <Label>{el.transaction.contact}</Label>
-              <Select name="contact_id">
-                <option value="">—</option>
-                {contacts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+            <Checkbox
+              label={t.hasInvoice}
+              name="has_invoice"
+              checked={hasInvoice}
+              onChange={(e) => setHasInvoice(e.target.checked)}
+              className="self-start pointer-coarse:min-h-11"
+            />
 
             <div className="grid grid-cols-2 gap-3">
-              <Field>
-                <Label>{el.transaction.project}</Label>
-                <Select name="project_id">
-                  <option value="">—</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field>
-                <Label>{el.transaction.category}</Label>
-                <Select name="category_id">
-                  <option value="">—</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-
-            <Field>
-              <Label>{el.transaction.account}</Label>
-              <Select name="account_id" required>
-                <option value="">—</option>
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.label}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-
-            <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 self-start text-body text-ink md:min-h-10">
-              <input
-                className="h-4 w-4 accent-navy"
-                type="checkbox"
-                name="has_invoice"
-                checked={hasInvoice}
-                onChange={(e) => setHasInvoice(e.target.checked)}
-              />
-              {el.transaction.hasInvoice}
-            </label>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Field>
-                <Label>Ποσό ανά Δόση</Label>
-                <Input type="number" step="0.01" name="amount_per_installment" required />
+              <Field label="Ποσό ανά δόση" htmlFor={id("amount")} required>
+                <MoneyInput id={id("amount")} name="amount_per_installment" required className="w-full" />
               </Field>
               {hasInvoice && (
-                <Field>
-                  <Label>ΦΠΑ %</Label>
-                  <Select name="vat_rate" defaultValue="0.24">
+                <Field label={`${t.vat} %`} htmlFor={id("vat")}>
+                  <Select id={id("vat")} name="vat_rate" defaultValue="0.24">
                     {VAT_RATES.map((r) => (
                       <option key={r} value={r}>
                         {formatPercent(r, { digits: 0 })}
@@ -148,18 +94,11 @@ export function InstallmentPlanFormModal({ action, contacts, projects, categorie
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <Field>
-                <Label>Πρώτη Ημ/νία Λήξης</Label>
-                <Input
-                  type="date"
-                  name="first_due_date"
-                  defaultValue={todayAthens()}
-                  required
-                />
+              <Field label="Πρώτη ημ/νία λήξης" htmlFor={id("first")} required>
+                <Input id={id("first")} type="date" name="first_due_date" defaultValue={todayAthens()} required />
               </Field>
-              <Field>
-                <Label>Συχνότητα</Label>
-                <Select name="frequency" defaultValue="monthly">
+              <Field label="Συχνότητα" htmlFor={id("frequency")}>
+                <Select id={id("frequency")} name="frequency" defaultValue="monthly">
                   <option value="monthly">Μηνιαία</option>
                   <option value="quarterly">Τριμηνιαία</option>
                   <option value="semiannual">Εξαμηνιαία</option>
@@ -168,25 +107,58 @@ export function InstallmentPlanFormModal({ action, contacts, projects, categorie
               </Field>
             </div>
 
-            <Field>
-              <Label>Αριθμός Δόσεων (κενό = αόριστο)</Label>
-              <Input type="number" name="installment_count" min="1" />
+            <Field label="Αριθμός δόσεων" hint="Κενό = αόριστο" htmlFor={id("count")}>
+              <Input id={id("count")} type="number" name="installment_count" min="1" />
+            </Field>
+          </FieldGroup>
+
+          <FieldGroup title={t.groups.mapping}>
+            <Field label={t.contact} htmlFor={id("contact")}>
+              <Select id={id("contact")} name="contact_id">
+                <option value="">—</option>
+                {contacts.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </Select>
             </Field>
 
-            {error && (
-              <Notice tone="negative" role="alert">
-                {error}
-              </Notice>
-            )}
-
-            <div className="mt-2 flex justify-end gap-2">
-              <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-                {el.common.cancel}
-              </Button>
-              <SubmitButton>{el.common.save}</SubmitButton>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={t.project} htmlFor={id("project")}>
+                <Select id={id("project")} name="project_id">
+                  <option value="">—</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label={t.category} htmlFor={id("category")}>
+                <Select id={id("category")} name="category_id">
+                  <option value="">—</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
             </div>
-          </form>
-        </Modal>
+
+            <Field label={t.account} htmlFor={id("account")} required>
+              <Select id={id("account")} name="account_id" required>
+                <option value="">—</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </FieldGroup>
+        </FormDrawer>
       )}
     </>
   );

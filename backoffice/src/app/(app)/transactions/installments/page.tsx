@@ -2,14 +2,14 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney, formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge, Button, EmptyState, PageHeader, SpecTable, Stat, StatRow, StatusDot, Td, Tr } from "@/components/ui";
+import { shell } from "@/lib/i18n/v2/shell";
+import { Badge, Button, EmptyState, PageHeader, ReportHistory, SUB_CLASS, SpecTable, StatusDot, Td, Th, Tr } from "@/components/ui";
 import { InstallmentPlanFormModal } from "./InstallmentPlanFormModal";
-import { createInstallmentPlan, regeneratePlan, markInstallmentPaid } from "./actions";
+import { regeneratePlan, markInstallmentPaid } from "./actions";
 import { loadLookups } from "@/lib/data/lookups";
 import { ArgsActionForm } from "@/components/ArgsActionForm";
 
-// A plan's instalments show open up to this many; past it, behind «όλες (N) ▸».
-const INSTALMENTS_OPEN = 6;
+const p = el.transaction.plans;
 
 type InstalmentRow = {
   id: string;
@@ -19,14 +19,28 @@ type InstalmentRow = {
   gross_amount: number | null;
 };
 
-function InstalmentTable({ rows }: { rows: InstalmentRow[] }) {
+// A plan's schedule, under «▸ Πρόγραμμα (N)».
+function ScheduleTable({ rows }: { rows: InstalmentRow[] }) {
   return (
-    <SpecTable label="Δόσεις" className="mt-2">
-      <tbody className="border-t border-rule">
+    <SpecTable label={p.schedule}>
+      <thead>
+        <tr>
+          <Th numeric className="w-16">
+            {p.number}
+          </Th>
+          <Th>{p.due}</Th>
+          <Th numeric>{el.transaction.amount}</Th>
+          <Th>{el.transaction.status}</Th>
+          <Th>
+            <span className="sr-only">{shell.ui.actions}</span>
+          </Th>
+        </tr>
+      </thead>
+      <tbody>
         {rows.map((tx) => (
-          <Tr key={tx.id}>
-            <Td className="num">
-              <span className="text-muted">#{tx.installment_no}</span>
+          <Tr key={tx.id} className="[&>td]:align-middle">
+            <Td numeric className="text-muted">
+              {tx.installment_no}
             </Td>
             <Td className="num">{formatDate(tx.due_date)}</Td>
             <Td numeric strong>
@@ -38,7 +52,7 @@ function InstalmentTable({ rows }: { rows: InstalmentRow[] }) {
                 label={el.transaction[tx.status as "paid" | "pending" | "scheduled" | "cancelled"]}
               />
             </Td>
-            <Td className="text-right">
+            <Td className="py-1.5 text-right">
               {tx.status !== "paid" && (
                 <ArgsActionForm action={markInstallmentPaid} args={[tx.id]}>
                   <Button type="submit" variant="secondary" size="sm">
@@ -54,6 +68,9 @@ function InstalmentTable({ rows }: { rows: InstalmentRow[] }) {
   );
 }
 
+// Δόσεις: one row per plan -- what is paid of the total, the next due date,
+// what is left and «Ανανέωση» -- and its schedule one click away. A plan
+// with overdue instalments opens its schedule, so they are in sight.
 export default async function InstallmentsPage() {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
@@ -75,8 +92,8 @@ export default async function InstallmentsPage() {
       .order("installment_no"),
   ]);
 
-  const planLabels = new Map((plans ?? []).map((p) => [p.id, p.label]));
-  const installmentsByPlan = new Map<string, typeof installments>();
+  const planLabels = new Map((plans ?? []).map((pl) => [pl.id, pl.label]));
+  const installmentsByPlan = new Map<string, InstalmentRow[]>();
   for (const tx of installments ?? []) {
     if (!tx.plan_id) continue;
     const list = installmentsByPlan.get(tx.plan_id) ?? [];
@@ -85,7 +102,7 @@ export default async function InstallmentsPage() {
   }
 
   const contactOptions = (contacts ?? []).map((c) => ({ id: c.id, label: c.name }));
-  const projectOptions = (projects ?? []).map((p) => ({ id: p.id, label: p.display_name }));
+  const projectOptions = (projects ?? []).map((pr) => ({ id: pr.id, label: pr.display_name }));
   const categoryOptions = (categories ?? []).map((c) => ({ id: c.id, label: c.name }));
   const accountOptions = (accounts ?? []).map((a) => ({ id: a.id, label: a.name }));
 
@@ -96,7 +113,6 @@ export default async function InstallmentsPage() {
         meta="Δόσεις προς τρίτους (π.χ. ρυθμίσεις φόρων, οφειλές) που δεν είναι δάνειο έργου."
         actions={
           <InstallmentPlanFormModal
-            action={createInstallmentPlan}
             contacts={contactOptions}
             projects={projectOptions}
             categories={categoryOptions}
@@ -105,62 +121,67 @@ export default async function InstallmentsPage() {
         }
       />
 
-      {(progress ?? []).length === 0 && (
-        <EmptyState
-          title="Δεν υπάρχουν ακόμα σχέδια δόσεων."
-          body="Πατήστε «+ Νέο Σχέδιο Δόσεων» για να δημιουργήσετε το πρώτο (π.χ. ενοίκιο, δάνειο, εγγύηση σε δόσεις)."
-        />
+      {(progress ?? []).length === 0 ? (
+        <EmptyState title={p.empty} body={p.emptyHint} />
+      ) : (
+        <SpecTable label={el.nav.installments}>
+          <thead>
+            <tr>
+              <Th>{p.plan}</Th>
+              <Th numeric>{p.paid}</Th>
+              <Th>{p.next}</Th>
+              <Th numeric>{p.remaining}</Th>
+              <Th>
+                <span className="sr-only">{shell.ui.actions}</span>
+              </Th>
+            </tr>
+          </thead>
+          {(progress ?? []).map((plan) => {
+            const rows = installmentsByPlan.get(plan.plan_id!) ?? [];
+            return (
+              // One body per plan: its row, then its schedule.
+              <tbody key={plan.plan_id}>
+                <Tr className="[&>td]:border-b-0 [&>td]:align-middle">
+                  <Td className="min-w-48">
+                    <h2 className="inline text-body font-normal break-words text-ink">{planLabels.get(plan.plan_id!) ?? plan.label}</h2>
+                    {plan.overdue_count ? (
+                      <Badge tone="negative" className="ml-2">
+                        <span className="num">{plan.overdue_count}</span> {p.overdue}
+                      </Badge>
+                    ) : null}
+                  </Td>
+                  <Td numeric>
+                    <span className="text-ink">
+                      {plan.paid_count} / {plan.installments_total}
+                    </span>
+                    <span className={SUB_CLASS}>
+                      {formatMoney(plan.paid_amount)} {p.paidAmount}
+                    </span>
+                  </Td>
+                  <Td className="num">{plan.next_due_date ? formatDate(plan.next_due_date) : "—"}</Td>
+                  <Td numeric strong>
+                    {formatMoney(plan.remaining_amount)}
+                  </Td>
+                  <Td className="py-1.5 text-right">
+                    <ArgsActionForm action={regeneratePlan} args={[plan.plan_id!]}>
+                      <Button type="submit" variant="ghost" size="sm">
+                        {p.regenerate}
+                      </Button>
+                    </ArgsActionForm>
+                  </Td>
+                </Tr>
+                <tr className="[&>td]:border-b-0 [&>td]:pt-0">
+                  <Td colSpan={5} className="pb-4">
+                    <ReportHistory title={p.schedule} count={rows.length} level={3} open={!!plan.overdue_count}>
+                      <ScheduleTable rows={rows} />
+                    </ReportHistory>
+                  </Td>
+                </tr>
+              </tbody>
+            );
+          })}
+        </SpecTable>
       )}
-
-      {(progress ?? []).map((plan) => {
-        const rows = installmentsByPlan.get(plan.plan_id!) ?? [];
-        return (
-          <section
-            key={plan.plan_id}
-            className={`flex flex-col gap-4 ${plan.overdue_count ? "border-l-2 border-negative pl-4" : ""}`}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline pb-3">
-              <h2 className="min-w-0 text-section font-normal break-words text-ink">
-                {planLabels.get(plan.plan_id!) ?? plan.label}
-              </h2>
-              <div className="flex items-center gap-2">
-                {plan.overdue_count ? (
-                  <Badge tone="negative">
-                    <span className="num">{plan.overdue_count}</span> ληξιπρόθεσμες
-                  </Badge>
-                ) : null}
-                <ArgsActionForm action={regeneratePlan} args={[plan.plan_id!]}>
-                  <Button type="submit" variant="secondary" size="sm">
-                    Ανανέωση
-                  </Button>
-                </ArgsActionForm>
-              </div>
-            </div>
-
-            <StatRow className="border-t-0 pt-0">
-              <Stat label="Πληρωμένες" value={`${plan.paid_count} / ${plan.installments_total}`} />
-              <Stat label="Πληρωμένο Ποσό" value={formatMoney(plan.paid_amount)} />
-              <Stat label="Υπόλοιπο" value={formatMoney(plan.remaining_amount)} />
-              <Stat label="Επόμενη Δόση" value={plan.next_due_date ? formatDate(plan.next_due_date) : "—"} />
-            </StatRow>
-
-            {/* Six or fewer: open, in sight. More: one click away. */}
-            {rows.length <= INSTALMENTS_OPEN ? (
-              <InstalmentTable rows={rows} />
-            ) : (
-              <details className="group">
-                <summary className="eyebrow inline-flex min-h-11 cursor-pointer items-center gap-2 text-muted hover:text-ink md:min-h-9">
-                  όλες (<span className="num">{rows.length}</span>)
-                  <span aria-hidden="true" className="inline-block transition-transform group-open:rotate-90">
-                    ▸
-                  </span>
-                </summary>
-                <InstalmentTable rows={rows} />
-              </details>
-            )}
-          </section>
-        );
-      })}
     </div>
   );
 }
