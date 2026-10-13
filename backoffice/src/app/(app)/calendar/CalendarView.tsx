@@ -37,7 +37,7 @@ function calendarHrefFor(item: CalendarItem): string | null {
     case "vat":
       return "/reports/vat";
     case "withholding":
-      return "/reports/withholding";
+      return "/reports/vat";
     case "lease":
     case "loan":
       return item.project_id ? `/projects/${item.project_id}` : null;

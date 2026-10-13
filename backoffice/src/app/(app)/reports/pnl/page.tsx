@@ -1,7 +1,8 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
-import { formatDate, formatMoney, formatPercent, formatSignedMoney } from "@/lib/format";
+import { formatDate, formatMoney, formatPercent } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import {
   Badge,
@@ -10,12 +11,9 @@ import {
   Notice,
   PageHeader,
   ReportChart,
-  ReportDetail,
   ReportFooter,
-  ReportHeadline,
-  ReportMethod,
+  ReportHistory,
   ReportSection,
-  SectionHeader,
   SpecTable,
   Td,
   Th,
@@ -25,18 +23,18 @@ import {
 } from "@/components/ui";
 import { addMonths, currentMonthKey, currentYear, firstOfMonth, isMonthKey, lastOfMonth, shortMonthLabel, todayAthens } from "@/lib/dates";
 import { BUSINESS_LINES, PNL_LINES, pnlTable, type PnlGroup, type PnlRowKey, type PnlTableRow } from "@/lib/finance/pnl";
-import { topCostRows } from "@/lib/finance/reportCharts";
-import { pnlNarrative } from "@/lib/finance/narratives";
-import { change as changeOf, contributors, latestUpTo, topMovements, whyText, type Part } from "@/lib/finance/insights";
+import { change, latestUpTo, vsPrevText } from "@/lib/finance/insights";
 import { BarChart } from "@/components/ui/BarChart";
-import { ChangePanel, KpiLink, TargetPanel, TopMovements, type ChangeItem } from "../Insights";
+import { KpiLink, reportIssues } from "../Insights";
+import { ExportCsvLink } from "../ExportCsvLink";
 
 // Αποτελέσματα -- «Βγάζουμε λεφτά;». Every figure is pnl_summary() /
 // v_pnl_lines (0067): net of VAT, accrual basis, only the interest of a
-// loan. This page only picks the year, the grouping and whether scheduled
-// rows count, then lays out rows in the shared report anatomy. The
-// insights («Τι άλλαξε», by business line) come from the same summaries;
-// «Μεγαλύτερες κινήσεις» is the one extra query (v_pnl_lines, 5 rows).
+// loan. This page only picks the year and whether scheduled rows count,
+// then lays out rows in the shared report anatomy: four figures (each with
+// the last complete month against the one before), the result by month,
+// and the history (month × line or line × line, closed; a cell opens its
+// transactions, ?cell=&line=).
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -46,18 +44,12 @@ function one(v: string | string[] | undefined): string | undefined {
 
 const DRILL_LIMIT = 200;
 
+const META =
+  "Βγάζουμε λεφτά; Καθαρά ποσά χωρίς ΦΠΑ, με την ημερομηνία παραστατικού· από τα δάνεια μετρά μόνο ο τόκος. «Έως τώρα»: ως τον τρέχοντα μήνα, έναντι των ίδιων μηνών πέρσι.";
+
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const lineOf = (t: { rows: PnlTableRow[] } | null, key: PnlRowKey) => t?.rows.find((r) => r.line === key)?.values ?? [];
 const sumTo = (values: number[], last: number) => round2(values.slice(0, last + 1).reduce((s, v) => s + v, 0));
-// The P&L lines of one table summed over some of its columns, for «why».
-const COST_LINES = ["revenue", "cost_of_sales", "opex", "rent", "financing", "tax", "unclassified"] as const;
-const lineParts = (t: { rows: PnlTableRow[] } | null, cols: number[]): Part[] =>
-  COST_LINES.map((line) => ({
-    key: line,
-    label: el.reports.lines[line],
-    amount: round2(cols.reduce((s, i) => s + (lineOf(t, line)[i] ?? 0), 0)),
-  }));
-const upTo = (last: number) => Array.from({ length: last + 1 }, (_, i) => i);
 
 export default async function PnlPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
@@ -76,27 +68,14 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
   const orgId = await getCurrentOrgId(supabase);
   const summary = (p_from: string, p_to: string, p_group: PnlGroup) =>
     supabase.rpc("pnl_summary", { p_org: orgId, p_from, p_to, p_group, p_include_scheduled: withScheduled });
-  // The table's own grouping, plus what the charts need: the year by month
-  // and by business line (one of the two is the table's own rows), last
-  // year by month, and the year's largest cost categories. Four RPCs, and
-  // the five largest P&L rows of the year so far («Μεγαλύτερες κινήσεις»).
+  // The table's own grouping, the year by month when the table is by line
+  // (the figures and the chart are by month), and last year by month.
   const ytdTo = lastOfMonth(addMonths(`${year}-01`, year === thisYear && !withScheduled ? Number(currentMonthKey().slice(5, 7)) - 1 : 11));
-  let topQuery = supabase
-    .from("v_pnl_lines")
-    .select("transaction_id, tx_date, line, category_id, signed_amount")
-    .eq("org_id", orgId)
-    .eq("scope", "business")
-    .gte("tx_date", from)
-    .lte("tx_date", ytdTo)
-    .order("amount", { ascending: false })
-    .limit(5);
-  if (!withScheduled) topQuery = topQuery.eq("is_scheduled", false);
-  const [{ data, error }, other, lastYear, { data: costCategories }, { data: topLines }] = await Promise.all([
+  const [{ data, error }, other, lastYear, issues] = await Promise.all([
     summary(from, to, group),
-    summary(from, to, group === "month" ? "business_line" : "month"),
+    group === "month" ? Promise.resolve(null) : summary(from, to, "month"),
     summary(`${year - 1}-01-01`, `${year - 1}-12-31`, "month"),
-    supabase.rpc("pnl_cost_categories", { p_org: orgId, p_from: from, p_to: to, p_include_scheduled: withScheduled, p_limit: 8 }),
-    topQuery,
+    reportIssues(supabase, orgId, "pnl"),
   ]);
   if (error) throw error;
 
@@ -108,8 +87,8 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
   const t = el.reports;
 
   const months = Array.from({ length: 12 }, (_, i) => addMonths(`${year}-01`, i));
-  const monthTable = group === "month" ? table : pnlTable(other.data ?? [], months);
-  const lineTable = pnlTable(group === "business_line" ? (data ?? []) : (other.data ?? []), [...BUSINESS_LINES]);
+  const monthlyRows = group === "month" ? (data ?? []) : (other?.data ?? []);
+  const monthTable = group === "month" ? table : pnlTable(monthlyRows, months);
   const lastYearRows = lastYear.data ?? [];
   const lastYearTable =
     lastYearRows.length > 0 ? pnlTable(lastYearRows.map((r) => ({ ...r, bucket: `${year}${r.bucket.slice(4)}` })), months) : null;
@@ -121,16 +100,32 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
   const last = year === thisYear && !withScheduled ? nowIndex : 11;
   const revenue = lineOf(monthTable, "revenue");
   const result = lineOf(monthTable, "result");
+  const costs = revenue.map((r, i) => round2(r - (result[i] ?? 0)));
   const prevResult = lineOf(lastYearTable, "result");
+  const prevRevenue = lineOf(lastYearTable, "revenue");
   const revenueYtd = sumTo(revenue, last);
   const grossYtd = sumTo(lineOf(monthTable, "gross_profit"), last);
   const resultYtd = sumTo(result, last);
+  const costsYtd = round2(revenueYtd - resultYtd);
   const resultLastYearYtd = lastYearTable ? sumTo(prevResult, last) : null;
-  const change =
-    // Only meaningful on a profit base; from a loss the band shows the
-    // difference in euros instead.
-    resultLastYearYtd != null && resultLastYearYtd > 0 ? (resultYtd - resultLastYearYtd) / resultLastYearYtd : null;
   const periodSub = last === 11 ? String(year) : `${shortMonthLabel(months[0])} – ${shortMonthLabel(months[last])} ${year}`;
+  const hasMonthly = revenue.some((v) => v !== 0) || result.some((v) => v !== 0);
+
+  // «± έναντι προηγ. μήνα»: the last complete month against the month
+  // before (for January, last December).
+  const focus = year === thisYear ? nowIndex - 1 : year < thisYear ? 11 : -1;
+  const prevOf = (values: number[], lastYearValues: number[]) =>
+    focus > 0 ? (values[focus - 1] ?? 0) : focus === 0 && lastYearTable ? (lastYearValues[11] ?? 0) : null;
+  const monthLine = (values: number[], lastYearValues: number[]): ReactNode => {
+    if (focus < 0) return null;
+    const text = vsPrevText(change(values[focus] ?? 0, prevOf(values, lastYearValues)));
+    return text ? <span className="block">{`${shortMonthLabel(months[focus])}: ${text}`}</span> : null;
+  };
+  const prevCosts = lastYearTable ? prevRevenue.map((r, i) => round2(r - (prevResult[i] ?? 0))) : [];
+  const yoy =
+    resultLastYearYtd == null
+      ? "χωρίς στοιχεία πέρσι"
+      : `${year - 1}: ${formatMoney(resultLastYearYtd)}${resultLastYearYtd > 0 ? ` (${formatPercent((resultYtd - resultLastYearYtd) / resultLastYearYtd, { digits: 0, signed: true })})` : ""}`;
 
   // The monthly result as signed bars; the cumulative result of the year
   // (and of last year, faint) on its own scale on the right.
@@ -146,15 +141,6 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
       lastYear: lastYearTable ? round2(cumPrev) : null,
     };
   });
-  const hasMonthly = revenue.some((v) => v !== 0) || result.some((v) => v !== 0);
-  const lineRevenue = lineOf(lineTable, "revenue");
-  const lineResult = lineOf(lineTable, "result");
-  const lineRows = BUSINESS_LINES.map((b, i) => ({
-    label: t.businessLines[b as keyof typeof t.businessLines] ?? b,
-    revenue: lineRevenue[i] ?? 0,
-    result: lineResult[i] ?? 0,
-  })).filter((r) => r.revenue !== 0 || r.result !== 0);
-  const topCosts = topCostRows(costCategories ?? []);
 
   const query = (patch: Record<string, string | null>) => {
     const p = new URLSearchParams();
@@ -171,63 +157,6 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
     return s ? `/reports/pnl?${s}` : "/reports/pnl";
   };
 
-  // «Τι άλλαξε»: the last complete month against the month before (for
-  // January, last December), and the year so far against the same months
-  // last year; «why» = the P&L lines that moved most.
-  const focus = year === thisYear ? nowIndex - 1 : year < thisYear ? 11 : -1;
-  const changes: ChangeItem[] = [];
-  if (hasMonthly && focus >= 0) {
-    const cur = lineParts(monthTable, [focus]);
-    const prev = focus > 0 ? lineParts(monthTable, [focus - 1]) : lastYearTable ? lineParts(lastYearTable, [11]) : null;
-    const prevLabel = focus > 0 ? shortMonthLabel(months[focus - 1]) : `Δεκ ${year - 1}`;
-    changes.push({
-      label: `${t.lines.result} ${shortMonthLabel(months[focus])} έναντι ${prevLabel}`,
-      change: changeOf(result[focus] ?? 0, prev ? (focus > 0 ? result[focus - 1] : prevResult[11]) : null),
-      why: prev ? whyText(contributors(cur, prev)) : null,
-      href: `/transactions?scope=business&from=${firstOfMonth(months[focus])}&to=${lastOfMonth(months[focus])}`,
-    });
-  }
-  if (hasMonthly) {
-    changes.push({
-      label: `${t.lines.result} ${periodSub} έναντι ${year - 1}`,
-      change: changeOf(resultYtd, resultLastYearYtd),
-      why: lastYearTable ? whyText(contributors(lineParts(monthTable, upTo(last)), lineParts(lastYearTable, upTo(last)))) : null,
-    });
-  }
-  // «Μεγαλύτερες κινήσεις»: the year's five largest P&L rows, named by
-  // their cost category where the chart has it, else by their line.
-  const categoryName = new Map((costCategories ?? []).map((c) => [c.category_id, c.name]));
-  const topMoves = topMovements(
-    (topLines ?? []).map((l) => ({
-      id: l.transaction_id,
-      date: l.tx_date,
-      label: `${t.lines[l.line as keyof typeof t.lines] ?? l.line}${l.category_id && categoryName.get(l.category_id) ? ` · ${categoryName.get(l.category_id)}` : ""}`,
-      amount: Number(l.signed_amount ?? 0),
-    })),
-  );
-  // Σε σχέση με τον στόχο: last year is «Τι άλλαξε» and the KPI band; here
-  // each business line's result and margin, largest first, each opening
-  // the table by business line.
-  const lineResultTotal = round2(lineRows.reduce((s, r) => s + r.result, 0));
-  const targetItems = lineRows
-    .slice()
-    .sort((a, b) => Math.abs(b.result) - Math.abs(a.result))
-    .slice(0, 4)
-    .map((r) => ({
-      label: r.label,
-      value: (
-        <KpiLink href={query({ by: "line" })}>
-          <span className={r.result < 0 ? "text-negative" : undefined}>{formatMoney(r.result)}</span>
-        </KpiLink>
-      ),
-      sub: [
-        r.revenue > 0 ? `περιθώριο ${formatPercent(r.result / r.revenue, { digits: 0 })}` : null,
-        lineResultTotal > 0 && r.result > 0 ? `${formatPercent(r.result / lineResultTotal, { digits: 0 })} του αποτελέσματος` : null,
-      ]
-        .filter(Boolean)
-        .join(" · ") || String(year),
-    }));
-  const monthlyRows = group === "month" ? (data ?? []) : (other.data ?? []);
   const coverage = latestUpTo(
     monthlyRows.filter((r) => Number(r.n ?? 0) > 0).map((r) => r.bucket),
     todayAthens(),
@@ -283,8 +212,8 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
   const dataUntil = year < thisYear ? to : year === thisYear ? today : null;
 
   return (
-    <div className="flex min-w-0 flex-col gap-10">
-      <PageHeader title={t.pnlTitle} />
+    <div className="flex min-w-0 flex-col gap-6">
+      <PageHeader title={t.pnlTitle} meta={META} actions={<ExportCsvLink />} />
 
       <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
         <ViewSwitch
@@ -305,41 +234,49 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
       <ReportSection label={t.pnlTitle}>
         {hasMonthly && (
           <>
-            <ReportHeadline>{pnlNarrative({ year, revenueYtd, resultYtd, resultLastYearYtd })}</ReportHeadline>
             <KpiBand
               items={[
                 {
-                  label: "Έσοδα έτους",
+                  label: "Έσοδα",
                   value: <KpiLink href={query({ line: "revenue" })}>{formatMoney(revenueYtd)}</KpiLink>,
-                  sub: periodSub,
+                  sub: (
+                    <>
+                      {periodSub}
+                      {monthLine(revenue, prevRevenue)}
+                    </>
+                  ),
                 },
                 {
-                  label: "Μικτό περιθώριο",
+                  label: "Έξοδα",
+                  value: <KpiLink href={`/transactions?scope=business&direction=expense&from=${from}&to=${ytdTo}`}>{formatMoney(costsYtd)}</KpiLink>,
+                  sub: (
+                    <>
+                      {periodSub}
+                      {monthLine(costs, prevCosts)}
+                    </>
+                  ),
+                },
+                {
+                  label: "Αποτέλεσμα",
                   value: (
-                    <KpiLink href={query({ line: "cost_of_sales" })}>
-                      {revenueYtd > 0 ? formatPercent(grossYtd / revenueYtd) : "—"}
+                    <KpiLink href={`/transactions?scope=business&from=${from}&to=${ytdTo}`}>
+                      <span className={resultYtd < 0 ? "text-negative" : undefined}>{formatMoney(resultYtd)}</span>
                     </KpiLink>
                   ),
-                  sub: `${t.lines.gross_profit} ${formatMoney(grossYtd)}`,
+                  sub: (
+                    <>
+                      {yoy}
+                      {monthLine(result, prevResult)}
+                    </>
+                  ),
                 },
                 {
-                  label: "Αποτέλεσμα έτους",
-                  value: <KpiLink href={`/transactions?scope=business&from=${from}&to=${ytdTo}`}>{formatMoney(resultYtd)}</KpiLink>,
-                  sub: periodSub,
-                },
-                {
-                  label: "Μεταβολή έναντι πέρσι",
-                  value:
-                    change != null
-                      ? formatPercent(change, { digits: 0, signed: true })
-                      : resultLastYearYtd != null
-                        ? formatSignedMoney(resultYtd - resultLastYearYtd)
-                        : "—",
-                  sub: resultLastYearYtd != null ? `${year - 1}: ${formatMoney(resultLastYearYtd)}` : "χωρίς στοιχεία πέρσι",
+                  label: "Περιθώριο",
+                  value: revenueYtd > 0 ? formatPercent(resultYtd / revenueYtd, { digits: 0 }) : "—",
+                  sub: revenueYtd > 0 ? `μικτό ${formatPercent(grossYtd / revenueYtd, { digits: 0 })} · ${t.lines.gross_profit} ${formatMoney(grossYtd)}` : periodSub,
                 },
               ]}
             />
-            <ChangePanel items={changes} coverage={coverage} />
             <ReportChart
               title="Αποτέλεσμα ανά μήνα"
               caption={`Στήλες: το αποτέλεσμα κάθε μήνα · γραμμή: σωρευτικά από τον Ιανουάριο, σε δική της κλίμακα δεξιά${lastYearTable ? ` · αχνή: ${year - 1}` : ""}`}
@@ -360,175 +297,137 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
           </>
         )}
 
-        {lineRows.length > 0 && (
-          <ReportChart title={t.byLine} caption={`Έσοδα και αποτέλεσμα ανά κλάδο · ${year}`}>
-            <BarChart
-              label="Έσοδα και αποτέλεσμα ανά κλάδο"
-              data={lineRows}
-              xKey="label"
-              layout="rows"
-              series={[
-                { key: "revenue", name: t.lines.revenue, tone: "navy" },
-                { key: "result", name: t.lines.result, tone: "accent" },
-              ]}
-            />
-          </ReportChart>
-        )}
-
-        {targetItems.length > 1 && (
-          <TargetPanel title="Αποτέλεσμα ανά κλάδο" caption={`Αποτέλεσμα και περιθώριο κάθε κλάδου · ${year}`} items={targetItems} />
-        )}
-
-        <TopMovements rows={topMoves} caption={periodSub} />
-
-        {topCosts.length > 0 && (
-          <ReportChart title={`${t.topCostsTitle} · ${year}`}>
-            <BarChart
-              label={t.topCostsLabel}
-              data={topCosts}
-              xKey="label"
-              layout="rows"
-              series={[{ key: "amount", name: t.pnlCost, tone: "accent" }]}
-            />
-          </ReportChart>
-        )}
-
         {buckets.length === 0 ? (
           <p className="border-y border-hairline py-6 text-body text-muted">{t.pnlEmpty}</p>
         ) : (
-          <ReportDetail title={group === "month" ? t.byMonth : t.byLine}>
-            <div className="flex min-w-0 flex-col gap-4">
-              <ViewSwitch
-                label={t.pnlView}
-                options={[
-                  { key: "month", label: t.byMonth, href: query({ by: null }) },
-                  { key: "business_line", label: t.byLine, href: query({ by: "line" }) },
-                ]}
-                active={group}
-              />
-              <SpecTable label={t.pnlTitle} stickyFirst>
-                <thead>
-                  <tr>
-                    <Th />
-                    {buckets.map((b) => (
-                      <Th key={b} numeric>
-                        {bucketLabel(b)}
-                      </Th>
-                    ))}
-                    <Th numeric>{t.total}</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {table.rows.map((row) => {
-                    const isSum = row.line === "gross_profit" || row.line === "result";
-                    if (!isSum && row.total === 0 && row.line !== "revenue") return null;
-                    // Subtotal rows sit over an ink rule, like the spec sheet's totals.
-                    return (
-                      <Tr key={row.line} total={isSum}>
-                        <Td strong className="whitespace-nowrap">
-                          {t.lines[row.line]}
-                          {row.line === "unclassified" && row.total !== 0 && (
-                            <span className="ml-1.5">
-                              <Badge tone="amber">!</Badge>
-                            </span>
-                          )}
-                        </Td>
-                        {buckets.map((b, i) => {
-                          const v = row.values[i];
-                          const cell = v === 0 ? <span className="text-muted">—</span> : formatMoney(v);
-                          const active = cellLine === row.line && cellBucket === b;
-                          return (
-                            <Td key={b} numeric className={cn(active && "bg-hover outline outline-1 -outline-offset-1 outline-navy")}>
-                              {isSum || v === 0 ? (
-                                cell
-                              ) : (
-                                <Link href={query({ cell: b, line: row.line })} scroll={false} className={LINK_CLASS}>
-                                  {cell}
-                                </Link>
-                              )}
-                            </Td>
-                          );
-                        })}
-                        <Td numeric strong>
-                          {isSum || row.total === 0 ? (
-                            formatMoney(row.total)
-                          ) : (
-                            <Link href={query({ line: row.line })} scroll={false} className={LINK_CLASS}>
-                              {formatMoney(row.total)}
-                            </Link>
-                          )}
-                        </Td>
-                      </Tr>
-                    );
-                  })}
-                </tbody>
-              </SpecTable>
-              {table.rows.some((r) => r.line === "unclassified" && r.total !== 0) && (
-                <Notice tone="warning" size="small">
-                  <Link href="/reports/quality" className="text-ink underline underline-offset-4">
-                    {t.lines.unclassified}
-                  </Link>
-                  : {t.unclassifiedHint}
-                </Notice>
-              )}
-            </div>
-          </ReportDetail>
-        )}
-
-        {drillable && cellLine && (
-          <section className="flex min-w-0 flex-col gap-4">
-            <SectionHeader
-              title={`${t.drillDown}: ${t.lines[cellLine as keyof typeof t.lines]}${cellBucket ? ` · ${bucketLabel(cellBucket)}` : ` · ${year}`}`}
-              actions={
-                <div className="flex items-center gap-4 text-small">
-                  {drill.length > 0 && drill.length <= 100 && (
-                    <Link
-                      href={`/transactions?ids=${drill.map((d) => d.id).join(",")}`}
-                      className="inline-flex items-center text-ink underline underline-offset-4 max-md:min-h-11"
-                    >
-                      {t.pnlOpenInTransactions}
-                    </Link>
-                  )}
-                  <Link href={query({})} scroll={false} className="inline-flex items-center text-ink underline underline-offset-4 max-md:min-h-11">
-                    {el.common.close}
-                  </Link>
-                </div>
-              }
+          <ReportHistory
+            title={group === "month" ? "Ιστορικό ανά μήνα" : "Ιστορικό ανά κλάδο"}
+            count={buckets.length}
+            open={group === "business_line" || !!drillable}
+          >
+            <ViewSwitch
+              label={t.pnlView}
+              options={[
+                { key: "month", label: t.byMonth, href: query({ by: null }) },
+                { key: "business_line", label: t.byLine, href: query({ by: "line" }) },
+              ]}
+              active={group}
             />
-            {drill.length === 0 ? (
-              <p className="text-body text-muted">{t.noItems}</p>
-            ) : (
-              <SpecTable label={t.drillDown}>
-                <tbody>
-                  {drill.map((d) => (
-                    <Tr key={d.id}>
-                      <Td className="num whitespace-nowrap text-muted">{formatDate(d.tx_date)}</Td>
-                      <Td strong className="w-full">
-                        <Link href={`/transactions?ids=${d.id}`} className={LINK_CLASS}>
-                          {d.label}
-                        </Link>
-                        {d.scheduled && <span className="ml-1 text-small text-muted">({t.pnlScheduledTag})</span>}
+            <SpecTable label={t.pnlTitle} stickyFirst>
+              <thead>
+                <tr>
+                  <Th />
+                  {buckets.map((b) => (
+                    <Th key={b} numeric>
+                      {bucketLabel(b)}
+                    </Th>
+                  ))}
+                  <Th numeric>{t.total}</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {table.rows.map((row) => {
+                  const isSum = row.line === "gross_profit" || row.line === "result";
+                  if (!isSum && row.total === 0 && row.line !== "revenue") return null;
+                  // Subtotal rows sit over an ink rule, like the spec sheet's totals.
+                  return (
+                    <Tr key={row.line} total={isSum}>
+                      <Td strong className="whitespace-nowrap">
+                        {t.lines[row.line]}
+                        {row.line === "unclassified" && row.total !== 0 && (
+                          <span className="ml-1.5">
+                            <Badge tone="amber">!</Badge>
+                          </span>
+                        )}
                       </Td>
+                      {buckets.map((b, i) => {
+                        const v = row.values[i];
+                        const cell = v === 0 ? <span className="text-muted">—</span> : formatMoney(v);
+                        const active = cellLine === row.line && cellBucket === b;
+                        return (
+                          <Td key={b} numeric className={cn(active && "bg-hover outline outline-1 -outline-offset-1 outline-navy")}>
+                            {isSum || v === 0 ? (
+                              cell
+                            ) : (
+                              <Link href={query({ cell: b, line: row.line })} scroll={false} className={LINK_CLASS}>
+                                {cell}
+                              </Link>
+                            )}
+                          </Td>
+                        );
+                      })}
                       <Td numeric strong>
-                        {formatMoney(d.amount)}
+                        {isSum || row.total === 0 ? (
+                          formatMoney(row.total)
+                        ) : (
+                          <Link href={query({ line: row.line })} scroll={false} className={LINK_CLASS}>
+                            {formatMoney(row.total)}
+                          </Link>
+                        )}
                       </Td>
                     </Tr>
-                  ))}
-                </tbody>
-              </SpecTable>
+                  );
+                })}
+              </tbody>
+            </SpecTable>
+            {table.rows.some((r) => r.line === "unclassified" && r.total !== 0) && (
+              <Notice tone="warning" size="small">
+                <Link href="/reports/quality" className="text-ink underline underline-offset-4">
+                  {t.lines.unclassified}
+                </Link>
+                : {t.unclassifiedHint}
+              </Notice>
             )}
-            {drillTruncated && <p className="text-small text-muted">{t.pnlDrillTruncated}</p>}
-          </section>
+
+            {drillable && cellLine && (
+              <section className="flex min-w-0 flex-col gap-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-hairline pb-2">
+                  <h3 className="text-body font-medium text-ink">
+                    {`${t.drillDown}: ${t.lines[cellLine as keyof typeof t.lines]}${cellBucket ? ` · ${bucketLabel(cellBucket)}` : ` · ${year}`}`}
+                  </h3>
+                  <span className="flex items-center gap-4 text-small">
+                    {drill.length > 0 && drill.length <= 100 && (
+                      <Link
+                        href={`/transactions?ids=${drill.map((d) => d.id).join(",")}`}
+                        className="inline-flex items-center text-ink underline underline-offset-4 max-md:min-h-11"
+                      >
+                        {t.pnlOpenInTransactions}
+                      </Link>
+                    )}
+                    <Link href={query({})} scroll={false} className="inline-flex items-center text-ink underline underline-offset-4 max-md:min-h-11">
+                      {el.common.close}
+                    </Link>
+                  </span>
+                </div>
+                {drill.length === 0 ? (
+                  <p className="text-body text-muted">{t.noItems}</p>
+                ) : (
+                  <SpecTable label={t.drillDown}>
+                    <tbody>
+                      {drill.map((d) => (
+                        <Tr key={d.id}>
+                          <Td className="num whitespace-nowrap text-muted">{formatDate(d.tx_date)}</Td>
+                          <Td strong className="w-full">
+                            <Link href={`/transactions?ids=${d.id}`} className={LINK_CLASS}>
+                              {d.label}
+                            </Link>
+                            {d.scheduled && <span className="ml-1 text-small text-muted">({t.pnlScheduledTag})</span>}
+                          </Td>
+                          <Td numeric strong>
+                            {formatMoney(d.amount)}
+                          </Td>
+                        </Tr>
+                      ))}
+                    </tbody>
+                  </SpecTable>
+                )}
+                {drillTruncated && <p className="text-small text-muted">{t.pnlDrillTruncated}</p>}
+              </section>
+            )}
+          </ReportHistory>
         )}
 
-        <ReportMethod>
-          <p>{t.pnlIntro}</p>
-          <p>
-            «Έως τώρα»: για το τρέχον έτος οι μήνες ως και τον τρέχοντα (όλο το έτος όταν μετρούν τα προγραμματισμένα)· η
-            σύγκριση με πέρσι γίνεται στους ίδιους μήνες. Μικτό περιθώριο = μικτό κέρδος / έσοδα.
-          </p>
-        </ReportMethod>
-        <ReportFooter dataUntil={coverage ?? dataUntil} />
+        <ReportFooter dataUntil={coverage ?? dataUntil} issues={issues} />
       </ReportSection>
     </div>
   );

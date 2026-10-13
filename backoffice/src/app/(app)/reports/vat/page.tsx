@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney, formatDate } from "@/lib/format";
@@ -6,87 +7,98 @@ import {
   Badge,
   Button,
   KpiBand,
+  LINK_CLASS,
   PageHeader,
   ReportChart,
-  ReportDetail,
   ReportFooter,
-  ReportHeadline,
-  ReportMethod,
+  ReportHistory,
   ReportSection,
   SpecTable,
   Td,
   Th,
   Tr,
-  buttonClass,
   cn,
 } from "@/components/ui";
 import { toggleVatFiled } from "./actions";
 import { ArgsActionForm } from "@/components/ArgsActionForm";
 import { BarChart } from "@/components/ui/BarChart";
-import { vatNarrative } from "@/lib/finance/narratives";
-import { addMonths, currentMonthKey, firstOfMonth, lastOfMonth, monthKeyOf, quarterOf, shortMonthYearLabel, todayAthens } from "@/lib/dates";
-import { change, contributors, latestUpTo, topMovements, whyText, type Part } from "@/lib/finance/insights";
-import { ChangePanel, KpiLink, TopMovements } from "../Insights";
+import { addMonths, currentMonthKey, firstOfMonth, lastOfMonth, monthKeyOf, monthLabel, quarterOf, shortMonthYearLabel, todayAthens } from "@/lib/dates";
+import { change, vsPrevText } from "@/lib/finance/insights";
+import { KpiLink, reportIssues } from "../Insights";
+import { ExportCsvLink } from "../ExportCsvLink";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+const META =
+  "Τι θα πληρώσουμε στην εφορία; Με την ημερομηνία παραστατικού και μεταφορά του πιστωτικού από περίοδο σε περίοδο· οι περίοδοι από 6 μήνες πριν έως 6 μήνες μετά.";
+
 // ΦΠΑ -- «Τι θα πληρώσουμε στην εφορία;». Read-only but for the one status
-// action, «Σήμανση ως υποβλήθηκε». The positions are read from 15 months
-// back (the table and chart still show 6 back, 6 ahead) so «Τι άλλαξε» can
-// compare the last closed period with the same one last year; «Μεγαλύτερες
-// κινήσεις» is the one extra query (that period's 5 largest VAT rows).
+// action, «Σήμανση ως υποβλήθηκε»: the period table is the page's work, so
+// it stays open. The withholding tax (v_withholding_position, its tab was
+// removed) is the second table, closed. One extra query: the period before
+// the window's first, for the current period's «± έναντι προηγ.».
 export default async function VatPage() {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
 
-  // Anchored to today, not "whatever 24 rows happen to have data" -- the
-  // same bug already found and fixed in cashflow/analysis this session: an
-  // old view ordered desc-by-recency lets a far-future scheduled
-  // transaction's period outrank real nearby months, or a quiet recent
-  // stretch push relevant history off the end. A fixed window around today
-  // (6 months back, 6 forward) is what "δυναμικό" actually means here --
-  // computed fresh on every request, not a static date range.
+  // Anchored to today, not "whatever 24 rows happen to have data": a fixed
+  // window around today (6 months back, 6 forward), computed fresh on every
+  // request.
   const todayMonth = currentMonthKey();
   const today = todayAthens();
   const windowStart = firstOfMonth(addMonths(todayMonth, -6));
   const windowEnd = firstOfMonth(addMonths(todayMonth, 6));
 
-  const [{ data: positions }, { data: filings }] = await Promise.all([
+  const [{ data: positions }, { data: filings }, { data: withholding }, issues] = await Promise.all([
     supabase
       .from("v_vat_position")
       .select("*")
       .eq("org_id", orgId)
-      .gte("period_start", firstOfMonth(addMonths(todayMonth, -15)))
+      .gte("period_start", firstOfMonth(addMonths(todayMonth, -9)))
       .lte("period_start", windowEnd)
       .order("period_start", { ascending: false }),
     supabase.from("vat_periods").select("*").eq("org_id", orgId),
+    supabase
+      .from("v_withholding_position")
+      .select("period_start, withheld_total")
+      .eq("org_id", orgId)
+      .order("period_start", { ascending: false })
+      .limit(24),
+    reportIssues(supabase, orgId, "vat"),
   ]);
 
   const allRows = (positions ?? []).filter((p) => p.period_start);
   const rows = allRows.filter((p) => p.period_start! >= windowStart);
   const filingByPeriod = new Map((filings ?? []).map((f) => [f.period_start, f]));
   const t = el.reports;
-  const monthsOf = (p: (typeof rows)[number]) => Number(p.period_months ?? 1);
-  const periodLabel = (p: (typeof rows)[number]) =>
+  type Period = (typeof rows)[number];
+  const monthsOf = (p: Period) => Number(p.period_months ?? 1);
+  const periodLabel = (p: Period) =>
     monthsOf(p) === 3 ? `${t.quarter} ${quarterOf(p.period_start!)}/${p.period_start!.slice(2, 4)}` : shortMonthYearLabel(monthKeyOf(p.period_start!));
-  const isFiled = (p: (typeof rows)[number]) => {
+  const isFiled = (p: Period) => {
     const status = filingByPeriod.get(p.period_start!)?.status;
     return status === "filed" || status === "paid";
   };
-  const isCurrentPeriod = (p: (typeof rows)[number]) => {
+  const isCurrentPeriod = (p: Period) => {
     const startMonth = monthKeyOf(p.period_start!);
     return todayMonth >= startMonth && todayMonth <= addMonths(startMonth, monthsOf(p) - 1);
   };
+  const periodEnd = (p: Period) => lastOfMonth(addMonths(monthKeyOf(p.period_start!), monthsOf(p) - 1));
+  const periodHref = (p: Period) => `/transactions?scope=business&from=${p.period_start}&to=${periodEnd(p)}`;
 
-  // The figures: the current period, the next deadline still ahead, the
-  // periods already started and not filed.
+  // The figures: the current period (against the one before it), the next
+  // deadline still ahead, the periods already started and not filed.
   const ascending = rows.slice().reverse();
   const current = rows.find(isCurrentPeriod) ?? null;
+  const before = current ? (allRows.find((p) => p.period_start! < current.period_start!) ?? null) : null;
   const payable = Number(current?.payable_after_credit ?? 0);
   const credit = Math.abs(Number(current?.credit_balance ?? 0));
   const next = ascending.find((p) => p.filing_deadline && p.filing_deadline >= today && !isFiled(p)) ?? null;
   const open = rows.filter((p) => monthKeyOf(p.period_start!) <= todayMonth && !isFiled(p));
   const overdue = open.filter((p) => p.filing_deadline && p.filing_deadline < today).length;
+  const against = before ? `${periodLabel(before)}` : "προηγ. περιόδου";
+  const payableVsPrev = before ? vsPrevText(change(Math.max(0, payable), Math.max(0, Number(before.payable_after_credit ?? 0))), against) : null;
+  const creditVsPrev = before ? vsPrevText(change(credit, Math.abs(Number(before.credit_balance ?? 0))), against) : null;
 
   // Per period: VAT on sales vs VAT on purchases (bars), the net position on
   // its own scale -- issued solid, issued + forecast faint.
@@ -99,80 +111,51 @@ export default async function VatPage() {
   }));
   const hasForecast = rows.some((p) => Number(p.net_scheduled ?? 0) !== 0);
 
-  // «Τι άλλαξε»: the last period that has ended, against the one before it
-  // and the same period last year; «why» = VAT on sales vs on purchases.
-  const periodEnd = (p: (typeof rows)[number]) => lastOfMonth(addMonths(monthKeyOf(p.period_start!), monthsOf(p) - 1));
-  const closed = allRows.find((p) => periodEnd(p) < today) ?? null;
-  const findStart = (start: string) => allRows.find((p) => p.period_start === start) ?? null;
-  const before = closed ? (allRows.find((p) => p.period_start! < closed.period_start!) ?? null) : null;
-  const lastYear = closed ? findStart(firstOfMonth(addMonths(monthKeyOf(closed.period_start!), -12))) : null;
-  const parts = (p: (typeof rows)[number]): Part[] => [
-    { key: "out", label: el.vat.vatIncome, amount: Number(p.vat_income ?? 0) },
-    { key: "in", label: el.vat.vatExpense, amount: -Number(p.vat_expense ?? 0) },
-  ];
-  const net = (p: (typeof rows)[number]) => round2(Number(p.vat_income ?? 0) - Number(p.vat_expense ?? 0));
-  const periodHref = (p: (typeof rows)[number]) => `/transactions?scope=business&from=${p.period_start}&to=${periodEnd(p)}`;
-  const changes = closed
-    ? [before, lastYear].map((other, i) => ({
-        label: `Καθαρός ΦΠΑ ${periodLabel(closed)} έναντι ${other ? periodLabel(other) : i === 0 ? "προηγούμενης" : "πέρσι"}`,
-        change: change(net(closed), other ? net(other) : null),
-        why: other ? whyText(contributors(parts(closed), parts(other))) : null,
-        href: periodHref(closed),
-      }))
-    : [];
-  // «Μεγαλύτερες κινήσεις»: the closed period's largest VAT rows (sales
-  // positive, purchases negative).
-  const { data: vatRows } = closed
-    ? await supabase
-        .from("transactions")
-        .select("id, tx_date, description, counterparty_name, direction, vat_amount")
-        .eq("org_id", orgId)
-        .eq("scope", "business")
-        .neq("status", "cancelled")
-        .gte("tx_date", closed.period_start!)
-        .lte("tx_date", periodEnd(closed))
-        .order("vat_amount", { ascending: false })
-        .limit(5)
-    : { data: [] };
-  const topMoves = topMovements(
-    (vatRows ?? []).map((r) => ({
-      id: r.id,
-      date: r.tx_date,
-      label: r.counterparty_name?.trim() || r.description?.trim() || "—",
-      amount: (r.direction === "income" ? 1 : -1) * Number(r.vat_amount ?? 0),
-    })),
-  );
-  const coverage = latestUpTo(topMoves.map((m) => m.date), today);
-  const exportLink = (
-    <a href="/api/vat/export" className={buttonClass("secondary", "md")}>
-      Εξαγωγή CSV
-    </a>
-  );
+  // Παρακράτηση: per month, the last 24 that have any; each month opens
+  // its expense transactions.
+  const withheld = (withholding ?? [])
+    .filter((p) => p.period_start)
+    .map((p) => ({ month: monthKeyOf(p.period_start!), amount: Number(p.withheld_total ?? 0) }));
+  const from12 = addMonths(todayMonth, -11);
+  const withheldNow = withheld.find((r) => r.month === todayMonth)?.amount ?? 0;
+  const withheld12 = withheld.filter((r) => r.month >= from12 && r.month <= todayMonth).reduce((s, r) => s + r.amount, 0);
+  const rangeHref = (from: string, to: string) => `/transactions?scope=business&direction=expense&from=${from}&to=${to}`;
 
   return (
-    <div className="flex min-w-0 flex-col gap-10">
-      <PageHeader title={el.nav.vat} actions={exportLink} />
+    <div className="flex min-w-0 flex-col gap-6">
+      <PageHeader title={el.nav.vat} meta={META} actions={<ExportCsvLink />} />
 
       {rows.length === 0 ? (
-        <p className="border-y border-hairline py-6 text-body text-muted">
-          Δεν υπάρχουν ακόμα κινήσεις για υπολογισμό θέσης ΦΠΑ.
-        </p>
+        <p className="border-y border-hairline py-6 text-body text-muted">Δεν υπάρχουν ακόμα κινήσεις για υπολογισμό θέσης ΦΠΑ.</p>
       ) : (
         <ReportSection label={el.nav.vat}>
-          <ReportHeadline>{vatNarrative({ payable, deadline: current?.filing_deadline ?? null, credit })}</ReportHeadline>
           <KpiBand
             items={[
               {
                 label: "Πληρωτέο τρέχουσας",
                 value: <KpiLink href={current ? periodHref(current) : null}>{formatMoney(Math.max(0, payable))}</KpiLink>,
-                sub: current ? periodLabel(current) : "—",
+                sub: (
+                  <>
+                    {current ? periodLabel(current) : "—"}
+                    {payableVsPrev && <span className="block">{payableVsPrev}</span>}
+                  </>
+                ),
               },
               {
                 label: "Επόμενη προθεσμία",
                 value: next ? formatDate(next.filing_deadline) : "—",
                 sub: next ? `${periodLabel(next)} · ${formatMoney(Math.max(0, Number(next.payable_after_credit ?? 0)))}` : "καμία ανοιχτή",
               },
-              { label: "Πιστωτικό υπόλοιπο", value: formatMoney(credit), sub: "μεταφέρεται στην επόμενη περίοδο" },
+              {
+                label: "Πιστωτικό υπόλοιπο",
+                value: formatMoney(credit),
+                sub: (
+                  <>
+                    μεταφέρεται στην επόμενη περίοδο
+                    {creditVsPrev && <span className="block">{creditVsPrev}</span>}
+                  </>
+                ),
+              },
               {
                 label: "Ανοιχτές περίοδοι",
                 value: String(open.length),
@@ -180,7 +163,6 @@ export default async function VatPage() {
               },
             ]}
           />
-          <ChangePanel items={changes} coverage={coverage ?? today} />
           <ReportChart
             title="ΦΠΑ ανά περίοδο"
             caption={`Στήλες: ΦΠΑ εκροών και εισροών · γραμμή: καθαρό (θετικό = πληρωτέο), σε δική του κλίμακα δεξιά${hasForecast ? " · αχνή: μαζί με το προβλεπόμενο" : ""}`}
@@ -200,8 +182,9 @@ export default async function VatPage() {
               marker={next?.filing_deadline ? { x: periodLabel(next), label: `${t.vatNextDeadline} ${formatDate(next.filing_deadline)}` } : undefined}
             />
           </ReportChart>
-          {closed && <TopMovements rows={topMoves} caption={`ΦΠΑ, ${periodLabel(closed)}`} />}
-          <ReportDetail title="Ανά περίοδο" meta={`${rows.length} περίοδοι`}>
+
+          {/* The page's work: open, with the «υποβλήθηκε» toggle on each period. */}
+          <ReportHistory title="Περίοδοι" count={rows.length} open>
             <SpecTable label={el.nav.vat}>
               <thead>
                 <tr>
@@ -235,11 +218,9 @@ export default async function VatPage() {
                   return (
                     <Tr key={p.period_start} aria-current={isCurrent ? "true" : undefined} className={isCurrent ? "bg-hover" : undefined}>
                       <Td strong className={cn("border-l-2 !pl-3", isCurrent ? "border-l-navy" : "border-l-transparent")}>
-                        <span className="whitespace-nowrap">
-                          {monthsOf(p) === 3
-                            ? `${t.quarter} ${quarterOf(p.period_start!)}/${p.period_start!.slice(0, 4)}`
-                            : formatDate(p.period_start)}
-                        </span>
+                        <Link href={periodHref(p)} className={cn(LINK_CLASS, "whitespace-nowrap")}>
+                          {monthsOf(p) === 3 ? `${t.quarter} ${quarterOf(p.period_start!)}/${p.period_start!.slice(0, 4)}` : formatDate(p.period_start)}
+                        </Link>
                         {p.is_locked && <span className="ml-1.5 text-small text-muted">{t.vatLocked}</span>}
                         {isCurrent && <span className="ml-1.5 text-small font-medium text-navy">τρέχουσα περίοδος</span>}
                       </Td>
@@ -277,17 +258,46 @@ export default async function VatPage() {
                 })}
               </tbody>
             </SpecTable>
-          </ReportDetail>
-          <ReportMethod>
-            <p>
-              Υπολογίζεται με βάση την ημερομηνία τιμολογίου (accrual), με μεταφορά πιστωτικού υπολοίπου από περίοδο σε
-              περίοδο. Δείχνονται οι περίοδοι από 6 μήνες πριν έως 6 μήνες μετά τον τρέχοντα μήνα.
+            <p className="max-w-3xl text-small text-muted">
+              {t.vatLockHint} {t.vatIssuedHint}
             </p>
-            <p>{t.vatLockHint}</p>
-            <p>{t.vatIssuedHint}</p>
-            <p>«Ανοιχτές περίοδοι»: όσες έχουν ξεκινήσει και δεν έχουν σημειωθεί ως υποβληθείσες.</p>
-          </ReportMethod>
-          <ReportFooter dataUntil={today} />
+          </ReportHistory>
+
+          <ReportHistory
+            title="Παρακράτηση ανά μήνα"
+            count={withheld.length}
+            meta={`τρέχων μήνας ${formatMoney(withheldNow)} · 12 μήνες ${formatMoney(withheld12)} · μέσος όρος ${formatMoney(withheld12 / 12)}`}
+          >
+            <p className="max-w-3xl text-small text-muted">{t.withholdingIntro}</p>
+            {withheld.length === 0 ? (
+              <p className="text-body text-muted">Δεν υπάρχουν ακόμα κινήσεις με παρακράτηση.</p>
+            ) : (
+              <SpecTable label="Παρακράτηση" className="max-w-2xl">
+                <thead>
+                  <tr>
+                    <Th>{el.vat.period}</Th>
+                    <Th numeric>Παρακρατηθέν ποσό</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {withheld.map((r) => (
+                    <Tr key={r.month}>
+                      <Td strong className="whitespace-nowrap">
+                        <Link href={rangeHref(firstOfMonth(r.month), lastOfMonth(r.month))} className={LINK_CLASS}>
+                          {monthLabel(r.month)}
+                        </Link>
+                      </Td>
+                      <Td numeric strong>
+                        {formatMoney(r.amount)}
+                      </Td>
+                    </Tr>
+                  ))}
+                </tbody>
+              </SpecTable>
+            )}
+          </ReportHistory>
+
+          <ReportFooter dataUntil={today} issues={issues} />
         </ReportSection>
       )}
     </div>

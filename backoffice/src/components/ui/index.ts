@@ -29,14 +29,11 @@ export { chartTheme, compactNumber, ReferenceKey, STACK_PALETTE, type ReferenceK
 // through this barrel.
 export {
   ReportSection,
-  ReportHeadline,
   KpiBand,
   ReportChart,
-  ReportDetail,
-  ReportMethod,
+  ReportHistory,
   ReportFooter,
   type KpiItem,
 } from "./ReportSection";
-export { PhoneDetails } from "./PhoneDetails";
 export { Skeleton, PageSkeleton, Card } from "./Skeleton";
 export { Brand, LogoMark, Wordmark } from "./Brand";

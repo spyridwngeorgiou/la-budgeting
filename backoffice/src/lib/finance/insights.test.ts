@@ -1,81 +1,31 @@
 import { describe, expect, it } from "vitest";
-import {
-  ALL_RELIABILITY_CODES,
-  accountBalancesAt,
-  change,
-  changePctLabel,
-  contributors,
-  latestUpTo,
-  reliability,
-  reliabilityText,
-  reportKeyOf,
-  sumParts,
-  topMovements,
-  txIdsHref,
-  vsTarget,
-  whyText,
-} from "./insights";
+import { accountBalancesAt, change, latestUpTo, reliability, sumParts, txIdsHref, vsPrevText, vsTarget } from "./insights";
 
-describe("change", () => {
+describe("change / vsPrevText", () => {
   it("gives the difference and the percentage on a positive base", () => {
     const ch = change(120, 100);
     expect(ch.delta).toBe(20);
     expect(ch.pct).toBeCloseTo(0.2);
-    expect(changePctLabel(ch)).toBe("+20%");
+    expect(vsPrevText(ch)).toMatch(/^\+20,00\s€ \(\+20%\) έναντι προηγ\. μήνα$/);
   });
 
   it("gives no percentage on a negative or zero base", () => {
     const fromLoss = change(50, -100);
     expect(fromLoss.delta).toBe(150);
     expect(fromLoss.pct).toBeNull();
-    expect(changePctLabel(fromLoss)).toBe("από αρνητική βάση");
+    expect(vsPrevText(fromLoss)).not.toContain("%");
     expect(change(50, 0).pct).toBeNull();
-    expect(changePctLabel(change(50, 0))).toBe("από μηδέν");
+    expect(vsPrevText(change(50, 0), "Σεπ")).toMatch(/έναντι Σεπ$/);
   });
 
   it("has nothing to compare without a previous figure", () => {
     const ch = change(10, null);
     expect(ch.delta).toBeNull();
-    expect(changePctLabel(ch)).toBe("χωρίς στοιχεία σύγκρισης");
+    expect(vsPrevText(ch)).toBeNull();
   });
 });
 
-describe("contributors", () => {
-  it("ranks the parts by how much they moved, either sign", () => {
-    const list = contributors(
-      [
-        { key: "a", label: "Έσοδα", amount: 100 },
-        { key: "b", label: "Λειτουργικά", amount: -50 },
-        { key: "c", label: "Ενοίκια", amount: -10 },
-      ],
-      [
-        { key: "a", label: "Έσοδα", amount: 90 },
-        { key: "b", label: "Λειτουργικά", amount: -20 },
-        { key: "c", label: "Ενοίκια", amount: -10 },
-        { key: "d", label: "Φόροι", amount: -5 },
-      ],
-    );
-    expect(list.map((c) => [c.key, c.delta])).toEqual([
-      ["b", -30],
-      ["a", 10],
-      ["d", 5],
-    ]);
-    expect(whyText(list)).toBe("κυρίως Λειτουργικά −30 €, Έσοδα +10 €, Φόροι +5 €");
-  });
-
-  it("is empty (no «why») when nothing moved", () => {
-    const same = [{ key: "a", label: "x", amount: 5 }];
-    expect(contributors(same, same)).toEqual([]);
-    expect(whyText([])).toBeNull();
-  });
-});
-
-describe("topMovements / txIdsHref", () => {
-  it("keeps the five largest by size, either sign", () => {
-    const rows = [1, -9, 3, 7, -2, 8, 0].map((amount, i) => ({ id: `t${i}`, amount }));
-    expect(topMovements(rows).map((r) => r.amount)).toEqual([-9, 8, 7, 3, -2]);
-  });
-
+describe("txIdsHref", () => {
   it("links the rows' transactions, without repeats or blanks", () => {
     expect(txIdsHref(["a", "b", "a", null, ""])).toBe("/transactions?ids=a,b");
     expect(txIdsHref([])).toBeNull();
@@ -109,12 +59,12 @@ describe("reliability", () => {
     expect(reliability([...rows, { code: "account_uncounted", count: 1, href: "/accounts" }], "cash")?.href).toBe("/reports/quality");
   });
 
-  it("knows the report from the path", () => {
-    expect(reportKeyOf("/reports/net-worth")).toBe("net-worth");
-    expect(reportKeyOf("/reports/quality")).toBeNull();
-    expect(reportKeyOf("/accounts")).toBeNull();
-    expect(ALL_RELIABILITY_CODES).toContain("vat_mismatch");
-    expect(reliabilityText(1)).toContain("1 θέμα ");
+  it("counts the withholding checks on the VAT tab", () => {
+    expect(reliability([{ code: "withholding_on_income", count: 1, href: null }], "vat")).toEqual({
+      count: 1,
+      codes: ["withholding_on_income"],
+      href: "/reports/quality",
+    });
   });
 });
 

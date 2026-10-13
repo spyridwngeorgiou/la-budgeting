@@ -5,11 +5,10 @@ export const report = {
     lowest: "χαμηλότερο",
     belowThreshold: "Μήνες κάτω από το όριο",
   },
-  method: "Πώς υπολογίζεται",
-  detail: "Αναλυτικά",
+  history: "Ιστορικό ανά μήνα",
   footer: {
-    source: "Πηγή: Kansha",
     updated: "ενημερώθηκε",
-    dataUntil: "δεδομένα έως",
+    dataUntil: "Δεδομένα έως",
+    issues: (n: number) => `${n} ${n === 1 ? "θέμα" : "θέματα"} ποιότητας →`,
   },
 } as const;
