@@ -20,6 +20,13 @@ describe("detectCaptureKind", () => {
     expect(detectCaptureKind({ name: "receipt.txt", type: "text/plain", head: PDF })).toEqual({ kind: "document" });
   });
 
+  it("sends a PDF named like a bank statement to the statement reader", () => {
+    expect(detectCaptureKind({ name: "accountTransactionHistory (3).pdf", type: "application/pdf", head: PDF })).toEqual({ kind: "bank" });
+    expect(detectCaptureKind({ name: "Κινήσεις λογαριασμού.pdf", type: "", head: PDF })).toEqual({ kind: "bank" });
+    expect(detectCaptureKind({ name: "statement.pdf", type: "application/pdf" })).toEqual({ kind: "bank" });
+    expect(detectCaptureKind({ name: "timologio.pdf", type: "application/pdf", head: PDF })).toEqual({ kind: "document" });
+  });
+
   it("refuses iPhone HEIC photos and binary .xls", () => {
     expect(detectCaptureKind({ name: "IMG_1.HEIC", type: "" })).toEqual({ problem: "heic" });
     expect(detectCaptureKind({ name: "kinisi.xls", type: "application/vnd.ms-excel", head: OLE })).toEqual({ problem: "xls" });

@@ -3,7 +3,7 @@ import { bankLineKeys } from "../fingerprint";
 import { extractRefs, normalizeGreek, parseDate, parseGreekNumber } from "../text";
 import type { CanonicalRow, StatementSummary } from "../types";
 import { cellText, normalizedRow } from "./detect";
-import type { BankProfile, Cell, ColumnRef, Grid, ProfileField } from "./types";
+import { isJoinedRef, type BankProfile, type Cell, type ColumnMapValue, type ColumnRef, type Grid, type ProfileField } from "./types";
 import { toIso } from "@/lib/dates";
 
 // Grid + profile -> canonical movements. Never throws on a bad line: the
@@ -13,41 +13,89 @@ import { toIso } from "@/lib/dates";
 export class ProfileMismatchError extends Error {}
 
 export type ResolvedColumns = Partial<Record<ProfileField, number>>;
+// Every column of a field, in map order (more than one for a joined field).
+export type ResolvedColumnSets = Partial<Record<ProfileField, number[]>>;
 
-// Map each profile field to a column index: exact (normalised) header
+// Map each profile field to column indexes: exact (normalised) header
 // matches first for every field, then "header contains the word" for what
 // is left, never reusing a column -- so «ΗΜΕΡΟΜΗΝΙΑ» does not swallow
-// «ΗΜΕΡΟΜΗΝΙΑ ΑΞΙΑΣ» when both exist.
-export function resolveColumns(headerCells: Cell[], profile: Pick<BankProfile, "columnMap">): ResolvedColumns {
+// «ΗΜΕΡΟΜΗΝΙΑ ΑΞΙΑΣ» when both exist. A header that repeats («Νόμισμα»
+// twice) is told apart by position: each match takes the first unused one.
+export function resolveColumnSets(headerCells: Cell[], profile: Pick<BankProfile, "columnMap">): ResolvedColumnSets {
   const header = normalizedRow(headerCells);
-  const resolved: ResolvedColumns = {};
   const used = new Set<number>();
-  const entries = Object.entries(profile.columnMap) as [ProfileField, ColumnRef][];
+  const slots = (Object.entries(profile.columnMap) as [ProfileField, ColumnMapValue][]).flatMap(([field, value]) =>
+    (isJoinedRef(value) ? value.join : [value]).map((ref) => ({ field, ref, idx: -1 })),
+  );
   const alternatives = (ref: ColumnRef) => (Array.isArray(ref) ? ref : [ref]).map((a) => (typeof a === "number" ? a : normalizeGreek(String(a))));
 
-  for (const [field, ref] of entries) {
-    for (const alt of alternatives(ref)) {
+  for (const slot of slots) {
+    for (const alt of alternatives(slot.ref)) {
       const idx = typeof alt === "number" ? (alt < header.length || header.length === 0 ? alt : -1) : header.findIndex((h, i) => !used.has(i) && h === alt);
       if (idx >= 0 && !used.has(idx)) {
-        resolved[field] = idx;
+        slot.idx = idx;
         used.add(idx);
         break;
       }
     }
   }
-  for (const [field, ref] of entries) {
-    if (resolved[field] !== undefined) continue;
-    for (const alt of alternatives(ref)) {
+  for (const slot of slots) {
+    if (slot.idx >= 0) continue;
+    for (const alt of alternatives(slot.ref)) {
       if (typeof alt === "number") continue;
       const idx = header.findIndex((h, i) => !used.has(i) && h !== "" && h.includes(alt));
       if (idx >= 0) {
-        resolved[field] = idx;
+        slot.idx = idx;
         used.add(idx);
         break;
       }
     }
   }
+  const sets: ResolvedColumnSets = {};
+  for (const slot of slots) {
+    if (slot.idx < 0) continue;
+    (sets[slot.field] ??= []).push(slot.idx);
+  }
+  return sets;
+}
+
+// The first (primary) column of each field.
+export function resolveColumns(headerCells: Cell[], profile: Pick<BankProfile, "columnMap">): ResolvedColumns {
+  const sets = resolveColumnSets(headerCells, profile);
+  const resolved: ResolvedColumns = {};
+  for (const [field, cols] of Object.entries(sets) as [ProfileField, number[]][]) resolved[field] = cols[0];
   return resolved;
+}
+
+// Cell text as one line: XLSX's escaped carriage return (`_x000D_`) and real
+// line breaks become « · », so a multi-line «Σχόλια» cell reads as one
+// description instead of breaking the review table.
+export function cleanCellText(value: string): string {
+  if (!/[\r\n]|_x000D_/i.test(value)) return value.trim();
+  return value
+    .replace(/_x000D_/gi, "\r")
+    .split(/\r\n|\r|\n/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(" · ");
+}
+
+// Lines that are never movements, whatever the profile says: the e-banking
+// «Ημερομηνία Ενημέρωσης: …» stamp under the table (it has no date or amount
+// in the movement columns, so it would otherwise be glued onto the last
+// movement's description as a wrapped line).
+const ALWAYS_FOOTER = /^(ΗΜΕΡΟΜΗΝΙΑ ΕΝΗΜΕΡΩΣΗΣ|ΗΜ\/ΝΙΑ ΕΝΗΜΕΡΩΣΗΣ|ΗΜΕΡΟΜΗΝΙΑ ΕΚΤΥΠΩΣΗΣ|ΗΜΕΡΟΜΗΝΙΑ ΔΗΜΙΟΥΡΓΙΑΣ)/;
+
+// Header names for `raw`, made unique by position («Νόμισμα», «Νόμισμα (2)»)
+// so a repeated header does not overwrite the first one's value.
+export function uniqueHeaderNames(headerCells: Cell[]): string[] {
+  const seen = new Map<string, number>();
+  return headerCells.map((c, i) => {
+    const name = cellText(c).trim() || `#${i + 1}`;
+    const n = (seen.get(name) ?? 0) + 1;
+    seen.set(name, n);
+    return n === 1 ? name : `${name} (${n})`;
+  });
 }
 
 export function missingRequiredColumns(columns: ResolvedColumns, profile: Pick<BankProfile, "signMode">): ProfileField[] {
@@ -80,13 +128,15 @@ function isBlankRow(row: Cell[] | undefined): boolean {
 
 export function applyProfile(grid: Grid, profile: BankProfile, headerRow: number, ctx: ApplyContext): ApplyResult {
   const headerCells = grid[headerRow] ?? [];
-  const columns = resolveColumns(headerCells, profile);
+  const sets = resolveColumnSets(headerCells, profile);
+  const columns: ResolvedColumns = {};
+  for (const [field, cols] of Object.entries(sets) as [ProfileField, number[]][]) columns[field] = cols[0];
   const missing = missingRequiredColumns(columns, profile);
   if (missing.length > 0) {
     throw new ProfileMismatchError(`Λείπουν στήλες για τη μορφή «${profile.name}»: ${missing.join(", ")}`);
   }
 
-  const headerNames = headerCells.map((c, i) => cellText(c).trim() || `#${i + 1}`);
+  const headerNames = uniqueHeaderNames(headerCells);
   const footer = profile.footerPattern ? new RegExp(profile.footerPattern, "i") : null;
   const numberFormat = { decimal: profile.decimalSeparator } as const;
   const debitMarkers = new Set(profile.debitMarkers.map(normalizeGreek));
@@ -94,7 +144,12 @@ export function applyProfile(grid: Grid, profile: BankProfile, headerRow: number
     const idx = columns[field];
     return idx === undefined ? null : (row[idx] ?? null);
   };
-  const text = (row: Cell[], field: ProfileField): string | null => cellText(at(row, field)).trim() || null;
+  // A joined field: every non-empty part, in map order, « · » between them.
+  const text = (row: Cell[], field: ProfileField): string | null =>
+    (sets[field] ?? [])
+      .map((idx) => cleanCellText(cellText(row[idx] ?? null)))
+      .filter(Boolean)
+      .join(" · ") || null;
 
   const rows: CanonicalRow[] = [];
   const signed: (number | null)[] = [];
@@ -106,7 +161,7 @@ export function applyProfile(grid: Grid, profile: BankProfile, headerRow: number
     if (isBlankRow(row)) continue;
     const fileRow = r + 1;
     const firstText = normalizeGreek(row.map(cellText).find((c) => c.trim() !== "") ?? "");
-    if (footer && footer.test(firstText)) {
+    if ((footer && footer.test(firstText)) || ALWAYS_FOOTER.test(firstText)) {
       footerRows.push(fileRow);
       continue;
     }
@@ -121,7 +176,7 @@ export function applyProfile(grid: Grid, profile: BankProfile, headerRow: number
       const moneyCells = (["amount", "debit", "credit"] as const).map((f) => cellText(at(row, f)).trim());
       const previous = rows[rows.length - 1];
       if (previous && moneyCells.every((c) => c === "")) {
-        const extra = row.map(cellText).map((c) => c.trim()).filter(Boolean).join(" ");
+        const extra = row.map(cellText).map(cleanCellText).filter(Boolean).join(" ");
         previous.description = [previous.description, extra].filter(Boolean).join(" ");
         previous.extracted = extractRefs(previous.description, previous.reference, previous.counterpartyName);
         previous.counterpartyAfm ??= previous.extracted.afms[0] ?? null;

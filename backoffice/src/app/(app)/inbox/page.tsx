@@ -35,7 +35,7 @@ export default async function InboxPage() {
   const [{ data: staged }, { data: changes }, { data: proposals }, { data: history }, counts] = await Promise.all([
     supabase
       .from("ingest_batches")
-      .select("id, source, filename, row_count, created_at, accounts(name)")
+      .select("id, source, filename, row_count, created_at, meta->needs_review, accounts(name)")
       .eq("org_id", orgId)
       .eq("status", "staged")
       .order("created_at", { ascending: false })
@@ -109,7 +109,10 @@ export default async function InboxPage() {
                       <Link href={`/inbox/${b.id}`} className={LINK_CLASS}>
                         {b.filename ?? el.ingest.source[b.source]}
                       </Link>
-                      <span className={SUB_CLASS}>{el.ingest.source[b.source]}</span>
+                      <span className={SUB_CLASS}>
+                        {el.ingest.source[b.source]}
+                        {Array.isArray(b.needs_review) && b.needs_review.length > 0 && ` · ${el.ingest.review.needsReview}`}
+                      </span>
                     </Td>
                     <Td className="hidden sm:table-cell">{account?.name ?? "—"}</Td>
                     <Td numeric>{b.row_count}</Td>

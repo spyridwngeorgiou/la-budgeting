@@ -34,6 +34,28 @@ export const BUILTIN_PROFILES: BankProfile[] = [
     footerPattern: "^(ΣΥΝΟΛ|ΥΠΟΛΟΙΠΟ)",
   },
   {
+    // Built from a real e-banking export (0094): sheet «Κινήσεις
+    // Λογαριασμών», IBAN in A4, period in A5, header in row 7, signed
+    // amounts, newest first, «Ημερομηνία Ενημέρωσης» stamp under the table.
+    ...base,
+    verified: true,
+    bankCode: "piraeus",
+    name: "Πειραιώς (XLSX, e-banking)",
+    fileKind: "xlsx",
+    encoding: "utf-8",
+    delimiter: null,
+    headerSignature: ["ΚΑΤΗΓΟΡΙΑ", "ΠΕΡΙΓΡΑΦΗ ΣΥΝΑΛΛΑΓΗΣ", "ΗΜ/ΝΙΑ ΣΥΝΑΛΛΑΓΗΣ", "ΣΧΟΛΙΑ / ΚΩΔΙΚΟΣ ΑΝΑΦΟΡΑΣ", "ΠΟΣΟ", "ΠΡΟΟΔΕΥΤΙΚΟ ΛΟΓΙΣΤΙΚΟ ΥΠΟΛΟΙΠΟ"],
+    columnMap: {
+      date: "ΗΜ/ΝΙΑ ΣΥΝΑΛΛΑΓΗΣ",
+      description: { join: ["ΠΕΡΙΓΡΑΦΗ ΣΥΝΑΛΛΑΓΗΣ", "ΣΧΟΛΙΑ / ΚΩΔΙΚΟΣ ΑΝΑΦΟΡΑΣ"] },
+      amount: "ΠΟΣΟ",
+      balance: "ΠΡΟΟΔΕΥΤΙΚΟ ΛΟΓΙΣΤΙΚΟ ΥΠΟΛΟΙΠΟ",
+    },
+    signMode: "signed",
+    debitMarkers: [],
+    footerPattern: "^(ΗΜΕΡΟΜΗΝΙΑ ΕΝΗΜΕΡΩΣΗΣ|ΣΥΝΟΛ)",
+  },
+  {
     ...base,
     bankCode: "nbg",
     name: "Εθνική Τράπεζα (CSV)",

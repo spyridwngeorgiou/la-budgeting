@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/lib/db/types";
 import { assignMatches } from "@/lib/ingest/match/assign";
 import type { MatchCandidate } from "@/lib/ingest/match/score";
+import { hintForRow, type CategoryRef, type UtilityRef } from "@/lib/ingest/match/hints";
 import { BUILTIN_PROFILES } from "@/lib/ingest/profiles/presets";
 import { profileFromRow, type BankProfile } from "@/lib/ingest/profiles/types";
 import type { CanonicalRow, IngestDecision } from "@/lib/ingest/types";
@@ -93,13 +94,41 @@ export async function loadCandidates(
 // Default decisions: an "auto" match is pre-selected, a mere suggestion is
 // left undecided (the reviewer must pick), no match -> create, a line
 // already imported -> skip, an unreadable line -> skip.
+// Utilities registered per property and the org's categories, for the
+// project/category hints (lib/ingest/match/hints.ts). One query each.
+async function loadHintSources(supabase: Client, orgId: string): Promise<{ utilities: UtilityRef[]; categories: CategoryRef[] }> {
+  const [{ data: utilities }, { data: categories }] = await Promise.all([
+    supabase
+      .from("property_utilities")
+      .select("project_id, kind, match_keys, projects(display_name)")
+      .eq("org_id", orgId)
+      .eq("is_active", true),
+    supabase.from("categories").select("id, name, kind, keywords").eq("org_id", orgId).eq("is_active", true).order("sort_order"),
+  ]);
+  return {
+    utilities: (utilities ?? []).map((u) => {
+      const project = Array.isArray(u.projects) ? u.projects[0] : u.projects;
+      return { projectId: u.project_id, projectLabel: project?.display_name ?? null, kind: u.kind, matchKeys: u.match_keys ?? [] };
+    }),
+    categories: (categories ?? []).map((c) => ({ id: c.id, name: c.name, kind: c.kind, keywords: c.keywords ?? [] })),
+  };
+}
+
+export interface StageMovementsOptions {
+  // false when the statement failed its own checks (running balance): no
+  // match is pre-accepted -- each one waits for the reviewer.
+  trustAuto?: boolean;
+}
+
 export async function stageMovements(
   supabase: Client,
   orgId: string,
   batchId: string,
   accountId: string | null,
   rows: CanonicalRow[],
+  options: StageMovementsOptions = {},
 ): Promise<{ staged: number; duplicates: number }> {
+  const trustAuto = options.trustAuto ?? true;
   const keys = rows.map((r) => r.externalKey).filter((k): k is string => !!k);
   const { data: committed } = keys.length
     ? await supabase
@@ -112,9 +141,10 @@ export async function stageMovements(
   const seen = new Set((committed ?? []).map((r) => r.external_key));
 
   const dated = rows.map((r) => r.txDate).filter((d): d is string => !!d).sort();
-  const candidates = dated.length
-    ? await loadCandidates(supabase, orgId, accountId, dated[0], dated[dated.length - 1])
-    : [];
+  const [candidates, hintSources] = await Promise.all([
+    dated.length ? loadCandidates(supabase, orgId, accountId, dated[0], dated[dated.length - 1]) : Promise.resolve([]),
+    loadHintSources(supabase, orgId),
+  ]);
   const fresh = rows.filter((r) => !(r.externalKey && seen.has(r.externalKey)));
   const assignments = assignMatches(fresh, candidates);
   const byRow = new Map(fresh.map((r, i) => [r, assignments[i]]));
@@ -126,12 +156,22 @@ export async function stageMovements(
     let decision: IngestDecision = "create";
     let targets: string[] = [];
     if (duplicate || unreadable) decision = "skip";
-    else if (a.confidence === "auto") {
+    else if (a.confidence === "auto" && trustAuto) {
       decision = a.decision;
       targets = a.targets;
-    } else if (a.confidence === "suggest") {
+    } else if (a.confidence === "auto" || a.confidence === "suggest") {
       decision = "pending";
     }
+    // A settled/linked line takes the existing transaction's assignment;
+    // the hint matters only for what becomes a new transaction.
+    const hint = hintForRow(r, hintSources.utilities, hintSources.categories);
+    const meta = {
+      ...(r.meta ?? {}),
+      ...(a ? { confidence: a.confidence, score: a.score } : {}),
+      ...(hint.reason
+        ? { hint: { reason: hint.reason, project: hint.projectLabel, category: hint.categoryName, utility_kind: hint.utilityKind } }
+        : {}),
+    };
     return {
       org_id: orgId,
       batch_id: batchId,
@@ -139,7 +179,9 @@ export async function stageMovements(
       row_kind: r.kind,
       raw: r.raw as Json,
       extracted: r.extracted as unknown as Json,
-      meta: (a ? { confidence: a.confidence, score: a.score } : {}) as Json,
+      meta: meta as Json,
+      project_id: hint.projectId,
+      category_id: hint.categoryId,
       external_key: r.externalKey,
       tx_date: r.txDate,
       value_date: r.valueDate,

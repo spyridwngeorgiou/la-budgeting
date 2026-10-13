@@ -43,7 +43,11 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
     statement?: StatementSummary | null;
     legacy?: boolean;
     period?: string | null;
+    // Statement checks that failed (running balance, misread lines): nothing
+    // was pre-accepted, every match waits for a decision.
+    needs_review?: string[];
   };
+  const needsReview = meta.needs_review ?? [];
   if (meta.needs_mapping && batch.row_count === 0 && batch.status === "staged") redirect(`/inbox/mapping/${batchId}`);
   const isDocuments = DOCUMENT_SOURCES.has(batch.source);
   const isAi = AI_SOURCES.has(batch.source);
@@ -185,6 +189,13 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
           </div>
         )}
 
+        {needsReview.length > 0 && editable && (
+          <Notice tone="negative" role="alert">
+            <p className="font-medium">{el.ingest.review.needsReview}</p>
+            <p>{el.ingest.review.needsReviewText}</p>
+          </Notice>
+        )}
+
         {(meta.warnings ?? []).length > 0 && (
           <Notice as="ul" tone="warning">
             {meta.warnings!.map((w) => (
@@ -218,7 +229,17 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
                   score: m.score,
                   reasons: (m.reasons ?? []) as MatchOption["reasons"],
                 }));
-              const rowMeta = (r.meta ?? {}) as { ai?: AiRowMeta; aade_dedup_status?: AadeDedupStatus };
+              const rowMeta = (r.meta ?? {}) as {
+                ai?: AiRowMeta;
+                aade_dedup_status?: AadeDedupStatus;
+                hint?: { reason: "utility" | "fee"; project: string | null; category: string | null };
+                fee_of?: string;
+              };
+              const hintText = rowMeta.hint
+                ? [rowMeta.hint.reason === "utility" ? el.ingest.review.hintUtility : el.ingest.review.hintFee, rowMeta.hint.project, rowMeta.hint.category]
+                    .filter(Boolean)
+                    .join(" · ")
+                : null;
               const rowEditable = editable && !r.committed_transaction_id;
               const doc = r.document_id ? documentLinks.get(r.document_id) : undefined;
               return (
@@ -240,7 +261,13 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
                     ) : (
                       <>
                         <div className="whitespace-pre-line">{r.description ?? "—"}</div>
-                        {r.reference && <div className="text-small text-muted">{r.reference}</div>}
+                        {r.reference && (
+                          <div className="text-small text-muted">
+                            {r.reference}
+                            {rowMeta.fee_of && ` · ${el.ingest.review.feeOf}`}
+                          </div>
+                        )}
+                        {hintText && <div className="text-small text-muted">{hintText}</div>}
                       </>
                     )}
                     {r.dedup_status === "dup_external_key" && <Badge tone="neutral">Ήδη εισηγμένη σε προηγούμενο αρχείο</Badge>}

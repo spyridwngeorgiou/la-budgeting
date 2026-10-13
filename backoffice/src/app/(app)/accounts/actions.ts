@@ -5,13 +5,22 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId, formString } from "@/lib/supabase/org";
 import type { AccountKind, OwnerScope } from "@/lib/domain/enums";
 import { action, UserError, type ActionResult } from "@/lib/actions";
+import { isValidIban } from "@/lib/ingest/text";
+import { el } from "@/lib/i18n/el";
 
 export async function createAccount(formData: FormData): Promise<ActionResult> {
   return action(async () => {
     const supabase = await createClient();
     const orgId = await getCurrentOrgId(supabase);
 
+    const iban = formString(formData, "iban")?.replace(/\s+/g, "").toUpperCase() ?? null;
+    if (iban && !isValidIban(iban)) throw new UserError(el.account.invalidIban);
+    const accountNumber = formString(formData, "account_number")?.replace(/[\s-]/g, "") ?? null;
+    if (accountNumber && !/^[0-9]{6,34}$/.test(accountNumber)) throw new UserError(el.account.invalidAccountNumber);
+
     const { error } = await supabase.from("accounts").insert({
+      iban,
+      account_number: accountNumber,
       org_id: orgId,
       name: String(formData.get("name")),
       kind: (formString(formData, "kind") as AccountKind) ?? "bank",
