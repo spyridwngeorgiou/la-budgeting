@@ -188,6 +188,8 @@ export function ChatPanel({
       return;
     }
     setActiveId(id);
+    // On a phone the folded list closes again, so the conversation shows.
+    setListOpen(false);
     setMessages(
       (r.data ?? []).map((m) => ({
         key: m.id,
@@ -202,13 +204,14 @@ export function ChatPanel({
 
   function newConversation() {
     if (busy) abortRef.current?.abort();
+    setListOpen(false);
     setActiveId(null);
     setMessages([]);
     setInput("");
   }
 
   async function removeConversation(id: string, title: string | null) {
-    const message = `${a.deleteConversation} «${title || a.untitled}»; Δεν αναιρείται.`;
+    const message = `${a.deleteConversation} «${title || a.untitled}»; ${a.cannotUndo}`;
     if (!(await confirm({ message, confirmLabel: el.common.delete }))) return;
     const r = await deleteConversation(id);
     const error = errorOf(r);
@@ -222,61 +225,90 @@ export function ChatPanel({
   }
 
   return (
-    <div className="grid h-[calc(100vh-8rem)] grid-cols-1 gap-4 md:grid-cols-[14rem_minmax(0,1fr)] md:gap-6">
-      <aside className="flex max-h-48 flex-col gap-2 overflow-hidden border-b border-hairline pb-2 md:max-h-none md:border-r md:border-b-0 md:pr-4 md:pb-0">
-        <Button type="button" variant="ai" onClick={newConversation}>
-          Νέα συζήτηση
-        </Button>
+    <div
+      className={cn(
+        "grid grid-cols-1 gap-4 md:grid-cols-[14rem_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)] md:gap-6",
+        className,
+      )}
+    >
+      <aside className="flex flex-col gap-2 border-b border-hairline pb-2 md:min-h-0 md:border-r md:border-b-0 md:pr-4 md:pb-0">
+        <div className="flex items-center justify-between gap-2 md:flex-col md:items-stretch">
+          {/* Phones: the list folds into «▸ Συζητήσεις (N)». */}
+          <button
+            type="button"
+            aria-expanded={listOpen}
+            aria-controls={listId}
+            onClick={() => setListOpen((v) => !v)}
+            className="flex min-h-11 min-w-0 items-center gap-2 text-left md:hidden"
+          >
+            <span aria-hidden="true" className={cn("inline-block w-3 text-muted transition-transform", listOpen && "rotate-90")}>
+              ▸
+            </span>
+            <span className="text-body font-medium text-ink">
+              {a.conversations} <span className="num font-normal text-muted">({conversations.length})</span>
+            </span>
+          </button>
+          <Button type="button" variant="ai" onClick={newConversation} className="shrink-0">
+            {a.newConversation}
+          </Button>
+        </div>
         {listError && (
           <Notice tone="negative" size="small" role="alert">
             {listError}
           </Notice>
         )}
-        <nav aria-label="Συζητήσεις" className="flex-1 overflow-y-auto">
+        <nav
+          id={listId}
+          aria-label={a.conversations}
+          className={cn("md:block md:min-h-0 md:flex-1 md:overflow-y-auto", listOpen ? "block" : "hidden")}
+        >
           {conversations.length === 0 ? (
-            <p className="py-2 text-small text-muted">Καμία αποθηκευμένη συζήτηση.</p>
+            <p className="py-2 text-small text-muted">{a.noConversations}</p>
           ) : (
             <ul className="flex flex-col">
-              {conversations.map((c) => (
-                <li key={c.id} className="group flex items-center gap-1 border-b border-hairline">
-                  <button
-                    type="button"
-                    onClick={() => openConversation(c.id)}
-                    aria-current={c.id === activeId ? "true" : undefined}
-                    className={`min-h-10 flex-1 truncate border-l-2 px-2 py-2 text-left text-small ${
-                      c.id === activeId ? "border-ai bg-ai-tint text-ai" : "border-transparent text-muted hover:bg-hover hover:text-ink"
-                    }`}
-                    title={c.title ?? undefined}
-                  >
-                    {c.title || "Χωρίς τίτλο"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeConversation(c.id)}
-                    aria-label={`Διαγραφή συζήτησης «${c.title ?? ""}»`}
-                    className="flex h-10 w-8 items-center justify-center text-small text-muted opacity-0 group-hover:opacity-100 hover:text-negative focus:opacity-100 max-md:opacity-100"
-                  >
-                    ×
-                  </button>
-                </li>
-              ))}
+              {conversations.map((c) => {
+                const label = `${a.deleteConversation} «${c.title || a.untitled}»`;
+                return (
+                  <li key={c.id} className="group flex items-center gap-1 border-b border-hairline">
+                    <button
+                      type="button"
+                      onClick={() => openConversation(c.id)}
+                      aria-current={c.id === activeId ? "true" : undefined}
+                      className={`min-h-10 min-w-0 flex-1 truncate border-l-2 px-2 py-2 text-left text-small ${
+                        c.id === activeId ? "border-ai bg-ai-tint text-ai" : "border-transparent text-muted hover:bg-hover hover:text-ink"
+                      }`}
+                      title={c.title ?? undefined}
+                    >
+                      {c.title || a.untitled}
+                    </button>
+                    {/* Shown on hover and whenever the row has focus (always on a phone). */}
+                    <button
+                      type="button"
+                      onClick={() => removeConversation(c.id, c.title)}
+                      aria-label={label}
+                      title={label}
+                      className="flex min-h-10 min-w-10 items-center justify-center text-body text-muted opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:text-negative max-md:opacity-100"
+                    >
+                      <span aria-hidden="true">×</span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </nav>
       </aside>
 
-      <div className="flex min-h-0 flex-col gap-3">
-        <div className="flex-1 overflow-y-auto border-y border-hairline py-4" aria-live="polite">
+      <div className="flex min-w-0 flex-col gap-3 md:min-h-0">
+        {/* The one scroll from md; on a phone the page scrolls instead. */}
+        <div className="border-y border-hairline py-4 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain" aria-live="polite">
           {loadingThread && <p className="text-body text-muted">Φόρτωση συζήτησης…</p>}
           {!loadingThread && messages.length === 0 && (
-            <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-              <p className="max-w-prose text-body text-muted">
-                Ρωτήστε οτιδήποτε για τα οικονομικά της επιχείρησης — κάθε απάντηση βασίζεται σε πραγματικά δεδομένα
-                από το βιβλίο σας, με συνδέσμους στις πηγές.
-              </p>
-              <div className="flex flex-wrap justify-center gap-2">
-                {SUGGESTIONS.map((s) => (
-                  <Button key={s} type="button" variant="ai" size="sm" onClick={() => send(s)}>
+            <div className="flex flex-col items-start gap-3 md:h-full md:items-center md:justify-center md:text-center">
+              <p className="text-body text-ink">{a.emptyTitle}</p>
+              <div className="flex flex-wrap gap-2 md:justify-center">
+                {a.examples.map((s) => (
+                  <Button key={s} type="button" variant="ai" size="sm" disabled={busy} onClick={() => send(s)}>
                     {s}
                   </Button>
                 ))}
@@ -287,7 +319,8 @@ export function ChatPanel({
             {messages.map((m) => (
               <MessageView key={m.key} message={m} canReview={canReview} />
             ))}
-            <div ref={bottomRef} />
+            {/* Room for the sticky question box when the page follows it on a phone. */}
+            <div ref={bottomRef} className="max-md:scroll-mb-24" />
           </div>
         </div>
 
@@ -296,7 +329,12 @@ export function ChatPanel({
             e.preventDefault();
             void send(input);
           }}
-          className="flex gap-2"
+          className={cn(
+            "flex gap-2",
+            "max-md:sticky max-md:bottom-0 max-md:z-20 max-md:-mx-4 max-md:border-t max-md:border-hairline max-md:bg-canvas max-md:pt-2 max-md:pb-[calc(0.5rem+env(safe-area-inset-bottom))] max-md:pl-4",
+            // Editors have the «＋» button in the bottom-right corner.
+            canReview ? "max-md:pr-20" : "max-md:pr-4",
+          )}
         >
           <Input
             value={input}
@@ -304,7 +342,7 @@ export function ChatPanel({
             placeholder="Ρωτήστε κάτι για τα οικονομικά σας…"
             disabled={busy}
             maxLength={4000}
-            className="flex-1"
+            className="min-w-0 flex-1"
             aria-label="Ερώτηση προς τον βοηθό"
           />
           {busy ? (
@@ -318,6 +356,7 @@ export function ChatPanel({
           )}
         </form>
       </div>
+      {dialog}
     </div>
   );
 }

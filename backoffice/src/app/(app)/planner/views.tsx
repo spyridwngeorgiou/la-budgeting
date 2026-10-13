@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { EmptyState, Notice, Toolbar } from "@/components/ui";
+import { EmptyState, Notice, PageHeader, Toolbar } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { loadBoardTasks, loadPlannerPeople } from "@/lib/planner/queries";
 import { TaskBoard } from "@/components/planner/TaskBoard";
@@ -8,8 +8,9 @@ import { PlannerFilters } from "@/components/planner/PlannerNav";
 import type { plannerContext } from "./context";
 import { createTask, moveTask, setTaskStatus } from "./actions";
 
-// The body of /planner. The month calendar is its own page: /calendar
-// (../calendar/CalendarView.tsx).
+// The body of /planner, header included: «+ Εργασία» is the header's
+// action and needs the same projects and people as the board. The month
+// calendar is its own page: /calendar (../calendar/CalendarView.tsx).
 
 type Ctx = Awaited<ReturnType<typeof plannerContext>>;
 // Εργασίες: the kanban. Without ?project it spans every project of the
@@ -30,9 +31,9 @@ export async function BoardView({ ctx }: { ctx: Ctx }) {
   const peopleOptions = people.map((p) => ({ id: p.user_id, label: p.label }));
 
   return (
-    <div className="flex flex-col gap-4">
-      <Toolbar
-        label={el.planner.title}
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={el.planner.title}
         actions={
           caps.canWriteTasks && (
             <TaskFormModal
@@ -43,26 +44,29 @@ export async function BoardView({ ctx }: { ctx: Ctx }) {
             />
           )
         }
-      >
-        <Suspense>
-          <PlannerFilters projects={projectOptions} people={peopleOptions} meId={ctx.userId} showArchived />
-        </Suspense>
-      </Toolbar>
-      {!caps.canWriteTasks && <Notice size="small">{el.planner.readOnly}</Notice>}
-      {projects.length === 0 ? (
-        <EmptyState title={el.planner.noProjects} />
-      ) : (
-        <TaskBoard
-          tasks={tasks}
-          people={people}
-          projectLabels={filters.projectId ? undefined : ctx.projectLabels}
-          canWrite={caps.canWriteTasks && !filters.archived}
-          todayIso={ctx.today}
-          taskHref="/planner/task"
-          moveAction={moveTask}
-          setStatusAction={setTaskStatus}
-        />
-      )}
+      />
+      <div className="flex flex-col gap-3">
+        <Toolbar label={el.planner.title}>
+          <Suspense>
+            <PlannerFilters projects={projectOptions} people={peopleOptions} meId={ctx.userId} showArchived />
+          </Suspense>
+        </Toolbar>
+        {!caps.canWriteTasks && <Notice size="small">{el.planner.readOnly}</Notice>}
+        {projects.length === 0 ? (
+          <EmptyState title={el.planner.noProjects} />
+        ) : (
+          <TaskBoard
+            tasks={tasks}
+            people={people}
+            projectLabels={filters.projectId ? undefined : ctx.projectLabels}
+            canWrite={caps.canWriteTasks && !filters.archived}
+            todayIso={ctx.today}
+            taskHref="/planner/task"
+            moveAction={moveTask}
+            setStatusAction={setTaskStatus}
+          />
+        )}
+      </div>
     </div>
   );
 }

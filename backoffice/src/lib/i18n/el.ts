@@ -26,6 +26,7 @@ export const el = {
     pending: "Εκκρεμότητες",
     calendar: "Ημερολόγιο",
     capture: "Καταχώριση",
+    mainMenu: "Κύριο μενού",
   },
   // Section tabs (SubNav). Pages keep their own headings.
   tabs: {
@@ -129,6 +130,21 @@ export const el = {
     totalExpense: "Σύνολο Εξόδων",
     outstanding: "Εκκρεμή",
     netBalance: "Καθαρό Υπόλοιπο",
+    // The contact form (a drawer) and the list / contact pages.
+    add: "+ Νέα επαφή",
+    addTitle: "Νέα επαφή",
+    editTitle: "Επεξεργασία επαφής",
+    saved: "Η επαφή αποθηκεύτηκε.",
+    afmHint: "9 ψηφία",
+    back: "← Επαφές",
+    search: "Αναζήτηση με όνομα ή ΑΦΜ…",
+    clearSearch: "Καθαρισμός",
+    empty: "Δεν υπάρχουν ακόμα επαφές.",
+    emptyHint: "Προμηθευτές, πελάτες και συνεργάτες: πατήστε «+ Νέα επαφή» για την πρώτη.",
+    noMatch: "Καμία επαφή δεν ταιριάζει με την αναζήτηση.",
+    noTransactions: "Καμία κίνηση με αυτή την επαφή.",
+    noTransactionsHint: "Οι κινήσεις που συνδέονται με την επαφή εμφανίζονται εδώ.",
+    allTransactions: "όλες στις Κινήσεις →",
   },
   account: {
     name: "Λογαριασμός",
@@ -198,6 +214,8 @@ export const el = {
     newMilestone: "+ Ορόσημο",
     moveTo: "Μετακίνηση σε…",
     emptyColumn: "Καμία εργασία",
+    // «▸ όλες (N)» under the latest completed tasks.
+    allDone: "όλες",
     noProjects: "Δεν υπάρχουν έργα για προγραμματισμό.",
     readOnly: "Προβολή μόνο — δεν έχετε δικαίωμα επεξεργασίας.",
     showArchived: "Αρχειοθετημένες",
@@ -240,6 +258,7 @@ export const el = {
       kind: "Είδος",
       due: "Ημερομηνία",
       done: "Επιτεύχθηκε",
+      complete: "Ολοκλήρωση",
       reopen: "Επαναφορά",
       empty: "Δεν υπάρχουν ορόσημα.",
       deleteConfirm: "Οριστική διαγραφή του ορόσημου;",
@@ -251,6 +270,10 @@ export const el = {
       financial: "Οικονομικά",
       empty: "Τίποτα προγραμματισμένο αυτόν τον μήνα.",
       more: "ακόμα",
+      less: "λιγότερα",
+      all: "Όλα",
+      legend: "Υπόμνημα χρωμάτων",
+      overdue: "Εκπρόθεσμο",
     },
     source: {
       task: "Εργασία",
@@ -289,7 +312,8 @@ export const el = {
     untitled: "Χωρίς τίτλο",
     noConversations: "Καμία αποθηκευμένη συζήτηση.",
     deleteConversation: "Διαγραφή συζήτησης",
-    deleteConfirm: "Διαγραφή της συζήτησης; Δεν αναιρείται.",
+    // «Διαγραφή συζήτησης «…»; Δεν αναιρείται.»
+    cannotUndo: "Δεν αναιρείται.",
     deleted: "Η συζήτηση διαγράφηκε.",
     pendingHint: "Προτάσεις αλλαγών του Kansha AI· καμία δεν έχει εφαρμοστεί ακόμα. Ελέγξτε το πριν/μετά και εγκρίνετε ή απορρίψτε.",
     noPending: "Καμία εκκρεμής πρόταση αυτή τη στιγμή.",
@@ -297,6 +321,19 @@ export const el = {
     pendingItem: "Εκκρεμότητα",
     allPending: "όλες",
     history: "Ιστορικό αποφάσεων",
+  },
+  // ── Ρυθμίσεις (/settings) ────────────────────────────────────────────────
+  settings: {
+    sections: "Ενότητες ρυθμίσεων",
+    personal: "Προσωπικά",
+    business: "Στοιχεία επιχείρησης",
+    team: "Ομάδα",
+    ai: "Όριο δαπάνης AI",
+    tax: "Φορολογικός κίνδυνος παραστατικών",
+    capture: "Ανάλυση καταγραφής AI",
+    export: "Εξαγωγή δεδομένων",
+    aiOff:
+      "Ο βοηθός AI είναι ανενεργός σε αυτή την εγκατάσταση: λείπει το κλειδί AI στη ρύθμιση του διακομιστή. Ζητήστε την ενεργοποίηση από όποιον συντηρεί την εφαρμογή· το όριο ισχύει από εκεί και πέρα.",
   },
   // -- Partners & collaboration (0037/0038) ----------------------------------
   // Kept as their own sections (not folded into nav/auth) so parallel
@@ -783,7 +820,7 @@ export const el = {
       discardConfirm: "Απόρριψη του αρχείου; Καμία γραμμή του δεν θα καταχωριστεί.",
       undecidedOne: "γραμμή χωρίς απόφαση",
       undecidedMany: "γραμμές χωρίς απόφαση",
-      decideFirst: "αποφασίστε πρώτα για αυτές, πριν από την οριστικοποίηση.",
+      decideFirst: "αποφασίστε πριν από την οριστικοποίηση.",
       toWrite: "θα καταχωριστούν",
       toSkip: "παραλείπονται",
     },

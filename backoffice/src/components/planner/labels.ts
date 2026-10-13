@@ -35,6 +35,18 @@ export const SOURCE_PILL: Record<CalendarSource, string> = {
   loan: "border-warning text-ink",
 };
 
+// The calendar's colour key: the sources grouped by the bar they share
+// (read off SOURCE_PILL, so the key cannot drift from the pills), in the
+// order given.
+export function sourceFamilies(sources: readonly CalendarSource[]): { bar: string; label: string }[] {
+  const families = new Map<string, CalendarSource[]>();
+  for (const s of sources) {
+    const bar = SOURCE_PILL[s].split(" ").find((c) => c.startsWith("border-")) ?? "border-hairline";
+    families.set(bar, [...(families.get(bar) ?? []), s]);
+  }
+  return [...families].map(([bar, members]) => ({ bar, label: members.map((m) => el.planner.source[m]).join(" · ") }));
+}
+
 // «ΦΠΑ 09/2026», «Άνοιγμα · Έργο A», or just the task title.
 export function calendarItemLabel(item: CalendarItem): string {
   const sub = item.subkind ? (el.planner.subkind as Record<string, string>)[item.subkind] : undefined;

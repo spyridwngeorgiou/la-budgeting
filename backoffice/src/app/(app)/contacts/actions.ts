@@ -41,5 +41,7 @@ export async function updateContact(id: string, formData: FormData): Promise<Act
     const { error } = await supabase.from("contacts").update(fieldsFromForm(formData)).eq("id", id);
     if (error) throw error;
     revalidatePath("/contacts");
+    // The contact's own page, when it is edited from there.
+    revalidatePath(`/contacts/${id}`);
   });
 }

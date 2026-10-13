@@ -36,7 +36,8 @@ export default async function AssistantPage({
       .order("updated_at", { ascending: false })
       .limit(50),
   ]);
-  const showChanges = canReview && (panel === "changes" || (pending > 0 && panel !== "closed"));
+  // ?panel=history (the inbox's «Ιστορικό αποφάσεων →») also unfolds the decisions.
+  const showChanges = canReview && (panel === "changes" || panel === "history" || (pending > 0 && panel !== "closed"));
 
   return (
     <div className="flex flex-col gap-6 md:h-[calc(100dvh-4rem)]">
@@ -64,7 +65,10 @@ export default async function AssistantPage({
         {/* First in the DOM, so it sits above the chat below 1280px, where
             it never takes more than half the height (the history opened). */}
         {showChanges && (
-          <PendingChanges className="md:max-h-[45%] md:shrink-0 md:overflow-y-auto xl:order-2 xl:max-h-none xl:min-h-0" />
+          <PendingChanges
+            historyOpen={panel === "history"}
+            className="md:max-h-[45%] md:shrink-0 md:overflow-y-auto xl:order-2 xl:max-h-none xl:min-h-0"
+          />
         )}
         <ChatPanel
           className="md:min-h-0 md:flex-1 xl:order-1"

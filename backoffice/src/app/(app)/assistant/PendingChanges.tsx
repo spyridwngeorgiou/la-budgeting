@@ -17,7 +17,7 @@ const HISTORY_TONE = { approved: "positive", rejected: "neutral", failed: "negat
 // of the chat with the cards themselves; below that a compact list above
 // the chat, each card opening in a drawer (PendingList). The same cards also
 // appear inline in the chat.
-export async function PendingChanges({ className = "" }: { className?: string }) {
+export async function PendingChanges({ historyOpen = false, className = "" }: { historyOpen?: boolean; className?: string }) {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
   const [{ data: changes }, { data: history }] = await Promise.all([
@@ -67,7 +67,7 @@ export async function PendingChanges({ className = "" }: { className?: string })
       )}
 
       {history && history.length > 0 && (
-        <ReportHistory title={a.history} count={history.length} level={3} open={cards.length === 0}>
+        <ReportHistory title={a.history} count={history.length} level={3} open={historyOpen || cards.length === 0}>
           <SpecTable label={a.history} tableClassName="text-small">
             <thead>
               <tr>

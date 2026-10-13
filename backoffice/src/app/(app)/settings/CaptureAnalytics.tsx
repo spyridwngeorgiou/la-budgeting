@@ -1,18 +1,18 @@
 import { createClient } from "@/lib/supabase/server";
-import { SectionHeader, SpecTable, Td, Th, Tr } from "@/components/ui";
+import { SpecTable, Td, Th, Tr } from "@/components/ui";
 import { formatDuration, formatMoney } from "@/lib/format";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { ingestUnified } from "@/lib/ingest/flag";
 
 const FEATURE_LABELS: Record<string, string> = {
-  document_extraction: "Ανάγνωση Παραστατικού (φωτό)",
-  email_document_extraction: "Ανάγνωση Παραστατικού (email)",
-  email_nl_entry: "Καταχώρηση από email (κείμενο)",
-  nl_entry: "Καταχώρηση με Κείμενο/Φωνή",
+  document_extraction: "Ανάγνωση παραστατικού (φωτό)",
+  email_document_extraction: "Ανάγνωση παραστατικού (email)",
+  email_nl_entry: "Καταχώριση από email (κείμενο)",
+  nl_entry: "Καταχώριση με κείμενο/φωνή",
   assistant: "Kansha AI (chat)",
-  dashboard_summary: "Περίληψη Κέντρου Ελέγχου",
-  project_health: "Έλεγχος Υγείας Έργου",
-  revenue_plan_creation: "Δημιουργία Εκτίμησης Εσόδων",
+  dashboard_summary: "Περίληψη επισκόπησης",
+  project_health: "Έλεγχος υγείας έργου",
+  revenue_plan_creation: "Δημιουργία εκτίμησης εσόδων",
 };
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -65,7 +65,8 @@ function median(values: number[]): number | null {
 // users start using it for real. Reuses ai_usage (already logged on every
 // AI call) and ai_corrections (already logged on every human edit at
 // approval) rather than building new infrastructure -- only latency_ms and
-// draft_id (migration 0022) were new.
+// draft_id (migration 0022) were new. The body only: the settings page
+// shows it, for admins, behind «▸ Ανάλυση καταγραφής AI».
 export async function CaptureAnalytics() {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
@@ -77,13 +78,10 @@ export async function CaptureAnalytics() {
 
   if (!usage || usage.length === 0) {
     return (
-      <section className="flex w-full max-w-2xl flex-col gap-4">
-        <SectionHeader title="Ανάλυση Καταγραφής AI" />
-        <p className="text-body text-muted">
-          Καμία χρήση AI ακόμα. Αυτή η ενότητα γεμίζει μόλις αρχίσετε να χρησιμοποιείτε το Kansha
-          Operator για πραγματικές κινήσεις.
-        </p>
-      </section>
+      <p className="text-body text-muted">
+        Καμία χρήση AI ακόμα. Αυτή η ενότητα γεμίζει μόλις αρχίσετε να χρησιμοποιείτε το Kansha
+        Operator για πραγματικές κινήσεις.
+      </p>
     );
   }
 
@@ -109,18 +107,17 @@ export async function CaptureAnalytics() {
   };
 
   return (
-    <section className="flex w-full max-w-2xl flex-col gap-4">
-      <SectionHeader title="Ανάλυση Καταγραφής AI" />
+    <div className="flex flex-col gap-3">
       <p className="text-small text-muted">
         Ταχύτητα και ακρίβεια ανά λειτουργία AI, από τις πραγματικές κλήσεις.
       </p>
-      <SpecTable label="Ανάλυση Καταγραφής AI">
+      <SpecTable label="Ανάλυση καταγραφής AI">
         <thead>
           <tr>
             <Th>Λειτουργία</Th>
             <Th numeric>Κλήσεις</Th>
-            <Th numeric>Μέση Ταχύτητα</Th>
-            <Th numeric>Ποσοστό Επεξεργασίας</Th>
+            <Th numeric>Μέση ταχύτητα</Th>
+            <Th numeric>Ποσοστό επεξεργασίας</Th>
             <Th numeric>Κόστος</Th>
           </tr>
         </thead>
@@ -150,9 +147,9 @@ export async function CaptureAnalytics() {
         </tbody>
       </SpecTable>
       <p className="text-small text-muted">
-        «Ποσοστό Επεξεργασίας» = πόσες εγκεκριμένες κινήσεις χρειάστηκαν διόρθωση πριν καταχωρηθούν
+        «Ποσοστό επεξεργασίας» = πόσες εγκεκριμένες κινήσεις χρειάστηκαν διόρθωση πριν καταχωριστούν
         (μόνο για φωτό/κείμενο-φωνή).
       </p>
-    </section>
+    </div>
   );
 }

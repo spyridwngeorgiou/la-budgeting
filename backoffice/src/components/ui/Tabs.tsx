@@ -7,12 +7,14 @@ import { cn } from "./cn";
 
 // A section's tabs. Each tab is a real route; the active one is the longest
 // href that owns the current path (same rule as the legacy SubNav).
-// `query` is appended to every href (to carry filters across tabs).
+// `query` is appended to every href (to carry filters across tabs). When
+// they do not fit (a phone) the row scrolls sideways, with a fade on the
+// edge that has more tabs (scroll-frame, as on wide tables).
 export function Tabs({ tabs, label, query = "", className = "" }: { tabs: SubNavTab[]; label: string; query?: string; className?: string }) {
   const pathname = usePathname() ?? "";
   const active = activeTab(tabs, pathname);
   return (
-    <nav aria-label={label} className={cn("flex gap-1 overflow-x-auto border-b border-hairline", className)}>
+    <nav aria-label={label} className={cn("scroll-frame flex gap-1 border-b border-hairline", className)}>
       {tabs.map((t) => {
         const isActive = t.href === active;
         return (

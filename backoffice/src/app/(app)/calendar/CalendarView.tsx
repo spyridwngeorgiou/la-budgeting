@@ -75,6 +75,10 @@ export async function CalendarView({ ctx, params }: { ctx: Ctx; params: SearchPa
         </Suspense>
       </Toolbar>
       <div className="flex flex-wrap gap-2">
+        {/* No source picked = all of them; said with its own chip. */}
+        <FilterChip href={withParam(BASE, params, "src", null)} active={sources.length === 0} className="max-md:min-h-11">
+          {el.planner.calendar.all}
+        </FilterChip>
         {visibleSources.map((s) => (
           <FilterChip key={s} href={toggleSource(s)} active={sources.includes(s)} className="max-md:min-h-11">
             {el.planner.source[s]}
@@ -100,6 +104,7 @@ export async function CalendarView({ ctx, params }: { ctx: Ctx; params: SearchPa
           today: withParam(BASE, params, "month", null),
         }}
         hrefFor={calendarHrefFor}
+        sources={sources.length ? visibleSources.filter((s) => sources.includes(s)) : visibleSources}
       />
     </div>
   );

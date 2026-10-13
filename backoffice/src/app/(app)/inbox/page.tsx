@@ -149,7 +149,7 @@ export default async function InboxPage() {
         <SectionHeader
           title={sectionTitle("inbox-ai", "Προτάσεις AI", counts.changes + counts.proposals)}
           actions={
-            <Link href="/assistant?panel=changes" className="inline-flex min-h-8 items-center text-body text-muted hover:text-ink">
+            <Link href="/assistant?panel=history" className="inline-flex min-h-8 items-center text-body text-muted hover:text-ink">
               Ιστορικό αποφάσεων →
             </Link>
           }
