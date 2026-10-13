@@ -173,7 +173,7 @@ function MonthLine({ r, buffer }: { r: Row; buffer: number }) {
 }
 
 export function ScenarioPanel({
-  start, opening, buffer, personal, daily, flows, levers, delayable, construction,
+  start, opening, buffer, personal, daily, bankTarget, flows, levers, delayable, construction,
 }: {
   start: string;
   opening: { cash: number; bank: number };
@@ -181,6 +181,8 @@ export function ScenarioPanel({
   personal: { cash: number; bank: number };
   // Recorded daily spending: monthly average and heaviest month (null if none yet).
   daily: { months: string[]; average: { cash: number; bank: number }; highest: { cash: number; bank: number } } | null;
+  // What the bank wants in our accounts by a date before it lends (ίδια συμμετοχή).
+  bankTarget: { amount: number; month: string; label: string } | null;
   flows: Flow[];
   levers: Lever[];
   delayable: Flow[];
@@ -213,6 +215,7 @@ export function ScenarioPanel({
   const isStudy = (l: Lever) => l.kind === "forecast" && !l.group && !l.items;
   const isSeries = (l: Lever) => l.kind === "forecast" && !l.group && !!l.items;
   const isUncertain = (l: Lever) => l.kind === "inflow" && !l.certain;
+  const isSamino = (l: Lever) => l.kind === "inflow" && /Σαμινό/.test(l.label);
   const isContract = (l: Lever) => l.kind === "forecast" && l.group === "Προσύμφωνο Λαζαράκη";
   const off = (pick: (l: Lever) => boolean) => Object.fromEntries(levers.filter(pick).map((l) => [l.id, false]));
   const avgDaily = daily ? { personalCash: daily.average.cash, personalBank: daily.average.bank } : {};
@@ -223,6 +226,8 @@ export function ScenarioPanel({
     { label: "+ Ρυθμίσεις ιδιοκτητών", choices: { ...base, on: { ...base.on, ...ids(isStudy), ...ids(isSeries) } } },
     { label: "Χωρίς προσύμφωνο Λαζαράκη", choices: { ...base, on: { ...base.on, ...off(isContract) } } },
     ...(daily ? [{ label: `Καθημερινά: μέσος όρος ${daily.months.map((m) => monthLabel(m)).join("–")}`, choices: { ...base, ...avgDaily } }] : []),
+    { label: "Χωρίς δάνειο, χωρίς Σαμινό", choices: { ...base, on: { ...base.on, ...off(isSamino) } } },
+    { label: "Με δάνειο, χωρίς Σαμινό", choices: { ...base, on: { ...base.on, ...ids(isStudy), ...off(isSamino), "bank-loan": true } } },
     { label: "Έρχονται Άλμπερτ & Ψυρρή", choices: { ...base, on: { ...base.on, ...ids(isUncertain) } } },
     { label: "Με δάνειο & κατασκευή", choices: { ...base, on: { ...base.on, ...ids(isStudy), ...ids(isSeries), "bank-loan": true } } },
     { label: "Δύσκολο: όλα τα έξοδα, χωρίς αβέβαια έσοδα", choices: { ...base, ...worstDaily, on: { ...base.on, ...ids(isStudy), ...ids(isSeries) } } },
@@ -267,6 +272,18 @@ export function ScenarioPanel({
       </section>
 
       <Verdict result={result} cashFloor={Math.round(choices.personalCash * 3)} onTry={(t) => set({ transfer: t })} />
+      {bankTarget && (() => {
+        const row = result.rows.find((r) => r.month === bankTarget.month);
+        if (!row) return null;
+        const gap = bankTarget.amount - row.bank.closing;
+        return (
+          <div className={`-mt-3 rounded-lg border px-5 py-3 text-sm ${gap <= 0 ? "border-sage-strong bg-sage/40" : "border-amber-ink/30 bg-amber-bg"}`}>
+            <span className="font-medium">{gap <= 0 ? "✓" : "⚠"} {bankTarget.label}: </span>
+            τράπεζες στο τέλος {monthLong(bankTarget.month)} <span className="tabular-nums font-medium">{money(row.bank.closing)}</span> · στόχος {money(bankTarget.amount)}
+            {gap > 0 && <> · <span className="font-medium text-amber-ink">λείπουν {money(gap)}</span></>}
+          </div>
+        );
+      })()}
 
       {/* 1. Τρία νούμερα */}
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">

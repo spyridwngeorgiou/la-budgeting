@@ -18,6 +18,9 @@ const BIG_PAYMENT = 20000; // payments at least this large can be delayed
 const PERSONAL = { cash: 5245, bank: 2255 };
 // Recorded daily spending is complete from this month on (Καθημερινά).
 const DAILY_FROM = "2026-08-01";
+// The bank wants this much in our bank accounts by the end of this month
+// before it lends for Lazaraki (Κέντρο Ελέγχου 1Β of the workbook).
+const BANK_TARGET = { amount: 400000, month: "2026-11", label: "Στόχος τράπεζας για το δάνειο" };
 
 const poolOf = (kind: string | null | undefined): Pool => (kind === "cash" ? "cash" : "bank");
 // Works the bank loan pays for: without the loan they do not happen.
@@ -193,7 +196,7 @@ export default async function ScenariosPage() {
         <h1 className="text-xl font-semibold">Σενάρια</h1>
         <p className="text-sm text-ink-muted">Οι επόμενοι 12 μήνες. Αλλάξτε τις επιλογές στο τέλος της σελίδας — όλα ενημερώνονται αμέσως.</p>
       </div>
-      <ScenarioPanel start={start} opening={opening} buffer={buffer} personal={PERSONAL} daily={dailyStats} flows={flows} levers={levers} delayable={delayable} construction={construction} />
+      <ScenarioPanel start={start} opening={opening} buffer={buffer} personal={PERSONAL} daily={dailyStats} bankTarget={BANK_TARGET.month >= start ? BANK_TARGET : null} flows={flows} levers={levers} delayable={delayable} construction={construction} />
     </div>
   );
 }
