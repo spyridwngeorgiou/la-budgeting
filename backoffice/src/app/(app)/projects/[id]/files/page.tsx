@@ -3,11 +3,14 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { Card } from "@/components/ui";
+import { UploadButton } from "./UploadButton";
 
 // Αρχεία Έργου -- the project's files as the same folder tree they have in
 // Google Drive. Folders start closed and open on click (native <details>, no
 // client JS). Each file links to the live original in Drive, so it opens where
 // it is worked on. Duplicates (duplicate_of set) are counted, not listed.
+// Files uploaded here (source = upload) sit in the private "documents" bucket
+// and open through a short-lived signed link. ?q= filters by name.
 
 type FileRow = {
   id: string;
@@ -16,6 +19,7 @@ type FileRow = {
   mime_type: string | null;
   size_bytes: number | null;
   url: string | null;
+  storage_path?: string | null;
   file_modified_at: string | null;
   duplicate_of: string | null;
 };
@@ -120,15 +124,16 @@ async function localInventory(code: string): Promise<{ files: FileRow[]; folders
   }
 }
 
-export default async function ProjectFilesPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjectFilesPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ q?: string }> }) {
   const { id } = await params;
+  const q = ((await searchParams).q ?? "").trim();
   const supabase = await createClient();
 
   const [{ data: project }, { data: files, error: dbError }] = await Promise.all([
-    supabase.from("projects").select("code, display_name").eq("id", id).maybeSingle(),
+    supabase.from("projects").select("code, display_name, org_id").eq("id", id).maybeSingle(),
     supabase
       .from("project_files")
-      .select("id, folder, title, mime_type, size_bytes, url, file_modified_at, duplicate_of")
+      .select("id, folder, title, mime_type, size_bytes, url, storage_path, file_modified_at, duplicate_of")
       .eq("project_id", id),
   ]);
   if (!project) notFound();
@@ -136,7 +141,15 @@ export default async function ProjectFilesPage({ params }: { params: Promise<{ i
   const local = dbError && project.code ? await localInventory(project.code) : null;
   const error = local ? null : dbError;
   const all = (local?.files ?? files ?? []) as FileRow[];
-  const unique = all.filter((f) => !f.duplicate_of);
+  // Uploaded files: sign their links (1 hour) so they open from the list.
+  const toSign = all.filter((f) => !f.url && f.storage_path).map((f) => f.storage_path!);
+  if (toSign.length) {
+    const { data: signed } = await supabase.storage.from("documents").createSignedUrls(toSign, 3600);
+    const byPath = new Map((signed ?? []).map((x) => [x.path, x.signedUrl]));
+    for (const f of all) if (!f.url && f.storage_path) f.url = byPath.get(f.storage_path) ?? null;
+  }
+  const norm = (x: string) => x.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const unique = all.filter((f) => !f.duplicate_of && (!q || norm(f.title).includes(norm(q))));
   const duplicates = all.length - unique.length;
   const tree = buildTree(unique, local?.folders ?? []);
 
@@ -147,7 +160,15 @@ export default async function ProjectFilesPage({ params }: { params: Promise<{ i
           ← {project.display_name}
         </Link>
         <h1 className="text-xl font-semibold">Αρχεία</h1>
-        <p className="text-sm text-ink-muted">Πατήστε έναν φάκελο για να ανοίξει. Τα αρχεία ανοίγουν στο Google Drive.</p>
+        <p className="text-sm text-ink-muted">{unique.length} {unique.length === 1 ? "έγγραφο" : "έγγραφα"}{q ? ` για «${q}»` : ""}. Πατήστε έναν φάκελο για να ανοίξει.</p>
+      </div>
+
+      <div className="flex flex-wrap items-start gap-3">
+        <form className="flex min-w-0 flex-1 gap-2">
+          <input name="q" defaultValue={q} placeholder="Αναζήτηση εγγράφου…" className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-1.5 text-sm" />
+          {q && <Link href={`/projects/${id}/files`} className="self-center text-sm text-ink-muted hover:underline">Καθαρισμός</Link>}
+        </form>
+        <UploadButton projectId={id} orgId={project.org_id} />
       </div>
 
       {error && (
@@ -157,7 +178,7 @@ export default async function ProjectFilesPage({ params }: { params: Promise<{ i
       )}
 
       {!error && unique.length === 0 && (
-        <p className="p-6 text-center text-sm text-ink-muted">Δεν έχουν καταχωρηθεί ακόμα αρχεία για αυτό το έργο.</p>
+        <p className="p-6 text-center text-sm text-ink-muted">{q ? "Κανένα έγγραφο με αυτό το όνομα." : "Δεν έχουν καταχωρηθεί ακόμα αρχεία για αυτό το έργο."}</p>
       )}
 
       {unique.length > 0 && (
