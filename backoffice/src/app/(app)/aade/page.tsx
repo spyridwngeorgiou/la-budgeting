@@ -5,12 +5,13 @@ import { formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { Badge } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
-import { uploadAadeFile } from "./actions";
+import { syncMydataNow, uploadAadeFile } from "./actions";
 
 const STATUS_LABEL = { draft: "Πρόχειρο", committed: "Ολοκληρώθηκε", discarded: "Απορρίφθηκε" } as const;
 const STATUS_TONE = { draft: "amber", committed: "green", discarded: "neutral" } as const;
 
-export default async function AadePage() {
+export default async function AadePage({ searchParams }: { searchParams: Promise<{ mydata?: string }> }) {
+  const { mydata } = await searchParams;
   const supabase = await createClient();
 
   // Independent of each other -- run in parallel rather than one after the
@@ -33,6 +34,16 @@ export default async function AadePage() {
           — χρειάζεται για να καθοριστεί σωστά η κατεύθυνση (έσοδο/έξοδο) κάθε κίνησης.
         </div>
       )}
+
+      {/* Αυτόματη λήψη: κάθε πρωί από τον server, ή τώρα με το κουμπί. Τίποτα δεν περνά στις κινήσεις χωρίς έλεγχο. */}
+      <form action={syncMydataNow} className="flex flex-wrap items-center gap-3 rounded border border-line bg-surface p-4">
+        <div className="min-w-0 flex-1 text-sm">
+          <div className="font-medium">Αυτόματη λήψη από myDATA</div>
+          <div className="text-ink-muted">Κάθε πρωί φέρνει τα νέα τιμολόγια (ληφθέντα & εκδοθέντα) των τελευταίων 45 ημερών. Ό,τι υπάρχει ήδη δεν ξαναμπαίνει.</div>
+          {mydata === "uptodate" && <div className="mt-1 text-sage-ink">✓ Όλα ενημερωμένα — κανένα νέο παραστατικό.</div>}
+        </div>
+        <SubmitButton pendingLabel="Λήψη…">Λήψη τώρα</SubmitButton>
+      </form>
 
       <form action={uploadAadeFile} className="flex items-center gap-2 rounded border border-line p-4">
         <input type="file" name="file" accept=".xlsx" required className="text-sm" />

@@ -252,3 +252,21 @@ export async function commitBatch(batchId: string) {
   revalidatePath(`/aade/${batchId}`);
   revalidatePath("/transactions");
 }
+
+// «Λήψη από myDATA τώρα»: the same daily sync, on demand, as the signed-in
+// user (RLS applies). Opens the new batch for review, or returns to the list.
+export async function syncMydataNow() {
+  const { mydataCredentials, syncMydata } = await import("@/lib/aade/mydataApi");
+  const creds = mydataCredentials();
+  if (!creds) throw new Error("Λείπουν τα στοιχεία σύνδεσης myDATA στον server.");
+  const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
+  const { data: org } = await supabase.from("orgs").select("id, own_afm").eq("id", orgId).single();
+  if (!org?.own_afm || org.own_afm === "000000000") throw new Error("Ορίστε πρώτα το ΑΦΜ της επιχείρησης.");
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const result = await syncMydata(supabase, org, creds, { userId: session?.user.id });
+  revalidatePath("/aade");
+  redirect(result.batchId ? `/aade/${result.batchId}` : "/aade?mydata=uptodate");
+}

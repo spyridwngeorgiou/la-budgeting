@@ -25,6 +25,7 @@ const NAV_ITEMS: { href: string; label: string; ai?: boolean }[] = [
   { href: "/projects", label: el.nav.projects },
   { href: "/contacts", label: el.nav.contacts },
   { href: "/accounts", label: el.nav.accounts },
+  { href: "/aade", label: "myDATA (ΑΑΔΕ)" },
   { href: "/vat", label: el.nav.vat },
   { href: "/withholding", label: el.nav.withholding },
   { href: "/installments", label: el.nav.installments },
