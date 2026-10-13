@@ -98,11 +98,11 @@
   --text-numeral: 1.75rem;
   --text-numeral--line-height: 1;
   --text-numeral--font-weight: 300;
-  --text-title: 1.875rem;
-  --text-title--line-height: 1.2;
+  --text-title: 1.5rem;
+  --text-title--line-height: 1.25;
   --text-title--font-weight: 400;
-  --text-section: 1.25rem;
-  --text-section--line-height: 1.3;
+  --text-section: 1.0625rem;
+  --text-section--line-height: 1.35;
   --text-section--font-weight: 400;
   --text-lead: 1.0625rem;
   --text-lead--line-height: 1.5;

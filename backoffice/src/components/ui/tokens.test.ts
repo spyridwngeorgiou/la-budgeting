@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { color, contrast, CONTRAST_PAIRS, cssName, type ColorToken } from "./tokens";
+import { color, contrast, CONTRAST_PAIRS, cssName, type, type ColorToken } from "./tokens";
 
 // The palette passes WCAG where it is used, and tokens.ts (charts, /design)
 // says the same as globals.css (everything else).
@@ -34,6 +34,19 @@ describe("tokens.ts and globals.css agree", () => {
   it.each(Object.keys(color) as ColorToken[])("%s", (token) => {
     const norm = (v: string | undefined) => v?.replace(/\s/g, "").toLowerCase();
     expect(norm(cssVars.get(cssName(token))), `--color-${cssName(token)}`).toBe(norm(color[token]));
+  });
+
+  it.each(Object.keys(type) as (keyof typeof type)[])("type %s", (name) => {
+    const [px, lh, weight] = type[name];
+    const decl = (suffix: string) => css.match(new RegExp(`--text-${name}${suffix}:\s*([^;]+);`))?.[1].trim();
+    expect(decl(""), `--text-${name}`).toBe(`${px / 16}rem`);
+    expect(Number(decl("--line-height")), `--text-${name}--line-height`).toBe(lh);
+    if (weight !== 400) expect(Number(decl("--font-weight")), `--text-${name}--font-weight`).toBe(weight);
+  });
+
+  it("page title 24px, section heading 17px", () => {
+    expect(type.title[0]).toBe(24);
+    expect(type.section[0]).toBe(17);
   });
 
   it("ink-faint is gone as a colour of its own (it failed contrast)", () => {

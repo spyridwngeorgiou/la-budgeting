@@ -1,37 +1,52 @@
-// The Επισκόπηση (/dashboard) model, in the 7/10 order of the workbook's
-// «Κέντρο Ελέγχου» / «Πληρωμές»: the four Ρευστότητα figures, the
-// obligations due in the next 30 days, the project portfolio and the one
-// ΦΠΑ line. The page passes raw rows from its queries; labels, formatting
+// The Επισκόπηση (/dashboard) model, in the order of the workbook's
+// «Κέντρο Ελέγχου» / «Πληρωμές»: Ρευστότητα per account, the four Θέση ΦΠΑ
+// figures, the obligations due in the next 30 days and the project portfolio. The page passes raw rows from its queries; labels, formatting
 // and hrefs live here. Pure, so vitest covers it.
 import { figureLength, formatDate, formatMoney } from "@/lib/format";
 import { addDays, monthKeyOf, monthLabel } from "@/lib/dates";
 import { PNL_LINES } from "@/lib/finance/pnl";
 import { portfolioRows, type PortfolioRollupRow } from "@/lib/finance/portfolio";
 
+// One Ρευστότητα figure: a liquid account, or «Σύνολο ρευστών» (total).
 export interface GlanceFigure {
-  key: "cash" | "lowest" | "pnl" | "vat";
+  key: string;
   label: string;
   value: string;
-  sub: string;
   href: string;
   negative: boolean;
+  total: boolean;
   // 1 = short figure (full size), 2 = medium, 3 = long (millions): the page
-  // steps the font down so a figure never overflows its quarter.
+  // steps the font down so a figure never overflows its cell.
   length: 1 | 2 | 3;
 }
 
+// The small line under the figures: the 12-month low and the year's result.
+export interface GlanceLine {
+  label: string;
+  value: string;
+  sub: string | null;
+  href: string;
+  negative: boolean;
+}
+
+export interface LiquidAccountRow {
+  account_id: string | null;
+  name: string | null;
+  current_balance: number | string | null;
+  // false: closed. Shown only while it still holds money.
+  active?: boolean;
+}
+
 export interface OverviewInputs {
-  cashCorporate: number;
-  cashPersonal: number;
+  // Liquid accounts (v_account_balances where is_liquid), in display order.
+  // Same balance rule as v_liquidity, so the total is the same number.
+  accounts: LiquidAccountRow[];
   // The lowest month of the 12-month cash_forecast(), or null without one.
   lowest: { month: string; closing_balance: number | string | null; below_buffer: boolean | null } | null;
   // That month's single largest outflow (cash_forecast_items): why it is low.
   lowestDriver?: { label: string | null; amount: number | string | null } | null;
   year: number;
   pnlRows: { line: string; amount: number | string | null }[];
-  // The next ΦΠΑ deadline (vatNext): one figure, so the page never shows a
-  // «0,00 €» here and a different period elsewhere.
-  vat: VatNext;
 }
 
 const num = (v: number | string | null | undefined) => {
@@ -51,8 +66,24 @@ export function pnlResult(rows: OverviewInputs["pnlRows"]): number {
 // «1.250,00 €» is 10 characters, «12.345,67 €» 11, «-1.234.567,89 €» 15.
 export { figureLength };
 
-export function overviewGlance(i: OverviewInputs): GlanceFigure[] {
-  const cash = i.cashCorporate + i.cashPersonal;
+// As in late September: one figure per liquid account (each the link to its
+// transactions) and «Σύνολο ρευστών»; the 12-month low and the year's result
+// as one small line under them.
+export function overviewGlance(i: OverviewInputs): { figures: GlanceFigure[]; lowest: GlanceLine; pnl: GlanceLine } {
+  const shown = i.accounts.filter((a) => a.account_id && (a.active !== false || round2(num(a.current_balance)) !== 0));
+  const total = round2(i.accounts.reduce((s, a) => s + num(a.current_balance), 0));
+  const figures: Omit<GlanceFigure, "length">[] = [
+    ...shown.map((a) => ({
+      key: a.account_id!,
+      label: a.name?.trim() || "—",
+      value: formatMoney(num(a.current_balance)),
+      href: `/transactions?account_id=${a.account_id}`,
+      negative: num(a.current_balance) < 0,
+      total: false,
+    })),
+    { key: "total", label: "Σύνολο ρευστών", value: formatMoney(total), href: "/accounts", negative: total < 0, total: true },
+  ];
+
   const result = pnlResult(i.pnlRows);
   const lowestBalance = i.lowest ? num(i.lowest.closing_balance) : null;
   const driver =
@@ -60,44 +91,24 @@ export function overviewGlance(i: OverviewInputs): GlanceFigure[] {
       ? `κυρίως: ${i.lowestDriver.label} −${formatMoney(num(i.lowestDriver.amount))}`
       : null;
 
-  const figures: Omit<GlanceFigure, "length">[] = [
-    {
-      key: "cash",
-      label: "Ταμείο τώρα",
-      value: formatMoney(cash),
-      sub: `Εταιρικό ${formatMoney(i.cashCorporate)} · Προσωπικό ${formatMoney(i.cashPersonal)}`,
-      href: "/accounts",
-      negative: cash < 0,
-    },
-    {
-      key: "lowest",
+  return {
+    figures: figures.map((f) => ({ ...f, length: figureLength(f.value) })),
+    lowest: {
       label: "Χαμηλότερο σημείο 12μ",
       value: lowestBalance === null ? "—" : formatMoney(lowestBalance),
-      sub: i.lowest
-        ? [monthLabel(monthKeyOf(i.lowest.month)), driver].filter(Boolean).join(" · ")
-        : "Χωρίς πρόβλεψη",
+      sub: i.lowest ? [monthLabel(monthKeyOf(i.lowest.month)), driver].filter(Boolean).join(" · ") : "χωρίς πρόβλεψη",
       // Straight to the low month's breakdown in Ταμείο & Πρόβλεψη.
       href: i.lowest ? `/reports/cash?month=${monthKeyOf(i.lowest.month)}` : "/reports/cash",
       negative: Boolean(i.lowest?.below_buffer) || (lowestBalance ?? 0) < 0,
     },
-    {
-      key: "pnl",
-      label: "Αποτέλεσμα έτους ως σήμερα",
+    pnl: {
+      label: `Αποτέλεσμα ${i.year} ως σήμερα`,
       value: formatMoney(result),
-      sub: `1 Ιανουαρίου – σήμερα, ${i.year}`,
+      sub: null,
       href: "/reports/pnl",
       negative: result < 0,
     },
-    {
-      key: "vat",
-      label: "ΦΠΑ · επόμενη υποβολή",
-      value: formatMoney(i.vat.payable),
-      sub: i.vat.sub,
-      href: "/reports/vat",
-      negative: false,
-    },
-  ];
-  return figures.map((f) => ({ ...f, length: figureLength(f.value) }));
+  };
 }
 
 // ── Προσεχείς υποχρεώσεις: pending/scheduled rows due in the next 30 days ──
@@ -205,6 +216,8 @@ export interface VatPositionRow {
   payable_after_credit: number | string | null;
   credit_balance?: number | string | null;
   filing_deadline?: string | null;
+  vat_income?: number | string | null;
+  vat_expense?: number | string | null;
 }
 
 export interface VatNext {
@@ -229,4 +242,31 @@ export function vatNext(rows: VatPositionRow[], filed: Set<string>, today: strin
     .sort((a, b) => b.period_start!.localeCompare(a.period_start!))[0];
   const credit = Math.abs(num(latest?.credit_balance));
   return { payable: 0, sub: credit > 0 ? `Καμία προθεσμία · πιστωτικό ${formatMoney(credit)}` : "Καμία προθεσμία σε εκκρεμότητα" };
+}
+
+// ── Θέση ΦΠΑ: the four September figures ──
+export interface VatPosition {
+  // Summed over every period so far: real per-period flows, an honest total.
+  output: number;
+  input: number;
+  // As of the latest period: the running balance already carries every
+  // earlier period forward, so summing these would double count.
+  credit: number;
+  owed: number;
+  // The earliest period, for the «σύνολο» links; null with no periods.
+  from: string | null;
+}
+
+// `rows`: v_vat_position up to today, any order. null with no rows.
+export function vatPosition(rows: VatPositionRow[]): VatPosition | null {
+  const periods = rows.filter((r) => r.period_start).sort((a, b) => a.period_start!.localeCompare(b.period_start!));
+  if (periods.length === 0) return null;
+  const latest = periods[periods.length - 1];
+  return {
+    output: round2(periods.reduce((s, r) => s + num(r.vat_income), 0)),
+    input: round2(periods.reduce((s, r) => s + num(r.vat_expense), 0)),
+    credit: round2(Math.abs(num(latest.credit_balance))),
+    owed: round2(num(latest.payable_after_credit)),
+    from: periods[0].period_start,
+  };
 }

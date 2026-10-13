@@ -194,6 +194,10 @@ async function browserSmoke(base, list, jar, { gapMs }) {
           height: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, ...[...document.querySelectorAll("main")].map((m) => m.scrollHeight)),
         }));
         pg.off("pageerror", onErr);
+        // SHOTS=<dir>: a full-page screenshot per page and width, to send the owner.
+        if (process.env.SHOTS && status < 500) {
+          await pg.screenshot({ path: join(process.env.SHOTS, `${tag}${p.replace(/[^a-z0-9]+/gi, "_")}.png`), fullPage: true });
+        }
         // A 503 that survives the retries is the Workers Free CPU limit, not a
         // code error: reported, but it doesn't fail the release.
         if (status >= 500) {

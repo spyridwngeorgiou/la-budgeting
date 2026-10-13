@@ -60,8 +60,9 @@ export const type = {
   figure: [36, 1.1, 300],
   "figure-sm": [24, 1.2, 300],
   numeral: [28, 1, 300],
-  title: [30, 1.2, 400],
-  section: [20, 1.3, 400],
+  // Tighter since 13/10/2026 (was 30 / 20): the late-September density.
+  title: [24, 1.25, 400],
+  section: [17, 1.35, 400],
   lead: [17, 1.5, 400],
   body: [15, 1.5, 400],
   // Form fields on phones only (iOS zooms into anything under 16px).

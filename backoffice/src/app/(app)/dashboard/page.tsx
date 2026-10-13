@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/supabase/access";
 import { formatDate, formatMoney, formatSignedMoney, moneyOrDash } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { figureFit, GlancePanel, LINK_CLASS, PageHeader, SectionHeader, SpecTable, Td, Th, Tr } from "@/components/ui";
+import { figureFit, GlancePanel, LINK_CLASS, PageHeader, SectionHeader, SpecTable, Stat, StatRow, Td, Th, Tr } from "@/components/ui";
 import { aiEnabled } from "@/lib/ai/client";
 import { rankAttention } from "@/lib/dashboard/attention";
 import { DashboardSummary } from "./DashboardSummary";
@@ -16,13 +16,15 @@ import {
   upcomingObligations,
   UPCOMING_DAYS,
   vatNext,
+  vatPosition,
   type GlanceFigure,
+  type GlanceLine,
 } from "@/lib/dashboard/overview";
 import { portfolioRows } from "@/lib/finance/portfolio";
 import { loadPendingCaptures } from "@/lib/ingest/pendingCaptures";
 
-// Επισκόπηση (the workbook's «Κέντρο Ελέγχου» and «Πληρωμές»): the
-// Ρευστότητα figures with the next ΦΠΑ deadline, then what needs attention
+// Επισκόπηση (the workbook's «Κέντρο Ελέγχου» and «Πληρωμές»): Ρευστότητα
+// per account and the Θέση ΦΠΑ as in late September, then what needs attention
 // beside what falls due in the next 30 days, the project portfolio, the AI. Every figure
 // reads from the SQL views (0011_views.sql and later), never from a
 // hand-maintained rollup, so it can never drift from the ledger.
@@ -56,7 +58,8 @@ export default async function DashboardPage() {
     { count: missingProjectOrAccount },
     pendingCaptures,
     { count: pendingChanges },
-    { data: liquidity },
+    { data: liquidAccounts },
+    { data: accountRows },
     { data: forecast },
     { data: pnlRows },
   ] = await Promise.all([
@@ -70,7 +73,7 @@ export default async function DashboardPage() {
       .order("code"),
     supabase
       .from("v_vat_position")
-      .select("period_start, payable_after_credit, credit_balance, filing_deadline")
+      .select("period_start, payable_after_credit, credit_balance, filing_deadline, vat_income, vat_expense")
       .eq("org_id", orgId)
       .lte("period_start", todayIso)
       .order("period_start", { ascending: false }),
@@ -91,16 +94,23 @@ export default async function DashboardPage() {
     supabase.from("v_qc_missing_project_or_account").select("transaction_id", { count: "exact", head: true }).eq("org_id", orgId),
     loadPendingCaptures(supabase, orgId),
     supabase.from("agent_changes").select("id", { count: "exact", head: true }).eq("org_id", orgId).in("status", ["pending", "conflict"]),
-    // Liquid cash (v_liquidity, 0066) and the 12-month forecast from the same
-    // cash_forecast() /reports/cash shows -- never re-derived here.
-    supabase.from("v_liquidity").select("owner_scope, balance").eq("org_id", orgId),
+    // Liquid accounts, same balance rule as v_liquidity (0066), in the order
+    // /accounts lists them; is_active only to hide a closed, empty one. The
+    // 12-month forecast from the same cash_forecast() /reports/cash shows.
+    supabase
+      .from("v_account_balances")
+      .select("account_id, name, current_balance")
+      .eq("org_id", orgId)
+      .eq("is_liquid", true)
+      .order("owner_scope")
+      .order("name"),
+    supabase.from("accounts").select("id, is_active").eq("org_id", orgId),
     supabase.rpc("cash_forecast", { p_org: orgId, p_months: 12 }),
     // Result figure: the year so far, same function and defaults as /reports/pnl.
     supabase.rpc("pnl_summary", { p_org: orgId, p_from: `${todayIso.slice(0, 4)}-01-01`, p_to: todayIso }),
   ]);
 
-  const cashOf = (scope: "corporate" | "personal") =>
-    (liquidity ?? []).filter((l) => l.owner_scope === scope).reduce((sum, l) => sum + Number(l.balance ?? 0), 0);
+  const inactive = new Set((accountRows ?? []).filter((a) => a.is_active === false).map((a) => a.id));
   const lowest = (forecast ?? []).reduce<NonNullable<typeof forecast>[number] | null>(
     (min, m) => (!min || Number(m.closing_balance) < Number(min.closing_balance) ? m : min),
     null,
@@ -162,14 +172,14 @@ export default async function DashboardPage() {
   const inboxCount = pendingCaptures.count + (pendingChanges ?? 0);
 
   const glance = overviewGlance({
-    cashCorporate: cashOf("corporate"),
-    cashPersonal: cashOf("personal"),
+    accounts: (liquidAccounts ?? []).map((a) => ({ ...a, active: !inactive.has(a.account_id ?? "") })),
     lowest,
     lowestDriver: lowestItems?.[0] ?? null,
     year: Number(todayIso.slice(0, 4)),
     pnlRows: pnlRows ?? [],
-    vat: vatNext(vat ?? [], filedPeriods, todayIso),
   });
+  const vatPos = vatPosition(vat ?? []);
+  const vatDue = vatNext(vat ?? [], filedPeriods, todayIso);
 
   // The single worklist, ranked by severity and capped
   // (lib/dashboard/attention.ts), so a zero-item list is a real, trustworthy
@@ -233,25 +243,57 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-6">
       <PageHeader eyebrow={longDateLabel(todayIso)} title={el.nav.dashboard} />
 
-      {/* 1 · Ρευστότητα: the workbook's «Κέντρο Ελέγχου» figures, ΦΠΑ included */}
+      {/* 1 · Ρευστότητα: one figure per liquid account and the total, as in late September */}
       <GlancePanel
         title="Ρευστότητα"
         footer={
-          <span className="text-panel-muted">
-            Το ταμείο μετρά μόνο ρευστούς λογαριασμούς· χρυσός και crypto εμφανίζονται στην Καθαρή θέση.
+          <span className="flex flex-wrap gap-x-6 gap-y-1 text-panel-muted">
+            <GlanceLink line={glance.lowest} />
+            <GlanceLink line={glance.pnl} />
           </span>
         }
       >
-        <div className="grid grid-cols-2 gap-x-4 gap-y-6 xl:grid-cols-4 xl:gap-x-0">
-          {glance.map((f) => (
+        <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 xl:grid-cols-4">
+          {glance.figures.map((f) => (
             <Figure key={f.key} figure={f} />
           ))}
         </div>
       </GlancePanel>
 
+      {/* 2 · Θέση ΦΠΑ: the four September figures on one row */}
+      <section aria-labelledby="vat" className="flex flex-col">
+        <SectionHeader
+          title={<span id="vat">Θέση ΦΠΑ</span>}
+          actions={
+            <Link href="/reports/vat" className={`inline-flex min-h-11 items-center text-body ${LINK_CLASS}`}>
+              Ανά περίοδο →
+            </Link>
+          }
+        />
+        {vatPos ? (
+          <>
+            <StatRow className="border-t-0 py-3">
+              <Link href={`/transactions?direction=income&from=${vatPos.from}`} className="group min-h-11 hover:bg-hover">
+                <Stat label="ΦΠΑ εκροών (σύνολο)" value={formatMoney(vatPos.output)} />
+              </Link>
+              <Link href={`/transactions?direction=expense&from=${vatPos.from}`} className="group min-h-11 hover:bg-hover">
+                <Stat label="ΦΠΑ εισροών (σύνολο)" value={formatMoney(vatPos.input)} />
+              </Link>
+              <Stat label="Τρέχον πιστωτικό" value={formatMoney(vatPos.credit)} />
+              <Stat label="Οφειλόμενο τώρα" value={formatMoney(vatPos.owed)} />
+            </StatRow>
+            <p className="pt-2 text-small text-muted">
+              Επόμενη υποβολή: {formatMoney(vatDue.payable)} · {vatDue.sub}. Εκροές/εισροές: όλες οι περίοδοι· πιστωτικό και οφειλόμενο: η τρέχουσα θέση.
+            </p>
+          </>
+        ) : (
+          <p className="py-2 text-body text-muted">Δεν υπάρχουν ακόμα κινήσεις με ΦΠΑ.</p>
+        )}
+      </section>
+
       {/* What to act on, side by side on a wide screen: the worklist and what falls due. */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        {/* 2 · Χρειάζεται προσοχή */}
+        {/* 3 · Χρειάζεται προσοχή */}
         <section className="flex min-w-0 flex-col">
           <SectionHeader title="Χρειάζεται Προσοχή" />
           {attention.shown.length === 0 ? (
@@ -288,7 +330,7 @@ export default async function DashboardPage() {
           )}
         </section>
 
-        {/* 3 · Προσεχείς υποχρεώσεις */}
+        {/* 4 · Προσεχείς υποχρεώσεις */}
         <section aria-labelledby="upcoming" className="flex min-w-0 flex-col">
           <SectionHeader
             title={<span id="upcoming">Προσεχείς Υποχρεώσεις · {UPCOMING_DAYS} ημέρες</span>}
@@ -337,7 +379,7 @@ export default async function DashboardPage() {
 
       </div>
 
-      {/* 4 · Χαρτοφυλάκιο έργων */}
+      {/* 5 · Χαρτοφυλάκιο έργων */}
       <section aria-labelledby="portfolio" className="flex flex-col gap-2">
         <SectionHeader
           title={<span id="portfolio">Χαρτοφυλάκιο Έργων</span>}
@@ -404,7 +446,7 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      {/* 5 · Kansha AI */}
+      {/* 6 · Kansha AI */}
       {aiEnabled() && (
         <section aria-label={el.nav.assistant} className="flex flex-col gap-3">
           <AskAssistantCard />
@@ -415,23 +457,30 @@ export default async function DashboardPage() {
   );
 }
 
-// One Ρευστότητα figure: eyebrow (wraps), big light tabular value, a muted
-// line; the whole figure is the link to where the number comes from.
+// One Ρευστότητα figure: the account name (wraps), a light tabular value;
+// the whole figure is the link to its transactions. The total reads heavier.
 function Figure({ figure }: { figure: GlanceFigure }) {
   return (
-    <Link
-      href={figure.href}
-      className="group @container flex min-h-11 min-w-0 flex-col gap-1.5 focus-visible:outline-panel-ink xl:border-l xl:border-panel-hairline xl:px-6 xl:first:border-l-0 xl:first:pl-0"
-    >
-      <span className="eyebrow break-words text-panel-muted transition-colors group-hover:text-panel-ink">{figure.label}</span>
-      <span className={`num font-light text-panel-ink [overflow-wrap:anywhere] ${figureFit(figure.length)}`}>
+    <Link href={figure.href} className="group @container flex min-h-11 min-w-0 flex-col gap-1 focus-visible:outline-panel-ink">
+      <span className={`eyebrow break-words transition-colors group-hover:text-panel-ink ${figure.total ? "text-panel-ink" : "text-panel-muted"}`}>
+        {figure.label}
+      </span>
+      <span className={`num text-panel-ink [overflow-wrap:anywhere] ${figure.total ? "font-normal" : "font-light"} ${figureFit(figure.length, "md")}`}>
         {figure.value}
       </span>
-      <span className="text-small break-words text-panel-muted">
-        {figure.sub}
-        <span aria-hidden="true" className="ml-1.5 inline-block transition-transform group-hover:translate-x-0.5 group-hover:text-panel-ink">
-          →
-        </span>
+    </Link>
+  );
+}
+
+// «Χαμηλότερο σημείο 12μ: … · Μάρτιος 2027» -- one link in the small line.
+function GlanceLink({ line }: { line: GlanceLine }) {
+  return (
+    <Link href={line.href} className="group inline-flex min-h-11 flex-wrap items-center gap-x-1.5 hover:text-panel-ink">
+      <span>{line.label}:</span>
+      <span className="num text-panel-ink">{line.value}</span>
+      {line.sub && <span>· {line.sub}</span>}
+      <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">
+        →
       </span>
     </Link>
   );

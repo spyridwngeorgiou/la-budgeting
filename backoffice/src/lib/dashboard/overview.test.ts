@@ -7,14 +7,17 @@ import {
   pnlResult,
   upcomingObligations,
   vatNext,
+  vatPosition,
   type DashboardRollupRow,
   type OpenTxRow,
   type OverviewInputs,
 } from "./overview";
 
 const base: OverviewInputs = {
-  cashCorporate: 1000,
-  cashPersonal: 250,
+  accounts: [
+    { account_id: "a1", name: "Eurobank", current_balance: "1000" },
+    { account_id: "a2", name: "Ταμείο", current_balance: 250 },
+  ],
   lowest: { month: "2027-03-01", closing_balance: "400.5", below_buffer: false },
   year: 2026,
   pnlRows: [
@@ -22,10 +25,7 @@ const base: OverviewInputs = {
     { line: "opex", amount: -300 },
     { line: "tax", amount: "-50.25" },
   ],
-  vat: { payable: 120, sub: "Σεπτέμβριος 2026 · έως 31/10/2026" },
 };
-
-const glance = (i: OverviewInputs) => Object.fromEntries(overviewGlance(i).map((f) => [f.key, f]));
 
 const tx = (id: string, due_date: string | null, extra: Partial<OpenTxRow> = {}): OpenTxRow => ({
   id,
@@ -140,47 +140,67 @@ describe("vatNext", () => {
 });
 
 describe("overviewGlance", () => {
-  it("returns the four figures with their links", () => {
-    expect(overviewGlance(base).map((f) => [f.key, f.href])).toEqual([
-      ["cash", "/accounts"],
-      ["lowest", "/reports/cash?month=2027-03"],
-      ["pnl", "/reports/pnl"],
-      ["vat", "/reports/vat"],
+  it("one figure per account, each to its transactions, then the total", () => {
+    expect(overviewGlance(base).figures.map((f) => [f.label, f.value, f.href, f.total])).toEqual([
+      ["Eurobank", formatMoney(1000), "/transactions?account_id=a1", false],
+      ["Ταμείο", formatMoney(250), "/transactions?account_id=a2", false],
+      ["Σύνολο ρευστών", formatMoney(1250), "/accounts", true],
     ]);
   });
 
-  it("formats each figure", () => {
-    const g = glance(base);
-    expect(g.cash.value).toBe(formatMoney(1250));
-    expect(g.cash.sub).toBe(`Εταιρικό ${formatMoney(1000)} · Προσωπικό ${formatMoney(250)}`);
+  it("hides a closed account only while it is empty; the total still counts it", () => {
+    const g = overviewGlance({
+      ...base,
+      accounts: [...base.accounts, { account_id: "a3", name: "Κλειστός", current_balance: 0, active: false }, { account_id: "a4", name: "Παλιός", current_balance: -5, active: false }],
+    });
+    expect(g.figures.map((f) => f.label)).toEqual(["Eurobank", "Ταμείο", "Παλιός", "Σύνολο ρευστών"]);
+    expect(g.figures.at(-1)!.value).toBe(formatMoney(1245));
+    expect(g.figures.find((f) => f.label === "Παλιός")!.negative).toBe(true);
+  });
+
+  it("the small line: the 12-month low and the year's result", () => {
+    const g = overviewGlance(base);
     expect(g.lowest.value).toBe(formatMoney(400.5));
     expect(g.lowest.sub).toContain("2027");
+    expect(g.lowest.href).toBe("/reports/cash?month=2027-03");
     expect(g.pnl.value).toBe(formatMoney(649.75));
-    expect(g.vat.value).toBe(formatMoney(120));
-    expect(Object.values(g).some((f) => f.negative)).toBe(false);
+    expect(g.pnl.label).toBe("Αποτέλεσμα 2026 ως σήμερα");
+    expect(g.lowest.negative || g.pnl.negative).toBe(false);
   });
 
   it("names the low point's driver", () => {
-    const g = glance({ ...base, lowestDriver: { label: "Κατασκευή — φάση Α", amount: "690558" } });
+    const g = overviewGlance({ ...base, lowestDriver: { label: "Κατασκευή — φάση Α", amount: "690558" } });
     expect(g.lowest.sub).toContain(`κυρίως: Κατασκευή — φάση Α −${formatMoney(690558)}`);
-    expect(glance({ ...base, lowestDriver: null }).lowest.sub).not.toContain("κυρίως");
+    expect(overviewGlance({ ...base, lowestDriver: null }).lowest.sub).not.toContain("κυρίως");
   });
 
   it("flags a forecast below the buffer and a negative result; handles no forecast", () => {
-    const g = glance({ ...base, lowest: { month: "2026-12-01", closing_balance: 50, below_buffer: true }, pnlRows: [{ line: "opex", amount: -10 }] });
+    const g = overviewGlance({ ...base, lowest: { month: "2026-12-01", closing_balance: 50, below_buffer: true }, pnlRows: [{ line: "opex", amount: -10 }] });
     expect(g.lowest.negative).toBe(true);
     expect(g.pnl.negative).toBe(true);
-    const none = glance({ ...base, lowest: null });
-    expect(none.lowest.value).toBe("—");
-    expect(none.lowest.sub).toBe("Χωρίς πρόβλεψη");
-    expect(none.lowest.href).toBe("/reports/cash");
+    const none = overviewGlance({ ...base, lowest: null }).lowest;
+    expect(none.value).toBe("—");
+    expect(none.href).toBe("/reports/cash");
   });
 
   it("steps long figures down", () => {
     expect(figureLength(formatMoney(1250))).toBe(1);
     expect(figureLength(formatMoney(123456.78))).toBe(2);
     expect(figureLength(formatMoney(-1234567.89))).toBe(3);
-    expect(glance({ ...base, cashCorporate: 2_500_000 }).cash.length).toBe(3);
+    const big = overviewGlance({ ...base, accounts: [{ account_id: "a1", name: "Eurobank", current_balance: 2_500_000 }] });
+    expect(big.figures.map((f) => f.length)).toEqual([3, 3]);
+  });
+});
+
+describe("vatPosition", () => {
+  it("sums output/input over every period; credit and owed from the latest", () => {
+    expect(
+      vatPosition([
+        { period_start: "2026-09-01", vat_income: "100", vat_expense: 40, credit_balance: "-25.5", payable_after_credit: 0 },
+        { period_start: "2026-08-01", vat_income: 50, vat_expense: "200", credit_balance: -90, payable_after_credit: 0 },
+      ]),
+    ).toEqual({ output: 150, input: 240, credit: 25.5, owed: 0, from: "2026-08-01" });
+    expect(vatPosition([])).toBeNull();
   });
 });
 
