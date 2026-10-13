@@ -176,7 +176,11 @@ async function browserSmoke(base, list, jar, { gapMs }) {
         const r = await pg.goto(url, { waitUntil: "load", timeout: 90_000 }).catch(() => null);
         await sleep(2500); // hydration, client charts
         const busy = await pg.evaluate(() => /error 1102|Error 5\d\d|Worker exceeded/i.test(document.body?.innerText?.slice(0, 400) ?? ""));
-        if (r && r.status() < 500 && !busy) return r.status();
+        // Right after a deploy a page can arrive without its stylesheet (giant
+        // icons, browser defaults): reload rather than pass it.
+        const styled = await pg.evaluate(() => getComputedStyle(document.body).backgroundColor !== "rgba(0, 0, 0, 0)");
+        if (r && r.status() < 500 && !busy && styled) return r.status();
+        if (r && r.status() < 500 && !busy && i === 2) return 0; // unstyled after 3 tries
         await sleep(4000 * (i + 1)); // a Workers CPU hiccup: back off
       }
       return 503;
@@ -208,6 +212,7 @@ async function browserSmoke(base, list, jar, { gapMs }) {
           console.error(`⚠ browser ${tag} ${p}: HTTP ${status} (Cloudflare CPU limit)`);
         }
         if (found.boundary) errors.push("error page «Κάτι πήγε στραβά»");
+        if (status === 0) errors.push("no CSS: the page rendered unstyled");
         if (tag === "390" && found.overflow > 1) errors.push(`scrolls sideways by ${found.overflow}px`);
         if (tag === "1440" && status < 500) {
           const budget = pageBudget(p);

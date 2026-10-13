@@ -8,7 +8,8 @@
  *   (circles only for status dots and avatars), 1px hairlines, one navy
  *   rule under each page title. Navy is the only solid fill: the glance
  *   panel, the primary button, the active chip, the toast. Inter only;
- *   headings 400, big numbers Light 300 tabular, eyebrows 12/500 uppercase.
+ *   headings 400, big numbers Light 300 tabular, eyebrows 12/500 sentence case
+ *   (no capitals since 13/10/2026: the quieter late-September labels).
  *
  * The same values live in src/components/ui/tokens.ts (for SVG charts and
  * the contrast test); tokens.test.ts fails if the two drift apart.
@@ -194,13 +195,12 @@
   }
 }
 
-/* 12px / 500 / uppercase / 0.14em -- section labels, table heads, stat labels. */
+/* 12px / 500, sentence case -- section labels, table heads, stat labels. */
 @utility eyebrow {
   font-size: var(--text-eyebrow);
   line-height: var(--text-eyebrow--line-height);
   font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
 }
 
 /* Tabular figures for every amount, so columns of numbers line up. */

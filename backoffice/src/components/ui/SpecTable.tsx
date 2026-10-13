@@ -3,7 +3,7 @@ import { cn } from "./cn";
 
 // The spec table (P15 table.spec) as building blocks, for the tables whose
 // rows are hand-built (a highlighted row, a form per row, a drill-down):
-// 12px uppercase muted head on a navy 1px rule, hairline rows, numbers
+// 12px muted head on a navy 1px rule, hairline rows, numbers
 // right-aligned in tabular figures, a total row on an ink rule. Flush left
 // and right: the first and last cells carry no outer padding. No hooks --
 // renders on the server. DataTable is the same look for plain lists (with
@@ -21,8 +21,8 @@ import { cn } from "./cn";
 // (a table that turns into cards on phones by its own classes).
 
 export const TH_CLASS =
-  "eyebrow border-b border-rule px-3 py-2.5 text-left align-bottom font-medium whitespace-nowrap text-muted first:pl-0 last:pr-0";
-export const TD_CLASS = "border-b border-hairline px-3 py-3 align-top text-text first:pl-0 last:pr-0";
+  "eyebrow border-b border-rule px-3 py-2 text-left align-bottom font-medium whitespace-nowrap text-muted first:pl-0 last:pr-0";
+export const TD_CLASS = "border-b border-hairline px-3 py-2 align-top text-text first:pl-0 last:pr-0";
 export const NUM_CLASS = "num text-right whitespace-nowrap";
 // A text link inside a table or a list.
 export const LINK_CLASS = "text-ink underline-offset-4 hover:underline";

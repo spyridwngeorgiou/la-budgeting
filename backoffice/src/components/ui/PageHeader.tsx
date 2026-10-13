@@ -27,14 +27,16 @@ export function PageHeader({
 }) {
   return (
     <header className={cn("flex flex-col gap-4", className)}>
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-rule pb-4">
-        <div className="flex min-w-0 flex-col gap-1.5">
+      {/* From md the actions stay beside the title: a long meta wraps under
+          the title instead of pushing the buttons onto a row of their own. */}
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-rule pb-4 md:flex-nowrap">
+        <div className="flex min-w-0 flex-col gap-1.5 md:flex-1">
           {eyebrow && <p className="eyebrow text-muted">{eyebrow}</p>}
           <h1 className="text-title font-normal break-words text-ink">{title}</h1>
           {meta && <div className="text-small text-muted">{meta}</div>}
         </div>
         {(actions || overflow) && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 md:shrink-0 md:justify-end">
             {actions}
             {overflow && <Menu>{overflow}</Menu>}
           </div>

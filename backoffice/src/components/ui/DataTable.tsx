@@ -5,7 +5,7 @@ import { formatMoney } from "@/lib/format";
 import { cn } from "./cn";
 import { Menu } from "./Menu";
 
-// The one table, after P15's table.spec: uppercase 12px head over a navy
+// The one table, after P15's table.spec: 12px head over a navy
 // rule, hairline rows, numbers right-aligned in tabular figures, a total
 // row over an ink rule. No hooks -- renders on the server.
 //
@@ -82,7 +82,7 @@ export function DataTable<T>({
               key={c.key}
               scope="col"
               className={cn(
-                "eyebrow sticky top-[var(--sticky-top,0px)] z-10 border-b border-rule bg-canvas px-3 py-2.5 text-left font-medium text-muted",
+                "eyebrow sticky top-[var(--sticky-top,0px)] z-10 border-b border-rule bg-canvas px-3 py-2 text-left font-medium text-muted",
                 c.numeric && "text-right",
                 c.className,
               )}
@@ -104,7 +104,7 @@ export function DataTable<T>({
               <td
                 key={c.key}
                 className={cn(
-                  "border-b border-hairline px-3 py-3 align-top text-text",
+                  "border-b border-hairline px-3 py-2 align-top text-text",
                   c.key === primaryKey && "text-ink",
                   c.numeric && "num text-right",
                   c.className,
@@ -127,7 +127,7 @@ export function DataTable<T>({
             {columns.map((c, i) => (
               <td
                 key={c.key}
-                className={cn("border-t border-ink px-3 py-3 font-medium text-ink", c.numeric && "num text-right", c.className)}
+                className={cn("border-t border-ink px-3 py-2 font-medium text-ink", c.numeric && "num text-right", c.className)}
               >
                 {totals[c.key] ?? (i === 0 ? shell.ui.total : null)}
               </td>

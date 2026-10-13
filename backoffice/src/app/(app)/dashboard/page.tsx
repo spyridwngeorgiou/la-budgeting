@@ -472,13 +472,18 @@ function Figure({ figure }: { figure: GlanceFigure }) {
   );
 }
 
-// «Χαμηλότερο σημείο 12μ: … · Μάρτιος 2027» -- one link in the small line.
+// «Χαμηλότερο σημείο 12μ: … · Μάρτιος 2027» -- one link in the small line;
+// the low month's driver («κυρίως: …») on hover, so the line stays one row.
 function GlanceLink({ line }: { line: GlanceLine }) {
   return (
-    <Link href={line.href} className="group inline-flex min-h-11 flex-wrap items-center gap-x-1.5 hover:text-panel-ink">
+    <Link
+      href={line.href}
+      title={line.sub ?? undefined}
+      className="group inline-flex min-h-11 flex-wrap items-center gap-x-1.5 hover:text-panel-ink md:min-h-0"
+    >
       <span>{line.label}:</span>
       <span className="num text-panel-ink">{line.value}</span>
-      {line.sub && <span>· {line.sub}</span>}
+      {line.sub && <span>· {line.sub.split(" · ")[0]}</span>}
       <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">
         →
       </span>

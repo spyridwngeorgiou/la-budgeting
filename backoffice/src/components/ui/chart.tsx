@@ -22,7 +22,8 @@ const DASH = [undefined, "5 4"] as const;
 export const chartTheme = {
   grid: { stroke: color.hairline, vertical: false, strokeDasharray: undefined },
   xAxis: { tick, tickLine: false, axisLine: { stroke: color.hairline }, tickMargin: 8 },
-  yAxis: { tick, tickLine: false, axisLine: false, width: 56 },
+  // 64: «−1,6 εκ.» on one line (56 wrapped it).
+  yAxis: { tick, tickLine: false, axisLine: false, width: 64 },
   tooltip: {
     contentStyle: {
       background: color.field,
