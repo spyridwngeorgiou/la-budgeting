@@ -259,9 +259,6 @@ export async function LegacyProjectPage({
           <ButtonLink href={`/transactions?project_id=${id}`}>
             {el.nav.transactions}
           </ButtonLink>
-          <ButtonLink href={`/projects/${id}/compare`}>
-            {el.projectScenarios.compare}
-          </ButtonLink>
           <ButtonLink href={`/planner?project=${id}`}>
             {el.nav.planner}
           </ButtonLink>
