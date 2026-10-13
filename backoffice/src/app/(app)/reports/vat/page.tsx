@@ -88,7 +88,7 @@ export default async function VatPage() {
 
   // The open table keeps the page short: the latest periods (where the
   // «υποβλήθηκε» work is); older ones one click away, same columns.
-  const RECENT_PERIODS = 6;
+  const RECENT_PERIODS = 4;
   const recent = rows.slice(0, RECENT_PERIODS);
   const older = rows.slice(RECENT_PERIODS);
   const periodsTable = (list: Period[], label: string) => (
