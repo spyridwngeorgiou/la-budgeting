@@ -115,7 +115,7 @@ select ok(exists (
 ), 'find_possible_duplicates finds the same amount a day apart');
 
 -- ------------------------------------------------------- profiles (0053)
-select is((select count(*) from bank_import_profiles where org_id is null)::int, 5,
+select is((select count(*) from bank_import_profiles where org_id is null)::int, 6,
   'built-in bank presets are readable');
 
 reset role;
