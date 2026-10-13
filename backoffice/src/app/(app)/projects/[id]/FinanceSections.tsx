@@ -62,13 +62,10 @@ export function BudgetSection({
   projectId: id,
   figures: f,
   lines,
-  notes,
 }: {
   projectId: string;
   figures: BudgetFigures;
   lines: BudgetLineRow[];
-  // The current budget version's own note.
-  notes: string | null;
 }) {
   const t = el.projectPage.budget;
   const byLine = f.budget != null ? budgetLinesInOrder(lines) : [];
@@ -92,9 +89,8 @@ export function BudgetSection({
           note={t.unclassifiedNote}
         />
       )}
-      {(byLine.length > 0 || outside || notes) && (
+      {(byLine.length > 0 || outside) && (
         <ReportHistory level={3} title={byLine.length > 0 ? t.byLine : t.outside} count={byLine.length > 0 ? byLine.length : undefined} open>
-          {notes && <p className="text-small text-muted">{notes}</p>}
           {byLine.length > 0 && <BudgetLineTable rows={byLine} />}
           {byLine.some((r) => r.line_code === "contingency") && <p className="text-small text-muted">{el.budgetLines.contingencyNote}</p>}
           {outside && (
@@ -110,9 +106,9 @@ export function BudgetSection({
   );
 }
 
-// Budget / paid / committed / left per line, with the contingency reserve
-// (v_project_budget_lines). A small spec table; scrolls inside its frame
-// when the column is narrow.
+// Budget and what is left, per line, with the contingency reserve
+// (v_project_budget_lines). Two figures only, so it fits half a page; paid
+// and committed per line are one click away in Κινήσεις.
 function BudgetLineTable({ rows }: { rows: BudgetLineRow[] }) {
   const t = el.budgetLines;
   const p = el.projectPage.budget;
@@ -124,8 +120,6 @@ function BudgetLineTable({ rows }: { rows: BudgetLineRow[] }) {
             <span className="sr-only">{t.title}</span>
           </Th>
           <Th numeric>{p.budget}</Th>
-          <Th numeric>{p.paid}</Th>
-          <Th numeric>{p.committed}</Th>
           <Th numeric>{p.remaining}</Th>
         </tr>
       </thead>
@@ -139,8 +133,6 @@ function BudgetLineTable({ rows }: { rows: BudgetLineRow[] }) {
               <Td numeric strong>
                 {moneyOrDash(r.budget)}
               </Td>
-              <Td numeric>{moneyOrDash(r.paid)}</Td>
-              <Td numeric>{moneyOrDash(r.committed)}</Td>
               <Td numeric className={remaining < 0 ? "text-negative" : "text-ink"}>
                 {formatMoney(remaining)}
               </Td>

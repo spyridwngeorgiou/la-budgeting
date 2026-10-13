@@ -365,7 +365,7 @@ export async function LegacyProjectPage({
           OnePagerSection is break-inside-avoid). One column on a phone. */}
       {anyBlock && (
         <div className="flex flex-col gap-6 lg:block lg:columns-2 lg:gap-6 lg:*:mb-6 lg:*:last:mb-0">
-          {blocks.budget && <BudgetSection projectId={id} figures={figures} lines={budgetLines ?? []} notes={budget?.notes ?? null} />}
+          {blocks.budget && <BudgetSection projectId={id} figures={figures} lines={budgetLines ?? []} />}
 
           {blocks.development && <DevelopmentSection result={development} truncated={projectFlows.truncated} />}
 

@@ -2,11 +2,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { formatMoney } from "@/lib/format";
 
-// The three-column grammar the Q004 workbook already proved: label on the
-// left, the figure right-aligned in tabular figures, and the long Greek note
-// that says WHY the figure is what it is. Those notes are not decoration --
-// «35.000 πληρώθηκαν 30/07 ΧΩΡΙΣ ΤΙΜΟΛΟΓΙΟ» is the most important thing on
-// that page.
+// Label on the left, the figure right-aligned in tabular figures. The note
+// that says WHY the figure is what it is shows on hover (title) since
+// 13/10/2026: the third column made labels wrap in half a page.
 //
 // P15: no cards. A section is a title over a hairline, then spec-sheet rows
 // with hairlines between them and an ink rule over a total.
@@ -76,7 +74,8 @@ export function OnePagerRow({
 
   return (
     <div
-      className={`grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 py-2 sm:grid-cols-[minmax(0,1fr)_9rem_minmax(0,1.1fr)] ${
+      title={note ?? undefined}
+      className={`grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 py-2 ${
         emphasis ? "border-t border-ink" : "border-b border-hairline"
       }`}
     >
@@ -93,11 +92,6 @@ export function OnePagerRow({
           figure
         )}
       </span>
-      {note ? (
-        <span className="col-span-2 text-small text-muted sm:col-span-1 sm:pl-2">{note}</span>
-      ) : (
-        <span className="hidden sm:block" />
-      )}
     </div>
   );
 }
