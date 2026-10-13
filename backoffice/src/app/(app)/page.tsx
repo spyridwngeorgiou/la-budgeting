@@ -6,6 +6,7 @@ import { getMyProfile } from "@/lib/supabase/org";
 import { getAccessContext } from "@/lib/supabase/access";
 import { HOME_TILES_PATH, resolveHomePath } from "@/lib/homePath";
 import { el } from "@/lib/i18n/el";
+import { longDateLabel, todayAthens } from "@/lib/dates";
 
 // "/" after sign-in: plain tiles, one per area, to choose where to go.
 // A user who picked another start page in Settings → Προσωπικά is sent
@@ -36,7 +37,7 @@ export default async function HomeTiles() {
   const tiles = TILES.filter((t) => !t.minRole || access.membership.role !== "viewer");
   return (
     <div className="flex flex-col gap-10">
-      <PageHeader title="Πού θέλετε να πάτε;" />
+      <PageHeader eyebrow={longDateLabel(todayAthens())} title="Kansha" />
       <ul className="grid grid-cols-1 border-t border-l border-hairline sm:grid-cols-2 lg:grid-cols-3">
         {tiles.map((t) => (
           <li key={t.href} className="border-r border-b border-hairline">
