@@ -3,18 +3,19 @@ import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney } from "@/lib/format";
 import { todayAthens } from "@/lib/dates";
 import { el } from "@/lib/i18n/el";
-import type { AccountKind } from "@/lib/domain/enums";
+import type { AccountKind, OwnerScope } from "@/lib/domain/enums";
 import { EmptyState, PageHeader, Stat } from "@/components/ui";
 import { AccountFormModal } from "./AccountFormModal";
-import { createAccount } from "./actions";
 import { AccountsTable, type AccountListRow } from "./AccountsTable";
 import { okGap, type AccountStatus } from "./status";
 
 export default async function AccountsPage() {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
-  const [{ data: accounts }, { data: checkRows }] = await Promise.all([
+  const [{ data: accounts }, { data: identifiers }, { data: checkRows }] = await Promise.all([
     supabase.from("v_account_balances").select("*").eq("org_id", orgId).order("owner_scope").order("name"),
+    // IBAN / number for the edit form (not in the view).
+    supabase.from("accounts").select("id, iban, account_number").eq("org_id", orgId),
     // Newest first: the first row per account is its latest check (0035).
     supabase
       .from("v_balance_checks")
@@ -26,10 +27,12 @@ export default async function AccountsPage() {
   for (const r of checkRows ?? []) {
     if (!latestCheck.has(r.account_id!)) latestCheck.set(r.account_id!, { as_of_date: r.as_of_date!, total_gap: Number(r.total_gap) });
   }
+  const idsOf = new Map((identifiers ?? []).map((a) => [a.id, a]));
 
   const rows: (AccountListRow & { owner_scope: string | null })[] = (accounts ?? []).map((a) => {
     const check = latestCheck.get(a.account_id!);
     const status: AccountStatus = !check ? "never_counted" : okGap(check.total_gap) ? "ok" : "drift";
+    const ids = idsOf.get(a.account_id!);
     return {
       account_id: a.account_id!,
       name: a.name!,
@@ -38,18 +41,30 @@ export default async function AccountsPage() {
       current_balance: Number(a.current_balance ?? 0),
       status,
       last_check: check?.as_of_date ?? null,
+      check_from: check?.as_of_date ?? a.opening_balance_date!,
       owner_scope: a.owner_scope,
+      form: {
+        id: a.account_id!,
+        name: a.name!,
+        kind: a.kind! as AccountKind,
+        owner_scope: a.owner_scope! as OwnerScope,
+        is_liquid: Boolean(a.is_liquid),
+        opening_balance: Number(a.opening_balance ?? 0),
+        opening_balance_date: a.opening_balance_date!,
+        iban: ids?.iban ?? null,
+        account_number: ids?.account_number ?? null,
+      },
     };
   });
   const totalLiquid = rows.filter((a) => a.is_liquid).reduce((sum, a) => sum + a.current_balance, 0);
   const today = todayAthens();
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title={el.nav.accounts}
         meta="Τράπεζες, μετρητά και μη ρευστά περιουσιακά στοιχεία, εταιρικά και προσωπικά, με τρέχον υπόλοιπο."
-        actions={<AccountFormModal action={createAccount} />}
+        actions={<AccountFormModal />}
       />
 
       {rows.length === 0 ? (

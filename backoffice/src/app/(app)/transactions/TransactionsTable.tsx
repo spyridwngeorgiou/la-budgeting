@@ -9,8 +9,6 @@ import {
   Badge,
   Button,
   Input,
-  Menu,
-  MenuItem,
   PageHeader,
   SpecTable,
   StatusDot,
@@ -345,11 +343,15 @@ export function TransactionsTable({
                       <Button variant="secondary" size="sm" onClick={() => setTarget(tx)}>
                         {el.common.edit}
                       </Button>
-                      <Menu label="Ενέργειες">
-                        <MenuItem tone="danger" disabled={deleting === tx.id} onClick={() => handleDelete(tx)}>
-                          {deleting === tx.id ? "…" : el.common.delete}
-                        </MenuItem>
-                      </Menu>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={deleting === tx.id}
+                        onClick={() => handleDelete(tx)}
+                        className="text-negative hover:text-negative"
+                      >
+                        {deleting === tx.id ? "…" : el.common.delete}
+                      </Button>
                     </div>
                   </Td>
                 </Tr>

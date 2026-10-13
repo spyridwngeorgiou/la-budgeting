@@ -6,7 +6,7 @@ import { todayAthens } from "@/lib/dates";
 
 // The fields of a new balance check (assertAccountBalance), split out from
 // the read-only breakdown (BalanceAssertion). They sit in the «Έλεγχος
-// υπολοίπου» drawer of the account page (accounts/[id]/CheckDrawer.tsx),
+// υπολοίπου» drawer of the account page (accounts/CheckDrawer.tsx),
 // which owns the form, its submit and its errors.
 export function NewCheckFields({ expectedToday, defaultFrom }: { expectedToday: number; defaultFrom: string }) {
   const today = todayAthens();

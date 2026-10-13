@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { formatMoney } from "@/lib/format";
-import { figureLength, overviewCards, overviewGlance, pnlResult, type OverviewInputs } from "./overview";
+import {
+  dashboardPortfolio,
+  figureLength,
+  overviewGlance,
+  pnlResult,
+  upcomingObligations,
+  vatLine,
+  type DashboardRollupRow,
+  type OpenTxRow,
+  type OverviewInputs,
+} from "./overview";
 
 const base: OverviewInputs = {
   cashCorporate: 1000,
@@ -13,21 +23,106 @@ const base: OverviewInputs = {
     { line: "tax", amount: "-50.25" },
   ],
   vatPayable: 120,
-  canReview: true,
-  inboxPending: 0,
-  overdue: 0,
-  pending: 3,
-  accounts: 6,
-  accountDrift: 0,
-  activeProjects: 8,
-  overBudgetProjects: 0,
-  openTasks: 12,
-  calendarNext7: 5,
-  contacts: 37,
 };
 
 const glance = (i: OverviewInputs) => Object.fromEntries(overviewGlance(i).map((f) => [f.key, f]));
-const cards = (i: OverviewInputs) => Object.fromEntries(overviewCards(i).map((c) => [c.key, c]));
+
+const tx = (id: string, due_date: string | null, extra: Partial<OpenTxRow> = {}): OpenTxRow => ({
+  id,
+  due_date,
+  status: "scheduled",
+  direction: "expense",
+  gross_amount: 100,
+  description: `Δόση ${id}`,
+  counterparty_name: null,
+  ...extra,
+});
+
+describe("upcomingObligations", () => {
+  const today = "2026-10-13";
+  it("keeps today through day 30, soonest first, signed", () => {
+    const r = upcomingObligations(
+      [
+        tx("late", "2026-10-12"),
+        tx("b", "2026-10-20"),
+        tx("a", "2026-10-13", { direction: "income", gross_amount: "50" }),
+        tx("edge", "2026-11-11"),
+        tx("out", "2026-11-12"),
+        tx("none", null),
+      ],
+      today,
+    );
+    expect(r.shown.map((x) => x.id)).toEqual(["a", "b", "edge"]);
+    expect(r.shown[0].amount).toBe(50);
+    expect(r.shown[1].amount).toBe(-100);
+    expect([r.income, r.outflow, r.more]).toEqual([50, -200, 0]);
+  });
+
+  it("caps the list and counts the rest; falls back to the counterparty", () => {
+    const rows = Array.from({ length: 10 }, (_, i) => tx(String(i), "2026-10-14", { description: i === 0 ? " " : `Δ${i}`, counterparty_name: "Αντισυμβαλλόμενος" }));
+    const r = upcomingObligations(rows, today, 8);
+    expect(r.shown).toHaveLength(8);
+    expect(r.more).toBe(2);
+    expect(r.shown[0].label).toBe("Αντισυμβαλλόμενος");
+  });
+});
+
+describe("dashboardPortfolio", () => {
+  const row = (id: string, extra: Partial<DashboardRollupRow>): DashboardRollupRow => ({
+    project_id: id,
+    display_name: `Έργο ${id}`,
+    code: id,
+    business_line: null,
+    status: "active",
+    total_budget: 0,
+    spent: 0,
+    remaining_budget: 0,
+    net_result: 0,
+    pending: 0,
+    vat_on_expenses: 0,
+    ...extra,
+  });
+  it("orders by budget, joins pending and VAT, hides empty and cancelled projects", () => {
+    const r = dashboardPortfolio([
+      row("A", { total_budget: 100, spent: 40, remaining_budget: 60, pending: "5", vat_on_expenses: 9.6 }),
+      row("B", { total_budget: 500, spent: 600, remaining_budget: -100 }),
+      row("C", {}),
+      row("D", { spent: 10 }),
+      row("E", { total_budget: 900, status: "cancelled" }),
+    ]);
+    expect(r.shown.map((p) => p.id)).toEqual(["B", "A", "D"]);
+    expect(r.shown[0].overBudget).toBe(true);
+    expect([r.shown[1].pending, r.shown[1].vat]).toEqual([5, 9.6]);
+    expect(r.shown[2].budget).toBeNull();
+  });
+
+  it("caps and counts the rest", () => {
+    const rows = Array.from({ length: 11 }, (_, i) => row(`P${i}`, { total_budget: i + 1 }));
+    const r = dashboardPortfolio(rows, 8);
+    expect([r.shown.length, r.more]).toEqual([8, 3]);
+  });
+});
+
+describe("vatLine", () => {
+  const today = "2026-10-13";
+  const rows = [
+    { period_start: "2026-08-01", payable_after_credit: 10, credit_balance: 0, filing_deadline: "2026-09-30" },
+    { period_start: "2026-09-01", payable_after_credit: "240", credit_balance: 0, filing_deadline: "2026-10-31" },
+    { period_start: "2026-10-01", payable_after_credit: 0, credit_balance: -40, filing_deadline: "2026-11-30" },
+  ];
+  it("names the next unfiled deadline and its payable", () => {
+    const line = vatLine(rows, new Set(), today);
+    expect(line).toContain(formatMoney(240));
+    expect(line).toContain("31");
+  });
+  it("skips filed periods; a period with nothing to pay still has a deadline", () => {
+    expect(vatLine(rows, new Set(["2026-09-01"]), today)).toMatch(/^Υποβολή .* χωρίς πληρωμή$/);
+  });
+  it("without a deadline ahead, the credit", () => {
+    expect(vatLine(rows, new Set(["2026-09-01", "2026-10-01"]), today)).toBe(`Καμία προθεσμία σε εκκρεμότητα · πιστωτικό ${formatMoney(40)}`);
+    expect(vatLine([], new Set(), today)).toBe("Καμία προθεσμία σε εκκρεμότητα");
+  });
+});
 
 describe("overviewGlance", () => {
   it("returns the four figures with their links", () => {
@@ -71,64 +166,6 @@ describe("overviewGlance", () => {
     expect(figureLength(formatMoney(123456.78))).toBe(2);
     expect(figureLength(formatMoney(-1234567.89))).toBe(3);
     expect(glance({ ...base, cashCorporate: 2_500_000 }).cash.length).toBe(3);
-  });
-});
-
-describe("overviewCards", () => {
-  it("follows the menu order and links each section", () => {
-    expect(overviewCards(base).map((c) => c.href)).toEqual([
-      "/inbox",
-      "/assistant",
-      "/transactions",
-      "/accounts",
-      "/reports",
-      "/projects",
-      "/planner",
-      "/calendar",
-      "/contacts",
-    ]);
-    for (const c of overviewCards(base)) {
-      expect(c.title.length).toBeGreaterThan(0);
-      expect(c.description.length).toBeGreaterThan(0);
-      expect(c.metric.length).toBeGreaterThan(0);
-    }
-  });
-
-  it("hides Εισερχόμενα from viewers", () => {
-    expect(overviewCards({ ...base, canReview: false }).map((c) => c.key)).not.toContain("inbox");
-  });
-
-  it("writes the quiet metrics", () => {
-    const c = cards(base);
-    expect(c.inbox.metric).toBe("Τίποτα προς έλεγχο");
-    expect(c.transactions.metric).toBe("3 εκκρεμείς");
-    expect(c.accounts.metric).toBe("6 λογαριασμοί");
-    expect(c.reports.metric).toBe(`Αποτέλεσμα +${formatMoney(649.75)}`);
-    expect(c.projects.metric).toBe("8 ενεργά");
-    expect(c.planner.metric).toBe("12 ανοιχτές εργασίες");
-    expect(c.calendar.metric).toBe("5 τις επόμενες 7 ημέρες");
-    expect(c.contacts.metric).toBe("37 επαφές");
-    expect(c.assistant.metric).toBe("Ρωτήστε οτιδήποτε");
-    expect(Object.values(c).every((x) => x.severity === null)).toBe(true);
-  });
-
-  it("flags exceptions with a severity", () => {
-    const c = cards({ ...base, inboxPending: 4, overdue: 11, accountDrift: 1, overBudgetProjects: 1, openTasks: 1, contacts: 1, accounts: 1 });
-    expect([c.inbox.metric, c.inbox.severity]).toEqual(["4 προς έλεγχο", "attention"]);
-    expect([c.transactions.metric, c.transactions.severity]).toEqual(["11 ληξιπρόθεσμες", "urgent"]);
-    expect([c.accounts.metric, c.accounts.severity]).toEqual(["1 λογαριασμός · 1 απόκλιση", "urgent"]);
-    expect([c.projects.metric, c.projects.severity]).toEqual(["8 ενεργά · 1 εκτός προϋπολογισμού", "urgent"]);
-    expect(c.planner.metric).toBe("1 ανοιχτή εργασία");
-    expect(c.contacts.metric).toBe("1 επαφή");
-  });
-
-  it("survives empty data", () => {
-    const c = cards({ ...base, pending: 0, openTasks: Number.NaN, calendarNext7: 0, pnlRows: [], contacts: 0 });
-    expect(c.transactions.metric).toBe("Καμία εκκρεμότητα");
-    expect(c.planner.metric).toBe("Καμία ανοιχτή εργασία");
-    expect(c.calendar.metric).toBe("Τίποτα τις επόμενες 7 ημέρες");
-    expect(c.reports.metric).toBe(`Αποτέλεσμα ${formatMoney(0)}`);
-    expect(c.contacts.metric).toBe("0 επαφές");
   });
 });
 

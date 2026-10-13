@@ -6,6 +6,53 @@ import { Badge, Button, EmptyState, PageHeader, SpecTable, Stat, StatRow, Status
 import { InstallmentPlanFormModal } from "./InstallmentPlanFormModal";
 import { createInstallmentPlan, regeneratePlan, markInstallmentPaid } from "./actions";
 import { loadLookups } from "@/lib/data/lookups";
+import { ArgsActionForm } from "@/components/ArgsActionForm";
+
+// A plan's instalments show open up to this many; past it, behind «όλες (N) ▸».
+const INSTALMENTS_OPEN = 6;
+
+type InstalmentRow = {
+  id: string;
+  installment_no: number | null;
+  due_date: string | null;
+  status: string;
+  gross_amount: number | null;
+};
+
+function InstalmentTable({ rows }: { rows: InstalmentRow[] }) {
+  return (
+    <SpecTable label="Δόσεις" className="mt-2">
+      <tbody className="border-t border-rule">
+        {rows.map((tx) => (
+          <Tr key={tx.id}>
+            <Td className="num">
+              <span className="text-muted">#{tx.installment_no}</span>
+            </Td>
+            <Td className="num">{formatDate(tx.due_date)}</Td>
+            <Td numeric strong>
+              {formatMoney(tx.gross_amount)}
+            </Td>
+            <Td>
+              <StatusDot
+                tone={tx.status === "paid" ? "neutral" : "warning"}
+                label={el.transaction[tx.status as "paid" | "pending" | "scheduled" | "cancelled"]}
+              />
+            </Td>
+            <Td className="text-right">
+              {tx.status !== "paid" && (
+                <ArgsActionForm action={markInstallmentPaid} args={[tx.id]}>
+                  <Button type="submit" variant="secondary" size="sm">
+                    {el.common.markPaid}
+                  </Button>
+                </ArgsActionForm>
+              )}
+            </Td>
+          </Tr>
+        ))}
+      </tbody>
+    </SpecTable>
+  );
+}
 
 export default async function InstallmentsPage() {
   const supabase = await createClient();
@@ -43,7 +90,7 @@ export default async function InstallmentsPage() {
   const accountOptions = (accounts ?? []).map((a) => ({ id: a.id, label: a.name }));
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title={el.nav.installments}
         meta="Δόσεις προς τρίτους (π.χ. ρυθμίσεις φόρων, οφειλές) που δεν είναι δάνειο έργου."
@@ -82,11 +129,11 @@ export default async function InstallmentsPage() {
                     <span className="num">{plan.overdue_count}</span> ληξιπρόθεσμες
                   </Badge>
                 ) : null}
-                <form action={regeneratePlan.bind(null, plan.plan_id!)}>
+                <ArgsActionForm action={regeneratePlan} args={[plan.plan_id!]}>
                   <Button type="submit" variant="secondary" size="sm">
                     Ανανέωση
                   </Button>
-                </form>
+                </ArgsActionForm>
               </div>
             </div>
 
@@ -97,44 +144,20 @@ export default async function InstallmentsPage() {
               <Stat label="Επόμενη Δόση" value={plan.next_due_date ? formatDate(plan.next_due_date) : "—"} />
             </StatRow>
 
-            <details className="group">
-              <summary className="eyebrow inline-flex min-h-11 cursor-pointer items-center gap-2 text-muted hover:text-ink md:min-h-9">
-                <span aria-hidden="true" className="inline-block transition-transform group-open:rotate-90">
-                  ›
-                </span>
-                Δόσεις (<span className="num">{rows.length}</span>)
-              </summary>
-              <SpecTable label="Δόσεις" className="mt-2">
-                <tbody className="border-t border-rule">
-                  {rows.map((tx) => (
-                    <Tr key={tx.id}>
-                      <Td className="num">
-                        <span className="text-muted">#{tx.installment_no}</span>
-                      </Td>
-                      <Td className="num">{formatDate(tx.due_date)}</Td>
-                      <Td numeric strong>
-                        {formatMoney(tx.gross_amount)}
-                      </Td>
-                      <Td>
-                        <StatusDot
-                          tone={tx.status === "paid" ? "neutral" : "warning"}
-                          label={el.transaction[tx.status as "paid" | "pending" | "scheduled" | "cancelled"]}
-                        />
-                      </Td>
-                      <Td className="text-right">
-                        {tx.status !== "paid" && (
-                          <form action={markInstallmentPaid.bind(null, tx.id)}>
-                            <Button type="submit" variant="secondary" size="sm">
-                              {el.common.markPaid}
-                            </Button>
-                          </form>
-                        )}
-                      </Td>
-                    </Tr>
-                  ))}
-                </tbody>
-              </SpecTable>
-            </details>
+            {/* Six or fewer: open, in sight. More: one click away. */}
+            {rows.length <= INSTALMENTS_OPEN ? (
+              <InstalmentTable rows={rows} />
+            ) : (
+              <details className="group">
+                <summary className="eyebrow inline-flex min-h-11 cursor-pointer items-center gap-2 text-muted hover:text-ink md:min-h-9">
+                  όλες (<span className="num">{rows.length}</span>)
+                  <span aria-hidden="true" className="inline-block transition-transform group-open:rotate-90">
+                    ▸
+                  </span>
+                </summary>
+                <InstalmentTable rows={rows} />
+              </details>
+            )}
           </section>
         );
       })}

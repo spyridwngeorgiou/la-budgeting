@@ -111,7 +111,7 @@ function PeriodBreakdown({ check, accountId }: { check: BalanceCheck; accountId:
 }
 
 // Pure display: the read-only check history shown in the «Έλεγχος
-// υπολοίπου» drawer of an account page (accounts/[id]/CheckDrawer.tsx). Entering a new check is a separate
+// υπολοίπου» drawer of an account page (accounts/CheckDrawer.tsx). Entering a new check is a separate
 // concern -- NewCheckModal -- so this never mounts a form.
 export function BalanceAssertion({
   accountId,

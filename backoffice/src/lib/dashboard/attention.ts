@@ -24,7 +24,7 @@ export type AttentionKind = (typeof ATTENTION_ORDER)[number];
 
 export type AttentionItem = { kind: AttentionKind; label: string; href: string };
 
-export const ATTENTION_MAX = 3;
+export const ATTENTION_MAX = 5;
 
 // Falsy entries (a check with nothing to report) are dropped; ties keep
 // their input order, so several drifting accounts stay in the order given.

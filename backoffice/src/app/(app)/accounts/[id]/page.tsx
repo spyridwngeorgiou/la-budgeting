@@ -8,7 +8,8 @@ import { el } from "@/lib/i18n/el";
 import type { AccountKind } from "@/lib/domain/enums";
 import { ButtonLink, EmptyState, PageHeader, Stat, StatRow, StatusDot, cn } from "@/components/ui";
 import { STATUS_LABEL, STATUS_TONE, statusOf, toBalanceCheck } from "../status";
-import { CheckDrawer } from "./CheckDrawer";
+import { CheckDrawer } from "../CheckDrawer";
+import { AccountFormModal } from "../AccountFormModal";
 import { LedgerChart } from "./LedgerChart";
 import { MonthFilter } from "./MonthFilter";
 
@@ -46,8 +47,10 @@ export default async function AccountLedgerPage({
     ledgerQuery = ledgerQuery.gte("paid_date", start).lte("paid_date", end);
   }
 
-  const [{ data: account }, { data: checkRows }, { data: monthly }, { data: ledger, count }] = await Promise.all([
+  const [{ data: account }, { data: ids }, { data: checkRows }, { data: monthly }, { data: ledger, count }] = await Promise.all([
     supabase.from("v_account_balances").select("*").eq("org_id", orgId).eq("account_id", id).maybeSingle(),
+    // The two statement identifiers the edit form needs (not in the view).
+    supabase.from("accounts").select("iban, account_number").eq("org_id", orgId).eq("id", id).maybeSingle(),
     supabase.from("v_balance_checks").select("*").eq("org_id", orgId).eq("account_id", id).order("as_of_date", { ascending: false }),
     supabase
       .from("v_account_ledger_monthly")
@@ -88,7 +91,7 @@ export default async function AccountLedgerPage({
   const signed = (n: number) => `${n < 0 ? "−" : n > 0 ? "+" : ""}${formatMoney(Math.abs(n))}`;
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         eyebrow={
           <Link href="/accounts" className="hover:text-ink">
@@ -111,14 +114,31 @@ export default async function AccountLedgerPage({
           </span>
         }
         actions={
-          <CheckDrawer
-            accountId={id}
-            accountName={account.name!}
-            isCash={account.kind === "cash"}
-            expectedToday={balance}
-            defaultFrom={checks[0]?.as_of_date ?? account.opening_balance_date!}
-            checks={checks}
-          />
+          <>
+            <AccountFormModal
+              variant="secondary"
+              size="md"
+              account={{
+                id,
+                name: account.name!,
+                kind: account.kind as AccountKind,
+                owner_scope: account.owner_scope!,
+                is_liquid: Boolean(account.is_liquid),
+                opening_balance: Number(account.opening_balance ?? 0),
+                opening_balance_date: account.opening_balance_date!,
+                iban: ids?.iban ?? null,
+                account_number: ids?.account_number ?? null,
+              }}
+            />
+            <CheckDrawer
+              accountId={id}
+              accountName={account.name!}
+              isCash={account.kind === "cash"}
+              expectedToday={balance}
+              defaultFrom={checks[0]?.as_of_date ?? account.opening_balance_date!}
+              checks={checks}
+            />
+          </>
         }
       />
 
