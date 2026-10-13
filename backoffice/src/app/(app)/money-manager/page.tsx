@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatMoney } from "@/lib/format";
 import { SubmitButton } from "@/components/SubmitButton";
-import { applyMoneyManager } from "./actions";
+import { applyMoneyManager, uploadMoneyManager } from "./actions";
 
 // Μετρητά (Money Manager) -- what the phone sent and what is new. Rows already
 // in the ledger are only counted. For each new row: «Προσωπικά», a project, or
@@ -22,10 +22,17 @@ export default async function MoneyManagerPage() {
     <div className="flex max-w-4xl flex-col gap-4">
       <div>
         <h1 className="text-xl font-semibold">Μετρητά — Money Manager</h1>
-        <p className="text-sm text-ink-muted">
-          Στο iPhone: Money Manager → Backup σε Excel → «Στείλε στην Kansha». Ό,τι υπάρχει ήδη αγνοείται· εδώ μένουν μόνο τα νέα.
-        </p>
+        <p className="text-sm text-ink-muted">Ό,τι υπάρχει ήδη αγνοείται· εδώ μένουν μόνο τα νέα, και τίποτα δεν καταχωρείται πριν το εγκρίνεις.</p>
       </div>
+
+      <form action={uploadMoneyManager} className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface p-4">
+        <div className="min-w-0 flex-1 text-sm">
+          <div className="font-medium">Ανέβασμα αρχείου Money Manager</div>
+          <div className="text-ink-muted">Money Manager → Backup σε Excel → «Αποθήκευση στα Αρχεία». Μετά εδώ: διάλεξε το αρχείο και πάτα «Ανέβασμα».</div>
+        </div>
+        <input type="file" name="file" accept=".xlsx,.xls" required className="text-sm" />
+        <SubmitButton pendingLabel="Ανέβασμα…">Ανέβασμα</SubmitButton>
+      </form>
 
       {open.map((imp) => {
         const mine = (rows ?? []).filter((r) => r.import_id === imp.id);

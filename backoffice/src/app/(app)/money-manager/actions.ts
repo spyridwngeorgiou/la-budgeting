@@ -52,3 +52,18 @@ export async function applyMoneyManager(importId: string, formData: FormData) {
   revalidatePath("/money-manager");
   revalidatePath("/notifications");
 }
+
+// «Ανέβασμα»: the Money Manager Excel picked from the phone's Files (or the
+// computer), staged exactly like the shortcut does, as the signed-in user.
+export async function uploadMoneyManager(formData: FormData) {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) throw new Error("Διάλεξε το αρχείο Excel του Money Manager.");
+  const { stageMoneyManager } = await import("@/lib/moneyManager");
+  const supabase = await createClient();
+  const orgId = await getCurrentOrgId(supabase);
+  const buffer = await file.arrayBuffer();
+  const path = `${orgId}/money-manager/${Date.now()}.xlsx`;
+  await supabase.storage.from("aade-imports").upload(path, buffer, { contentType: file.type || undefined });
+  await stageMoneyManager(supabase, orgId, { name: file.name, buffer, storagePath: path });
+  revalidatePath("/money-manager");
+}
