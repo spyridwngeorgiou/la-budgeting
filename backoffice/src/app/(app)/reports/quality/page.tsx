@@ -359,7 +359,7 @@ const CHECKS = [
   {
     view: "v_qc_expected_vs_scheduled" as const,
     title: "Αναμενόμενα που υπάρχουν ήδη ως κίνηση",
-    why: "Το ίδιο ποσό, τον ίδιο μήνα, είναι και αναμενόμενο έσοδο και εκκρεμής ή προγραμματισμένη κίνηση· η πρόβλεψη ταμείου το μετρά δύο φορές. Αν είναι το ίδιο, σημειώστε το αναμενόμενο ως «Εισπράχθηκε» ή «Δεν θα έρθει» στο Ταμείο.",
+    why: "Το ίδιο ποσό, τον ίδιο μήνα, είναι και αναμενόμενο έσοδο και εκκρεμής ή προγραμματισμένη κίνηση· η πρόβλεψη ταμείου το μετρά δύο φορές. Αν είναι το ίδιο, σημειώστε το αναμενόμενο ως «Εισπράχθηκε» ή «Δεν θα έρθει» στους Λογαριασμούς → Αναμενόμενα έσοδα.",
     render: (r: {
       expected_id: string | null; transaction_id: string | null; source: string | null; expected_month: string | null;
       expected_amount: number | null; tx_label: string | null; tx_due_date: string | null; direction: string | null;
@@ -367,7 +367,7 @@ const CHECKS = [
       <Row key={`${r.expected_id}:${r.transaction_id}`}>
         <span className="whitespace-nowrap">{r.expected_month ? monthLabel(monthKeyOf(r.expected_month)) : "—"}</span>
         <span className="min-w-0 flex-1 text-ink">
-          <Link href="/reports/cash" className="underline-offset-4 hover:underline">{r.source ?? "—"}</Link>
+          <Link href="/accounts/expected" className="underline-offset-4 hover:underline">{r.source ?? "—"}</Link>
           <span className="text-muted"> = </span>
           <Link href={`/transactions?ids=${r.transaction_id}`} className="underline-offset-4 hover:underline">
             {r.tx_label ?? "—"}

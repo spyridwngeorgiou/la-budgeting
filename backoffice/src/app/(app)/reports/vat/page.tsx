@@ -24,11 +24,17 @@ import { toggleVatFiled } from "./actions";
 import { ArgsActionForm } from "@/components/ArgsActionForm";
 import { BarChart } from "@/components/ui/BarChart";
 import { vatNarrative } from "@/lib/finance/narratives";
-import { addMonths, currentMonthKey, firstOfMonth, monthKeyOf, quarterOf, shortMonthYearLabel, todayAthens } from "@/lib/dates";
+import { addMonths, currentMonthKey, firstOfMonth, lastOfMonth, monthKeyOf, quarterOf, shortMonthYearLabel, todayAthens } from "@/lib/dates";
+import { change, contributors, latestUpTo, topMovements, whyText, type Part } from "@/lib/finance/insights";
+import { ChangePanel, KpiLink, TopMovements } from "../Insights";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-// ΦΠΑ -- «Τι θα πληρώσουμε στην εφορία;».
+// ΦΠΑ -- «Τι θα πληρώσουμε στην εφορία;». Read-only but for the one status
+// action, «Σήμανση ως υποβλήθηκε». The positions are read from 15 months
+// back (the table and chart still show 6 back, 6 ahead) so «Τι άλλαξε» can
+// compare the last closed period with the same one last year; «Μεγαλύτερες
+// κινήσεις» is the one extra query (that period's 5 largest VAT rows).
 export default async function VatPage() {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
@@ -50,13 +56,14 @@ export default async function VatPage() {
       .from("v_vat_position")
       .select("*")
       .eq("org_id", orgId)
-      .gte("period_start", windowStart)
+      .gte("period_start", firstOfMonth(addMonths(todayMonth, -15)))
       .lte("period_start", windowEnd)
       .order("period_start", { ascending: false }),
     supabase.from("vat_periods").select("*").eq("org_id", orgId),
   ]);
 
-  const rows = (positions ?? []).filter((p) => p.period_start);
+  const allRows = (positions ?? []).filter((p) => p.period_start);
+  const rows = allRows.filter((p) => p.period_start! >= windowStart);
   const filingByPeriod = new Map((filings ?? []).map((f) => [f.period_start, f]));
   const t = el.reports;
   const monthsOf = (p: (typeof rows)[number]) => Number(p.period_months ?? 1);
@@ -91,6 +98,51 @@ export default async function VatPage() {
     withForecast: round2(Number(p.net_position ?? 0)),
   }));
   const hasForecast = rows.some((p) => Number(p.net_scheduled ?? 0) !== 0);
+
+  // «Τι άλλαξε»: the last period that has ended, against the one before it
+  // and the same period last year; «why» = VAT on sales vs on purchases.
+  const periodEnd = (p: (typeof rows)[number]) => lastOfMonth(addMonths(monthKeyOf(p.period_start!), monthsOf(p) - 1));
+  const closed = allRows.find((p) => periodEnd(p) < today) ?? null;
+  const findStart = (start: string) => allRows.find((p) => p.period_start === start) ?? null;
+  const before = closed ? (allRows.find((p) => p.period_start! < closed.period_start!) ?? null) : null;
+  const lastYear = closed ? findStart(firstOfMonth(addMonths(monthKeyOf(closed.period_start!), -12))) : null;
+  const parts = (p: (typeof rows)[number]): Part[] => [
+    { key: "out", label: el.vat.vatIncome, amount: Number(p.vat_income ?? 0) },
+    { key: "in", label: el.vat.vatExpense, amount: -Number(p.vat_expense ?? 0) },
+  ];
+  const net = (p: (typeof rows)[number]) => round2(Number(p.vat_income ?? 0) - Number(p.vat_expense ?? 0));
+  const periodHref = (p: (typeof rows)[number]) => `/transactions?scope=business&from=${p.period_start}&to=${periodEnd(p)}`;
+  const changes = closed
+    ? [before, lastYear].map((other, i) => ({
+        label: `Καθαρός ΦΠΑ ${periodLabel(closed)} έναντι ${other ? periodLabel(other) : i === 0 ? "προηγούμενης" : "πέρσι"}`,
+        change: change(net(closed), other ? net(other) : null),
+        why: other ? whyText(contributors(parts(closed), parts(other))) : null,
+        href: periodHref(closed),
+      }))
+    : [];
+  // «Μεγαλύτερες κινήσεις»: the closed period's largest VAT rows (sales
+  // positive, purchases negative).
+  const { data: vatRows } = closed
+    ? await supabase
+        .from("transactions")
+        .select("id, tx_date, description, counterparty_name, direction, vat_amount")
+        .eq("org_id", orgId)
+        .eq("scope", "business")
+        .neq("status", "cancelled")
+        .gte("tx_date", closed.period_start!)
+        .lte("tx_date", periodEnd(closed))
+        .order("vat_amount", { ascending: false })
+        .limit(5)
+    : { data: [] };
+  const topMoves = topMovements(
+    (vatRows ?? []).map((r) => ({
+      id: r.id,
+      date: r.tx_date,
+      label: r.counterparty_name?.trim() || r.description?.trim() || "—",
+      amount: (r.direction === "income" ? 1 : -1) * Number(r.vat_amount ?? 0),
+    })),
+  );
+  const coverage = latestUpTo(topMoves.map((m) => m.date), today);
   const exportLink = (
     <a href="/api/vat/export" className={buttonClass("secondary", "md")}>
       Εξαγωγή CSV
@@ -112,7 +164,7 @@ export default async function VatPage() {
             items={[
               {
                 label: "Πληρωτέο τρέχουσας",
-                value: formatMoney(Math.max(0, payable)),
+                value: <KpiLink href={current ? periodHref(current) : null}>{formatMoney(Math.max(0, payable))}</KpiLink>,
                 sub: current ? periodLabel(current) : "—",
               },
               {
@@ -128,6 +180,7 @@ export default async function VatPage() {
               },
             ]}
           />
+          <ChangePanel items={changes} coverage={coverage ?? today} />
           <ReportChart
             title="ΦΠΑ ανά περίοδο"
             caption={`Στήλες: ΦΠΑ εκροών και εισροών · γραμμή: καθαρό (θετικό = πληρωτέο), σε δική του κλίμακα δεξιά${hasForecast ? " · αχνή: μαζί με το προβλεπόμενο" : ""}`}
@@ -147,6 +200,7 @@ export default async function VatPage() {
               marker={next?.filing_deadline ? { x: periodLabel(next), label: `${t.vatNextDeadline} ${formatDate(next.filing_deadline)}` } : undefined}
             />
           </ReportChart>
+          {closed && <TopMovements rows={topMoves} caption={`ΦΠΑ, ${periodLabel(closed)}`} />}
           <ReportDetail title="Ανά περίοδο" meta={`${rows.length} περίοδοι`}>
             <SpecTable label={el.nav.vat}>
               <thead>

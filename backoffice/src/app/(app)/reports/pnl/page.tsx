@@ -27,12 +27,16 @@ import { addMonths, currentMonthKey, currentYear, firstOfMonth, isMonthKey, last
 import { BUSINESS_LINES, PNL_LINES, pnlTable, type PnlGroup, type PnlRowKey, type PnlTableRow } from "@/lib/finance/pnl";
 import { topCostRows } from "@/lib/finance/reportCharts";
 import { pnlNarrative } from "@/lib/finance/narratives";
+import { change as changeOf, contributors, latestUpTo, topMovements, whyText, type Part } from "@/lib/finance/insights";
 import { BarChart } from "@/components/ui/BarChart";
+import { ChangePanel, KpiLink, TargetPanel, TopMovements, type ChangeItem } from "../Insights";
 
 // Αποτελέσματα -- «Βγάζουμε λεφτά;». Every figure is pnl_summary() /
 // v_pnl_lines (0067): net of VAT, accrual basis, only the interest of a
 // loan. This page only picks the year, the grouping and whether scheduled
-// rows count, then lays out rows in the shared report anatomy.
+// rows count, then lays out rows in the shared report anatomy. The
+// insights («Τι άλλαξε», by business line) come from the same summaries;
+// «Μεγαλύτερες κινήσεις» is the one extra query (v_pnl_lines, 5 rows).
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -45,6 +49,15 @@ const DRILL_LIMIT = 200;
 const round2 = (n: number) => Math.round(n * 100) / 100;
 const lineOf = (t: { rows: PnlTableRow[] } | null, key: PnlRowKey) => t?.rows.find((r) => r.line === key)?.values ?? [];
 const sumTo = (values: number[], last: number) => round2(values.slice(0, last + 1).reduce((s, v) => s + v, 0));
+// The P&L lines of one table summed over some of its columns, for «why».
+const COST_LINES = ["revenue", "cost_of_sales", "opex", "rent", "financing", "tax", "unclassified"] as const;
+const lineParts = (t: { rows: PnlTableRow[] } | null, cols: number[]): Part[] =>
+  COST_LINES.map((line) => ({
+    key: line,
+    label: el.reports.lines[line],
+    amount: round2(cols.reduce((s, i) => s + (lineOf(t, line)[i] ?? 0), 0)),
+  }));
+const upTo = (last: number) => Array.from({ length: last + 1 }, (_, i) => i);
 
 export default async function PnlPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
@@ -65,12 +78,25 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
     supabase.rpc("pnl_summary", { p_org: orgId, p_from, p_to, p_group, p_include_scheduled: withScheduled });
   // The table's own grouping, plus what the charts need: the year by month
   // and by business line (one of the two is the table's own rows), last
-  // year by month, and the year's largest cost categories. Four RPCs.
-  const [{ data, error }, other, lastYear, { data: costCategories }] = await Promise.all([
+  // year by month, and the year's largest cost categories. Four RPCs, and
+  // the five largest P&L rows of the year so far («Μεγαλύτερες κινήσεις»).
+  const ytdTo = lastOfMonth(addMonths(`${year}-01`, year === thisYear && !withScheduled ? Number(currentMonthKey().slice(5, 7)) - 1 : 11));
+  let topQuery = supabase
+    .from("v_pnl_lines")
+    .select("transaction_id, tx_date, line, category_id, signed_amount")
+    .eq("org_id", orgId)
+    .eq("scope", "business")
+    .gte("tx_date", from)
+    .lte("tx_date", ytdTo)
+    .order("amount", { ascending: false })
+    .limit(5);
+  if (!withScheduled) topQuery = topQuery.eq("is_scheduled", false);
+  const [{ data, error }, other, lastYear, { data: costCategories }, { data: topLines }] = await Promise.all([
     summary(from, to, group),
     summary(from, to, group === "month" ? "business_line" : "month"),
     summary(`${year - 1}-01-01`, `${year - 1}-12-31`, "month"),
     supabase.rpc("pnl_cost_categories", { p_org: orgId, p_from: from, p_to: to, p_include_scheduled: withScheduled, p_limit: 8 }),
+    topQuery,
   ]);
   if (error) throw error;
 
@@ -144,6 +170,68 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
     const s = p.toString();
     return s ? `/reports/pnl?${s}` : "/reports/pnl";
   };
+
+  // «Τι άλλαξε»: the last complete month against the month before (for
+  // January, last December), and the year so far against the same months
+  // last year; «why» = the P&L lines that moved most.
+  const focus = year === thisYear ? nowIndex - 1 : year < thisYear ? 11 : -1;
+  const changes: ChangeItem[] = [];
+  if (hasMonthly && focus >= 0) {
+    const cur = lineParts(monthTable, [focus]);
+    const prev = focus > 0 ? lineParts(monthTable, [focus - 1]) : lastYearTable ? lineParts(lastYearTable, [11]) : null;
+    const prevLabel = focus > 0 ? shortMonthLabel(months[focus - 1]) : `Δεκ ${year - 1}`;
+    changes.push({
+      label: `${t.lines.result} ${shortMonthLabel(months[focus])} έναντι ${prevLabel}`,
+      change: changeOf(result[focus] ?? 0, prev ? (focus > 0 ? result[focus - 1] : prevResult[11]) : null),
+      why: prev ? whyText(contributors(cur, prev)) : null,
+      href: `/transactions?scope=business&from=${firstOfMonth(months[focus])}&to=${lastOfMonth(months[focus])}`,
+    });
+  }
+  if (hasMonthly) {
+    changes.push({
+      label: `${t.lines.result} ${periodSub} έναντι ${year - 1}`,
+      change: changeOf(resultYtd, resultLastYearYtd),
+      why: lastYearTable ? whyText(contributors(lineParts(monthTable, upTo(last)), lineParts(lastYearTable, upTo(last)))) : null,
+    });
+  }
+  // «Μεγαλύτερες κινήσεις»: the year's five largest P&L rows, named by
+  // their cost category where the chart has it, else by their line.
+  const categoryName = new Map((costCategories ?? []).map((c) => [c.category_id, c.name]));
+  const topMoves = topMovements(
+    (topLines ?? []).map((l) => ({
+      id: l.transaction_id,
+      date: l.tx_date,
+      label: `${t.lines[l.line as keyof typeof t.lines] ?? l.line}${l.category_id && categoryName.get(l.category_id) ? ` · ${categoryName.get(l.category_id)}` : ""}`,
+      amount: Number(l.signed_amount ?? 0),
+    })),
+  );
+  // Σε σχέση με τον στόχο: last year is «Τι άλλαξε» and the KPI band; here
+  // each business line's result and margin, largest first, each opening
+  // the table by business line.
+  const lineResultTotal = round2(lineRows.reduce((s, r) => s + r.result, 0));
+  const targetItems = lineRows
+    .slice()
+    .sort((a, b) => Math.abs(b.result) - Math.abs(a.result))
+    .slice(0, 4)
+    .map((r) => ({
+      label: r.label,
+      value: (
+        <KpiLink href={query({ by: "line" })}>
+          <span className={r.result < 0 ? "text-negative" : undefined}>{formatMoney(r.result)}</span>
+        </KpiLink>
+      ),
+      sub: [
+        r.revenue > 0 ? `περιθώριο ${formatPercent(r.result / r.revenue, { digits: 0 })}` : null,
+        lineResultTotal > 0 && r.result > 0 ? `${formatPercent(r.result / lineResultTotal, { digits: 0 })} του αποτελέσματος` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ") || String(year),
+    }));
+  const monthlyRows = group === "month" ? (data ?? []) : (other.data ?? []);
+  const coverage = latestUpTo(
+    monthlyRows.filter((r) => Number(r.n ?? 0) > 0).map((r) => r.bucket),
+    todayAthens(),
+  );
 
   // Drill-down: the transactions behind one cell.
   const drillable = cellLine && (PNL_LINES as readonly string[]).includes(cellLine);
@@ -220,13 +308,25 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
             <ReportHeadline>{pnlNarrative({ year, revenueYtd, resultYtd, resultLastYearYtd })}</ReportHeadline>
             <KpiBand
               items={[
-                { label: "Έσοδα έτους", value: formatMoney(revenueYtd), sub: periodSub },
+                {
+                  label: "Έσοδα έτους",
+                  value: <KpiLink href={query({ line: "revenue" })}>{formatMoney(revenueYtd)}</KpiLink>,
+                  sub: periodSub,
+                },
                 {
                   label: "Μικτό περιθώριο",
-                  value: revenueYtd > 0 ? formatPercent(grossYtd / revenueYtd) : "—",
+                  value: (
+                    <KpiLink href={query({ line: "cost_of_sales" })}>
+                      {revenueYtd > 0 ? formatPercent(grossYtd / revenueYtd) : "—"}
+                    </KpiLink>
+                  ),
                   sub: `${t.lines.gross_profit} ${formatMoney(grossYtd)}`,
                 },
-                { label: "Αποτέλεσμα έτους", value: formatMoney(resultYtd), sub: periodSub },
+                {
+                  label: "Αποτέλεσμα έτους",
+                  value: <KpiLink href={`/transactions?scope=business&from=${from}&to=${ytdTo}`}>{formatMoney(resultYtd)}</KpiLink>,
+                  sub: periodSub,
+                },
                 {
                   label: "Μεταβολή έναντι πέρσι",
                   value:
@@ -239,6 +339,7 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
                 },
               ]}
             />
+            <ChangePanel items={changes} coverage={coverage} />
             <ReportChart
               title="Αποτέλεσμα ανά μήνα"
               caption={`Στήλες: το αποτέλεσμα κάθε μήνα · γραμμή: σωρευτικά από τον Ιανουάριο, σε δική της κλίμακα δεξιά${lastYearTable ? ` · αχνή: ${year - 1}` : ""}`}
@@ -273,6 +374,12 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
             />
           </ReportChart>
         )}
+
+        {targetItems.length > 1 && (
+          <TargetPanel title="Αποτέλεσμα ανά κλάδο" caption={`Αποτέλεσμα και περιθώριο κάθε κλάδου · ${year}`} items={targetItems} />
+        )}
+
+        <TopMovements rows={topMoves} caption={periodSub} />
 
         {topCosts.length > 0 && (
           <ReportChart title={`${t.topCostsTitle} · ${year}`}>
@@ -421,7 +528,7 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
             σύγκριση με πέρσι γίνεται στους ίδιους μήνες. Μικτό περιθώριο = μικτό κέρδος / έσοδα.
           </p>
         </ReportMethod>
-        <ReportFooter dataUntil={dataUntil} />
+        <ReportFooter dataUntil={coverage ?? dataUntil} />
       </ReportSection>
     </div>
   );

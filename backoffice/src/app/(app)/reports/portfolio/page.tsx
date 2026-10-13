@@ -3,7 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/supabase/access";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney, formatMultiple, formatPercent, moneyOrDash } from "@/lib/format";
-import { todayAthens } from "@/lib/dates";
+import { addMonths, currentMonthKey, firstOfMonth, lastOfMonth, monthKeyOf, monthLabel, todayAthens } from "@/lib/dates";
+import { change, contributors, latestUpTo, sumParts, topMovements, vsTarget, whyText, type Part } from "@/lib/finance/insights";
+import { ChangePanel, KpiLink, TargetPanel, TopMovements } from "../Insights";
+
 import { el } from "@/lib/i18n/el";
 import { portfolioNarrative } from "@/lib/finance/narratives";
 import { computeDevelopmentResult } from "@/lib/finance/development";
@@ -36,6 +39,7 @@ import { BarChart } from "@/components/ui/BarChart";
 // subrequests) they are computed only for the largest projects (IRR_MAX) and
 // the projects with loans (DSCR_MAX); the rest show «—».
 const IRR_MAX = 12;
+const round2 = (n: number) => Math.round(n * 100) / 100;
 const DSCR_MAX = 3;
 
 const TITLE = "Χαρτοφυλάκιο έργων";
@@ -46,12 +50,24 @@ export default async function PortfolioPage() {
   const orgId = access.kind === "internal" ? access.membership.orgId : await getCurrentOrgId(supabase);
   const today = todayAthens();
 
-  const [{ data: rollup, error }, { data: loans }] = await Promise.all([
+  // «Τι άλλαξε»: the project spending of the last complete month against
+  // the month before and the same month last year -- the one extra query.
+  const focusMonth = addMonths(currentMonthKey(), -1);
+  const compareMonths = [focusMonth, addMonths(focusMonth, -1), addMonths(focusMonth, -12)];
+  const [{ data: rollup, error }, { data: loans }, { data: spendRows }] = await Promise.all([
     supabase
       .from("v_project_rollup")
       .select("project_id, display_name, code, business_line, status, total_budget, spent, remaining_budget, net_result")
       .eq("org_id", orgId),
     supabase.from("loans").select("project_id").eq("org_id", orgId).not("project_id", "is", null),
+    supabase
+      .from("transactions")
+      .select("id, paid_on, project_id, gross_amount, description, counterparty_name")
+      .eq("org_id", orgId)
+      .eq("direction", "expense")
+      .eq("status", "paid")
+      .not("project_id", "is", null)
+      .or(compareMonths.map((m) => `and(paid_on.gte.${firstOfMonth(m)},paid_on.lte.${lastOfMonth(m)})`).join(",")),
   ]);
   if (error) throw error;
 
@@ -92,6 +108,40 @@ export default async function PortfolioPage() {
   const chart = portfolioChartRows(rows);
   const lines = el.reports.businessLines as Record<string, string>;
 
+  // Insights from the month rows: per project, per month.
+  const nameOf = new Map(rows.map((r) => [r.id, r.name]));
+  const spendIn = (m: string): Part[] =>
+    (spendRows ?? [])
+      .filter((r) => r.paid_on && monthKeyOf(r.paid_on) === m)
+      .map((r) => ({ key: r.project_id ?? "", label: nameOf.get(r.project_id ?? "") ?? "—", amount: Number(r.gross_amount ?? 0) }));
+  const focusParts = spendIn(focusMonth);
+  const changes = compareMonths.slice(1).map((m) => {
+    const other = spendIn(m);
+    return {
+      label: `Δαπάνες έργων ${monthLabel(focusMonth)} έναντι ${monthLabel(m)}`,
+      change: change(sumParts(focusParts), sumParts(other)),
+      why: whyText(contributors(focusParts, other)),
+      href: `/transactions?direction=expense&status=paid&from=${firstOfMonth(focusMonth)}&to=${lastOfMonth(focusMonth)}`,
+    };
+  });
+  const topMoves = topMovements(
+    (spendRows ?? [])
+      .filter((r) => r.paid_on && monthKeyOf(r.paid_on) === focusMonth)
+      .map((r) => ({
+        id: r.id,
+        date: r.paid_on,
+        label: `${r.counterparty_name?.trim() || r.description?.trim() || "—"} · ${nameOf.get(r.project_id ?? "") ?? "—"}`,
+        amount: Number(r.gross_amount ?? 0),
+      })),
+  );
+  const coverage = latestUpTo((spendRows ?? []).map((r) => r.paid_on), today);
+  // Σε σχέση με τον στόχο: the budget left and the overrun.
+  const budgeted = rows.filter((r) => r.budget > 0);
+  const remainingLeft = round2(budgeted.reduce((s, r) => s + Math.max(0, r.remaining), 0));
+  const overrun = round2(budgeted.reduce((s, r) => s + Math.max(0, -r.remaining), 0));
+  const worst = budgeted.filter((r) => r.remaining < 0).sort((a, b) => a.remaining - b.remaining)[0] ?? null;
+  const spentVsBudget = vsTarget(totals.spentBudgeted, totals.budget);
+
   return (
     <div className="flex min-w-0 flex-col gap-10">
       <PageHeader title={TITLE} />
@@ -110,7 +160,11 @@ export default async function PortfolioPage() {
           </ReportHeadline>
           <KpiBand
             items={[
-              { label: "Συνολική επένδυση", value: formatMoney(totals.budget), sub: `${rows.filter((r) => r.budget > 0).length} έργα με προϋπολογισμό` },
+              {
+                label: "Συνολική επένδυση",
+                value: <KpiLink href="/projects">{formatMoney(totals.budget)}</KpiLink>,
+                sub: `${rows.filter((r) => r.budget > 0).length} έργα με προϋπολογισμό`,
+              },
               {
                 label: "Δαπανήθηκε",
                 value: totals.spentShare == null ? "—" : formatPercent(totals.spentShare, { digits: 0 }),
@@ -126,6 +180,31 @@ export default async function PortfolioPage() {
                 : []),
             ]}
           />
+          <ChangePanel items={changes} coverage={coverage} />
+          {budgeted.length > 0 && (
+            <TargetPanel
+              caption="Τα έργα με προϋπολογισμό"
+              items={[
+                {
+                  label: "Δαπανήθηκε έναντι προϋπολογισμού",
+                  value: spentVsBudget.share == null ? "—" : formatPercent(spentVsBudget.share, { digits: 0 }),
+                  sub: `${formatMoney(totals.spentBudgeted)} από ${formatMoney(totals.budget)}`,
+                },
+                { label: "Υπόλοιπο προϋπολογισμού", value: formatMoney(remainingLeft), sub: "δεν έχει δαπανηθεί ή δεσμευτεί" },
+                {
+                  label: "Υπέρβαση",
+                  value: <span className={overrun > 0 ? "text-negative" : undefined}>{formatMoney(overrun)}</span>,
+                  sub: worst ? (
+                    <Link href={`/projects/${worst.id}`} className={LINK_CLASS}>
+                      μεγαλύτερη: {worst.name}
+                    </Link>
+                  ) : (
+                    "κανένα έργο εκτός"
+                  ),
+                },
+              ]}
+            />
+          )}
           {chart.length > 0 && (
             <ReportChart title="Προϋπολογισμός έναντι δαπανηθέντων" caption="Ανά έργο · σημειωμένα όσα είναι εκτός προϋπολογισμού">
               <BarChart
@@ -141,6 +220,7 @@ export default async function PortfolioPage() {
               />
             </ReportChart>
           )}
+          <TopMovements rows={topMoves} caption={`πληρωμένες δαπάνες έργων, ${monthLabel(focusMonth)}`} />
           <ReportDetail title="Ανά έργο" meta={`${rows.length} έργα`}>
             <SpecTable label={TITLE} stickyFirst>
               <thead>
@@ -224,7 +304,7 @@ export default async function PortfolioPage() {
             </p>
             <p className={SUB_CLASS}>Αναλυτικά για κάθε έργο: η σελίδα του έργου.</p>
           </ReportMethod>
-          <ReportFooter dataUntil={today} />
+          <ReportFooter dataUntil={coverage ?? today} />
         </ReportSection>
       )}
     </div>

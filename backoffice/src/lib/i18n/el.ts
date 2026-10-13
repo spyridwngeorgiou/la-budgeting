@@ -42,6 +42,9 @@ export const el = {
     netWorth: "Καθαρή θέση",
     deals: "Μεσιτεία",
     portfolio: "Χαρτοφυλάκιο",
+    accountsAll: "Λογαριασμοί",
+    assetsLiabilities: "Περιουσία & υποχρεώσεις",
+    expected: "Αναμενόμενα έσοδα",
   },
   upload: {
     title: "Ανέβασμα",

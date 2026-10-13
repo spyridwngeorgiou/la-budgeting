@@ -220,7 +220,7 @@ export default async function DashboardPage() {
     (expectedOverdue ?? 0) > 0 && {
       kind: "expectedOverdue",
       label: `${expectedOverdue} αναμενόμεν${expectedOverdue === 1 ? "ο έσοδο έχει" : "α έσοδα έχουν"} περάσει την ημερομηνία ${expectedOverdue === 1 ? "του" : "τους"}`,
-      href: "/reports/cash",
+      href: "/accounts/expected",
     },
     // Captures waiting on review and AI proposals: one row, one place.
     canReview && inboxCount > 0 && { kind: "inbox", label: `Εισερχόμενα: ${inboxCount} προς έλεγχο`, href: "/inbox" },

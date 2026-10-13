@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentOrgId, formString } from "@/lib/supabase/org";
+import { getCurrentOrgId } from "@/lib/supabase/org";
 import { addMonths, lastOfMonth, monthKeyOf, todayAthens } from "@/lib/dates";
-import { action, UserError, type ActionResult } from "@/lib/actions";
+import { action, type ActionResult } from "@/lib/actions";
 
+// The VAT report's one action (the report is otherwise read-only).
 // vat_periods stores only human facts (filed?, when, how much) -- the
 // figures themselves come from v_vat_position, computed from the ledger.
 //
@@ -57,36 +58,6 @@ export async function toggleVatFiled(periodStart: string, currentlyFiled: boolea
         status: nowFiled ? "filed" : "pending",
         filed_on: nowFiled ? todayAthens() : null,
         ...lockFields(nowFiled, figures),
-      },
-      { onConflict: "org_id,period_start" },
-    );
-    if (error) throw error;
-    revalidatePath("/reports/vat");
-    revalidatePath("/reports/cash");
-  });
-}
-
-export async function upsertVatPeriodFiling(periodStart: string, formData: FormData): Promise<ActionResult> {
-  return action(async () => {
-    const supabase = await createClient();
-    const orgId = await getCurrentOrgId(supabase);
-    const figures = await periodFigures(supabase, orgId, periodStart);
-
-    const filed = formData.get("filed") === "on";
-    const amountPaid = formString(formData, "amount_paid");
-    if (amountPaid && !Number.isFinite(Number(amountPaid))) throw new UserError("Μη έγκυρο ποσό πληρωμής.");
-
-    const { error } = await supabase.from("vat_periods").upsert(
-      {
-        org_id: orgId,
-        period_start: periodStart,
-        period_end: figures.periodEnd,
-        status: filed ? "filed" : "pending",
-        filed_on: filed ? todayAthens() : null,
-        amount_paid: amountPaid ? Number(amountPaid) : null,
-        paid_on: formString(formData, "paid_on"),
-        reference: formString(formData, "reference"),
-        ...lockFields(filed, figures),
       },
       { onConflict: "org_id,period_start" },
     );

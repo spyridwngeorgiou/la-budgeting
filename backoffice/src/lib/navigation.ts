@@ -20,6 +20,14 @@ export const SECTION_TABS = {
     { href: "/projects/properties", label: el.tabs.properties },
     { href: "/projects/deals", label: el.tabs.deals },
   ],
+  // Λογαριασμοί also keeps the hand-kept lists the reports read: assets &
+  // liabilities (Καθαρή θέση) and expected income (Ταμείο). The reports
+  // are read-only and link here to manage them.
+  accounts: [
+    { href: "/accounts", label: el.tabs.accountsAll },
+    { href: "/accounts/assets", label: el.tabs.assetsLiabilities },
+    { href: "/accounts/expected", label: el.tabs.expected },
+  ],
   reports: [
     { href: "/reports/cash", label: el.tabs.cash },
     { href: "/reports/pnl", label: el.tabs.pnl },
