@@ -14,7 +14,10 @@
 // smoke also opens every page in headless Chrome (when Chrome is installed at
 // CHROME, or BROWSER=1; BROWSER=0 skips it) at 1440 and 390 px, one page at a
 // time with a pause between: it fails on a browser error (pageerror), on the
-// error page «Κάτι πήγε στραβά», and on sideways scrolling at 390 px.
+// error page «Κάτι πήγε στραβά», on sideways scrolling at 390 px, and on a
+// page taller than its budget at 1440 (pageBudget: reports 1400 px with the
+// history closed; the overview, accounts and a project 2250 px). Every page's
+// height at 1440 is printed so growth shows up release to release.
 import { spawnSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -27,7 +30,9 @@ const ENVS = {
 };
 const REPO = "spyridwngeorgiou/la-budgeting";
 const CHROME = process.env.CHROME ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const DEFAULT_PATHS = ["/dashboard", "/transactions", "/projects", "/planner", "/reports/cash", "/reports/pnl", "/accounts", "/contacts", "/inbox", "/collab"];
+const DEFAULT_PATHS = ["/dashboard", "/transactions", "/projects", "/planner", "/reports/cash", "/reports/pnl", "/reports/vat", "/reports/net-worth", "/reports/portfolio", "/accounts", "/contacts", "/inbox", "/collab"];
+// Height budget at 1440x900 (px), or null for paged lists that grow with data.
+const pageBudget = (p) => (p.startsWith("/reports/") ? 1400 : /^\/(dashboard|accounts)$|^\/projects\/[0-9a-f-]{36}$/.test(p.split("?")[0]) ? 2250 : null);
 
 const sh = (cmd, opts = {}) => {
   const r = spawnSync(cmd, { cwd: root, shell: true, encoding: "utf8", maxBuffer: 64 << 20, env: { ...process.env, MSYS_NO_PATHCONV: "1" }, ...opts });
@@ -163,6 +168,7 @@ async function browserSmoke(base, list, jar, { gapMs }) {
       return 503;
     };
     let cpuLimited = 0;
+    const heights = [];
     for (const p of list) {
       for (const [pg, tag] of [[desk, "1440"], [phone, "390"]]) {
         const errors = [];
@@ -172,6 +178,7 @@ async function browserSmoke(base, list, jar, { gapMs }) {
         const found = await pg.evaluate(() => ({
           boundary: document.body?.innerText.includes("Κάτι πήγε στραβά") ?? false,
           overflow: document.documentElement.scrollWidth - window.innerWidth,
+          height: document.documentElement.scrollHeight,
         }));
         pg.off("pageerror", onErr);
         // A 503 that survives the retries is the Workers Free CPU limit, not a
@@ -182,6 +189,11 @@ async function browserSmoke(base, list, jar, { gapMs }) {
         }
         if (found.boundary) errors.push("error page «Κάτι πήγε στραβά»");
         if (tag === "390" && found.overflow > 1) errors.push(`scrolls sideways by ${found.overflow}px`);
+        if (tag === "1440" && status < 500) {
+          const budget = pageBudget(p);
+          heights.push(`${p} ${found.height}`);
+          if (budget && found.height > budget) errors.push(`${found.height}px tall, budget ${budget}px`);
+        }
         if (errors.length) {
           bad++;
           console.error(`✗ browser ${tag} ${p}: ${errors.slice(0, 3).join("; ")}`);
@@ -189,6 +201,7 @@ async function browserSmoke(base, list, jar, { gapMs }) {
         await sleep(gapMs);
       }
     }
+    if (heights.length) console.log(`  heights at 1440: ${heights.join(" · ")}`);
     console.log(`${bad ? "✗" : "✓"} browser smoke: ${list.length * 2 - bad}/${list.length * 2} ok (1440 + 390)${cpuLimited ? `, ${cpuLimited} hit the Cloudflare CPU limit` : ""}`);
   } finally {
     await browser.close();
