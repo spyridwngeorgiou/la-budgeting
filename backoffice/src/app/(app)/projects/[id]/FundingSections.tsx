@@ -9,7 +9,7 @@ import { RowDeleteMenu } from "@/components/RowDeleteMenu";
 
 // An editable record: its facts on the left, the buttons on the right
 // (under it on phones), a hairline under each.
-const ROW = "flex flex-col gap-2 border-b border-hairline py-3 md:flex-row md:items-center md:justify-between md:gap-4";
+const ROW = "flex flex-col gap-2 border-b border-hairline py-2 md:flex-row md:items-center md:justify-between md:gap-4";
 
 // How the project is funded: the loan programme and its tranches (each
 // written into the ledger by saveLoan, 0065), and the project's own return
@@ -92,7 +92,7 @@ export function FundingSections({
               </div>
             </div>
           ))}
-          <div className="pt-3">
+          <div className="pt-2">
             <LoanFormModal action={saveLoan.bind(null, id, null)} />
           </div>
         </div>

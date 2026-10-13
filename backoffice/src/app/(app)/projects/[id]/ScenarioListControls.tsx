@@ -2,14 +2,15 @@
 
 import { useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Button, Field, FormDrawer, Input, Menu, MenuItem, Notice, Select } from "@/components/ui";
+import { Button, Field, FormDrawer, Input, Notice, Select } from "@/components/ui";
 import { errorOf } from "@/lib/actions";
 import { fillText } from "@/lib/collab/text";
 import { el } from "@/lib/i18n/el";
 import { createScenario, deleteScenario, duplicateScenario, renameScenario, setBaseScenario } from "./scenario-actions";
 
-// The client parts of the «Σενάρια» list (ScenarioSections.tsx): the
-// «+ Νέο σενάριο» drawer and each row's «Ορισμός ως βάση» / «⋯». Ids come
+// The client parts of the scenario bar (ScenarioSections.tsx): the
+// «+ Νέο σενάριο» drawer and the selected scenario's visible «Ορισμός ως
+// βάση» / «Μετονομασία» / «Διαγραφή» (no «⋯» menu). Ids come
 // in as plain props and go to the server actions as plain arguments (no
 // per-row .bind -- see CLAUDE.md, Workers CPU).
 
@@ -100,25 +101,27 @@ export function ScenarioRowActions({
           {t.makeBase}
         </Button>
       )}
-      <Menu label={t.actions}>
-        <MenuItem onClick={() => setRenaming(true)}>{t.rename}</MenuItem>
-        {!isBase && (
-          <MenuItem
-            tone="danger"
-            disabled={pending}
-            onClick={() => {
-              if (!window.confirm(fillText(t.confirmDelete, { name }))) return;
-              run(
-                () => deleteScenario(projectId, scenarioId),
-                // The page was showing it: back to the base.
-                isSelected ? () => router.replace(pathname, { scroll: false }) : undefined,
-              );
-            }}
-          >
-            {t.delete}
-          </MenuItem>
-        )}
-      </Menu>
+      <Button variant="ghost" size="sm" disabled={pending} onClick={() => setRenaming(true)}>
+        {t.rename}
+      </Button>
+      {!isBase && (
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={pending}
+          className="text-negative hover:text-negative"
+          onClick={() => {
+            if (!window.confirm(fillText(t.confirmDelete, { name }))) return;
+            run(
+              () => deleteScenario(projectId, scenarioId),
+              // The page was showing it: back to the base.
+              isSelected ? () => router.replace(pathname, { scroll: false }) : undefined,
+            );
+          }}
+        >
+          {t.delete}
+        </Button>
+      )}
       {error && (
         <Notice tone="negative" role="alert" className="basis-full">
           {error}

@@ -34,9 +34,14 @@ export function BudgetLineRows({ rows }: { rows: BudgetLineRow[] }) {
     );
   if (visible.length === 0) return null;
   // A small spec table: uppercase head over the navy rule, hairline rows,
-  // figures right-aligned; scrolls inside its frame on a phone.
+  // figures right-aligned; scrolls inside its frame on a phone. Closed by
+  // default (native <details>), one click opens it.
   return (
-    <div className="mt-4 flex flex-col gap-2">
+    <details className="border-b border-hairline">
+      <summary className="flex min-h-10 cursor-pointer items-center text-body text-ink hover:underline">
+        {el.projectSummary.budgetLines}
+      </summary>
+      <div className="flex flex-col gap-2 pb-3">
       <SpecTable label={t.title} caption={t.title}>
         <thead>
           <tr>
@@ -70,7 +75,8 @@ export function BudgetLineRows({ rows }: { rows: BudgetLineRow[] }) {
         </tbody>
       </SpecTable>
       {visible.some((r) => r.line_code === "contingency") && <p className="text-small text-muted">{t.contingencyNote}</p>}
-    </div>
+      </div>
+    </details>
   );
 }
 

@@ -1,6 +1,6 @@
 import { OnePagerRow, OnePagerSection } from "@/components/onepager";
 import Link from "next/link";
-import { Badge, ButtonLink, Term } from "@/components/ui";
+import { ButtonLink, Term } from "@/components/ui";
 import { formatMoney, formatMultiple, formatPercent } from "@/lib/format";
 import type { ScenarioResult, ScenarioRow } from "@/lib/finance/projectModel";
 import { saveScenario, saveOpexLine, deleteOpexLine } from "./scenario-actions";
@@ -11,7 +11,7 @@ import { RowDeleteMenu } from "@/components/RowDeleteMenu";
 import { el } from "@/lib/i18n/el";
 import { NewScenarioButton, ScenarioRowActions } from "./ScenarioListControls";
 
-// One row of the «Σενάρια» list: the three figures of its
+// One row of the scenario bar: the three figures of its
 // computeScenarioFromInputs() run (null = not computable, shown «—»).
 export interface ScenarioListItem {
   id: string;
@@ -22,8 +22,87 @@ export interface ScenarioListItem {
   minDscr: number | null;
 }
 
-// The scenario blocks of the project one-pager: the «Σενάρια» list (every
-// scenario, always shown), then the SELECTED scenario's assumptions
+const t = el.projectScenarios;
+
+// The scenario bar, right under the header (visible without scrolling):
+// every scenario as a tab (one click opens it, ?s=), «+ Νέο σενάριο» and
+// «Σύγκριση σεναρίων»; under it the selected scenario's result · NPV · min
+// DSCR and its actions, all visible (ScenarioRowActions). The base is what
+// opens by default.
+export function ScenarioBar({
+  projectId: id,
+  scenarios,
+  selectedId,
+}: {
+  projectId: string;
+  scenarios: ScenarioListItem[];
+  selectedId: string | null;
+}) {
+  const selected = scenarios.find((s) => s.id === selectedId) ?? null;
+  return (
+    <section aria-label={t.title} className="flex flex-col gap-2 border-b border-hairline pb-3">
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
+        <span className="eyebrow pb-2.5 text-muted">{t.title}</span>
+        {scenarios.length === 0 ? (
+          <span className="pb-2.5 text-body text-muted">{t.empty}</span>
+        ) : (
+          <nav aria-label={t.title} className="flex min-w-0 gap-1 overflow-x-auto">
+            {scenarios.map((s) => {
+              const isSelected = s.id === selectedId;
+              return (
+                <Link
+                  key={s.id}
+                  href={`/projects/${id}?s=${s.id}`}
+                  scroll={false}
+                  aria-current={isSelected ? "true" : undefined}
+                  className={`min-h-10 border-b-2 px-3 py-2.5 text-body whitespace-nowrap ${
+                    isSelected ? "border-navy text-ink" : "border-transparent text-muted hover:text-ink"
+                  }`}
+                >
+                  {s.name}
+                  {s.isBase && <span className="text-small text-muted"> · {t.base}</span>}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
+        <div className="flex flex-wrap items-center gap-2 pb-1 md:ml-auto">
+          <NewScenarioButton
+            projectId={id}
+            sources={scenarios.map((s) => ({ id: s.id, name: s.name }))}
+            defaultSourceId={selectedId}
+          />
+          {scenarios.length > 1 && (
+            <ButtonLink href={`/projects/${id}/compare`} size="sm">
+              {t.compare}
+            </ButtonLink>
+          )}
+        </div>
+      </div>
+      {selected && (
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <span className="num text-small text-muted">
+            {t.selected}: {t.operatingResult} {selected.operatingResult == null ? "—" : formatMoney(selected.operatingResult)} · {t.npv}{" "}
+            {selected.npv == null ? "—" : formatMoney(selected.npv)} · {t.minDscr}{" "}
+            {selected.minDscr == null ? "—" : formatMultiple(selected.minDscr)}
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <ScenarioRowActions
+              projectId={id}
+              scenarioId={selected.id}
+              name={selected.name}
+              isBase={selected.isBase}
+              isSelected
+            />
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// The scenario blocks of the project one-pager's grid: the SELECTED
+// scenario's assumptions
 // (editable), its reference operating year (ΛΕΙΤΟΥΡΓΙΑ) and cash flow KPIs
 // (ΤΑΜΕΙΑΚΗ ΡΟΗ). Every figure is computeScenarioFromInputs()
 // (projectModel.ts), passed in; nothing is computed here.
@@ -34,10 +113,8 @@ export function ScenarioSections({
   annualRent,
   monthlyRent,
   sentToCash,
-  scenarios,
 }: {
   projectId: string;
-  scenarios: ScenarioListItem[];
   scenario: ScenarioRow | null;
   result: ScenarioResult | null;
   annualRent: number;
@@ -51,62 +128,8 @@ export function ScenarioSections({
   const operatingResult = revenue - opexTotal - annualRent;
   const hasOperation = Boolean(scenario && revenue > 0);
 
-  const t = el.projectScenarios;
-
   return (
     <>
-      {/* Σενάρια -- any number per project; ?s= opens one (the blocks below
-          then show and edit it), the base is what opens by default. */}
-      <OnePagerSection title={t.title} subtitle={t.subtitle}>
-        <ul className="flex flex-col">
-          {scenarios.map((s) => {
-            const isSelected = s.id === scenario?.id;
-            return (
-              <li
-                key={s.id}
-                aria-current={isSelected ? "true" : undefined}
-                className={`flex flex-col gap-2 border-b border-hairline py-3 text-body md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-4 ${isSelected ? "bg-hover" : ""}`}
-              >
-                <div className="flex min-w-0 flex-col gap-1">
-                  <span className="flex flex-wrap items-center gap-2 text-ink">
-                    <Link href={`/projects/${id}?s=${s.id}`} scroll={false} className="break-words underline-offset-4 hover:underline">
-                      {s.name}
-                    </Link>
-                    {s.isBase && <Badge>{t.base}</Badge>}
-                    {isSelected && <span className="text-small text-muted">· {t.selected}</span>}
-                  </span>
-                  <span className="num text-small text-muted">
-                    {t.operatingResult} {s.operatingResult == null ? "—" : formatMoney(s.operatingResult)} · {t.npv}{" "}
-                    {s.npv == null ? "—" : formatMoney(s.npv)} · {t.minDscr} {s.minDscr == null ? "—" : formatMultiple(s.minDscr)}
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {!isSelected && (
-                    <ButtonLink href={`/projects/${id}?s=${s.id}`} scroll={false} size="sm">
-                      {t.open}
-                    </ButtonLink>
-                  )}
-                  <ScenarioRowActions projectId={id} scenarioId={s.id} name={s.name} isBase={s.isBase} isSelected={isSelected} />
-                </div>
-              </li>
-            );
-          })}
-          {scenarios.length === 0 && <li className="border-b border-hairline py-3 text-body text-muted">{t.empty}</li>}
-        </ul>
-        <div className="flex flex-wrap items-center gap-2 pt-3">
-          <NewScenarioButton
-            projectId={id}
-            sources={scenarios.map((s) => ({ id: s.id, name: s.name }))}
-            defaultSourceId={scenario?.id ?? null}
-          />
-          {scenarios.length > 1 && (
-            <ButtonLink href={`/projects/${id}/compare`} size="sm">
-              {t.compare}
-            </ButtonLink>
-          )}
-        </div>
-      </OnePagerSection>
-
       {/* Λειτουργικές Παραδοχές -- growth rates, discount rate, DSCR
           covenant, and the opex line items themselves were previously not
           editable anywhere in the app, not even through the AI chat
@@ -156,7 +179,7 @@ export function ScenarioSections({
                 {opexLines.map((l) => (
                   <div
                     key={l.id}
-                    className="flex flex-col gap-2 border-b border-hairline py-3 text-body md:flex-row md:items-center md:justify-between md:gap-4"
+                    className="flex flex-col gap-2 border-b border-hairline py-2 text-body md:flex-row md:items-center md:justify-between md:gap-4"
                   >
                     <span className="min-w-0 text-ink">
                       {l.label}{" "}
@@ -191,7 +214,7 @@ export function ScenarioSections({
                     </div>
                   </div>
                 ))}
-                <div className="pt-3">
+                <div className="pt-2">
                   <OpexLineFormModal action={saveOpexLine.bind(null, id, scenario.id, null)} />
                 </div>
               </div>

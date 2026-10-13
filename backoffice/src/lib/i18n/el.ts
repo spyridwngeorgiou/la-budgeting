@@ -920,8 +920,7 @@ export const el = {
   },
   // Σενάρια of a project's page: list, «+ Νέο σενάριο», base, rename, delete
   projectScenarios: {
-    title: "Σενάρια",
-    subtitle: "Η σελίδα δείχνει το επιλεγμένο σενάριο· η βάση είναι το προεπιλεγμένο.",
+    title: "Σενάριο",
     empty: "Δεν υπάρχει ακόμα σενάριο για αυτό το έργο.",
     add: "+ Νέο σενάριο",
     addTitle: "Νέο σενάριο",
@@ -931,10 +930,8 @@ export const el = {
     copyOf: "αντιγραφή του «{name}»",
     copySuffix: "(αντίγραφο)",
     base: "βάση",
-    selected: "ανοιχτό",
-    open: "Άνοιγμα",
+    selected: "Επιλεγμένο",
     makeBase: "Ορισμός ως βάση",
-    actions: "Ενέργειες σεναρίου",
     rename: "Μετονομασία",
     renameTitle: "Μετονομασία σεναρίου",
     delete: "Διαγραφή",
@@ -946,6 +943,19 @@ export const el = {
     nameRequired: "Δώστε όνομα στο σενάριο.",
     notFound: "Το σενάριο δεν βρέθηκε.",
     feedsScenario: "Ποια τροφοδοτεί τη ΛΕΙΤΟΥΡΓΙΑ του σεναρίου «{name}»",
+  },
+  // The project page's closing summary lines (plan, partners) and its
+  // collapsed blocks.
+  projectSummary: {
+    plan: "Πλάνο",
+    nextMilestone: "επόμενο ορόσημο",
+    noMilestone: "κανένα ανοιχτό ορόσημο",
+    milestones: "Ορόσημα",
+    partners: "Συνεργάτες",
+    manage: "Διαχείριση",
+    close: "Κλείσιμο",
+    budgetLines: "Ανά γραμμή προϋπολογισμού",
+    newRevenuePlan: "+ Νέα ανάλυση εσόδων",
   },
   // ── Brokerage deals (0065) ──────────────────────────────────────────────
   deals: {
