@@ -46,8 +46,9 @@ describe("Piraeus-like CSV (windows-1253, debit/credit, preamble + totals)", () 
   it("skips the totals footer and checks the running balance", async () => {
     const { batch } = await parseBankFile(load("piraeus_1253.csv"), BUILTIN_PROFILES, ctx);
     expect(batch.statement).toMatchObject({
-      periodStart: "2026-03-02",
-      periodEnd: "2026-03-05",
+      // The preamble's «Περίοδος» beats the first/last movement date.
+      periodStart: "2026-03-01",
+      periodEnd: "2026-03-31",
       openingBalance: 10000,
       closingBalance: 11169.55,
       balanceConsistent: true,
@@ -75,7 +76,7 @@ describe("NBG-like CSV (UTF-8 BOM, Χ/Π sign column, quoted multi-line descript
     expect(result.profile?.bankCode).toBe("nbg");
     const [incoming, card] = result.batch.rows;
     expect(incoming).toMatchObject({ direction: "income", amount: 3100, reference: "NBG0001" });
-    expect(incoming.description).toContain("\nΑΠΟ: ΞΕΝΟΔΟΧΕΙΑΚΗ ΙΚΕ");
+    expect(incoming.description).toContain(" · ΑΠΟ: ΞΕΝΟΔΟΧΕΙΑΚΗ ΙΚΕ"); // a quoted line break reads « · »
     expect(incoming.counterpartyIban).toBe("GR5102600000000000123456789");
     expect(card).toMatchObject({ direction: "expense", amount: 45.2, description: 'ΑΓΟΡΑ ΚΑΡΤΑΣ "ΒΕΝΖΙΝΑΔΙΚΟ"' });
     expect(result.batch.statement).toMatchObject({ openingBalance: 10000, closingBalance: 13054.8, balanceConsistent: true });
@@ -125,8 +126,8 @@ describe("Eurobank-like XLSX (Date cells, signed numbers, newest first)", () => 
       openingBalance: 9000,
       closingBalance: 8080,
       balanceConsistent: true,
-      periodStart: "2026-03-15",
-      periodEnd: "2026-03-20",
+      periodStart: "2026-03-01",
+      periodEnd: "2026-03-31",
     });
   });
 });

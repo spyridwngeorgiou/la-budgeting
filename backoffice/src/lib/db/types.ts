@@ -496,6 +496,7 @@ export type Database = {
       }
       accounts: {
         Row: {
+          account_number: string | null
           created_at: string
           iban: string | null
           id: string
@@ -513,6 +514,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_number?: string | null
           created_at?: string
           iban?: string | null
           id?: string
@@ -530,6 +532,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_number?: string | null
           created_at?: string
           iban?: string | null
           id?: string

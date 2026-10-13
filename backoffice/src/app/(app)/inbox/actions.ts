@@ -10,10 +10,15 @@ import { applyProfile, ProfileMismatchError } from "@/lib/ingest/profiles/apply"
 import { normalizedRow } from "@/lib/ingest/profiles/detect";
 import { PROFILE_FIELDS, type BankProfile, type ColumnMap, type SignMode } from "@/lib/ingest/profiles/types";
 import type { DateFormat } from "@/lib/ingest/text";
-import { INGEST_DECISION, type IngestDecision, type StatementSummary } from "@/lib/ingest/types";
+import { INGEST_DECISION, type CanonicalRow, type IngestDecision, type StatementSummary } from "@/lib/ingest/types";
+import { parseBankPdf } from "@/lib/ingest/adapters/bankPdf";
+import type { AccountIdentity, StatementHeader } from "@/lib/ingest/profiles/header";
+import { sniffFileKind } from "@/lib/ingest/xlsx";
+import { extractBankStatement } from "@/lib/ai/bankStatement";
+import { aiEnabled, assertWithinAiBudget, logAiUsage } from "@/lib/ai/client";
 import { loadProfiles, stageMovements } from "./stage";
 import { athensMinuteLabel, isIsoDate } from "@/lib/dates";
-import type { ActionResult } from "@/lib/actions";
+import { UserError, type ActionResult } from "@/lib/actions";
 import { el } from "@/lib/i18n/el";
 import { cashOnly, deriveFromNet, isIdentityConsistent } from "@/lib/finance/money";
 import { findPossibleDuplicates, type WriteResult } from "@/lib/ingest/duplicates";
@@ -41,61 +46,155 @@ function statementColumns(statement: StatementSummary | null) {
   };
 }
 
+// The statement's own IBAN / account number onto the account the user
+// picked, when the account has none yet and no other account claims it --
+// so the next statement from it is recognised without choosing.
+async function learnAccountIdentity(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  accounts: AccountIdentity[],
+  accountId: string,
+  header: StatementHeader,
+) {
+  const account = accounts.find((a) => a.id === accountId);
+  if (!account) return;
+  const patch: { iban?: string; account_number?: string } = {};
+  if (!account.iban && header.iban && !accounts.some((a) => a.iban?.replace(/\s+/g, "").toUpperCase() === header.iban)) {
+    patch.iban = header.iban;
+  }
+  if (!account.account_number && header.accountNumber && /^[0-9]{6,34}$/.test(header.accountNumber)) {
+    if (!accounts.some((a) => a.account_number === header.accountNumber)) patch.account_number = header.accountNumber;
+  }
+  if (Object.keys(patch).length === 0) return;
+  const { error } = await supabase.from("accounts").update(patch).eq("id", accountId);
+  if (error) console.error("[inbox] learn account identity", error.message);
+}
+
+// Bank statement -> staged batch. CSV/XLSX go through the bank profiles
+// (bankFile.ts); a PDF is read by the AI statement reader (bankPdf.ts). The
+// account is the one chosen, else the one the file's IBAN / account number
+// identifies. A statement whose running balance does not add up is flagged
+// «χρειάζεται έλεγχο» and no match is pre-accepted.
 export async function uploadBankStatement(formData: FormData): Promise<InboxResult> {
   const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) return { error: "Επιλέξτε ένα αρχείο CSV ή XLSX." };
-  const accountId = formString(formData, "account_id");
-  if (!accountId) return { error: "Επιλέξτε τον λογαριασμό στον οποίο ανήκει το αντίγραφο." };
+  if (!(file instanceof File) || file.size === 0) return { error: "Επιλέξτε ένα αρχείο CSV, XLSX ή PDF." };
+  const chosenAccountId = formString(formData, "account_id");
 
   const supabase = await createClient();
   const [orgId, { data: { session } }] = await Promise.all([getCurrentOrgId(supabase), supabase.auth.getSession()]);
   const bytes = new Uint8Array(await file.arrayBuffer());
   const sha = await sha256Hex(bytes);
 
-  const { data: existing } = await supabase
-    .from("ingest_batches")
-    .select("id, filename")
-    .eq("org_id", orgId)
-    .eq("file_sha256", sha)
-    .in("status", ["staged", "committed"])
-    .maybeSingle();
+  const [{ data: existing }, { data: accountRows }] = await Promise.all([
+    supabase
+      .from("ingest_batches")
+      .select("id, filename")
+      .eq("org_id", orgId)
+      .eq("file_sha256", sha)
+      .in("status", ["staged", "committed"])
+      .maybeSingle(),
+    supabase.from("accounts").select("id, name, iban, account_number").eq("org_id", orgId).eq("is_active", true),
+  ]);
   if (existing) return { error: `Αυτό το αρχείο έχει ήδη ανέβει (${existing.filename}).` };
+  const accounts: AccountIdentity[] = accountRows ?? [];
+  const pickAccount = "Επιλέξτε τον λογαριασμό στον οποίο ανήκει το αντίγραφο.";
+  if (!chosenAccountId && !accounts.some((a) => a.iban || a.account_number)) return { error: pickAccount };
 
-  const profiles = await loadProfiles(supabase, orgId);
-  let parsed;
-  try {
-    parsed = await parseBankFile({ name: file.name, mimeType: file.type, bytes }, profiles, { orgId, accountId });
-  } catch (e) {
-    if (e instanceof UnsupportedFileError || e instanceof ProfileMismatchError) return { error: e.message };
-    throw e;
+  const upload = { name: file.name, mimeType: file.type, bytes };
+  const isPdf = sniffFileKind(bytes, file.name) === "pdf";
+  let source: "bank_file" | "bank_pdf";
+  let rows: CanonicalRow[];
+  let statement: StatementSummary | null;
+  let warnings: string[];
+  let header: StatementHeader;
+  let accountId: string | null;
+  let needsReview: string[];
+  let extraMeta: Record<string, unknown>;
+  let profileId: string | null = null;
+  let needsMapping = false;
+
+  if (isPdf) {
+    if (!aiEnabled()) return { error: "Ο βοηθός AI δεν είναι ενεργοποιημένος, οπότε τα PDF αντίγραφα δεν διαβάζονται ακόμα." };
+    let parsed;
+    try {
+      await assertWithinAiBudget(supabase, orgId);
+      const startedAt = Date.now();
+      parsed = await parseBankPdf(upload, { orgId, accountId: chosenAccountId }, extractBankStatement, accounts);
+      await logAiUsage(supabase, {
+        orgId,
+        userId: session?.user.id ?? null,
+        feature: "bank_pdf_extraction",
+        ...parsed.usage,
+        latencyMs: Date.now() - startedAt,
+      });
+    } catch (e) {
+      if (e instanceof UserError) return { error: e.message };
+      console.error("[inbox] bank pdf", e);
+      return { error: "Δεν μπορέσαμε να διαβάσουμε το PDF αντίγραφο. Δοκιμάστε ξανά ή ανεβάστε CSV/XLSX." };
+    }
+    source = "bank_pdf";
+    ({ rows, statement } = parsed.batch);
+    warnings = parsed.batch.warnings;
+    header = parsed.header;
+    accountId = parsed.accountId;
+    needsReview = parsed.needsReview;
+    extraMeta = { file_kind: "pdf", model: parsed.usage.model };
+  } else {
+    const profiles = await loadProfiles(supabase, orgId);
+    let parsed;
+    try {
+      parsed = await parseBankFile(upload, profiles, { orgId, accountId: chosenAccountId }, { accounts });
+    } catch (e) {
+      if (e instanceof UnsupportedFileError || e instanceof ProfileMismatchError) return { error: e.message };
+      throw e;
+    }
+    source = "bank_file";
+    ({ rows, statement } = parsed.batch);
+    warnings = parsed.batch.warnings;
+    header = parsed.header;
+    accountId = parsed.accountId;
+    profileId = parsed.profile?.id ?? null;
+    needsMapping = parsed.needsMapping;
+    // The same mandatory check as the PDF path: a running balance that does
+    // not add up means a line is missing or misread.
+    needsReview =
+      statement?.balanceConsistent === false
+        ? [`Το υπόλοιπο δεν συμφωνεί με τα ποσά σε ${statement.balanceMismatchRows.length} γραμμή/ές.`]
+        : [];
+    extraMeta = { file_kind: parsed.fileKind, encoding: parsed.encoding, header_row: parsed.headerRow };
   }
+
+  if (!accountId) {
+    const id = header.iban ?? header.accountNumber;
+    return { error: id ? `Δεν βρέθηκε λογαριασμός με IBAN / αριθμό ${id}. ${pickAccount}` : pickAccount };
+  }
+  if (chosenAccountId) await learnAccountIdentity(supabase, accounts, chosenAccountId, header);
 
   const storagePath = `${orgId}/${Date.now()}-${file.name}`;
   const { error: uploadError } = await supabase.storage
     .from("bank-statements")
-    .upload(storagePath, bytes, { contentType: file.type || "application/octet-stream" });
+    .upload(storagePath, bytes, { contentType: isPdf ? "application/pdf" : file.type || "application/octet-stream" });
   if (uploadError) return { error: uploadError.message };
 
   const { data: batch, error: batchError } = await supabase
     .from("ingest_batches")
     .insert({
       org_id: orgId,
-      source: "bank_file",
+      source,
       account_id: accountId,
-      profile_id: parsed.profile?.id ?? null,
+      profile_id: profileId,
       filename: file.name,
       file_sha256: sha,
       storage_path: storagePath,
-      mime_type: file.type || null,
-      row_count: parsed.batch.rows.length,
-      ...statementColumns(parsed.batch.statement),
+      mime_type: isPdf ? "application/pdf" : file.type || null,
+      row_count: rows.length,
+      ...statementColumns(statement),
       meta: {
-        file_kind: parsed.fileKind,
-        encoding: parsed.encoding,
-        header_row: parsed.headerRow,
-        needs_mapping: parsed.needsMapping,
-        warnings: parsed.batch.warnings,
-        statement: parsed.batch.statement,
+        ...extraMeta,
+        needs_mapping: needsMapping,
+        needs_review: needsReview,
+        warnings,
+        statement,
+        header: { iban: header.iban, account_number: header.accountNumber, available_balance: header.availableBalance },
       } as unknown as Json,
       created_by: session?.user.id,
     })
@@ -103,9 +202,9 @@ export async function uploadBankStatement(formData: FormData): Promise<InboxResu
     .single();
   if (batchError) return { error: batchError.message };
 
-  if (parsed.needsMapping) redirect(`/inbox/mapping/${batch.id}`);
+  if (needsMapping) redirect(`/inbox/mapping/${batch.id}`);
 
-  await stageMovements(supabase, orgId, batch.id, accountId, parsed.batch.rows);
+  await stageMovements(supabase, orgId, batch.id, accountId, rows, { trustAuto: needsReview.length === 0 });
   revalidatePath("/inbox");
   redirect(`/inbox/${batch.id}`);
 }

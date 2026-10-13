@@ -6,14 +6,21 @@ import type { Cell, Grid } from "./profiles/types";
 // what several Greek e-banking sites still offer) is NOT readable by ExcelJS
 // -- sniffFileKind below catches it so the user gets a clear message.
 
+// OOXML escapes a carriage return inside a string as the literal `_x000D_`;
+// ExcelJS hands it over as-is. Undo it here so every reader sees a real \r.
+function unescapeOoxml(text: string): string {
+  return text.includes("_x000D_") ? text.replace(/_x000D_/g, "\r") : text;
+}
+
 function toCell(value: ExcelJS.CellValue): Cell {
   if (value === null || value === undefined) return null;
-  if (value instanceof Date || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+  if (typeof value === "string") return unescapeOoxml(value);
+  if (value instanceof Date || typeof value === "number" || typeof value === "boolean") {
     return value;
   }
   if (typeof value === "object") {
-    if ("richText" in value) return value.richText.map((p) => p.text).join("");
-    if ("text" in value) return String(value.text);
+    if ("richText" in value) return unescapeOoxml(value.richText.map((p) => p.text).join(""));
+    if ("text" in value) return unescapeOoxml(String(value.text));
     if ("result" in value) return toCell(value.result as ExcelJS.CellValue);
     if ("error" in value) return null;
   }

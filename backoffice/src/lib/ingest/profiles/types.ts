@@ -22,7 +22,19 @@ export type ProfileField = (typeof PROFILE_FIELDS)[number];
 // A header text, alternatives for it, or a 0-based column index (what the
 // mapping wizard saves when the header itself is unhelpful).
 export type ColumnRef = string | string[] | number;
-export type ColumnMap = Partial<Record<ProfileField, ColumnRef>>;
+// Several columns read as one field, joined with « · » -- e.g. Piraeus
+// e-banking splits a movement's text over «Περιγραφή Συναλλαγής» and
+// «Σχόλια / Κωδικός Αναφοράς». Each part is a ColumnRef of its own; parts
+// that resolve to no column are left out.
+export interface JoinedColumnRef {
+  join: ColumnRef[];
+}
+export type ColumnMapValue = ColumnRef | JoinedColumnRef;
+export type ColumnMap = Partial<Record<ProfileField, ColumnMapValue>>;
+
+export function isJoinedRef(ref: ColumnMapValue): ref is JoinedColumnRef {
+  return typeof ref === "object" && ref !== null && !Array.isArray(ref) && Array.isArray((ref as JoinedColumnRef).join);
+}
 
 export type SignMode = "signed" | "trailing_minus" | "debit_credit" | "direction_column";
 

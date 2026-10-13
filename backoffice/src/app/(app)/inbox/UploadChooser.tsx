@@ -10,6 +10,7 @@ import {
   detectCaptureKind,
   documentMimeType,
   extensionOf,
+  isPdfFile,
   xlsxStrings,
   type CaptureKind,
   type CaptureProblem,
@@ -35,7 +36,7 @@ const KIND_META = {
 const PROBLEM_TEXT: Record<CaptureProblem, string> = {
   heic: "Οι φωτογραφίες HEIC του iPhone δεν διαβάζονται. Τραβήξτε τη φωτογραφία με το κουμπί «Φωτογραφία» εδώ, ή στο iPhone: Ρυθμίσεις → Κάμερα → Μορφές → «Πιο συμβατή».",
   xls: "Τα παλιά .xls δεν διαβάζονται: ανοίξτε το στο Excel και αποθηκεύστε ως .xlsx.",
-  type: "Το αρχείο δεν υποστηρίζεται. Δεκτά: φωτογραφία ή PDF παραστατικού, CSV/XLSX τράπεζας, XLSX myDATA.",
+  type: "Το αρχείο δεν υποστηρίζεται. Δεκτά: φωτογραφία ή PDF παραστατικού, CSV/XLSX/PDF τράπεζας, XLSX myDATA.",
 };
 
 async function sniff(file: File): Promise<{ head: Uint8Array; text: string | null }> {
@@ -64,6 +65,7 @@ export function UploadChooser({
   const [file, setFile] = useState<File | null>(null);
   const [mime, setMime] = useState<string | null>(null);
   const [kind, setKind] = useState<CaptureKind | null>(null);
+  const [isPdf, setIsPdf] = useState(false);
   const [accountId, setAccountId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -83,31 +85,31 @@ export function UploadChooser({
       setError(PROBLEM_TEXT[found.problem]);
       return;
     }
-    if (found.kind === "document") {
+    const pdf = isPdfFile(info);
+    // Photos and PDFs (receipt or statement) are read by the AI.
+    if (found.kind === "document" || pdf) {
       if (!aiOn) {
-        setError("Ο βοηθός AI δεν είναι ενεργοποιημένος, οπότε τα παραστατικά δεν διαβάζονται ακόμα.");
+        setError("Ο βοηθός AI δεν είναι ενεργοποιημένος, οπότε τα παραστατικά και τα PDF δεν διαβάζονται ακόμα.");
         return;
       }
       if (next.size > DOC_MAX_BYTES) {
-        setError(`Το αρχείο είναι ${formatSize(next.size)} — το όριο για παραστατικά είναι 10 MB.`);
+        setError(`Το αρχείο είναι ${formatSize(next.size)} — το όριο για παραστατικά και PDF είναι 10 MB.`);
         return;
       }
     }
-    setMime(found.kind === "document" ? documentMimeType(info) : null);
+    setMime(found.kind === "document" || pdf ? documentMimeType(info) : null);
+    setIsPdf(pdf);
     setFile(next);
     setKind(found.kind);
   }
 
   function submit() {
     if (!file || !kind) return;
-    if (kind === "bank" && !accountId) {
-      setError("Επιλέξτε τον λογαριασμό στον οποίο ανήκει το αντίγραφο.");
-      return;
-    }
     const formData = new FormData();
     // The AI reader trusts the MIME type; give it the one the bytes say.
-    formData.set("file", kind === "document" && mime && mime !== file.type ? new File([file], file.name, { type: mime }) : file);
-    if (kind === "bank") formData.set("account_id", accountId);
+    formData.set("file", (kind === "document" || isPdf) && mime && mime !== file.type ? new File([file], file.name, { type: mime }) : file);
+    // Empty = let the server pick the account from the file's IBAN / number.
+    if (kind === "bank" && accountId) formData.set("account_id", accountId);
     setError(null);
     startTransition(async () => {
       // Success redirects to /inbox/[batchId]; failures come back as { error }.
@@ -172,7 +174,7 @@ export function UploadChooser({
           </span>
           <div className="flex flex-col gap-1">
             <p className="text-section font-normal text-ink">{dragging ? "Αφήστε το αρχείο εδώ" : "Σύρετε εδώ το αρχείο"}</p>
-            <p className="text-body text-muted">Παραστατικό (φωτογραφία ή PDF), αντίγραφο τράπεζας (CSV/XLSX) ή αρχείο myDATA (XLSX)</p>
+            <p className="text-body text-muted">Παραστατικό (φωτογραφία ή PDF), αντίγραφο τράπεζας (CSV/XLSX/PDF) ή αρχείο myDATA (XLSX)</p>
           </div>
           <div className="flex w-full max-w-md flex-col gap-2 sm:flex-row sm:justify-center">
             <Button type="button" className="min-h-11 gap-2" onClick={() => fileInput.current?.click()}>
@@ -207,13 +209,14 @@ export function UploadChooser({
               <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
-          <p className="text-small text-muted">{meta.text}</p>
+          <p className="text-small text-muted">{kind === "bank" && isPdf ? el.upload.bankPdfHint : meta.text}</p>
 
-          {/* A workbook can be either; the guess is shown and can be corrected. */}
-          {kind !== "document" && (
+          {/* A workbook can be bank or AADE, a PDF a receipt or a statement;
+              the guess is shown and can be corrected. Photos are receipts. */}
+          {(kind !== "document" || isPdf) && (
             <fieldset className="flex flex-wrap gap-x-4 gap-y-1 text-body">
               <legend className="sr-only">Είδος αρχείου</legend>
-              {(["bank", "aade"] as const).map((k) => (
+              {(isPdf ? (["document", "bank"] as const) : (["bank", "aade"] as const)).map((k) => (
                 <label key={k} className="inline-flex min-h-10 items-center gap-2 text-text">
                   <input type="radio" name="capture_kind" checked={kind === k} onChange={() => setKind(k)} />
                   {KIND_META[k].title}
@@ -224,9 +227,7 @@ export function UploadChooser({
 
           {kind === "bank" && (
             <Select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="sm:w-72" aria-label="Λογαριασμός">
-              <option value="" disabled>
-                Λογαριασμός αντιγράφου…
-              </option>
+              <option value="">{el.upload.accountAuto}</option>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.label}
@@ -241,12 +242,14 @@ export function UploadChooser({
           )}
 
           <Button type="button" onClick={submit} disabled={pending} className="w-full py-3 text-body">
-            {kind === "document" && <AiSpark className="mr-1.5" />}
+            {(kind === "document" || isPdf) && <AiSpark className="mr-1.5" />}
             {pending
               ? kind === "document"
                 ? "Ανάλυση παραστατικού… (μπορεί να πάρει ως 30 δευτερόλεπτα)"
-                : "Ανάγνωση…"
-              : kind === "document"
+                : isPdf
+                  ? "Ανάγνωση αντιγράφου… (μπορεί να πάρει 1–2 λεπτά)"
+                  : "Ανάγνωση…"
+              : kind === "document" || isPdf
                 ? "Ανάλυση με AI"
                 : "Ανέβασμα για έλεγχο"}
           </Button>

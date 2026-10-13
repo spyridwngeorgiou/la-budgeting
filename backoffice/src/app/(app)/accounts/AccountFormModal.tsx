@@ -65,6 +65,15 @@ export function AccountFormModal({ action }: { action: (formData: FormData) => P
               <Input type="number" step="0.01" name="opening_balance" defaultValue="0" />
             </Field>
             <Field>
+              <Label>{el.account.iban}</Label>
+              <Input name="iban" autoComplete="off" spellCheck={false} placeholder="GR.." />
+            </Field>
+            <Field>
+              <Label>{el.account.accountNumber}</Label>
+              <Input name="account_number" inputMode="numeric" autoComplete="off" />
+              <p className="text-small text-muted">{el.account.statementHint}</p>
+            </Field>
+            <Field>
               <Label>Ημ/νία Υπολοίπου Έναρξης</Label>
               <Input
                 type="date"

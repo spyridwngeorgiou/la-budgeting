@@ -3,6 +3,7 @@
 // pulls in ExcelJS) and vitest can cover it.
 //
 //   image / PDF            -> uploadDocument (AI reads the receipt)
+//   PDF named like a statement -> uploadBankStatement (AI statement reader)
 //   .xlsx with myDATA cols -> uploadAadeFile
 //   .csv / .txt / .xlsx    -> uploadBankStatement
 //
@@ -65,6 +66,22 @@ export function extensionOf(name: string): string {
   return dot < 0 ? "" : name.slice(dot + 1).toLowerCase();
 }
 
+// A PDF's text is compressed, so the browser cannot read it cheaply; the
+// name the bank gives its export is the hint («accountTransactionHistory»,
+// «Κινήσεις λογαριασμού», «statement», «extrait»). The user can still switch
+// between «Παραστατικό» and «Τραπεζικό αρχείο» before uploading.
+const STATEMENT_NAME = /(transaction|statement|extrait|kinhseis|kiniseis|κινησ|ιστορικ|αντιγραφ)/;
+
+export function looksLikeStatementName(name: string): boolean {
+  // Accents off, lower case: «Κινήσεις» and «ΚΙΝΗΣΕΙΣ» alike.
+  return STATEMENT_NAME.test(name.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase());
+}
+
+export function isPdfFile(file: CaptureFileInfo): boolean {
+  const magic = magicOf(file.head);
+  return magic === "pdf" || (!magic && (file.type.toLowerCase() === "application/pdf" || extensionOf(file.name) === "pdf"));
+}
+
 export function detectCaptureKind(file: CaptureFileInfo): CaptureDetection {
   const ext = extensionOf(file.name);
   const type = file.type.toLowerCase();
@@ -72,7 +89,9 @@ export function detectCaptureKind(file: CaptureFileInfo): CaptureDetection {
 
   if (type === "image/heic" || type === "image/heif" || ext === "heic" || ext === "heif") return { problem: "heic" };
 
-  // Receipts and invoices.
+  // A PDF bank statement (read by the AI statement reader), else receipts
+  // and invoices.
+  if (isPdfFile(file) && looksLikeStatementName(file.name)) return { kind: "bank" };
   if (magic === "pdf" || magic === "jpeg" || magic === "png" || magic === "webp") return { kind: "document" };
   if (!magic && (type === "application/pdf" || ext === "pdf" || IMAGE_TYPES.has(type) || IMAGE_EXT.has(ext))) {
     return { kind: "document" };

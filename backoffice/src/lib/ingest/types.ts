@@ -62,6 +62,12 @@ export interface CanonicalRow {
   mydataMark?: string | null;
   balanceAfter: number | null;
   parseErrors: string[];
+  // A category the source itself suggests by name (e.g. «Τραπεζικά» for a
+  // bank's own fee line); resolved against the org's categories at staging.
+  categoryHint?: string | null;
+  // Source-specific notes kept on ingest_rows.meta (e.g. fee_of: the code of
+  // the transfer a fee line belongs to).
+  meta?: Record<string, unknown>;
 }
 
 // What a statement says about itself, for the «υπόλοιπο έναρξης + Σ
