@@ -22,6 +22,7 @@ export const el = {
     activity: "Ιστορικό",
     scenarios: "Σενάρια",
     planned: "Προγραμματισμένα",
+    notifications: "Ειδοποιήσεις",
   },
   common: {
     save: "Αποθήκευση",

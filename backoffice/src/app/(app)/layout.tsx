@@ -3,6 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { countAlerts } from "@/lib/alerts";
 import { el } from "@/lib/i18n/el";
 import { AiSpark } from "@/components/ui";
 
@@ -10,6 +13,7 @@ import { AiSpark } from "@/components/ui";
 // "wow factor" the whole point of a demo is to show), then the screens used
 // daily, then the more technical/back-office screens, Settings last.
 const NAV_ITEMS: { href: string; label: string; ai?: boolean }[] = [
+  { href: "/notifications", label: el.nav.notifications },
   { href: "/dashboard", label: el.nav.dashboard },
   { href: "/assistant", label: el.nav.assistant, ai: true },
   { href: "/documents/new", label: el.nav.documents, ai: true },
@@ -38,6 +42,11 @@ const NAV_ITEMS: { href: string; label: string; ai?: boolean }[] = [
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  // Red count next to «Ειδοποιήσεις»: overdue + due within 7 days, refreshed on every page change.
+  const [alerts, setAlerts] = useState(0);
+  useEffect(() => {
+    countAlerts(createClient()).then(setAlerts).catch(() => setAlerts(0));
+  }, [pathname]);
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
@@ -71,6 +80,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 >
                   {item.ai && <AiSpark />}
                   {item.label}
+                  {item.href === "/notifications" && alerts > 0 && (
+                    <span className="ml-auto rounded-full bg-red-ink px-1.5 text-[11px] font-medium leading-5 text-white">{alerts}</span>
+                  )}
                 </Link>
               </li>
             );
