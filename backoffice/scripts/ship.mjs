@@ -174,10 +174,12 @@ async function browserSmoke(base, list, jar, { gapMs }) {
         const errors = [];
         const onErr = (e) => errors.push(`pageerror: ${String(e.message).split(/\r?\n/)[0].slice(0, 200)}`);
         pg.on("pageerror", onErr);
+        await pg.bringToFront(); // a background tab defers streamed content, so heights read short
         const status = await load(pg, base + p);
         const found = await pg.evaluate(() => ({
           boundary: document.body?.innerText.includes("Κάτι πήγε στραβά") ?? false,
           overflow: document.documentElement.scrollWidth - window.innerWidth,
+          path: location.pathname,
           height: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, ...[...document.querySelectorAll("main")].map((m) => m.scrollHeight)),
         }));
         pg.off("pageerror", onErr);
@@ -191,7 +193,7 @@ async function browserSmoke(base, list, jar, { gapMs }) {
         if (tag === "390" && found.overflow > 1) errors.push(`scrolls sideways by ${found.overflow}px`);
         if (tag === "1440" && status < 500) {
           const budget = pageBudget(p);
-          heights.push(`${p} ${found.height}`);
+          heights.push(`${p} ${found.height}${found.path !== p.split("?")[0] ? ` (at ${found.path})` : ""}`);
           if (budget && found.height > budget) errors.push(`${found.height}px tall, budget ${budget}px`);
         }
         if (errors.length) {
