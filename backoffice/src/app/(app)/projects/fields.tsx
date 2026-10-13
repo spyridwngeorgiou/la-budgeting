@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button, Field, Input, Select, Textarea } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { projects } from "@/lib/i18n/v2/projects";
@@ -20,11 +20,19 @@ import {
 // ./LegacyFormModals.tsx.
 // Field names are the server actions' contract (actions.ts,
 // [id]/finance-actions.ts, [id]/scenario-actions.ts) -- keep them.
+// A required control has `required` on its Field too (the «*»), and every
+// label points at its control (htmlFor), so a click on it focuses the field.
 
 const pct = (v: number | null | undefined, fallback: number | "") => (v != null ? v * 100 : fallback);
 // Two fields side by side from sm up, stacked on a phone's sheet.
 const two = "grid grid-cols-1 gap-4 sm:grid-cols-2";
 const f = projects.forms;
+
+// One id per control of a mounted form (useId), so two forms never share one.
+function useIds() {
+  const base = useId();
+  return (name: string) => `${base}-${name}`;
+}
 
 // What a form starts from: any subset of its row (the DB row types, so a
 // page passes the row it read).
@@ -38,17 +46,18 @@ export type ProjectInitial = Initial<
 >;
 
 export function ProjectFields({ initial }: { initial?: ProjectInitial }) {
+  const id = useIds();
   return (
     <>
-      <Field label={el.project.code}>
-        <Input name="code" defaultValue={initial?.code} required readOnly={!!initial?.code} />
+      <Field label={el.project.code} htmlFor={id("code")} required>
+        <Input id={id("code")} name="code" defaultValue={initial?.code} required readOnly={!!initial?.code} />
       </Field>
-      <Field label={el.project.name}>
-        <Input name="display_name" defaultValue={initial?.display_name} required />
+      <Field label={el.project.name} htmlFor={id("name")} required>
+        <Input id={id("name")} name="display_name" defaultValue={initial?.display_name} required />
       </Field>
       <div className={two}>
-        <Field label="Τύπος Έργου">
-          <Select name="project_type" defaultValue={initial?.project_type ?? ""}>
+        <Field label="Τύπος Έργου" htmlFor={id("type")}>
+          <Select id={id("type")} name="project_type" defaultValue={initial?.project_type ?? ""}>
             <option value="">—</option>
             {PROJECT_TYPE.map((t) => (
               <option key={t} value={t}>
@@ -57,8 +66,8 @@ export function ProjectFields({ initial }: { initial?: ProjectInitial }) {
             ))}
           </Select>
         </Field>
-        <Field label={el.project.status}>
-          <Select name="status" defaultValue={initial?.status ?? "active"}>
+        <Field label={el.project.status} htmlFor={id("status")}>
+          <Select id={id("status")} name="status" defaultValue={initial?.status ?? "active"}>
             {PROJECT_STATUS.map((s) => (
               <option key={s} value={s}>
                 {el.project.statusValues[s]}
@@ -68,8 +77,8 @@ export function ProjectFields({ initial }: { initial?: ProjectInitial }) {
         </Field>
       </div>
       <div className={two}>
-        <Field label="Μοντέλο">
-          <Select name="business_model" defaultValue={initial?.business_model ?? ""}>
+        <Field label="Μοντέλο" htmlFor={id("model")}>
+          <Select id={id("model")} name="business_model" defaultValue={initial?.business_model ?? ""}>
             <option value="">—</option>
             {BUSINESS_MODEL.map((m) => (
               <option key={m} value={m}>
@@ -78,16 +87,16 @@ export function ProjectFields({ initial }: { initial?: ProjectInitial }) {
             ))}
           </Select>
         </Field>
-        <Field label="Ημ/νία Έναρξης">
-          <Input type="date" name="start_date" defaultValue={initial?.start_date ?? ""} />
+        <Field label="Ημ/νία Έναρξης" htmlFor={id("start")}>
+          <Input id={id("start")} type="date" name="start_date" defaultValue={initial?.start_date ?? ""} />
         </Field>
       </div>
       <div className={two}>
-        <Field label="Συμβατική Αξία (€) — έργο πελάτη">
-          <Input type="number" step="0.01" name="contract_value" defaultValue={initial?.contract_value ?? ""} />
+        <Field label="Συμβατική Αξία (€) — έργο πελάτη" htmlFor={id("contract")}>
+          <Input id={id("contract")} type="number" step="0.01" name="contract_value" defaultValue={initial?.contract_value ?? ""} />
         </Field>
-        <Field label="Ημ/νία Υπογραφής Σύμβασης">
-          <Input type="date" name="contract_signed_date" defaultValue={initial?.contract_signed_date ?? ""} />
+        <Field label="Ημ/νία Υπογραφής Σύμβασης" htmlFor={id("signed")}>
+          <Input id={id("signed")} type="date" name="contract_signed_date" defaultValue={initial?.contract_signed_date ?? ""} />
         </Field>
       </div>
     </>
@@ -105,15 +114,16 @@ export interface BudgetInitial {
 }
 
 export function BudgetFields({ initial }: { initial?: BudgetInitial }) {
+  const id = useIds();
   return (
     <>
       {BUDGET_LINES.map((code) => (
-        <Field key={code} label={el.budgetLines[code]}>
-          <Input type="number" step="0.01" name={`line_${code}`} defaultValue={initial?.lines?.[code]} />
+        <Field key={code} label={el.budgetLines[code]} htmlFor={id(code)}>
+          <Input id={id(code)} type="number" step="0.01" name={`line_${code}`} defaultValue={initial?.lines?.[code]} />
         </Field>
       ))}
-      <Field label="Απρόβλεπτα (%)">
-        <Input type="number" step="0.01" name="contingency_pct" defaultValue={initial?.contingency_pct ?? 0} />
+      <Field label="Απρόβλεπτα (%)" htmlFor={id("contingency")}>
+        <Input id={id("contingency")} type="number" step="0.01" name="contingency_pct" defaultValue={initial?.contingency_pct ?? 0} />
       </Field>
     </>
   );
@@ -126,11 +136,12 @@ export const NOTE_SEVERITY_LABELS = f.noteSeverity;
 export type ProjectNoteInitial = Initial<Tables<"project_notes">, "id" | "kind" | "severity" | "body" | "exposure_amount" | "due_date">;
 
 export function NoteFields({ initial }: { initial?: ProjectNoteInitial }) {
+  const id = useIds();
   return (
     <>
       <div className={two}>
-        <Field label="Τύπος">
-          <Select name="kind" defaultValue={initial?.kind ?? "status"}>
+        <Field label="Τύπος" htmlFor={id("kind")}>
+          <Select id={id("kind")} name="kind" defaultValue={initial?.kind ?? "status"}>
             {PROJECT_NOTE_KIND_ACTIVE.map((k) => (
               <option key={k} value={k}>
                 {f.noteKind[k]}
@@ -138,8 +149,8 @@ export function NoteFields({ initial }: { initial?: ProjectNoteInitial }) {
             ))}
           </Select>
         </Field>
-        <Field label="Σοβαρότητα">
-          <Select name="severity" defaultValue={initial?.severity ?? "info"}>
+        <Field label="Σοβαρότητα" htmlFor={id("severity")}>
+          <Select id={id("severity")} name="severity" defaultValue={initial?.severity ?? "info"}>
             {PROJECT_NOTE_SEVERITY.map((s) => (
               <option key={s} value={s}>
                 {NOTE_SEVERITY_LABELS[s]}
@@ -148,15 +159,15 @@ export function NoteFields({ initial }: { initial?: ProjectNoteInitial }) {
           </Select>
         </Field>
       </div>
-      <Field label="Κείμενο">
-        <Textarea name="body" defaultValue={initial?.body ?? ""} rows={3} required />
+      <Field label="Κείμενο" htmlFor={id("body")} required>
+        <Textarea id={id("body")} name="body" defaultValue={initial?.body ?? ""} rows={3} required />
       </Field>
       <div className={two}>
-        <Field label="Έκθεση (€, προαιρετικό)">
-          <Input type="number" step="0.01" name="exposure_amount" defaultValue={initial?.exposure_amount ?? ""} />
+        <Field label="Έκθεση (€, προαιρετικό)" htmlFor={id("exposure")}>
+          <Input id={id("exposure")} type="number" step="0.01" name="exposure_amount" defaultValue={initial?.exposure_amount ?? ""} />
         </Field>
-        <Field label="Προθεσμία">
-          <Input type="date" name="due_date" defaultValue={initial?.due_date ?? ""} />
+        <Field label="Προθεσμία" htmlFor={id("due")}>
+          <Input id={id("due")} type="date" name="due_date" defaultValue={initial?.due_date ?? ""} />
         </Field>
       </div>
     </>
@@ -172,11 +183,12 @@ export type UtilityInitial = Initial<
 >;
 
 export function UtilityFields({ initial }: { initial?: UtilityInitial }) {
+  const id = useIds();
   return (
     <>
       <div className={two}>
-        <Field label="Είδος">
-          <Select name="kind" defaultValue={initial?.kind ?? "electricity"}>
+        <Field label="Είδος" htmlFor={id("kind")}>
+          <Select id={id("kind")} name="kind" defaultValue={initial?.kind ?? "electricity"}>
             {Object.entries(UTILITY_KIND_LABELS).map(([k, label]) => (
               <option key={k} value={k}>
                 {label}
@@ -184,26 +196,26 @@ export function UtilityFields({ initial }: { initial?: UtilityInitial }) {
             ))}
           </Select>
         </Field>
-        <Field label="Πάροχος">
-          <Input name="provider" defaultValue={initial?.provider ?? ""} placeholder="ΔΕΗ, ΕΥΔΑΠ, Cosmote…" />
+        <Field label="Πάροχος" htmlFor={id("provider")}>
+          <Input id={id("provider")} name="provider" defaultValue={initial?.provider ?? ""} placeholder="ΔΕΗ, ΕΥΔΑΠ, Cosmote…" />
         </Field>
       </div>
-      <Field label="Αριθμός παροχής / γραμμής">
-        <Input name="supply_number" defaultValue={initial?.supply_number ?? ""} placeholder="π.χ. 6 04185949-04 9" />
+      <Field label="Αριθμός παροχής / γραμμής" htmlFor={id("supply")}>
+        <Input id={id("supply")} name="supply_number" defaultValue={initial?.supply_number ?? ""} placeholder="π.χ. 6 04185949-04 9" />
       </Field>
       <div className={two}>
-        <Field label="Λογ. συμβολαίου">
-          <Input name="contract_account" defaultValue={initial?.contract_account ?? ""} />
+        <Field label="Λογ. συμβολαίου" htmlFor={id("account")}>
+          <Input id={id("account")} name="contract_account" defaultValue={initial?.contract_account ?? ""} />
         </Field>
-        <Field label="Μετρητής">
-          <Input name="meter_number" defaultValue={initial?.meter_number ?? ""} />
+        <Field label="Μετρητής" htmlFor={id("meter")}>
+          <Input id={id("meter")} name="meter_number" defaultValue={initial?.meter_number ?? ""} />
         </Field>
       </div>
-      <Field label="Κωδικός πληρωμής RF">
-        <Input name="rf_code" defaultValue={initial?.rf_code ?? ""} />
+      <Field label="Κωδικός πληρωμής RF" htmlFor={id("rf")}>
+        <Input id={id("rf")} name="rf_code" defaultValue={initial?.rf_code ?? ""} />
       </Field>
-      <Field label="Σημειώσεις" hint={f.hint.utility}>
-        <Input name="notes" defaultValue={initial?.notes ?? ""} />
+      <Field label="Σημειώσεις" hint={f.hint.utility} htmlFor={id("notes")}>
+        <Input id={id("notes")} name="notes" defaultValue={initial?.notes ?? ""} />
       </Field>
     </>
   );
@@ -222,6 +234,7 @@ let nextKey = 1;
 // Mounted with the dialog, so the drawdown rows start from `initial` on
 // every open.
 export function LoanFields({ initial }: { initial?: LoanInitial }) {
+  const id = useIds();
   const [rows, setRows] = useState(() =>
     (initial?.drawdowns ?? []).map((d) => ({ key: nextKey++, month: d.scheduled_month.slice(0, 7), amount: String(d.amount), done: d.done })),
   );
@@ -229,30 +242,30 @@ export function LoanFields({ initial }: { initial?: LoanInitial }) {
   return (
     <>
       <input type="hidden" name="drawdowns_present" value="1" />
-      <Field label="Ετικέτα">
-        <Input name="label" defaultValue={initial?.label} required />
+      <Field label="Ετικέτα" htmlFor={id("label")} required>
+        <Input id={id("label")} name="label" defaultValue={initial?.label} required />
       </Field>
       <div className={two}>
-        <Field label="Κεφάλαιο (€)">
-          <Input type="number" step="0.01" name="principal" defaultValue={initial?.principal} required />
+        <Field label="Κεφάλαιο (€)" htmlFor={id("principal")} required>
+          <Input id={id("principal")} type="number" step="0.01" name="principal" defaultValue={initial?.principal} required />
         </Field>
-        <Field label="Επιτόκιο (ετήσιο, %)">
-          <Input type="number" step="0.001" name="interest_rate_pct" defaultValue={pct(initial?.interest_rate, "")} required />
+        <Field label="Επιτόκιο (ετήσιο, %)" htmlFor={id("rate")} required>
+          <Input id={id("rate")} type="number" step="0.001" name="interest_rate_pct" defaultValue={pct(initial?.interest_rate, "")} required />
         </Field>
       </div>
       <div className={two}>
-        <Field label="Διάρκεια (έτη)">
-          <Input type="number" name="term_years" defaultValue={initial?.term_years} required />
+        <Field label="Διάρκεια (έτη)" htmlFor={id("term")} required>
+          <Input id={id("term")} type="number" name="term_years" defaultValue={initial?.term_years} required />
         </Field>
-        <Field label="Χάρη (έτη)">
-          <Input type="number" step="0.5" name="grace_years" defaultValue={initial?.grace_years ?? 0} />
+        <Field label="Χάρη (έτη)" htmlFor={id("grace")}>
+          <Input id={id("grace")} type="number" step="0.5" name="grace_years" defaultValue={initial?.grace_years ?? 0} />
         </Field>
       </div>
-      <Field label="Πρώτος μήνας εξόφλησης">
-        <Input type="date" name="first_amortisation_month" defaultValue={initial?.first_amortisation_month ?? ""} />
+      <Field label="Πρώτος μήνας εξόφλησης" htmlFor={id("first")}>
+        <Input id={id("first")} type="date" name="first_amortisation_month" defaultValue={initial?.first_amortisation_month ?? ""} />
       </Field>
-      <Field label="Κατάσταση" hint={f.hint.loanState}>
-        <Select name="state" defaultValue={initial?.state ?? "in_application"}>
+      <Field label="Κατάσταση" hint={f.hint.loanState} htmlFor={id("state")}>
+        <Select id={id("state")} name="state" defaultValue={initial?.state ?? "in_application"}>
           {LIABILITY_STATE.map((s) => (
             <option key={s} value={s}>
               {LOAN_STATE_LABELS[s]}
@@ -297,8 +310,8 @@ export function LoanFields({ initial }: { initial?: LoanInitial }) {
         </div>
       </fieldset>
 
-      <Field label="Σημειώσεις">
-        <Textarea name="notes" defaultValue={initial?.notes ?? ""} rows={2} />
+      <Field label="Σημειώσεις" htmlFor={id("notes")}>
+        <Textarea id={id("notes")} name="notes" defaultValue={initial?.notes ?? ""} rows={2} />
       </Field>
     </>
   );
@@ -321,35 +334,43 @@ export type ScenarioInitial = Initial<
 const HINT = f.hint;
 
 export function ScenarioFields({ initial }: { initial?: ScenarioInitial }) {
+  const id = useIds();
   return (
     <>
-      <Field label="Όνομα Σεναρίου">
-        <Input name="name" defaultValue={initial?.name ?? "Βασικό"} required />
+      <Field label="Όνομα Σεναρίου" htmlFor={id("name")} required>
+        <Input id={id("name")} name="name" defaultValue={initial?.name ?? "Βασικό"} required />
       </Field>
-      <Field label="Σταθερός ετήσιος τζίρος (€, αν δεν υπάρχει ανάλυση εσόδων)">
-        <Input type="number" step="0.01" name="flat_annual_revenue" defaultValue={initial?.flat_annual_revenue ?? ""} />
-      </Field>
-      <div className={two}>
-        <Field label="Ανάπτυξη εσόδων (%/έτος)">
-          <Input type="number" step="0.01" name="revenue_growth_pct_pct" defaultValue={pct(initial?.revenue_growth_pct, 0)} />
-        </Field>
-        <Field label="Ανάπτυξη opex (%/έτος)" hint={HINT.opex}>
-          <Input type="number" step="0.01" name="opex_growth_pct_pct" defaultValue={pct(initial?.opex_growth_pct, 0)} />
-        </Field>
-      </div>
-      <Field label="Η ανάπτυξη ξεκινά μετά το λειτουργικό έτος">
-        <Input type="number" min={0} name="growth_starts_after_operating_year" defaultValue={initial?.growth_starts_after_operating_year ?? 3} />
+      <Field label="Σταθερός ετήσιος τζίρος (€, αν δεν υπάρχει ανάλυση εσόδων)" htmlFor={id("flat")}>
+        <Input id={id("flat")} type="number" step="0.01" name="flat_annual_revenue" defaultValue={initial?.flat_annual_revenue ?? ""} />
       </Field>
       <div className={two}>
-        <Field label="Προεξοφλητικό επιτόκιο (%)" hint={HINT.discount}>
-          <Input type="number" step="0.01" name="discount_rate_pct_pct" defaultValue={pct(initial?.discount_rate_pct, 9)} />
+        <Field label="Ανάπτυξη εσόδων (%/έτος)" htmlFor={id("revenue-growth")}>
+          <Input id={id("revenue-growth")} type="number" step="0.01" name="revenue_growth_pct_pct" defaultValue={pct(initial?.revenue_growth_pct, 0)} />
         </Field>
-        <Field label="Ελάχιστο DSCR" hint={HINT.dscr}>
-          <Input type="number" step="0.01" name="dscr_covenant_min" defaultValue={initial?.dscr_covenant_min ?? 1.2} />
+        <Field label="Ανάπτυξη opex (%/έτος)" hint={HINT.opex} htmlFor={id("opex-growth")}>
+          <Input id={id("opex-growth")} type="number" step="0.01" name="opex_growth_pct_pct" defaultValue={pct(initial?.opex_growth_pct, 0)} />
         </Field>
       </div>
-      <Field label="ADR σε σχέση με την ανάλυση (%)" hint={HINT.adr}>
+      <Field label="Η ανάπτυξη ξεκινά μετά το λειτουργικό έτος" htmlFor={id("growth-start")}>
         <Input
+          id={id("growth-start")}
+          type="number"
+          min={0}
+          name="growth_starts_after_operating_year"
+          defaultValue={initial?.growth_starts_after_operating_year ?? 3}
+        />
+      </Field>
+      <div className={two}>
+        <Field label="Προεξοφλητικό επιτόκιο (%)" hint={HINT.discount} htmlFor={id("discount")}>
+          <Input id={id("discount")} type="number" step="0.01" name="discount_rate_pct_pct" defaultValue={pct(initial?.discount_rate_pct, 9)} />
+        </Field>
+        <Field label="Ελάχιστο DSCR" hint={HINT.dscr} htmlFor={id("dscr")}>
+          <Input id={id("dscr")} type="number" step="0.01" name="dscr_covenant_min" defaultValue={initial?.dscr_covenant_min ?? 1.2} />
+        </Field>
+      </div>
+      <Field label="ADR σε σχέση με την ανάλυση (%)" hint={HINT.adr} htmlFor={id("adr")}>
+        <Input
+          id={id("adr")}
           type="number"
           step="1"
           min="1"
@@ -357,8 +378,8 @@ export function ScenarioFields({ initial }: { initial?: ScenarioInitial }) {
           defaultValue={initial?.adr_multiplier != null ? Math.round(initial.adr_multiplier * 100) : 100}
         />
       </Field>
-      <Field label="Σημειώσεις">
-        <Textarea name="notes" defaultValue={initial?.notes ?? ""} rows={2} />
+      <Field label="Σημειώσεις" htmlFor={id("notes")}>
+        <Textarea id={id("notes")} name="notes" defaultValue={initial?.notes ?? ""} rows={2} />
       </Field>
     </>
   );
@@ -373,14 +394,15 @@ export type OpexLineInitial = Partial<Omit<Tables<"opex_lines">, "org_id" | "sce
 // opex_pct_shape / opex_fixed_shape, 0021): only the fields of the chosen
 // kind are shown.
 export function OpexFields({ initial }: { initial?: OpexLineInitial }) {
+  const id = useIds();
   const [kind, setKind] = useState<OpexLineKind>(initial?.kind ?? "fixed_annual");
   return (
     <>
-      <Field label="Ετικέτα">
-        <Input name="label" defaultValue={initial?.label} required />
+      <Field label="Ετικέτα" htmlFor={id("label")} required>
+        <Input id={id("label")} name="label" defaultValue={initial?.label} required />
       </Field>
-      <Field label="Τύπος">
-        <Select name="kind" value={kind} onChange={(e) => setKind(e.target.value as OpexLineKind)}>
+      <Field label="Τύπος" htmlFor={id("kind")}>
+        <Select id={id("kind")} name="kind" value={kind} onChange={(e) => setKind(e.target.value as OpexLineKind)}>
           {OPEX_LINE_KIND.map((k) => (
             <option key={k} value={k}>
               {OPEX_KIND_LABELS[k]}
@@ -392,54 +414,60 @@ export function OpexFields({ initial }: { initial?: OpexLineInitial }) {
       {kind === "payroll" && (
         <>
           <div className={two}>
-            <Field label="Θέσεις (headcount)">
-              <Input type="number" step="0.01" name="headcount" defaultValue={initial?.headcount ?? ""} required />
+            <Field label="Θέσεις (headcount)" htmlFor={id("headcount")} required>
+              <Input id={id("headcount")} type="number" step="0.01" name="headcount" defaultValue={initial?.headcount ?? ""} required />
             </Field>
-            <Field label="Μηνιαίος μισθός (€)">
-              <Input type="number" step="0.01" name="monthly_wage" defaultValue={initial?.monthly_wage ?? ""} required />
-            </Field>
-          </div>
-          <div className={two}>
-            <Field label="Μισθοί/έτος (π.χ. 14)">
-              <Input type="number" step="0.5" name="salaries_per_year" defaultValue={initial?.salaries_per_year ?? 14} required />
-            </Field>
-            <Field label="Μήνες ενεργό">
-              <Input type="number" min={1} max={12} name="months_active" defaultValue={initial?.months_active ?? 12} required />
+            <Field label="Μηνιαίος μισθός (€)" htmlFor={id("wage")} required>
+              <Input id={id("wage")} type="number" step="0.01" name="monthly_wage" defaultValue={initial?.monthly_wage ?? ""} required />
             </Field>
           </div>
           <div className={two}>
-            <Field label="Εργοδοτικές εισφορές (%)">
-              <Input type="number" step="0.01" name="employer_contribution_pct_pct" defaultValue={pct(initial?.employer_contribution_pct, 21.79)} />
+            <Field label="Μισθοί/έτος (π.χ. 14)" htmlFor={id("salaries")} required>
+              <Input id={id("salaries")} type="number" step="0.5" name="salaries_per_year" defaultValue={initial?.salaries_per_year ?? 14} required />
             </Field>
-            <Field label="Πριμ νυχτ./αργιών (%)">
-              <Input type="number" step="0.01" name="premium_pct_pct" defaultValue={pct(initial?.premium_pct, 0)} />
+            <Field label="Μήνες ενεργό" htmlFor={id("months")} required>
+              <Input id={id("months")} type="number" min={1} max={12} name="months_active" defaultValue={initial?.months_active ?? 12} required />
+            </Field>
+          </div>
+          <div className={two}>
+            <Field label="Εργοδοτικές εισφορές (%)" htmlFor={id("contribution")}>
+              <Input
+                id={id("contribution")}
+                type="number"
+                step="0.01"
+                name="employer_contribution_pct_pct"
+                defaultValue={pct(initial?.employer_contribution_pct, 21.79)}
+              />
+            </Field>
+            <Field label="Πριμ νυχτ./αργιών (%)" htmlFor={id("premium")}>
+              <Input id={id("premium")} type="number" step="0.01" name="premium_pct_pct" defaultValue={pct(initial?.premium_pct, 0)} />
             </Field>
           </div>
         </>
       )}
 
       {kind === "pct_of_revenue" && (
-        <Field label="Ποσοστό επί τζίρου (%)">
-          <Input type="number" step="0.01" name="pct_of_revenue_pct" defaultValue={pct(initial?.pct_of_revenue, "")} required />
+        <Field label="Ποσοστό επί τζίρου (%)" htmlFor={id("pct")} required>
+          <Input id={id("pct")} type="number" step="0.01" name="pct_of_revenue_pct" defaultValue={pct(initial?.pct_of_revenue, "")} required />
         </Field>
       )}
 
       {kind === "fixed_annual" && (
-        <Field label="Ετήσιο ποσό (€)">
-          <Input type="number" step="0.01" name="annual_amount" defaultValue={initial?.annual_amount ?? ""} required />
+        <Field label="Ετήσιο ποσό (€)" htmlFor={id("annual")} required>
+          <Input id={id("annual")} type="number" step="0.01" name="annual_amount" defaultValue={initial?.annual_amount ?? ""} required />
         </Field>
       )}
 
       <div className={two}>
-        <Field label="Από λειτουργικό έτος">
-          <Input type="number" min={1} name="from_operating_year" defaultValue={initial?.from_operating_year ?? 1} required />
+        <Field label="Από λειτουργικό έτος" htmlFor={id("from")} required>
+          <Input id={id("from")} type="number" min={1} name="from_operating_year" defaultValue={initial?.from_operating_year ?? 1} required />
         </Field>
-        <Field label="Έως λειτουργικό έτος (προαιρετικό)">
-          <Input type="number" min={1} name="to_operating_year" defaultValue={initial?.to_operating_year ?? ""} />
+        <Field label="Έως λειτουργικό έτος (προαιρετικό)" htmlFor={id("to")}>
+          <Input id={id("to")} type="number" min={1} name="to_operating_year" defaultValue={initial?.to_operating_year ?? ""} />
         </Field>
       </div>
-      <Field label="Σημείωση">
-        <Input name="note" defaultValue={initial?.note ?? ""} />
+      <Field label="Σημείωση" htmlFor={id("note")}>
+        <Input id={id("note")} name="note" defaultValue={initial?.note ?? ""} />
       </Field>
     </>
   );

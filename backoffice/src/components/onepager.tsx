@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { formatMoney } from "@/lib/format";
 
 // The three-column grammar the Q004 workbook already proved: label on the
@@ -13,16 +14,23 @@ import { formatMoney } from "@/lib/format";
 export function OnePagerSection({
   title,
   subtitle,
+  actions,
   children,
 }: {
   title: string;
-  subtitle?: string;
-  children: React.ReactNode;
+  subtitle?: ReactNode;
+  // The section's own buttons («+ Δάνειο», «Επεξεργασία παραδοχών»), right
+  // of the title: always visible, always in the same place.
+  actions?: ReactNode;
+  children: ReactNode;
 }) {
   return (
     <section className="flex min-w-0 break-inside-avoid flex-col gap-2">
       <div className="flex flex-col gap-1 border-b border-hairline pb-2.5">
-        <h2 className="text-section font-normal text-ink">{title}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <h2 className="text-section font-normal text-ink">{title}</h2>
+          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+        </div>
         {subtitle && <p className="text-small text-muted">{subtitle}</p>}
       </div>
       <div>{children}</div>
@@ -44,7 +52,8 @@ export function OnePagerRow({
   href,
   suffix,
 }: {
-  label: string;
+  // A string, or a <Term> for jargon (NPV, DSCR).
+  label: ReactNode;
   amount?: number | string | null;
   note?: string | null;
   emphasis?: boolean;
@@ -114,8 +123,8 @@ export function StatusNotes({
   // component's own concerns so it stays a pure display piece for any
   // future read-only usage, while the project page can still make notes
   // directly editable instead of only reachable via the AI propose flow.
-  renderActions?: (note: ProjectNote) => React.ReactNode;
-  footer?: React.ReactNode;
+  renderActions?: (note: ProjectNote) => ReactNode;
+  footer?: ReactNode;
 }) {
   if (notes.length === 0) {
     return (

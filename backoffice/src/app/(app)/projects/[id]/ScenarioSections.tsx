@@ -1,15 +1,23 @@
 import { OnePagerRow, OnePagerSection } from "@/components/onepager";
 import Link from "next/link";
-import { ButtonLink, Term } from "@/components/ui";
+import { ArgsActionForm } from "@/components/ArgsActionForm";
+import { Button, ButtonLink, Field, ReportHistory, Select, Term } from "@/components/ui";
 import { formatMoney, formatMultiple, formatPercent } from "@/lib/format";
+import { fixedPartOf, isActiveIn, pctPartOf } from "@/lib/finance/opex";
 import type { ScenarioResult, ScenarioRow } from "@/lib/finance/projectModel";
-import { saveScenario, saveOpexLine, deleteOpexLine } from "./scenario-actions";
-import { ScenarioFormModal } from "../LegacyFormModals";
-import { OpexLineFormModal } from "../LegacyFormModals";
-import { SendToCashSection } from "./FinanceSections";
-import { RowDeleteMenu } from "@/components/RowDeleteMenu";
+import { fillText } from "@/lib/collab/text";
+import {
+  deleteOpexLine,
+  removeScenarioFromCash,
+  saveOpexLine,
+  saveScenario,
+  setScenarioRevenuePlan,
+} from "./scenario-actions";
+import { ArgsDeleteButton, OpexLineFormModal, ScenarioFormModal } from "../LegacyFormModals";
 import { el } from "@/lib/i18n/el";
-import { NewScenarioButton, ScenarioRowActions } from "./ScenarioListControls";
+import { NewScenarioButton, ScenarioRowActions, SendToCashButton } from "./ScenarioListControls";
+import { AiCreateForm } from "../revenue-plans/AiCreateForm";
+import { ManualPlanForm } from "../revenue-plans/ManualPlanForm";
 
 // One row of the scenario bar: the three figures of its
 // computeScenarioFromInputs() run (null = not computable, shown «—»).
@@ -101,200 +109,305 @@ export function ScenarioBar({
   );
 }
 
-// The scenario blocks of the project one-pager's grid: the SELECTED
-// scenario's assumptions
-// (editable), its reference operating year (ΛΕΙΤΟΥΡΓΙΑ) and cash flow KPIs
-// (ΤΑΜΕΙΑΚΗ ΡΟΗ). Every figure is computeScenarioFromInputs()
-// (projectModel.ts), passed in; nothing is computed here.
-export function ScenarioSections({
+export interface RevenuePlanOption {
+  id: string;
+  name: string;
+  project_id: string | null;
+  start_year: number;
+  years: number;
+}
+
+// ΛΕΙΤΟΥΡΓΙΑ (Αναλύσεις εσόδων, Λειτουργικές Παραδοχές and ΛΕΙΤΟΥΡΓΙΑ in
+// one), for the SELECTED scenario: its assumptions in one line, the
+// reference operating year's revenue (and where it comes from), result and
+// margin; «Επεξεργασία παραδοχών» beside the title. Behind «▸»: the cost
+// lines (each with its amount, edit / delete, «+ Γραμμή») and the revenue
+// plans (the list, which one feeds this scenario, «+ Νέα» by AI or by
+// hand). Every figure is computeScenarioFromInputs() (projectModel.ts) or
+// opex.ts; nothing is restated.
+export function OperationSection({
   projectId: id,
   scenario,
-  result: scenarioResult,
-  annualRent,
-  monthlyRent,
-  sentToCash,
+  result,
+  scenarioCount,
+  plans,
+  planOptions,
+  ai,
 }: {
   projectId: string;
   scenario: ScenarioRow | null;
   result: ScenarioResult | null;
-  annualRent: number;
-  monthlyRent: number;
-  sentToCash: number;
+  scenarioCount: number;
+  // The revenue plans of this project.
+  plans: RevenuePlanOption[];
+  // Every plan of the organisation, for «which one feeds».
+  planOptions: RevenuePlanOption[];
+  ai: boolean;
 }) {
-  const opexLines = scenario?.opex_lines ?? [];
-  const revenue = scenarioResult?.revenue ?? 0;
-  const opexTotal = scenarioResult?.opexTotal ?? 0;
-  const cashflow = scenarioResult?.cashflow ?? null;
-  const operatingResult = revenue - opexTotal - annualRent;
-  const hasOperation = Boolean(scenario && revenue > 0);
+  const p = el.projectPage.operation;
+  const lines = [...(scenario?.opex_lines ?? [])].sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0));
+  const feeding = scenario?.revenue_plan_id ? planOptions.find((o) => o.id === scenario.revenue_plan_id) : undefined;
+  const source = feeding
+    ? fillText(p.fromPlan, { name: feeding.name })
+    : Number(scenario?.flat_annual_revenue ?? 0) > 0
+      ? p.flatRevenue
+      : null;
+  const growth = {
+    opexGrowthPct: Number(scenario?.opex_growth_pct ?? 0),
+    growthStartsAfterOperatingYear: Number(scenario?.growth_starts_after_operating_year ?? 3),
+  };
+  const refYear = result?.referenceYear ?? 1;
+  const revenue = result?.revenue ?? 0;
+  // A line's cost in the reference year (the same formula as opexForYear);
+  // null when the line does not run that year.
+  const amountOf = (l: (typeof lines)[number]) =>
+    isActiveIn(l, refYear) ? fixedPartOf(l, refYear, growth) + pctPartOf(l, refYear) * revenue : null;
+  const annualRent = result?.annualRent ?? 0;
 
   return (
-    <>
-      {/* Λειτουργικές Παραδοχές -- growth rates, discount rate, DSCR
-          covenant, and the opex line items themselves were previously not
-          editable anywhere in the app, not even through the AI chat
-          (project_scenarios/opex_lines aren't in writeTools.ts's
-          ALLOWLIST). This is what actually feeds the ΛΕΙΤΟΥΡΓΙΑ/DSCR/NPV
-          numbers below -- renders even with no scenario yet so the first
-          one can be created here instead of nowhere. */}
-      <OnePagerSection title="Λειτουργικές Παραδοχές" subtitle={scenario?.name}>
-        <div className="flex flex-col gap-3">
-          {!scenario ? (
-            <div className="flex flex-col items-start gap-3 border-b border-hairline py-3 md:flex-row md:items-center md:justify-between">
-              <p className="text-body text-muted">Δεν υπάρχει ακόμα σενάριο λειτουργίας για αυτό το έργο.</p>
-              <ScenarioFormModal action={saveScenario.bind(null, id, null)} trigger="+ Σενάριο Λειτουργίας" />
-            </div>
-          ) : (
-            <>
-              <div className="flex flex-col items-start gap-2 border-b border-hairline py-3 text-body md:flex-row md:items-center md:justify-between">
-                <div className="num text-text">
-                  Ανάπτυξη εσόδων {formatPercent(Number(scenario.revenue_growth_pct), { fixed: true })} ·{" "}
-                  <Term title="Opex (Operating Expenses) — λειτουργικά έξοδα, εκτός μισθώματος και εξυπηρέτησης δανείου.">
-                    opex
-                  </Term>{" "}
-                  {formatPercent(Number(scenario.opex_growth_pct), { fixed: true })} · προεξόφληση{" "}
-                  {formatPercent(Number(scenario.discount_rate_pct), { fixed: true })} ·{" "}
-                  <Term title="DSCR (Debt Service Coverage Ratio) — Δείκτης Κάλυψης Εξυπηρέτησης Χρέους: λειτουργικό αποτέλεσμα ÷ ετήσια δόση δανείου. Πάνω από 1.0× σημαίνει ότι τα έσοδα καλύπτουν τη δόση.">
-                    DSCR
-                  </Term>{" "}
-                  ≥ {scenario.dscr_covenant_min}×
-                </div>
-                <ScenarioFormModal
-                  action={saveScenario.bind(null, id, scenario.id)}
-                  initial={{
-                    name: scenario.name,
-                    flat_annual_revenue: scenario.flat_annual_revenue,
-                    revenue_growth_pct: Number(scenario.revenue_growth_pct),
-                    opex_growth_pct: Number(scenario.opex_growth_pct),
-                    growth_starts_after_operating_year: scenario.growth_starts_after_operating_year,
-                    discount_rate_pct: Number(scenario.discount_rate_pct),
-                    dscr_covenant_min: Number(scenario.dscr_covenant_min),
-                    adr_multiplier: Number(scenario.adr_multiplier ?? 1),
-                    notes: scenario.notes,
-                  }}
-                />
-              </div>
+    <OnePagerSection
+      title={p.title}
+      subtitle={
+        [scenario?.name, result?.referenceCalendarYear ? `${p.referenceYear} ${result.referenceCalendarYear}` : null]
+          .filter(Boolean)
+          .join(" · ") || undefined
+      }
+      actions={
+        scenario ? (
+          <ScenarioFormModal
+            action={saveScenario}
+            args={[id, scenario.id]}
+            initial={{
+              name: scenario.name,
+              flat_annual_revenue: scenario.flat_annual_revenue,
+              revenue_growth_pct: Number(scenario.revenue_growth_pct),
+              opex_growth_pct: Number(scenario.opex_growth_pct),
+              growth_starts_after_operating_year: scenario.growth_starts_after_operating_year,
+              discount_rate_pct: Number(scenario.discount_rate_pct),
+              dscr_covenant_min: Number(scenario.dscr_covenant_min),
+              adr_multiplier: Number(scenario.adr_multiplier ?? 1),
+              notes: scenario.notes,
+            }}
+          />
+        ) : (
+          <ScenarioFormModal action={saveScenario} args={[id, null]} />
+        )
+      }
+    >
+      {scenario ? (
+        <p className="num border-b border-hairline py-2 text-small text-text">
+          {p.revenueGrowth} {formatPercent(Number(scenario.revenue_growth_pct), { fixed: true })} ·{" "}
+          <Term title={el.projectPage.terms.opex}>opex</Term> {formatPercent(Number(scenario.opex_growth_pct), { fixed: true })} ·{" "}
+          {p.discount} {formatPercent(Number(scenario.discount_rate_pct), { fixed: true })} ·{" "}
+          <Term title={el.projectPage.terms.dscr}>DSCR</Term> ≥ {formatMultiple(Number(scenario.dscr_covenant_min))}
+        </p>
+      ) : (
+        <p className="border-b border-hairline py-2 text-body text-muted">{p.noScenario}</p>
+      )}
 
-              <div className="flex flex-col">
-                {opexLines.map((l) => (
-                  <div
-                    key={l.id}
-                    className="flex flex-col gap-2 border-b border-hairline py-2 text-body md:flex-row md:items-center md:justify-between md:gap-4"
-                  >
-                    <span className="min-w-0 text-ink">
-                      {l.label}{" "}
-                      <span className="num text-small text-muted">
-                        (έτη {l.from_operating_year}
-                        {l.to_operating_year ? `–${l.to_operating_year}` : "+"})
-                      </span>
+      {result?.hasOperation && (
+        <>
+          <OnePagerRow label={p.revenue} amount={result.revenue} note={source} />
+          <OnePagerRow
+            label={p.result}
+            amount={result.operatingResult}
+            note={annualRent > 0 ? p.resultNoteRent : p.resultNote}
+            negative={result.operatingResult < 0}
+            alert={result.operatingResult < 0}
+            emphasis
+          />
+          <OnePagerRow label={p.margin} amount={formatPercent(result.operatingResult / result.revenue, { fixed: true })} />
+        </>
+      )}
+
+      {scenario && (
+        <ReportHistory level={3} title={p.costLines} count={lines.length}>
+          <div className="flex flex-col">
+            {lines.map((l) => {
+              const amount = amountOf(l);
+              return (
+                <div
+                  key={l.id}
+                  className="flex flex-col gap-2 border-b border-hairline py-2 text-body md:flex-row md:items-center md:justify-between md:gap-4"
+                >
+                  <span className="min-w-0 text-ink">
+                    {l.label}{" "}
+                    <span className="num text-small text-muted">
+                      ({p.years} {l.from_operating_year}
+                      {l.to_operating_year ? `–${l.to_operating_year}` : "+"})
                     </span>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <OpexLineFormModal
-                        action={saveOpexLine.bind(null, id, scenario.id, l.id)}
-                        trigger="Επεξεργασία"
-                        initial={{
-                          kind: l.kind,
-                          label: l.label,
-                          from_operating_year: l.from_operating_year,
-                          to_operating_year: l.to_operating_year,
-                          headcount: l.headcount,
-                          monthly_wage: l.monthly_wage,
-                          salaries_per_year: l.salaries_per_year,
-                          employer_contribution_pct: l.employer_contribution_pct,
-                          premium_pct: l.premium_pct,
-                          months_active: l.months_active,
-                          pct_of_revenue: l.pct_of_revenue,
-                          annual_amount: l.annual_amount,
-                          note: l.note,
-                        }}
-                      />
-                      <RowDeleteMenu action={deleteOpexLine.bind(null, id, l.id)} label="Ενέργειες" plain>
-                        Διαγραφή
-                      </RowDeleteMenu>
-                    </div>
+                    {l.note && <span className="block text-small text-muted">{l.note}</span>}
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                    <span className="num text-ink">{amount ? formatMoney(-amount) : "—"}</span>
+                    <OpexLineFormModal
+                      action={saveOpexLine}
+                      args={[id, scenario.id, l.id]}
+                      initial={{
+                        kind: l.kind,
+                        label: l.label,
+                        from_operating_year: l.from_operating_year,
+                        to_operating_year: l.to_operating_year,
+                        headcount: l.headcount,
+                        monthly_wage: l.monthly_wage,
+                        salaries_per_year: l.salaries_per_year,
+                        employer_contribution_pct: l.employer_contribution_pct,
+                        premium_pct: l.premium_pct,
+                        months_active: l.months_active,
+                        pct_of_revenue: l.pct_of_revenue,
+                        annual_amount: l.annual_amount,
+                        note: l.note,
+                      }}
+                    />
+                    <ArgsDeleteButton action={deleteOpexLine} args={[id, l.id]} />
                   </div>
-                ))}
-                <div className="pt-2">
-                  <OpexLineFormModal action={saveOpexLine.bind(null, id, scenario.id, null)} />
                 </div>
-              </div>
-            </>
+              );
+            })}
+            {result?.hasOperation && (
+              <>
+                {annualRent > 0 && <OnePagerRow label={p.rent} amount={annualRent} negative note={p.rentNote} />}
+                <OnePagerRow label={p.costTotal} amount={result.opexTotal + annualRent} negative emphasis />
+              </>
+            )}
+            <div className="pt-2">
+              <OpexLineFormModal action={saveOpexLine} args={[id, scenario.id, null]} />
+            </div>
+          </div>
+        </ReportHistory>
+      )}
+
+      <ReportHistory level={3} title={p.plans} count={plans.length}>
+        {plans.length > 0 && (
+          <ul className="flex flex-col border-t border-hairline">
+            {plans.map((plan) => (
+              <li key={plan.id}>
+                <Link
+                  href={`/projects/revenue-plans/${plan.id}`}
+                  className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-hairline py-2 text-body text-ink hover:bg-hover"
+                >
+                  <span className="underline-offset-4 hover:underline">{plan.name}</span>
+                  <span className="text-small text-muted">
+                    <span className="num">
+                      {plan.start_year}–{plan.start_year + plan.years - 1}
+                    </span>
+                    {scenario?.revenue_plan_id === plan.id && ` · ${p.feeds}`}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {scenario && (
+          <ArgsActionForm key={scenario.id} action={setScenarioRevenuePlan} args={[id, scenario.id]} className="flex flex-wrap items-end gap-3">
+            <Field
+              label={scenarioCount > 1 ? fillText(t.feedsScenario, { name: scenario.name }) : p.feedsLabel}
+              htmlFor="scenario-revenue-plan"
+              className="min-w-0"
+            >
+              <Select
+                id="scenario-revenue-plan"
+                name="revenue_plan_id"
+                defaultValue={scenario.revenue_plan_id ?? ""}
+                className="max-w-full max-md:min-h-11"
+              >
+                <option value="">{p.noPlan}</option>
+                {planOptions.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                    {o.project_id && o.project_id !== id ? ` ${p.otherProject}` : ""}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Button type="submit" variant="secondary">
+              {p.update}
+            </Button>
+          </ArgsActionForm>
+        )}
+
+        <div className="flex flex-col gap-3">
+          <h4 className="eyebrow text-muted">{p.newPlan}</h4>
+          {ai && <AiCreateForm projectId={id} />}
+          <ManualPlanForm projectId={id} />
+        </div>
+      </ReportHistory>
+    </OnePagerSection>
+  );
+}
+
+// ΤΑΜΕΙΑΚΗ ΡΟΗ, for the selected scenario: the lowest debt cover (and its
+// year), the NPV, the years under the bank's requirement and what was sent
+// to the cash forecast, with a visible «Στείλε στο ταμείο» (its small form
+// in a drawer). The first amortisation year's cover and the cumulative
+// flow behind «▸». The covenant and the discount rate are in ΛΕΙΤΟΥΡΓΙΑ's
+// assumptions line, not repeated here.
+export function CashflowSection({
+  projectId: id,
+  scenarioId,
+  cashflow,
+  covenant,
+  sentToCash,
+}: {
+  projectId: string;
+  scenarioId: string;
+  cashflow: NonNullable<ScenarioResult["cashflow"]>;
+  covenant: number;
+  sentToCash: number;
+}) {
+  const p = el.projectPage.cashflow;
+  const k = cashflow.kpis;
+  const below = k.minDscr != null && k.minDscr.value < covenant;
+  return (
+    <OnePagerSection title={p.title} subtitle={fillText(p.horizon, { years: String(cashflow.years.length) })}>
+      {k.minDscr && (
+        <OnePagerRow
+          label={<Term title={p.minDscrHint}>{p.minDscr}</Term>}
+          amount={formatMultiple(k.minDscr.value)}
+          note={`${k.minDscr.calendarYear}`}
+          negative={below}
+          alert={below}
+        />
+      )}
+      <OnePagerRow label={<Term title={p.npvHint}>{p.npv}</Term>} amount={k.npv} note={p.npvNote} />
+      {k.covenantBreaches.length > 0 && (
+        <OnePagerRow
+          label={<Term title={p.breachesHint}>{p.breaches}</Term>}
+          amount={k.covenantBreaches.map((b) => b.calendarYear).join(", ")}
+          negative
+        />
+      )}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-hairline py-2 text-body">
+        <div className="flex flex-wrap items-center gap-x-2 text-text">
+          <span>{p.inCash}:</span>
+          <span className="num text-ink">{sentToCash > 0 ? `${sentToCash} ${el.sendToCash.sent}` : p.notYet}</span>
+          {sentToCash > 0 && (
+            <ArgsActionForm action={removeScenarioFromCash} args={[id, scenarioId]} className="inline-flex flex-wrap items-center">
+              <button type="submit" className="inline-flex items-center text-small text-ink underline underline-offset-4 max-md:min-h-11">
+                {el.sendToCash.remove}
+              </button>
+            </ArgsActionForm>
           )}
         </div>
-      </OnePagerSection>
-
-      {/* ΛΕΙΤΟΥΡΓΙΑ — the stabilised operating year */}
-      {hasOperation && (
-        <OnePagerSection
-          title="ΛΕΙΤΟΥΡΓΙΑ"
-          subtitle={[scenario?.name, scenarioResult?.referenceCalendarYear ? `έτος αναφοράς ${scenarioResult.referenceCalendarYear}` : null]
-            .filter(Boolean)
-            .join(" · ")}
-        >
-          <OnePagerRow label="Ετήσιος τζίρος" amount={revenue} />
-          {(scenarioResult?.opexLines ?? []).map((l, i) => (
-            <OnePagerRow key={i} label={l.label} amount={l.amount} negative note={l.note} />
-          ))}
-          {annualRent > 0 && (
+        <SendToCashButton projectId={id} scenarioId={scenarioId} sent={sentToCash} />
+      </div>
+      <ReportHistory level={3} title={p.details}>
+        <div>
+          {k.firstAmortisationYearDscr && (
             <OnePagerRow
-              label="Μίσθωμα προς ιδιοκτήτες"
-              amount={annualRent}
-              negative
-              note={`${formatMoney(monthlyRent)} τον μήνα.`}
-            />
-          )}
-          <OnePagerRow label="ΕΤΗΣΙΟ ΑΠΟΤΕΛΕΣΜΑ" amount={operatingResult} emphasis />
-          <OnePagerRow
-            label="Περιθώριο επί τζίρου"
-            amount={formatPercent(operatingResult / revenue, { fixed: true })}
-          />
-        </OnePagerSection>
-      )}
-
-      {/* ΤΑΜΕΙΑΚΗ ΡΟΗ — headline resilience KPIs; the full year-by-year
-          table and chart are a future tab, not this one-pager. */}
-      {cashflow && (
-        <OnePagerSection
-          title="ΤΑΜΕΙΑΚΗ ΡΟΗ"
-          subtitle={`${cashflow.years.length}-ετής προβολή · κάλυψη δόσης τράπεζας ≥ ${scenario?.dscr_covenant_min ?? 1.2}×`}
-        >
-          {cashflow.kpis.firstAmortisationYearDscr && (
-            <OnePagerRow
-              label="Κάλυψη δόσης — πρώτο έτος χρεολυσίου"
-              amount={formatMultiple(cashflow.kpis.firstAmortisationYearDscr.value)}
-              note={`${cashflow.kpis.firstAmortisationYearDscr.calendarYear}`}
-            />
-          )}
-          {cashflow.kpis.minDscr && (
-            <OnePagerRow
-              label="Χαμηλότερη κάλυψη δόσης"
-              amount={formatMultiple(cashflow.kpis.minDscr.value)}
-              note={`${cashflow.kpis.minDscr.calendarYear}`}
-              negative={cashflow.kpis.minDscr.value < (scenario?.dscr_covenant_min ?? 1.2)}
-              alert={cashflow.kpis.minDscr.value < (scenario?.dscr_covenant_min ?? 1.2)}
+              label={p.firstYear}
+              amount={formatMultiple(k.firstAmortisationYearDscr.value)}
+              note={`${k.firstAmortisationYearDscr.calendarYear}`}
             />
           )}
           <OnePagerRow
-            label="Σωρευτική ταμειακή ροή"
-            amount={cashflow.kpis.cumulativeTotal}
-            note={`Έως ${cashflow.years[cashflow.years.length - 1]?.calendarYear ?? ""}.`}
+            label={p.cumulative}
+            amount={k.cumulativeTotal}
+            note={fillText(p.until, { year: String(cashflow.years[cashflow.years.length - 1]?.calendarYear ?? "") })}
           />
-          <OnePagerRow
-            label="Καθαρή Παρούσα Αξία"
-            amount={cashflow.kpis.npv}
-            emphasis
-            note={`Προεξοφλημένη ροή μετά την εξυπηρέτηση δανείου, χωρίς την αρχική επένδυση — @${formatPercent(Number(scenario?.discount_rate_pct ?? 0.09), { digits: 0 })}.`}
-          />
-          {cashflow.kpis.covenantBreaches.length > 0 && (
-            <OnePagerRow
-              label="Έτη κάτω από την απαίτηση τράπεζας"
-              amount={cashflow.kpis.covenantBreaches.map((b) => b.calendarYear).join(", ")}
-              negative
-            />
-          )}
-          {scenario && <SendToCashSection projectId={id} scenarioId={scenario.id} sentCount={sentToCash ?? 0} />}
-        </OnePagerSection>
-      )}
-    </>
+        </div>
+      </ReportHistory>
+    </OnePagerSection>
   );
 }
