@@ -50,8 +50,9 @@ const STATUS_LABEL = {
 // up, a stack of hairline cards below. Every table row is ONE line, as in
 // late September: the description takes the free width and the text columns
 // cut off with «…» (the full text on hover); the row actions are
-// «Πληρώθηκε», an edit icon and «⋯» (partial payment, delete). Below xl
-// those columns would leave the description no room, so cards. No inner
+// «Πληρώθηκε», an edit icon and «⋯» (partial payment, delete). The account
+// column only from 2xl (as in September, which had none): below that it
+// would leave the description no room. Below xl, cards. No inner
 // scroll box: the table always fits, and its head sticks to the top of the
 // page (separate borders, so the rule moves with the head).
 const TH = "sticky top-[var(--sticky-top,0px)] z-10 bg-canvas";
@@ -278,7 +279,7 @@ export function TransactionsTable({
                 <Th className={TH}>{el.transaction.description}</Th>
                 <Th className={TH}>{el.transaction.project}</Th>
                 <Th className={TH}>{el.transaction.category}</Th>
-                <Th className={cn(TH, "hidden xl:table-cell")}>{el.transaction.accountColumn}</Th>
+                <Th className={cn(TH, "hidden 2xl:table-cell")}>{el.transaction.accountColumn}</Th>
                 <Th numeric className={TH}>
                   {el.transaction.amount}
                 </Th>
@@ -341,13 +342,13 @@ export function TransactionsTable({
                       {meta && <span className={cn(SUB_CLASS, "xl:hidden")}>{meta}</span>}
                     </Td>
                     <Td className={CLIP} title={tx.project_name ?? undefined}>
-                      <div className="max-w-32 truncate">{tx.project_name ?? "—"}</div>
+                      <div className="max-w-28 truncate">{tx.project_name ?? "—"}</div>
                     </Td>
                     <Td className={CLIP} title={tx.category_name ?? undefined}>
-                      <div className="max-w-32 truncate">{tx.category_name ?? "—"}</div>
+                      <div className="max-w-28 truncate">{tx.category_name ?? "—"}</div>
                     </Td>
-                    <Td className={CLIP} title={tx.account_name ?? undefined}>
-                      <div className="max-w-32 truncate">{tx.account_name ?? "—"}</div>
+                    <Td className="hidden text-small xl:py-2 2xl:table-cell" title={tx.account_name ?? undefined}>
+                      <div className="max-w-28 truncate">{tx.account_name ?? "—"}</div>
                     </Td>
                     <Td numeric strong className={cn(CELL, "col-start-2 row-start-2 xl:py-2")}>
                       <Amount value={tx.direction === "income" ? gross : -gross} />
@@ -409,7 +410,7 @@ export function TransactionsTable({
                         <Button variant="ghost" size="sm" onClick={() => setTarget(tx)} aria-label={el.common.edit} title={el.common.edit}>
                           <Pencil className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                         </Button>
-                        <Menu>
+                        <Menu compact>
                           {awaiting && !tx.plan_id && <MenuItem onClick={() => setPaying(tx)}>{el.transaction.partial} πληρωμή</MenuItem>}
                           <MenuItem tone="danger" disabled={busy === `${tx.id}:delete`} onClick={() => handleDelete(tx)}>
                             {el.common.delete}

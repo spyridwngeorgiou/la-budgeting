@@ -13,12 +13,15 @@ export function Menu({
   label = shell.ui.more,
   trigger,
   align = "right",
+  compact = false,
   className = "",
 }: {
   children: ReactNode;
   label?: string;
   trigger?: ReactNode;
   align?: "left" | "right";
+  // A table row: a borderless 32px trigger (44px on touch), like a ghost icon button.
+  compact?: boolean;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -55,7 +58,12 @@ export function Menu({
         aria-controls={id}
         aria-label={trigger ? undefined : label}
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex min-h-10 min-w-10 items-center justify-center border border-chip-border px-2 text-ink hover:border-navy hover:bg-hover"
+        className={cn(
+          "inline-flex items-center justify-center border px-2 text-ink hover:bg-hover",
+          compact
+            ? "min-h-8 min-w-8 border-transparent text-muted hover:text-ink pointer-coarse:min-h-11 pointer-coarse:min-w-11"
+            : "min-h-10 min-w-10 border-chip-border hover:border-navy",
+        )}
       >
         {trigger ?? <span aria-hidden="true" className="text-section leading-none">⋯</span>}
       </button>
