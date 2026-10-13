@@ -1,9 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
 import { formatMoney } from "@/lib/format";
-import { addMonths, currentMonthKey, monthKeyOf, monthLabel, shortMonthYearLabel } from "@/lib/dates";
+import { addMonths, currentMonthKey, firstOfMonth, lastOfMonth, monthKeyOf, monthLabel, shortMonthYearLabel, todayAthens } from "@/lib/dates";
 import { el } from "@/lib/i18n/el";
 import { withholdingNarrative } from "@/lib/finance/narratives";
+import { change, contributors, latestUpTo, topMovements, whyText } from "@/lib/finance/insights";
+import { ChangePanel, KpiLink, TopMovements } from "../Insights";
 import {
   KpiBand,
   PageHeader,
@@ -26,15 +28,36 @@ import { BarChart } from "@/components/ui/BarChart";
 export default async function WithholdingPage() {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
-  const { data: positions } = await supabase
-    .from("v_withholding_position")
-    .select("*")
-    .eq("org_id", orgId)
-    .order("period_start", { ascending: false })
-    .limit(24);
+  const thisMonth = currentMonthKey();
+  // «Τι άλλαξε» looks at the last complete month; its five largest
+  // withholdings are the one extra query («Μεγαλύτερες κινήσεις»).
+  const focusMonth = addMonths(thisMonth, -1);
+  const focusFrom = firstOfMonth(focusMonth);
+  const focusTo = lastOfMonth(focusMonth);
+  const [{ data: positions }, { data: topRows }] = await Promise.all([
+    supabase
+      .from("v_withholding_position")
+      .select("*")
+      .eq("org_id", orgId)
+      .order("period_start", { ascending: false })
+      .limit(24),
+    // The same rows v_withholding_position sums (business expenses, paid or
+    // invoiced), largest first.
+    supabase
+      .from("transactions")
+      .select("id, tx_date, description, counterparty_name, withholding_amount")
+      .eq("org_id", orgId)
+      .eq("scope", "business")
+      .eq("direction", "expense")
+      .in("status", ["paid", "pending"])
+      .gt("withholding_amount", 0)
+      .gte("tx_date", focusFrom)
+      .lte("tx_date", focusTo)
+      .order("withholding_amount", { ascending: false })
+      .limit(5),
+  ]);
 
   const rows = (positions ?? []).filter((p) => p.period_start);
-  const thisMonth = currentMonthKey();
   const from12 = addMonths(thisMonth, -11);
   const byMonth = rows.map((p) => ({ month: monthKeyOf(p.period_start!), amount: Number(p.withheld_total ?? 0) }));
   const current = byMonth.find((r) => r.month === thisMonth)?.amount ?? 0;
@@ -48,6 +71,28 @@ export default async function WithholdingPage() {
     label: shortMonthYearLabel(m),
     withheld: amountOf.get(m) ?? 0,
   }));
+
+  const topMoves = topMovements(
+    (topRows ?? []).map((r) => ({
+      id: r.id,
+      date: r.tx_date,
+      label: r.counterparty_name?.trim() || r.description?.trim() || "—",
+      amount: Number(r.withholding_amount ?? 0),
+    })),
+  );
+  // «why»: the month's largest withholdings (one figure, no parts).
+  const why = whyText(contributors(topMoves.slice(0, 2).map((m, i) => ({ key: `${m.id ?? i}`, label: m.label, amount: m.amount })), []));
+  const focusAmount = amountOf.get(focusMonth) ?? 0;
+  const rangeHref = (from: string, to: string) => `/transactions?scope=business&direction=expense&from=${from}&to=${to}`;
+  const changes = rows.length
+    ? [addMonths(focusMonth, -1), addMonths(focusMonth, -12)].map((m) => ({
+        label: `${monthLabel(focusMonth)} έναντι ${monthLabel(m)}`,
+        change: change(focusAmount, amountOf.get(m) ?? 0),
+        why,
+        href: rangeHref(focusFrom, focusTo),
+      }))
+    : [];
+  const coverage = latestUpTo([...topMoves.map((m) => m.date), latest?.month], todayAthens());
 
   return (
     <div className="flex min-w-0 flex-col gap-10">
@@ -65,11 +110,20 @@ export default async function WithholdingPage() {
           </ReportHeadline>
           <KpiBand
             items={[
-              { label: "Τρέχων μήνας", value: formatMoney(current), sub: monthLabel(thisMonth) },
-              { label: "Σύνολο 12μ", value: formatMoney(last12), sub: `${monthLabel(from12)} – ${monthLabel(thisMonth)}` },
+              {
+                label: "Τρέχων μήνας",
+                value: <KpiLink href={rangeHref(firstOfMonth(thisMonth), lastOfMonth(thisMonth))}>{formatMoney(current)}</KpiLink>,
+                sub: monthLabel(thisMonth),
+              },
+              {
+                label: "Σύνολο 12μ",
+                value: <KpiLink href={rangeHref(firstOfMonth(from12), lastOfMonth(thisMonth))}>{formatMoney(last12)}</KpiLink>,
+                sub: `${monthLabel(from12)} – ${monthLabel(thisMonth)}`,
+              },
               { label: "Μέσος όρος μήνα", value: formatMoney(last12 / 12), sub: "τελευταίοι 12 μήνες" },
             ]}
           />
+          <ChangePanel items={changes} coverage={coverage} />
           <ReportChart
             title="Παρακρατήσεις ανά μήνα"
             caption={`${monthLabel(addMonths(end, -23))} – ${monthLabel(end)} · αποδίδονται ως το τέλος του επόμενου μήνα`}
@@ -82,6 +136,7 @@ export default async function WithholdingPage() {
               marker={end === thisMonth ? undefined : { x: shortMonthYearLabel(thisMonth), label: "τρέχων μήνας" }}
             />
           </ReportChart>
+          <TopMovements rows={topMoves} caption={monthLabel(focusMonth)} />
           <ReportDetail title="Ανά μήνα" meta={`${rows.length} μήνες`}>
             <SpecTable label={el.nav.withholding} className="max-w-2xl">
               <thead>
@@ -107,7 +162,7 @@ export default async function WithholdingPage() {
           <ReportMethod>
             <p>{el.reports.withholdingIntro}</p>
           </ReportMethod>
-          <ReportFooter dataUntil={latest?.month ?? null} />
+          <ReportFooter dataUntil={coverage ?? latest?.month ?? null} />
         </ReportSection>
       )}
     </div>

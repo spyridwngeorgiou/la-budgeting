@@ -21,19 +21,22 @@ import {
   cn,
 } from "@/components/ui";
 import { BandChart } from "@/components/ui/BandChart";
-import { addMonths, currentMonthKey, shortMonthYearLabel, todayAthens } from "@/lib/dates";
+import { addMonths, currentMonthKey, firstOfMonth, monthLabel, shortMonthYearLabel, todayAthens } from "@/lib/dates";
 import { netWorthNarrative } from "@/lib/finance/narratives";
+import { liquidMonthEnds } from "@/lib/finance/liquidHistory";
+import { accountBalancesAt, change, contributors, latestUpTo, sumParts, topMovements, whyText } from "@/lib/finance/insights";
 import { CompositionBars } from "./Composition";
-import { liquidMonthEnds } from "./liquidHistory";
-import { AssetFormModal, LiabilityFormModal } from "./NetWorthForms";
-import { RowDeleteMenu } from "./RowDeleteMenu";
-import { deleteAsset, deleteLiability, saveAsset, saveLiability } from "./actions";
+import { ChangePanel, KpiLink, ManageLink, TopMovements } from "../Insights";
 
 // Καθαρή θέση -- «Πόσα αξίζουμε;». Totals and items are v_net_worth /
 // v_net_worth_items (0068/0090) only; the two lists below are the hand-kept
-// assets and liabilities. The second chart is the ACTUAL liquid balance of
-// the last 12 months (v_account_balances + v_account_ledger_monthly, 0091):
-// there is no net-worth history, so none is drawn.
+// assets and liabilities, read-only here (managed on /accounts/assets). The
+// second chart is the ACTUAL liquid balance of the last 12 months
+// (v_account_balances + v_account_ledger_monthly, 0091): there is no
+// net-worth history, so none is drawn, and «Τι άλλαξε» is the liquid part.
+//
+// Queries: the six it always had, plus this month's largest paid movements
+// (v_account_ledger) for «Μεγαλύτερες κινήσεις».
 
 const COMPONENTS = ["cash", "other_accounts", "assets", "receivables", "payables", "liabilities", "loans", "vat"] as const;
 type Component = (typeof COMPONENTS)[number];
@@ -56,11 +59,16 @@ const T = {
   liquidTitle: "Ρευστά τελευταίων 12 μηνών",
   liquidCaption: "Πραγματικό υπόλοιπο ρευστών λογαριασμών στο τέλος κάθε μήνα· ο τρέχων μήνας έως σήμερα",
   liquidSeries: "Ρευστά (πραγματικά)",
+  changeTitle: "Τι άλλαξε στα ρευστά",
+  vsEndOf: (m: string) => `Έναντι τέλους ${m}`,
+  movesCaption: (m: string) => `ρευστοί λογαριασμοί, ${m}`,
   components: "Ανά στοιχείο",
   method: [
     "Καθαρή θέση = ό,τι έχουμε (ρευστά, λοιποί λογαριασμοί, περιουσιακά στοιχεία στο ποσοστό ιδιοκτησίας μας, απαιτήσεις) μείον ό,τι οφείλουμε (δάνεια, λοιπές υποχρεώσεις, εκκρεμείς πληρωμές σε προμηθευτές, ΦΠΑ). Ο ΦΠΑ μετρά στην πλευρά που τον βάζει το πρόσημό του.",
     "Ρευστότητα: τα ρευστά ως μέρος της περιουσίας. Μόχλευση: οι υποχρεώσεις ως μέρος της περιουσίας.",
     "«Ρευστά τελευταίων 12 μηνών»: το σημερινό υπόλοιπο των ρευστών λογαριασμών, μείον τις πληρωμένες κινήσεις κάθε επόμενου μήνα. Ιστορικό καθαρής θέσης δεν κρατείται, γι' αυτό δεν εμφανίζεται.",
+    "«Τι άλλαξε στα ρευστά»: το σημερινό υπόλοιπο των ρευστών έναντι του τέλους του προηγούμενου μήνα και του ίδιου μήνα πέρσι, με τους λογαριασμούς που το κίνησαν περισσότερο. «Μεγαλύτερες κινήσεις»: οι μεγαλύτερες πληρωμένες κινήσεις του μήνα στους ρευστούς λογαριασμούς.",
+    "Τα περιουσιακά στοιχεία και οι λοιπές υποχρεώσεις καταχωρίζονται στους Λογαριασμούς → Περιουσία & υποχρεώσεις.",
   ],
 };
 
@@ -69,6 +77,8 @@ const T = {
 const COMPONENT_HREF: Partial<Record<Component, string>> = {
   cash: "/accounts",
   other_accounts: "/accounts",
+  assets: "/accounts/assets",
+  liabilities: "/accounts/assets",
   receivables: "/transactions?status=pending&direction=income",
   payables: "/transactions?status=pending&direction=expense",
   loans: "/projects",
@@ -80,8 +90,18 @@ export default async function NetWorthPage() {
   const orgId = await getCurrentOrgId(supabase);
   const thisMonth = currentMonthKey();
   const monthKeys = Array.from({ length: 12 }, (_, i) => addMonths(thisMonth, i - 11));
-  const [{ data: total, error }, { data: items }, { data: assets }, { data: liabilities }, { data: liquidAccounts }, { data: ledger }] =
-    await Promise.all([
+  const lastMonth = addMonths(thisMonth, -1);
+  const yearAgo = addMonths(thisMonth, -12);
+  const today = todayAthens();
+  const [
+    { data: total, error },
+    { data: items },
+    { data: assets },
+    { data: liabilities },
+    { data: liquidAccounts },
+    { data: ledger },
+    { data: moves },
+  ] = await Promise.all([
     supabase.from("v_net_worth").select("*").eq("org_id", orgId).maybeSingle(),
     supabase
       .from("v_net_worth_items")
@@ -92,25 +112,36 @@ export default async function NetWorthPage() {
       .order("amount", { ascending: false }),
     supabase
       .from("assets")
-      .select("id, name, category, estimated_value, ownership_pct, owner_scope, state, valuation_date, notes")
+      .select("id, name, category, estimated_value, ownership_pct, owner_scope, state, valuation_date")
       .eq("org_id", orgId)
       .order("name"),
     supabase
       .from("liabilities")
-      .select("id, lender, kind, principal, interest_rate, maturity_date, state, owner_scope, terms")
+      .select("id, lender, kind, principal, interest_rate, maturity_date, state, owner_scope")
       .eq("org_id", orgId)
       .order("maturity_date", { nullsFirst: false }),
     supabase
       .from("v_account_balances")
-      .select("account_id, current_balance, opening_balance_date")
+      .select("account_id, name, current_balance, opening_balance_date")
       .eq("org_id", orgId)
       .eq("is_liquid", true),
-    // Movements paid in the months after the first one shown.
+    // Movements paid after the same month last year: the chart's months and
+    // «Τι άλλαξε» against a year ago.
     supabase
       .from("v_account_ledger_monthly")
       .select("account_id, month, inflow, outflow")
       .eq("org_id", orgId)
-      .gt("month", monthKeys[0]),
+      .gt("month", yearAgo),
+    // This month's largest paid movements (any account; the liquid ones are
+    // kept below).
+    supabase
+      .from("v_account_ledger")
+      .select("transaction_id, account_id, paid_date, signed_amount, party_name, description")
+      .eq("org_id", orgId)
+      .gte("paid_date", firstOfMonth(thisMonth))
+      .lte("paid_date", today)
+      .order("gross_amount", { ascending: false })
+      .limit(25),
   ]);
   if (error) throw error;
 
@@ -154,6 +185,35 @@ export default async function NetWorthPage() {
     liquid: r.balance,
   }));
 
+  // «Τι άλλαξε»: the liquid balance now against the end of last month and
+  // of the same month last year, and the accounts that moved it most.
+  const at = (m: string) => accountBalancesAt(liquidAccounts ?? [], ledger ?? [], m, thisMonth);
+  const now = at(thisMonth);
+  const changes =
+    (liquidAccounts ?? []).length === 0
+      ? []
+      : [lastMonth, yearAgo].map((m) => {
+          const before = at(m);
+          return {
+            label: T.vsEndOf(monthLabel(m)),
+            change: change(sumParts(now), sumParts(before)),
+            why: whyText(contributors(now, before)),
+            href: "/accounts",
+          };
+        });
+  const liquidIds = new Set((liquidAccounts ?? []).map((a) => a.account_id));
+  const topMoves = topMovements(
+    (moves ?? [])
+      .filter((m) => liquidIds.has(m.account_id))
+      .map((m) => ({
+        id: m.transaction_id,
+        date: m.paid_date,
+        label: m.party_name?.trim() || m.description?.trim() || "—",
+        amount: Number(m.signed_amount ?? 0),
+      })),
+  );
+  const coverage = latestUpTo([...topMoves.map((m) => m.date), ...(ledger ?? []).map((l) => l.month)], today);
+
   return (
     <div className="flex min-w-0 flex-col gap-10">
       <PageHeader title={t.title} meta={T.question} />
@@ -168,17 +228,23 @@ export default async function NetWorthPage() {
             },
             {
               label: T.liquidity,
-              value: ownedTotal > 0 ? formatPercent(amountOf.cash / ownedTotal, { digits: 0 }) : "—",
+              value: <KpiLink href="/accounts">{ownedTotal > 0 ? formatPercent(amountOf.cash / ownedTotal, { digits: 0 }) : "—"}</KpiLink>,
               sub: T.liquiditySub,
             },
             {
               label: T.leverage,
-              value: ownedTotal > 0 ? formatPercent(owedTotal / ownedTotal, { digits: 0 }) : "—",
+              value: <KpiLink href="/accounts/assets">{ownedTotal > 0 ? formatPercent(owedTotal / ownedTotal, { digits: 0 }) : "—"}</KpiLink>,
               sub: T.leverageSub,
             },
-            { label: T.property, value: formatMoney(propertyValue), sub: T.propertySub(property.length) },
+            {
+              label: T.property,
+              value: <KpiLink href="/accounts/assets">{formatMoney(propertyValue)}</KpiLink>,
+              sub: T.propertySub(property.length),
+            },
           ]}
         />
+
+        <ChangePanel title={T.changeTitle} items={changes} coverage={coverage} />
 
         {ownedTotal + owedTotal > 0 && (
           <ReportChart title={T.compositionTitle} caption={T.compositionCaption}>
@@ -192,6 +258,8 @@ export default async function NetWorthPage() {
           </ReportChart>
         )}
 
+        <TopMovements rows={topMoves} caption={T.movesCaption(monthLabel(thisMonth))} />
+
         <ReportDetail title={T.components}>
           <div className="grid min-w-0 grid-cols-1 gap-8 md:grid-cols-2">
             <ComponentTable title={t.owned} components={owned} amountOf={amountOf} itemsOf={itemsOf} />
@@ -199,21 +267,20 @@ export default async function NetWorthPage() {
           </div>
         </ReportDetail>
 
-        {/* The «add» triggers sit in the body, never inside the <summary>
-            (a form in a summary toggles it on space). */}
+        {/* Read-only: both lists are managed on Λογαριασμοί → Περιουσία & υποχρεώσεις. */}
         <ReportDetail title={t.assetsTitle} meta={(assets ?? []).length || undefined}>
-        <div className="-mt-1 mb-3 flex justify-end">
-          <AssetFormModal action={saveAsset} />
-        </div>
-        {(assets ?? []).length === 0 ? (
-          <p className="text-body text-muted">{t.empty}</p>
-        ) : (
-          <SpecTable label={t.assetsTitle}>
-            <tbody>
+          <div className="-mt-1 mb-3 flex justify-end">
+            <ManageLink href="/accounts/assets" />
+          </div>
+          {(assets ?? []).length === 0 ? (
+            <p className="text-body text-muted">{t.empty}</p>
+          ) : (
+            <SpecTable label={t.assetsTitle}>
+              <tbody>
                 {(assets ?? []).map((a) => {
                   const counted = a.state === "held";
                   return (
-                    <Tr key={a.id} className="[&>td]:align-middle">
+                    <Tr key={a.id}>
                       <Td className={cn("min-w-48", counted ? "text-ink" : "text-muted")}>
                         {a.name}
                         {a.category && <span className="ml-1 text-small text-muted">· {t.assetCategories[a.category.toLowerCase()] ?? a.category}</span>}
@@ -227,49 +294,30 @@ export default async function NetWorthPage() {
                       <Td numeric className={counted ? "text-ink" : "text-muted"}>
                         {formatMoney(a.estimated_value)}
                       </Td>
-                      <Td className="py-1.5">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <AssetFormModal
-                            action={saveAsset}
-                            id={a.id}
-                            initial={{
-                              name: a.name,
-                              category: a.category,
-                              estimated_value: Number(a.estimated_value),
-                              ownership_pct: Number(a.ownership_pct),
-                              owner_scope: a.owner_scope,
-                              state: a.state,
-                              valuation_date: a.valuation_date,
-                              notes: a.notes,
-                            }}
-                          />
-                          <RowDeleteMenu action={deleteAsset} id={a.id} />
-                        </div>
-                      </Td>
                     </Tr>
                   );
                 })}
-            </tbody>
-          </SpecTable>
-        )}
+              </tbody>
+            </SpecTable>
+          )}
         </ReportDetail>
 
         <ReportDetail title={t.liabilitiesTitle} meta={(liabilities ?? []).length || undefined}>
-        <div className="mb-3 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-          <p className="min-w-0 flex-1 text-small text-muted">{t.liabilitiesHint}</p>
-          <span className="shrink-0">
-            <LiabilityFormModal action={saveLiability} />
-          </span>
-        </div>
-        {(liabilities ?? []).length === 0 ? (
-          <p className="text-body text-muted">{t.empty}</p>
-        ) : (
-          <SpecTable label={t.liabilitiesTitle}>
-            <tbody>
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+            <p className="min-w-0 flex-1 text-small text-muted">{t.liabilitiesHint}</p>
+            <span className="shrink-0">
+              <ManageLink href="/accounts/assets" />
+            </span>
+          </div>
+          {(liabilities ?? []).length === 0 ? (
+            <p className="text-body text-muted">{t.empty}</p>
+          ) : (
+            <SpecTable label={t.liabilitiesTitle}>
+              <tbody>
                 {(liabilities ?? []).map((l) => {
                   const counted = l.state === "disbursed";
                   return (
-                    <Tr key={l.id} className="[&>td]:align-middle">
+                    <Tr key={l.id}>
                       <Td className={cn("min-w-48", counted ? "text-ink" : "text-muted")}>
                         {l.lender}
                         <span className="ml-1 text-small text-muted">· {t.liabilityKinds[l.kind]}</span>
@@ -282,31 +330,12 @@ export default async function NetWorthPage() {
                       <Td numeric className={counted ? "text-ink" : "text-muted"}>
                         {formatMoney(l.principal)}
                       </Td>
-                      <Td className="py-1.5">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <LiabilityFormModal
-                            action={saveLiability}
-                            id={l.id}
-                            initial={{
-                              lender: l.lender,
-                              kind: l.kind,
-                              principal: Number(l.principal),
-                              interest_rate: Number(l.interest_rate),
-                              maturity_date: l.maturity_date,
-                              state: l.state,
-                              owner_scope: l.owner_scope,
-                              terms: l.terms,
-                            }}
-                          />
-                          <RowDeleteMenu action={deleteLiability} id={l.id} />
-                        </div>
-                      </Td>
                     </Tr>
                   );
                 })}
-            </tbody>
-          </SpecTable>
-        )}
+              </tbody>
+            </SpecTable>
+          )}
         </ReportDetail>
 
         <ReportMethod>
@@ -315,7 +344,7 @@ export default async function NetWorthPage() {
             <p key={i}>{m}</p>
           ))}
         </ReportMethod>
-        <ReportFooter dataUntil={todayAthens()} />
+        <ReportFooter dataUntil={coverage ?? today} />
       </ReportSection>
     </div>
   );

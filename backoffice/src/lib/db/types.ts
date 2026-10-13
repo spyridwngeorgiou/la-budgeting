@@ -2403,6 +2403,13 @@ export type Database = {
             referencedRelation: "v_qc_projects_without_budget"
             referencedColumns: ["project_id"]
           },
+          {
+            foreignKeyName: "expected_income_scenario_id_fkey"
+            columns: ["scenario_id"]
+            isOneToOne: false
+            referencedRelation: "project_scenarios"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ingest_batches: {

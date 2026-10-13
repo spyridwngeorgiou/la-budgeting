@@ -11,7 +11,10 @@ import { ASSET_STATE, LIABILITY_KIND, LIABILITY_STATE, type AssetState, type Lia
 // Assets and liabilities (0008): the hand-kept half of the net worth. Every
 // total on the page is v_net_worth (0068); these only write the rows.
 
+// The list is managed on /accounts/assets; the net worth and the cash
+// forecast (liabilities) read the same rows.
 function revalidate() {
+  revalidatePath("/accounts/assets");
   revalidatePath("/reports/net-worth");
   revalidatePath("/reports/cash");
   revalidatePath("/dashboard");

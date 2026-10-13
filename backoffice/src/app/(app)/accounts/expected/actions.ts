@@ -10,6 +10,13 @@ import { el } from "@/lib/i18n/el";
 // Expected income (0008 + 0065): the small hand-kept list of money that is
 // likely but not invoiced yet. Rows written by a project scenario
 // («Στείλε στο ταμείο», scenario_id set) are managed from the scenario.
+// Managed on /accounts/expected; the cash forecast reads the same rows.
+
+function revalidate() {
+  revalidatePath("/accounts/expected");
+  revalidatePath("/reports/cash");
+  revalidatePath("/dashboard");
+}
 
 function fieldsFromForm(formData: FormData) {
   const amount = Number(formData.get("amount"));
@@ -43,8 +50,7 @@ export async function saveExpectedIncome(id: string | null, formData: FormData):
       ? await supabase.from("expected_income").update(fields).eq("id", id).eq("org_id", orgId)
       : await supabase.from("expected_income").insert({ ...fields, org_id: orgId });
     if (error) throw error;
-    revalidatePath("/reports/cash");
-    revalidatePath("/dashboard");
+    revalidate();
   });
 }
 
@@ -54,7 +60,6 @@ export async function setExpectedIncomeStatus(id: string, status: "received" | "
     const orgId = await getCurrentOrgId(supabase);
     const { error } = await supabase.from("expected_income").update({ status }).eq("id", id).eq("org_id", orgId);
     if (error) throw error;
-    revalidatePath("/reports/cash");
-    revalidatePath("/dashboard");
+    revalidate();
   });
 }

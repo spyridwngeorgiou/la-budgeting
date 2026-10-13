@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatMoney, formatPercent, formatSignedMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import {
   Badge,
-  Button,
   KpiBand,
   LINK_CLASS,
   NUM_CLASS,
@@ -26,10 +25,8 @@ import {
   ViewSwitch,
   cn,
 } from "@/components/ui";
-import { ArgsActionForm } from "@/components/ArgsActionForm";
 import { BandChart } from "@/components/ui/BandChart";
 import { BarChart } from "@/components/ui/BarChart";
-import { loadLookups } from "@/lib/data/lookups";
 import { addMonths, currentMonthKey, todayAthens, firstOfMonth, isMonthKey, monthKeyOf, monthLabel, shortMonthYearLabel } from "@/lib/dates";
 import { cashNarrative } from "@/lib/finance/narratives";
 import {
@@ -39,20 +36,22 @@ import {
   parseScenario,
   parseScope,
   type ForecastScenario,
-  type ForecastScope,
 } from "@/lib/finance/forecastParams";
+import { accountBalancesAt, change, contributors, latestUpTo, sumParts, topMovements, vsTarget, whyText } from "@/lib/finance/insights";
 import { largestOutflow, outflowBySourceRows, scenarioBalanceRows, type OutflowGroup } from "./cashCharts";
-import { ExpectedIncomeFormModal } from "./ExpectedIncomeFormModal";
-import { saveExpectedIncome, setExpectedIncomeStatus } from "./actions";
+import { ChangePanel, KpiLink, ManageLink, TargetPanel, TopMovements } from "../Insights";
 
 // Ταμείο & Πρόβλεψη -- «Θα έχουμε λεφτά;». Every figure comes from
 // cash_forecast() / cash_forecast_items() (0066/0090) -- the same SQL the
 // dashboard and the assistant read -- so this page computes nothing of its
 // own: it picks the scenario, scope and horizon, and lays the rows out in
-// the report anatomy (components/ui/ReportSection).
+// the report anatomy (components/ui/ReportSection). Read-only: the expected
+// income it lists is managed on /accounts/expected.
 //
 // Cloudflare CPU: one forecast by default; the other two scenarios are read
-// only with «Σύγκριση σεναρίων» on (?compare=1).
+// only with «Σύγκριση σεναρίων» on (?compare=1). «Τι άλλαξε» reads the
+// liquid accounts and their paid months (the projects lookup the old form
+// needed is gone, so the tab has one query more than before).
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -72,6 +71,13 @@ const T = {
   lowestSub: "χαμηλότερο σημείο",
   bufferSub: (amount: string) => `απόθεμα ${amount}`,
   byMonth: "Ανά μήνα",
+  changeTitle: "Τι άλλαξε στα ρευστά",
+  vsEndOf: (m: string) => `Έναντι τέλους ${m}`,
+  movesCaption: (m: string) => `πρόβλεψη, ${m}`,
+  lowestVsBuffer: "Χαμηλότερο έναντι αποθέματος",
+  monthsBelow: "Μήνες κάτω από το απόθεμα",
+  monthsBelowSub: (n: number) => `από ${n} μήνες`,
+  targetCaption: "Η πρόβλεψη έναντι του αποθέματος ασφαλείας· προβλέψεις προηγούμενων μηνών δεν κρατούνται",
   groups: {
     open: "Ανοιχτές πληρωμές & έργα",
     installment: "Δόσεις & μισθώματα",
@@ -84,6 +90,8 @@ const T = {
     "Το υπόλοιπο κάθε μήνα είναι το άνοιγμα συν τις εισροές μείον τις εκροές του μήνα· το άνοιγμα του πρώτου μήνα είναι τα σημερινά ρευστά.",
     "Τα σενάρια διαφέρουν μόνο στα αβέβαια: το βασικό σταθμίζει τα αβέβαια έσοδα με την πιθανότητά τους, το αισιόδοξο τα μετρά όλα στο 100%, το απαισιόδοξο κρατά μόνο τα βέβαια έσοδα και μετρά όλα τα έξοδα στο 100%. Οι συμβατικές κινήσεις είναι ίδιες και στα τρία.",
     "«Τι κινεί το ταμείο»: οι εκροές του επιλεγμένου σεναρίου ανά μήνα, ομαδοποιημένες κατά πηγή· το σύνολο κάθε στήλης είναι οι «Εκροές» του πίνακα.",
+    "«Τι άλλαξε στα ρευστά»: το σημερινό υπόλοιπο των ρευστών λογαριασμών έναντι του τέλους του προηγούμενου μήνα και του ίδιου μήνα πέρσι, με τους λογαριασμούς που το κίνησαν περισσότερο. «Μεγαλύτερες κινήσεις»: οι μεγαλύτερες προβλεπόμενες εισροές και εκροές του επιλεγμένου μήνα.",
+    "Τα αναμενόμενα έσοδα καταχωρίζονται στους Λογαριασμούς → Αναμενόμενα έσοδα.",
   ],
 };
 
@@ -105,7 +113,11 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
     supabase.rpc("cash_forecast", { p_org: orgId, p_months: months, p_scenario: s, p_scope: scope ?? undefined });
   const others = compare ? FORECAST_SCENARIOS.filter((s) => s !== scenario) : [];
 
-  const [{ data: forecast, error }, { data: items }, { data: horizonOut }, { data: expected }, lookups, ...otherForecasts] =
+  const lastMonth = addMonths(todayMonth, -1);
+  const yearAgo = addMonths(todayMonth, -12);
+  const today = todayAthens();
+
+  const [{ data: forecast, error }, { data: items }, { data: horizonOut }, { data: expected }, { data: liquidAccounts }, { data: ledger }, ...otherForecasts] =
     await Promise.all([
       forecastOf(scenario),
       supabase.rpc("cash_forecast_items", {
@@ -123,11 +135,22 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
         .lt("month", horizonEnd),
       supabase
         .from("expected_income")
-        .select("id, source, amount, expected_month, probability, certainty, project_id, owner_scope, notes, scenario_id, direction, projects(display_name)")
+        .select("id, source, amount, expected_month, probability, certainty, scenario_id, direction, projects(display_name)")
         .eq("org_id", orgId)
         .eq("status", "expected")
         .order("expected_month"),
-      loadLookups(supabase, orgId, { include: ["projects"] }),
+      // «Τι άλλαξε»: the liquid accounts today and their paid months since
+      // the same month last year (as on /reports/net-worth).
+      supabase
+        .from("v_account_balances")
+        .select("account_id, name, current_balance, opening_balance_date")
+        .eq("org_id", orgId)
+        .eq("is_liquid", true),
+      supabase
+        .from("v_account_ledger_monthly")
+        .select("account_id, month, inflow, outflow")
+        .eq("org_id", orgId)
+        .gt("month", yearAgo),
       ...others.map((s) => forecastOf(s)),
     ]);
   if (error) throw error;
@@ -173,6 +196,38 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
   const inflowItems = (items ?? []).filter((i) => i.direction === "income");
   const outflowItems = (items ?? []).filter((i) => i.direction === "expense");
 
+  // «Τι άλλαξε»: the liquid balance now against the end of last month and
+  // of the same month last year, and the accounts that moved it most.
+  const at = (m: string) => accountBalancesAt(liquidAccounts ?? [], ledger ?? [], m, todayMonth);
+  const liquidParts = at(todayMonth);
+  const changes =
+    (liquidAccounts ?? []).length === 0
+      ? []
+      : [lastMonth, yearAgo].map((m) => {
+          const before = at(m);
+          return {
+            label: T.vsEndOf(monthLabel(m)),
+            change: change(sumParts(liquidParts), sumParts(before)),
+            why: whyText(contributors(liquidParts, before)),
+            href: "/accounts",
+          };
+        });
+  // «Μεγαλύτερες κινήσεις»: the selected month's largest items, inflows
+  // positive, outflows negative.
+  const topItems = topMovements(
+    ((items ?? []) as Item[]).map((i) => ({
+      id: i.item_key.startsWith("tx:") ? i.ref_id : null,
+      date: i.due_date,
+      label: i.label?.trim() || t.sources[i.source as keyof typeof t.sources] || i.source,
+      amount: (i.direction === "income" ? 1 : -1) * Number(i.weighted_amount ?? 0),
+      href: i.item_key.startsWith("tx:") ? null : itemHref(i),
+    })),
+  );
+  // Σε σχέση με τον στόχο: the forecast against the safety buffer.
+  const lowestVsBuffer = lowest ? vsTarget(Number(lowest.closing_balance), buffer) : null;
+  const monthsBelow = rows.filter((r) => r.below_buffer).length;
+  const coverage = latestUpTo((ledger ?? []).map((l) => l.month), today);
+
   return (
     <div className="flex min-w-0 flex-col gap-10">
       <PageHeader title={t.cashTitle} meta={T.question} />
@@ -217,28 +272,60 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
 
         <KpiBand
           items={[
-            { label: t.liquidNow, value: formatMoney(first?.opening_balance ?? 0) },
+            { label: t.liquidNow, value: <KpiLink href="/accounts">{formatMoney(first?.opening_balance ?? 0)}</KpiLink> },
             {
               label: t.lowestClose,
               value: (
-                <span className={lowest && Number(lowest.closing_balance) < buffer ? "text-negative" : undefined}>
-                  {lowest ? formatMoney(lowest.closing_balance) : "—"}
-                </span>
+                <KpiLink href={lowestKey ? query({ month: lowestKey === todayMonth ? null : lowestKey }) : null}>
+                  <span className={lowest && Number(lowest.closing_balance) < buffer ? "text-negative" : undefined}>
+                    {lowest ? formatMoney(lowest.closing_balance) : "—"}
+                  </span>
+                </KpiLink>
               ),
               sub: lowest ? monthLabel(monthKeyOf(lowest.month)) : undefined,
             },
             {
               label: t.firstBelow,
               value: (
-                <span className={firstBelow ? "text-negative" : undefined}>
-                  {firstBelow ? monthLabel(monthKeyOf(firstBelow.month)) : t.noneBelow}
-                </span>
+                <KpiLink href={firstBelow ? query({ month: monthKeyOf(firstBelow.month) === todayMonth ? null : monthKeyOf(firstBelow.month) }) : null}>
+                  <span className={firstBelow ? "text-negative" : undefined}>
+                    {firstBelow ? monthLabel(monthKeyOf(firstBelow.month)) : t.noneBelow}
+                  </span>
+                </KpiLink>
               ),
               sub: T.bufferSub(formatMoney(buffer)),
             },
-            { label: T.uncertain, value: formatMoney(uncertainTotal), sub: T.uncertainSub(months) },
+            {
+              label: T.uncertain,
+              value: <KpiLink href="/accounts/expected">{formatMoney(uncertainTotal)}</KpiLink>,
+              sub: T.uncertainSub(months),
+            },
           ]}
         />
+
+        <ChangePanel title={T.changeTitle} items={changes} coverage={coverage} />
+
+        {lowest && lowestVsBuffer && (
+          <TargetPanel
+            caption={T.targetCaption}
+            items={[
+              {
+                label: T.lowestVsBuffer,
+                value: (
+                  <span className={(lowestVsBuffer.gap ?? 0) < 0 ? "text-negative" : undefined}>
+                    {formatSignedMoney(lowestVsBuffer.gap)}
+                  </span>
+                ),
+                sub: `${monthLabel(monthKeyOf(lowest.month))}${lowestVsBuffer.share != null && lowestVsBuffer.share >= 0 ? ` · ${formatPercent(lowestVsBuffer.share, { digits: 0 })} του αποθέματος` : ""}`,
+              },
+              {
+                label: T.monthsBelow,
+                value: <span className={monthsBelow > 0 ? "text-negative" : undefined}>{String(monthsBelow)}</span>,
+                sub: T.monthsBelowSub(rows.length),
+              },
+            ]}
+          />
+        )}
 
         {balanceData.length > 0 && (
           <ReportChart
@@ -354,15 +441,11 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
           )}
         </section>
 
+        <TopMovements rows={topItems} caption={T.movesCaption(monthLabel(selected))} />
+
         <section className="flex min-w-0 flex-col gap-4">
-          <SectionHeader
-            title={t.expectedTitle}
-            actions={
-              <span>
-                <ExpectedIncomeFormModal action={saveExpectedIncome} projects={lookups.projects} />
-              </span>
-            }
-          />
+          {/* Read-only: managed on Λογαριασμοί → Αναμενόμενα έσοδα. */}
+          <SectionHeader title={t.expectedTitle} actions={<ManageLink href="/accounts/expected" />} />
           {(expected ?? []).length === 0 ? (
             <p className="text-body text-muted">{t.expectedEmpty}</p>
           ) : (
@@ -372,7 +455,7 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
                   const project = Array.isArray(e.projects) ? e.projects[0] : e.projects;
                   const probability = e.probability ?? (e.certainty === "certain" ? 1 : 0.5);
                   return (
-                    <Tr key={e.id} className="[&>td]:align-middle">
+                    <Tr key={e.id}>
                       <Td strong className="min-w-40">
                         {e.source}
                         {e.direction === "expense" && <span className="ml-1 text-small text-muted">({el.transaction.expense})</span>}
@@ -388,37 +471,6 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
                       <Td numeric className="text-small text-muted">
                         {Math.round(probability * 100)}%
                       </Td>
-                      <Td className="py-1.5">
-                        {!e.scenario_id && (
-                          <div className="flex items-center justify-end gap-1">
-                            <ExpectedIncomeFormModal
-                              action={saveExpectedIncome}
-                              id={e.id}
-                              projects={lookups.projects}
-                              trigger={el.common.edit}
-                              initial={{
-                                source: e.source,
-                                amount: Number(e.amount),
-                                expected_month: e.expected_month,
-                                probability: e.probability,
-                                project_id: e.project_id,
-                                owner_scope: e.owner_scope as ForecastScope,
-                                notes: e.notes,
-                              }}
-                            />
-                            <ArgsActionForm action={setExpectedIncomeStatus} args={[e.id, "received"]}>
-                              <Button type="submit" variant="ghost" size="sm">
-                                {t.expectedReceived}
-                              </Button>
-                            </ArgsActionForm>
-                            <ArgsActionForm action={setExpectedIncomeStatus} args={[e.id, "cancelled"]}>
-                              <Button type="submit" variant="ghost" size="sm">
-                                {t.expectedCancel}
-                              </Button>
-                            </ArgsActionForm>
-                          </div>
-                        )}
-                      </Td>
                     </Tr>
                   );
                 })}
@@ -433,7 +485,7 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
             <p key={i}>{m}</p>
           ))}
         </ReportMethod>
-        <ReportFooter dataUntil={todayAthens()} />
+        <ReportFooter dataUntil={coverage ?? today} />
       </ReportSection>
     </div>
   );
@@ -442,6 +494,7 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
 type Item = {
   item_key: string;
   source: string;
+  direction: string;
   ref_id: string;
   label: string;
   due_date: string;
@@ -456,7 +509,9 @@ function itemHref(i: Item): string | null {
   if (i.source === "deal") return "/projects/deals";
   if (i.source === "vat") return "/reports/vat";
   if (i.source === "withholding") return "/reports/withholding";
-  if (i.source === "liability") return "/reports/net-worth";
+  // The hand-kept rows open where they are managed.
+  if (i.source === "liability") return "/accounts/assets";
+  if (i.source === "expected") return "/accounts/expected";
   return null;
 }
 
