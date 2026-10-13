@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMoney, formatMultiple } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { AiSpark, Button, MetaList, Notice, PageHeader, ReportHistory } from "@/components/ui";
+import { AiSpark, Button, GlancePanel, MetaList, Notice, PageHeader, ReportHistory, Stat } from "@/components/ui";
 import { ArgsActionForm } from "@/components/ArgsActionForm";
 import { OnePagerSection, StatusNotes, type ProjectNote } from "@/components/onepager";
 import { computeScenarioFromInputs, loadProjectFlows, loadScenarioInputs } from "@/lib/finance/projectModel";
@@ -254,6 +254,39 @@ export async function LegacyProjectPage({
     contract_signed_date: project?.contract_signed_date ?? null,
   };
 
+  // «Με μια ματιά»: the navy panel at the top, as on the overview -- the
+  // budget and what is left of it, then the selected scenario's year result
+  // and NPV. Only the figures this project has; none of them is new (the
+  // same numbers as ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ and the scenario bar).
+  const ts = el.projectScenarios;
+  const scenarioName = scenarioResults.find((r) => r.scenario.id === selectedScenarioId)?.scenario.name ?? null;
+  const glance = [
+    figures.budget != null && {
+      label: el.project.budget,
+      value: formatMoney(figures.budget),
+      sub: `Πληρωμένα ${formatMoney(figures.paid)} · Δεσμευμένα ${formatMoney(figures.committed)}`,
+    },
+    figures.budget != null && {
+      label: "Υπόλοιπο",
+      value: formatMoney(figures.remaining),
+      sub: figures.remaining < 0 ? "εκτός προϋπολογισμού" : "διαθέσιμο από τον προϋπολογισμό",
+    },
+    figures.budget == null && revenueToDate !== 0 && { label: "Έσοδα έως σήμερα", value: formatMoney(revenueToDate), sub: null },
+    scenarioResult?.hasOperation && {
+      label: ts.operatingResult,
+      value: formatMoney(scenarioResult.operatingResult),
+      sub: scenarioName ? `σενάριο «${scenarioName}»` : null,
+    },
+    scenarioResult?.cashflow && {
+      label: ts.npv,
+      value: formatMoney(scenarioResult.cashflow.kpis.npv),
+      sub:
+        scenarioResult.cashflow.kpis.minDscr?.value != null
+          ? `${ts.minDscr} ${formatMultiple(scenarioResult.cashflow.kpis.minDscr.value)}`
+          : null,
+    },
+  ].filter((g): g is { label: string; value: string; sub: string | null } => Boolean(g));
+
   // This page as it is now (the scenario kept unless it is the base): the
   // summary lines' «Ορόσημα» / «Διαχείριση» / «Κλείσιμο» links add or drop
   // ?show= on it.
@@ -280,6 +313,7 @@ export async function LegacyProjectPage({
         }
         actions={
           <>
+            {aiEnabled() && <ProjectHealthCheck projectId={id} />}
             <ProjectFormModal action={updateProject} args={[id]} initial={projectInitial} />
             <BudgetFormModal
               action={saveProjectBudget}
@@ -296,8 +330,19 @@ export async function LegacyProjectPage({
           </>
         }
       >
-        {aiEnabled() && <ProjectHealthCheck projectId={id} />}
+        {/* The AI health check's answer opens here (ProjectHealthCheck). */}
+        {aiEnabled() && <div id="project-health" className="empty:hidden" />}
       </PageHeader>
+
+      {glance.length >= 2 && (
+        <GlancePanel>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-5 xl:grid-cols-4">
+            {glance.map((g) => (
+              <Stat key={g.label} onPanel label={g.label} value={g.value} sub={g.sub} />
+            ))}
+          </div>
+        </GlancePanel>
+      )}
 
       {/* The scenario bar: every scenario one click away (?s=), the
           selected one's figures and actions -- the blocks below show and

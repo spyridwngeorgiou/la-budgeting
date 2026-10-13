@@ -90,10 +90,14 @@ export function ScenarioBar({
       </div>
       {selected && (
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          {/* The figures are in «Με μια ματιά» above when it shows; here only
+              without a cash flow (no NPV), so they are never lost. */}
           <span className="num text-small text-muted">
-            {t.selected}: {t.operatingResult} {selected.operatingResult == null ? "—" : formatMoney(selected.operatingResult)} · {t.npv}{" "}
-            {selected.npv == null ? "—" : formatMoney(selected.npv)} · {t.minDscr}{" "}
-            {selected.minDscr == null ? "—" : formatMultiple(selected.minDscr)}
+            {selected.npv == null && (
+              <>
+                {t.selected}: {t.operatingResult} {selected.operatingResult == null ? "—" : formatMoney(selected.operatingResult)}
+              </>
+            )}
           </span>
           <div className="flex flex-wrap items-center gap-2">
             <ScenarioRowActions

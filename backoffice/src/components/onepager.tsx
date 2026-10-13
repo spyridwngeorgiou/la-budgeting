@@ -78,9 +78,12 @@ export function OnePagerRow({
     <div
       className={`grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 py-2 sm:grid-cols-[minmax(0,1fr)_9rem_minmax(0,1.1fr)] ${
         emphasis ? "border-t border-ink" : "border-b border-hairline"
-      } ${exception ? "border-l-2 border-l-negative pl-2.5" : ""}`}
+      }`}
     >
-      <span className={`text-body ${emphasis ? "font-medium text-ink" : "text-text"}`}>{label}</span>
+      {/* The severity bar on the label only, so every figure stays in one vertical line. */}
+      <span className={`text-body ${emphasis ? "font-medium text-ink" : "text-text"} ${exception ? "-ml-3 border-l-2 border-l-negative pl-2.5" : ""}`}>
+        {label}
+      </span>
       <span className="text-right">
         {href ? (
           <Link href={href} className="underline-offset-4 hover:underline">

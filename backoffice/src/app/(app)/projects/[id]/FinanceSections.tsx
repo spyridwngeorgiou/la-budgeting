@@ -7,7 +7,11 @@ import { fillText } from "@/lib/collab/text";
 import { el } from "@/lib/i18n/el";
 import type { Tables } from "@/lib/db/types";
 import type { DevelopmentResult } from "@/lib/finance/development";
-import { ArgsDeleteButton, UtilityFormModal, UTILITY_KIND_LABELS } from "../LegacyFormModals";
+import { ArgsDeleteButton, UtilityFormModal } from "../LegacyFormModals";
+// Straight from the strings: a constant re-exported by a "use client" module
+// reaches a server component as a client reference, not the object (the
+// kind labels rendered empty).
+import { projects as projectStrings } from "@/lib/i18n/v2/projects";
 import { deleteUtility, saveUtility, syncLeaseScheduleAction } from "./finance-actions";
 
 // Blocks of the project one-pager that read the ledger and the finance
@@ -225,7 +229,8 @@ export function PropertySection({
   const t = el.projectPage.property;
   const perMonth = monthlyRent + settlements.reduce((s, p) => s + Number(p.amount_per_installment ?? 0), 0);
   const lastYear = months.reduce((s, [, amount]) => s + amount, 0);
-  const providers = [...new Set(utilities.map((u) => u.provider?.trim() || UTILITY_KIND_LABELS[u.kind]))];
+  const kindLabel = projectStrings.forms.utilityKind as Record<string, string>;
+  const providers = [...new Set(utilities.map((u) => u.provider?.trim() || kindLabel[u.kind]))];
   return (
     <OnePagerSection title={t.title} actions={<UtilityFormModal action={saveUtility} args={[id, null]} />}>
       {perMonth > 0 && (
@@ -242,7 +247,7 @@ export function PropertySection({
                 key={u.id}
                 className="flex flex-col gap-2 border-b border-hairline py-2 text-body md:flex-row md:flex-wrap md:items-center md:gap-x-3"
               >
-                <span className="text-muted md:w-28">{UTILITY_KIND_LABELS[u.kind]}</span>
+                <span className="text-small text-muted md:w-32">{kindLabel[u.kind]}</span>
                 <span className="min-w-0 flex-1 break-words text-ink">
                   {u.provider && <span>{u.provider} · </span>}
                   <span className="num">{u.supply_number ?? "—"}</span>

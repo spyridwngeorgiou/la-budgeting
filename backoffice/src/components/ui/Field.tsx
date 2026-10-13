@@ -122,10 +122,11 @@ export function Field({
   );
 }
 
-// Inline definition-on-hover for jargon/acronyms (DSCR, ADR, opex, ...).
+// Inline definition-on-hover for jargon/acronyms (DSCR, ADR, opex, ...);
+// the dotted underline shows on hover only, so a column of terms stays calm.
 export function Term({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <span title={title} className="cursor-help underline decoration-dotted underline-offset-2">
+    <span title={title} className="cursor-help decoration-dotted underline-offset-2 hover:underline">
       {children}
     </span>
   );
