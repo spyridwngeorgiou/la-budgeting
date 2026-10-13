@@ -5,16 +5,33 @@ import { getCurrentOrgId } from "@/lib/supabase/org";
 import { toCents } from "@/lib/finance/money";
 import { formatDate, formatMoney } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { Badge, Notice, PageHeader, SpecTable, Stat, StatusDot, SUB_CLASS, Td, Th, Tr } from "@/components/ui";
+import {
+  Amount,
+  Badge,
+  EmptyState,
+  Notice,
+  PageHeader,
+  ReportHistory,
+  SectionHeader,
+  SpecTable,
+  Stat,
+  StatRow,
+  StatusDot,
+  SUB_CLASS,
+  Td,
+  Th,
+  Tr,
+} from "@/components/ui";
 import { loadLookups } from "@/lib/data/lookups";
 import type { Extraction } from "@/lib/ai/schemas";
 import type { AiRowMeta } from "@/lib/ingest/adapters/aiShared";
 import type { AadeDedupStatus } from "@/lib/aade/dedup";
 import type { StatementSummary } from "@/lib/ingest/types";
-import { CommitBar } from "./CommitBar";
+import { CommitBar, DiscardButton, FinalizeBar } from "./CommitBar";
 import { RowDecision, decisionForKind, type MatchOption } from "./RowDecision";
-import { AssignSelect, BulkAssignBar, ReviewProvider, RowCheckbox, type ReviewLookups } from "./ReviewContext";
+import { AssignSelect, BulkAssignBar, ReviewProvider, RowCheckbox, SelectAllRows, type ReviewLookups } from "./ReviewContext";
 import { CaptureReview } from "./CaptureReview";
+import { splitForReview } from "./reviewSplit";
 import { addDays } from "@/lib/dates";
 
 const STATUS_TONE = { staged: "amber", committed: "green", undone: "neutral", discarded: "neutral" } as const;
@@ -103,8 +120,11 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
 
   const account = Array.isArray(batch.accounts) ? batch.accounts[0] : batch.accounts;
   const editable = batch.status === "staged" || batch.status === "undone";
-  const pendingCount = (rows ?? []).filter((r) => r.decision === "pending").length;
-  const signedSum = (rows ?? []).reduce(
+  const allRows = rows ?? [];
+  const pendingCount = allRows.filter((r) => r.decision === "pending").length;
+  const skipCount = allRows.filter((r) => r.decision === "skip").length;
+  const writeCount = allRows.length - pendingCount - skipCount;
+  const signedSum = allRows.reduce(
     (s, r) => s + (r.amount === null ? 0 : (r.direction === "expense" ? -1 : 1) * toCents(r.amount)),
     0,
   );
@@ -125,6 +145,182 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
     ? [el.ingest.source[batch.source], meta.period ?? (batch.created_at ? formatDate(batch.created_at) : null)]
     : [account?.name ?? "—", batch.period_start ? `${formatDate(batch.period_start)} – ${formatDate(batch.period_end)}` : "—"];
 
+  type Row = (typeof allRows)[number];
+  type RowMeta = {
+    ai?: AiRowMeta;
+    aade_dedup_status?: AadeDedupStatus;
+    hint?: { reason: "utility" | "fee"; project: string | null; category: string | null };
+    fee_of?: string;
+    confidence?: string;
+  };
+  const metaOf = (r: Row) => (r.meta ?? {}) as RowMeta;
+
+  // In review: the rows that need a person first, the certain ones folded
+  // under «▸ Βέβαιες (N)». A committed batch is one plain list.
+  const { decide, certain } = editable
+    ? splitForReview(
+        allRows,
+        (r) => ({
+          decision: r.decision,
+          confidence: metaOf(r).confidence,
+          document: isDocuments,
+          dedupStatus: r.dedup_status,
+          parseErrors: r.parse_errors.length,
+          reviewReasons: metaOf(r).ai?.needs_review_reasons?.length ?? 0,
+        }),
+        needsReview.length === 0,
+      )
+    : { decide: allRows, certain: [] as Row[] };
+  // The bulk bar (and the select-all boxes) only for documents with rows to tick.
+  const bulk = isDocuments && editable && allRows.length > 1;
+
+  const renderRow = (r: Row) => {
+    const options: MatchOption[] = [...(r.ingest_row_matches ?? [])]
+      .sort((a, b) => a.rank - b.rank)
+      .map((m) => ({
+        decision: decisionForKind(m.kind),
+        transactionIds: m.transaction_ids,
+        label: m.transaction_ids.map((id) => txLabel.get(id) ?? "—").join(" + "),
+        score: m.score,
+        reasons: (m.reasons ?? []) as MatchOption["reasons"],
+      }));
+    const rowMeta = metaOf(r);
+    const hintText = rowMeta.hint
+      ? [rowMeta.hint.reason === "utility" ? el.ingest.review.hintUtility : el.ingest.review.hintFee, rowMeta.hint.project, rowMeta.hint.category]
+          .filter(Boolean)
+          .join(" · ")
+      : null;
+    const rowEditable = editable && !r.committed_transaction_id;
+    const doc = r.document_id ? documentLinks.get(r.document_id) : undefined;
+    return (
+      <Tr key={r.id}>
+        {isDocuments && <Td>{rowEditable && r.decision !== "skip" && <RowCheckbox rowId={r.id} />}</Td>}
+        <Td numeric className="text-muted">
+          {r.row_no}
+        </Td>
+        <Td className="num">{formatDate(r.tx_date)}</Td>
+        <Td strong>
+          {isDocuments ? (
+            <>
+              <div>{r.counterparty_name ?? "—"}</div>
+              <div className={SUB_CLASS}>
+                {[r.counterparty_afm, r.invoice_number, r.mydata_mark && `ΜΑΡΚ ${r.mydata_mark}`].filter(Boolean).join(" · ")}
+              </div>
+              {r.description && <div className="text-small text-muted">{r.description}</div>}
+            </>
+          ) : (
+            <>
+              <div className="whitespace-pre-line">{r.description ?? "—"}</div>
+              {r.reference && (
+                <div className="text-small text-muted">
+                  {r.reference}
+                  {rowMeta.fee_of && ` · ${el.ingest.review.feeOf}`}
+                </div>
+              )}
+              {hintText && <div className="text-small text-muted">{hintText}</div>}
+            </>
+          )}
+          {r.dedup_status === "dup_external_key" && <Badge tone="neutral">Ήδη εισηγμένη σε προηγούμενο αρχείο</Badge>}
+          {rowMeta.aade_dedup_status && rowMeta.aade_dedup_status !== "new" && (
+            <Badge tone="neutral">{el.ingest.aadeDedup[rowMeta.aade_dedup_status]}</Badge>
+          )}
+          {(rowMeta.ai?.needs_review_reasons ?? []).map((reason) => (
+            <Notice key={reason} as="div" tone="warning" size="small" className="mt-1">
+              {reason}
+            </Notice>
+          ))}
+          {r.parse_errors.map((e) => (
+            <Notice key={e} as="div" tone="negative" size="small" className="mt-1">
+              {e}
+            </Notice>
+          ))}
+        </Td>
+        <Td numeric strong>
+          {r.amount === null ? "—" : <Amount value={r.direction === "expense" ? -r.amount : r.amount} />}
+        </Td>
+        {isDocuments && (
+          <Td>
+            {r.decision === "skip" && !rowEditable ? (
+              <span className="text-small text-muted">—</span>
+            ) : (
+              <div className="flex min-w-44 flex-col gap-1">
+                <AssignSelect rowId={r.id} field="project_id" value={r.project_id} />
+                <AssignSelect rowId={r.id} field="category_id" value={r.category_id} />
+                <AssignSelect rowId={r.id} field="account_id" value={r.account_id} />
+              </div>
+            )}
+          </Td>
+        )}
+        <Td>
+          <div className="flex flex-col items-start gap-1">
+            <RowDecision
+              batchId={batch.id}
+              rowId={r.id}
+              decision={r.decision}
+              targets={r.decision_targets}
+              options={options}
+              editable={rowEditable}
+            />
+            {isAi && rowEditable && (
+              <CaptureReview
+                rowId={r.id}
+                rowNo={r.row_no}
+                values={{
+                  direction: r.direction,
+                  tx_date: r.tx_date,
+                  due_date: r.due_date,
+                  status: r.status,
+                  paid_on: r.paid_on,
+                  scope: r.scope,
+                  counterparty_name: r.counterparty_name,
+                  counterparty_afm: r.counterparty_afm,
+                  contact_id: r.contact_id,
+                  project_id: r.project_id,
+                  category_id: r.category_id,
+                  account_id: r.account_id,
+                  has_invoice: r.has_invoice,
+                  net_amount: r.net_amount,
+                  vat_rate: r.vat_rate,
+                  withholding_amount: r.withholding_amount,
+                  amount: r.amount,
+                  invoice_number: r.invoice_number,
+                  mydata_mark: r.mydata_mark,
+                  description: r.description,
+                }}
+                extraction={(r.raw ?? null) as unknown as Extraction | null}
+                needsReview={rowMeta.ai?.needs_review_reasons ?? []}
+                documentUrl={doc?.url ?? null}
+                documentMime={doc?.mime ?? null}
+              />
+            )}
+            {isAi && !rowEditable && doc && (
+              <a href={doc.url} target="_blank" rel="noreferrer" className="text-small text-muted underline underline-offset-4 hover:text-ink">
+                {el.ingest.review.openDocument}
+              </a>
+            )}
+          </div>
+        </Td>
+      </Tr>
+    );
+  };
+
+  const table = (list: Row[], label: string) => (
+    <SpecTable label={label}>
+      <thead>
+        <tr>
+          {isDocuments && <Th className="w-8">{bulk && <SelectAllRows />}</Th>}
+          <Th numeric>#</Th>
+          <Th>Ημ/νία</Th>
+          <Th>{isDocuments ? el.ingest.review.counterparty : "Περιγραφή"}</Th>
+          <Th numeric>Ποσό</Th>
+          {isDocuments && <Th>{el.ingest.review.assignment}</Th>}
+          <Th>Απόφαση</Th>
+        </tr>
+      </thead>
+      <tbody>{list.map(renderRow)}</tbody>
+    </SpecTable>
+  );
+
   return (
     <ReviewProvider batchId={batch.id} editable={editable} lookups={reviewLookups}>
       <div className="flex flex-col gap-6">
@@ -138,27 +334,25 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
           meta={
             <>
               <p>
-                {subtitle.filter(Boolean).join(" · ")} · {rows?.length ?? 0} γραμμές{" "}
+                {subtitle.filter(Boolean).join(" · ")} · {allRows.length} γραμμές{" "}
                 <StatusDot tone={STATUS_TONE[batch.status]} label={el.ingest.batchStatus[batch.status]} />
               </p>
               {meta.legacy && <p>{el.ingest.review.legacy}</p>}
             </>
           }
           actions={
-            <CommitBar
-              batchId={batch.id}
-              status={batch.status}
-              version={batch.version}
-              pendingCount={pendingCount}
-              undoable={!meta.legacy}
-            />
+            editable ? (
+              <DiscardButton batchId={batch.id} />
+            ) : (
+              <CommitBar batchId={batch.id} status={batch.status} version={batch.version} undoable={!meta.legacy} />
+            )
           }
         />
 
         {/* Statement check: opening + Σ movements = closing, and the opening
             against what the ledger says the account held the day before. */}
         {opening !== null && (
-          <div className="grid grid-cols-1 gap-y-4 border-b border-hairline pb-4 text-body sm:grid-cols-3 sm:gap-x-0 sm:[&>*:not(:first-child)]:border-l sm:[&>*:not(:first-child)]:border-hairline sm:[&>*:not(:first-child)]:pl-6">
+          <StatRow>
             <Stat
               label="Υπόλοιπο έναρξης (αντίγραφο)"
               value={formatMoney(opening)}
@@ -186,9 +380,10 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
                 )
               }
             />
-          </div>
+          </StatRow>
         )}
 
+        {/* Every warning above the table, none in the action bar. */}
         {needsReview.length > 0 && editable && (
           <Notice tone="negative" role="alert">
             <p className="font-medium">{el.ingest.review.needsReview}</p>
@@ -204,157 +399,53 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
           </Notice>
         )}
 
-        {isDocuments && (rows?.length ?? 0) > 1 && <BulkAssignBar />}
+        {editable && pendingCount > 0 && (
+          <Notice tone="warning">
+            <span className="num">{pendingCount}</span>{" "}
+            {pendingCount === 1 ? el.ingest.review.undecidedOne : el.ingest.review.undecidedMany}: {el.ingest.review.decideFirst}
+          </Notice>
+        )}
 
-        <SpecTable label="Γραμμές αρχείου">
-          <thead>
-            <tr>
-              {isDocuments && <Th />}
-              <Th numeric>#</Th>
-              <Th>Ημ/νία</Th>
-              <Th>{isDocuments ? el.ingest.review.counterparty : "Περιγραφή"}</Th>
-              <Th numeric>Ποσό</Th>
-              {isDocuments && <Th>{el.ingest.review.assignment}</Th>}
-              <Th>Απόφαση</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {(rows ?? []).map((r) => {
-              const options: MatchOption[] = [...(r.ingest_row_matches ?? [])]
-                .sort((a, b) => a.rank - b.rank)
-                .map((m) => ({
-                  decision: decisionForKind(m.kind),
-                  transactionIds: m.transaction_ids,
-                  label: m.transaction_ids.map((id) => txLabel.get(id) ?? "—").join(" + "),
-                  score: m.score,
-                  reasons: (m.reasons ?? []) as MatchOption["reasons"],
-                }));
-              const rowMeta = (r.meta ?? {}) as {
-                ai?: AiRowMeta;
-                aade_dedup_status?: AadeDedupStatus;
-                hint?: { reason: "utility" | "fee"; project: string | null; category: string | null };
-                fee_of?: string;
-              };
-              const hintText = rowMeta.hint
-                ? [rowMeta.hint.reason === "utility" ? el.ingest.review.hintUtility : el.ingest.review.hintFee, rowMeta.hint.project, rowMeta.hint.category]
-                    .filter(Boolean)
-                    .join(" · ")
-                : null;
-              const rowEditable = editable && !r.committed_transaction_id;
-              const doc = r.document_id ? documentLinks.get(r.document_id) : undefined;
-              return (
-                <Tr key={r.id}>
-                  {isDocuments && (
-                    <Td>{rowEditable && r.decision !== "skip" && <RowCheckbox rowId={r.id} />}</Td>
-                  )}
-                  <Td numeric className="text-muted">{r.row_no}</Td>
-                  <Td className="num">{formatDate(r.tx_date)}</Td>
-                  <Td strong>
-                    {isDocuments ? (
-                      <>
-                        <div>{r.counterparty_name ?? "—"}</div>
-                        <div className={SUB_CLASS}>
-                          {[r.counterparty_afm, r.invoice_number, r.mydata_mark && `ΜΑΡΚ ${r.mydata_mark}`].filter(Boolean).join(" · ")}
-                        </div>
-                        {r.description && <div className="text-small text-muted">{r.description}</div>}
-                      </>
-                    ) : (
-                      <>
-                        <div className="whitespace-pre-line">{r.description ?? "—"}</div>
-                        {r.reference && (
-                          <div className="text-small text-muted">
-                            {r.reference}
-                            {rowMeta.fee_of && ` · ${el.ingest.review.feeOf}`}
-                          </div>
-                        )}
-                        {hintText && <div className="text-small text-muted">{hintText}</div>}
-                      </>
-                    )}
-                    {r.dedup_status === "dup_external_key" && <Badge tone="neutral">Ήδη εισηγμένη σε προηγούμενο αρχείο</Badge>}
-                    {rowMeta.aade_dedup_status && rowMeta.aade_dedup_status !== "new" && (
-                      <Badge tone="neutral">{el.ingest.aadeDedup[rowMeta.aade_dedup_status]}</Badge>
-                    )}
-                    {(rowMeta.ai?.needs_review_reasons ?? []).map((reason) => (
-                      <Notice key={reason} as="div" tone="warning" size="small" className="mt-1">
-                        {reason}
-                      </Notice>
-                    ))}
-                    {r.parse_errors.map((e) => (
-                      <Notice key={e} as="div" tone="negative" size="small" className="mt-1">
-                        {e}
-                      </Notice>
-                    ))}
-                  </Td>
-                  <Td numeric strong>
-                    {r.amount === null ? "—" : `${r.direction === "expense" ? "−" : "+"}${formatMoney(r.amount)}`}
-                  </Td>
-                  {isDocuments && (
-                    <Td>
-                      {r.decision === "skip" && !rowEditable ? (
-                        <span className="text-small text-muted">—</span>
-                      ) : (
-                        <div className="flex min-w-44 flex-col gap-1">
-                          <AssignSelect rowId={r.id} field="project_id" value={r.project_id} />
-                          <AssignSelect rowId={r.id} field="category_id" value={r.category_id} />
-                          <AssignSelect rowId={r.id} field="account_id" value={r.account_id} />
-                        </div>
-                      )}
-                    </Td>
-                  )}
-                  <Td>
-                    <div className="flex flex-col items-start gap-1">
-                      <RowDecision
-                        batchId={batch.id}
-                        rowId={r.id}
-                        decision={r.decision}
-                        targets={r.decision_targets}
-                        options={options}
-                        editable={rowEditable}
-                      />
-                      {isAi && rowEditable && (
-                        <CaptureReview
-                          rowId={r.id}
-                          rowNo={r.row_no}
-                          values={{
-                            direction: r.direction,
-                            tx_date: r.tx_date,
-                            due_date: r.due_date,
-                            status: r.status,
-                            paid_on: r.paid_on,
-                            scope: r.scope,
-                            counterparty_name: r.counterparty_name,
-                            counterparty_afm: r.counterparty_afm,
-                            contact_id: r.contact_id,
-                            project_id: r.project_id,
-                            category_id: r.category_id,
-                            account_id: r.account_id,
-                            has_invoice: r.has_invoice,
-                            net_amount: r.net_amount,
-                            vat_rate: r.vat_rate,
-                            withholding_amount: r.withholding_amount,
-                            amount: r.amount,
-                            invoice_number: r.invoice_number,
-                            mydata_mark: r.mydata_mark,
-                            description: r.description,
-                          }}
-                          extraction={(r.raw ?? null) as unknown as Extraction | null}
-                          needsReview={rowMeta.ai?.needs_review_reasons ?? []}
-                          documentUrl={doc?.url ?? null}
-                          documentMime={doc?.mime ?? null}
-                        />
-                      )}
-                      {isAi && !rowEditable && doc && (
-                        <a href={doc.url} target="_blank" rel="noreferrer" className="text-small text-muted underline underline-offset-4 hover:text-ink">
-                          {el.ingest.review.openDocument}
-                        </a>
-                      )}
-                    </div>
-                  </Td>
-                </Tr>
-              );
-            })}
-          </tbody>
-        </SpecTable>
+        {bulk && <BulkAssignBar />}
+
+        {editable ? (
+          <>
+            <section aria-labelledby="review-decide" className="flex flex-col gap-3">
+              <SectionHeader
+                title={
+                  <>
+                    <span id="review-decide">{el.ingest.review.decide}</span>{" "}
+                    <span className="num text-body text-muted">{decide.length}</span>
+                  </>
+                }
+              />
+              {decide.length === 0 ? (
+                <EmptyState title={el.ingest.review.nothingToDecide} body={el.ingest.review.nothingToDecideHint} />
+              ) : (
+                table(decide, el.ingest.review.decide)
+              )}
+            </section>
+            {certain.length > 0 && (
+              <ReportHistory
+                title={el.ingest.review.certain}
+                count={certain.length}
+                meta={el.ingest.review.certainMeta}
+                open={decide.length === 0}
+              >
+                {table(certain, el.ingest.review.certain)}
+              </ReportHistory>
+            )}
+            <FinalizeBar
+              batchId={batch.id}
+              version={batch.version}
+              pendingCount={pendingCount}
+              writeCount={writeCount}
+              skipCount={skipCount}
+            />
+          </>
+        ) : (
+          table(decide, el.ingest.review.rows)
+        )}
       </div>
     </ReviewProvider>
   );

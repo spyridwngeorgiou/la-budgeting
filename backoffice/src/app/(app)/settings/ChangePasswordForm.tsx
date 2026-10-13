@@ -28,11 +28,11 @@ export function ChangePasswordForm() {
       className="flex flex-col gap-3"
     >
       <Field>
-        <Label>Νέος Κωδικός</Label>
+        <Label>Νέος κωδικός</Label>
         <Input type="password" name="new_password" minLength={8} required autoComplete="new-password" />
       </Field>
       <Field>
-        <Label>Επιβεβαίωση Κωδικού</Label>
+        <Label>Επιβεβαίωση κωδικού</Label>
         <Input type="password" name="confirm_password" minLength={8} required autoComplete="new-password" />
       </Field>
       {error && (
@@ -42,7 +42,7 @@ export function ChangePasswordForm() {
       )}
       {success && <Notice tone="positive">Ο κωδικός άλλαξε επιτυχώς.</Notice>}
       <div className="flex justify-end">
-        <SubmitButton>Αλλαγή Κωδικού</SubmitButton>
+        <SubmitButton>Αλλαγή κωδικού</SubmitButton>
       </div>
     </form>
   );

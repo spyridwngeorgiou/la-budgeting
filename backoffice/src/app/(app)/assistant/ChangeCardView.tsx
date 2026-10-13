@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Badge, Button, Modal, Notice, SpecTable, StatusDot, Td, Th, Tr } from "@/components/ui";
+import { Button, Notice, SpecTable, StatusDot, Td, Th, Tr, useConfirm, useToast } from "@/components/ui";
 import { formatFieldValue, STATUS_LABEL, type ChangeCard } from "@/lib/ai/changeCards";
 import { approveChange, rejectChange } from "./change-actions";
 
@@ -18,11 +18,14 @@ const STATUS_TONE = {
 // One proposal from the assistant: what would change, and Έγκριση /
 // Απόρριψη. Used inline in the chat and in the «Εκκρεμότητες» panel. A
 // conflict (the row changed since the proposal in a field it touches) shows
-// proposed / then / now side by side; approving anyway asks first.
+// proposed / then / now side by side; approving anyway asks first (the
+// app's one confirm dialog). The status is a dot, never a badge; a delete
+// says so in the colour of its title.
 export function ChangeCardView({ initial, canReview }: { initial: ChangeCard; canReview: boolean }) {
   const [card, setCard] = useState(initial);
   const [error, setError] = useState<string | null>(null);
-  const [confirmForce, setConfirmForce] = useState(false);
+  const { confirm, dialog } = useConfirm();
+  const { show } = useToast();
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -38,20 +41,20 @@ export function ChangeCardView({ initial, canReview }: { initial: ChangeCard; ca
         setError(result.error);
         return;
       }
-      if (result.data) setCard(result.data);
+      if (result.data) {
+        setCard(result.data);
+        // A conflict or a failure stays on the card; a decision says so.
+        if (result.data.status === "approved" || result.data.status === "rejected") show(STATUS_LABEL[result.data.status]);
+      }
       router.refresh();
     });
   }
 
   return (
     <div className="border-l-2 border-ai-border py-2 pl-3 text-body text-ink" data-change-id={card.id}>
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <Badge tone={isDelete ? "red" : "ai"}>{card.title}</Badge>
-        {card.status === "conflict" || card.status === "failed" ? (
-          <Badge tone={STATUS_TONE[card.status]}>{STATUS_LABEL[card.status] ?? card.status}</Badge>
-        ) : (
-          <StatusDot tone={STATUS_TONE[card.status] ?? "neutral"} label={STATUS_LABEL[card.status] ?? card.status} />
-        )}
+      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className={isDelete ? "font-medium text-negative" : "font-medium text-ink"}>{card.title}</span>
+        <StatusDot tone={STATUS_TONE[card.status] ?? "neutral"} label={STATUS_LABEL[card.status] ?? card.status} />
       </div>
       {card.reason && <p className="mb-2 text-muted">{card.reason}</p>}
       {card.untrusted && open && (
@@ -135,7 +138,18 @@ export function ChangeCardView({ initial, canReview }: { initial: ChangeCard; ca
             Απόρριψη
           </Button>
           {card.status === "conflict" ? (
-            <Button type="button" variant="danger" disabled={pending} onClick={() => setConfirmForce(true)}>
+            <Button
+              type="button"
+              variant="danger"
+              disabled={pending}
+              onClick={async () => {
+                const ok = await confirm({
+                  message: "Οι τιμές «Τώρα» θα αντικατασταθούν από τις προτεινόμενες. Συνέχεια;",
+                  confirmLabel: "Έγκριση",
+                });
+                if (ok) run("force");
+              }}
+            >
               Έγκριση παρ’ όλα αυτά
             </Button>
           ) : (
@@ -147,29 +161,7 @@ export function ChangeCardView({ initial, canReview }: { initial: ChangeCard; ca
       )}
       {!canReview && open && <p className="text-small text-muted">Την έγκριση κάνει χρήστης με δικαίωμα επεξεργασίας.</p>}
 
-      {confirmForce && (
-        <Modal onClose={() => setConfirmForce(false)} title="Έγκριση παρά τη σύγκρουση">
-          <p className="mb-4 text-body text-text">
-            Οι τιμές «Τώρα» θα αντικατασταθούν από τις προτεινόμενες. Συνέχεια;
-          </p>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="secondary" onClick={() => setConfirmForce(false)}>
-              Άκυρο
-            </Button>
-            <Button
-              type="button"
-              variant="danger"
-              disabled={pending}
-              onClick={() => {
-                setConfirmForce(false);
-                run("force");
-              }}
-            >
-              Έγκριση
-            </Button>
-          </div>
-        </Modal>
-      )}
+      {dialog}
     </div>
   );
 }

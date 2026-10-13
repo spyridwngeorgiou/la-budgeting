@@ -41,6 +41,9 @@ const PRIORITY_BAR: Record<BoardTask["priority"], string> = {
 
 type MoveResult = { ok: true } | { ok: false; error: string };
 
+// «Ολοκληρώθηκε» shows the latest ones; the rest wait behind «▸ όλες (N)».
+const DONE_SHOWN = 10;
+
 export interface TaskBoardProps {
   tasks: BoardTask[];
   people: PlannerPerson[];
@@ -63,9 +66,18 @@ function byKey(a: BoardTask, b: BoardTask) {
   return a.sort_key - b.sort_key;
 }
 
+// Done: the most recently completed first (the order is by date, so a
+// card is not placed by hand in this column).
+function byCompleted(a: BoardTask, b: BoardTask) {
+  const x = a.completed_at ?? "";
+  const y = b.completed_at ?? "";
+  return x === y ? byKey(a, b) : x < y ? 1 : -1;
+}
+
 // Kanban over the five task statuses. Drops apply on the current frame via
 // useOptimistic and are confirmed by moveAction; on phones one column shows
 // at a time and each card gets a «Μετακίνηση σε…» select instead of drag.
+// From 1280px the five columns share the width (no sideways scroll).
 export function TaskBoard({
   tasks,
   people,
@@ -80,11 +92,16 @@ export function TaskBoard({
     const byId = new Map(updates.map((u) => [u.id, u]));
     return current.map((t) => {
       const u = byId.get(t.id);
-      return u ? { ...t, status: u.status ?? t.status, sort_key: u.sort_key } : t;
+      if (!u) return t;
+      const status = u.status ?? t.status;
+      // Mirrors tasks_track_completion until the server's row arrives.
+      const completed_at = status === t.status ? t.completed_at : status === "done" ? new Date().toISOString() : null;
+      return { ...t, status, sort_key: u.sort_key, completed_at };
     });
   });
   const [activeId, setActiveId] = useState<string | null>(null);
   const [mobileStatus, setMobileStatus] = useState<TaskStatus>("todo");
+  const [showAllDone, setShowAllDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -96,7 +113,7 @@ export function TaskBoard({
   );
 
   const columns = Object.fromEntries(
-    TASK_STATUS.map((s) => [s, optimisticTasks.filter((t) => t.status === s).sort(byKey)]),
+    TASK_STATUS.map((s) => [s, optimisticTasks.filter((t) => t.status === s).sort(s === "done" ? byCompleted : byKey)]),
   ) as Record<TaskStatus, BoardTask[]>;
   const peopleById = new Map(people.map((p) => [p.user_id, p.label]));
   const activeTask = activeId ? optimisticTasks.find((t) => t.id === activeId) : undefined;
@@ -125,6 +142,12 @@ export function TaskBoard({
     const overTask = overId.startsWith(COL_PREFIX) ? undefined : optimisticTasks.find((t) => t.id === overId);
     const target = (overTask?.status ?? overId.slice(COL_PREFIX.length)) as TaskStatus;
     if (!TASK_STATUS.includes(target)) return;
+    // «Ολοκληρώθηκε» is ordered by completion: a card dropped there goes in
+    // like the select does, and is not reordered inside it.
+    if (target === "done") {
+      if (task.status !== "done") moveViaSelect(task, "done");
+      return;
+    }
 
     let ordered: BoardTask[];
     if (target === task.status) {
@@ -157,7 +180,8 @@ export function TaskBoard({
 
   function moveViaSelect(task: BoardTask, status: TaskStatus) {
     if (status === task.status) return;
-    commit([{ id: task.id, status, sort_key: keyAtEnd(columns[status]) }], () => setStatusAction(task.id, status));
+    const end = keyAtEnd([...columns[status]].sort(byKey));
+    commit([{ id: task.id, status, sort_key: end }], () => setStatusAction(task.id, status));
   }
 
   return (
@@ -197,48 +221,68 @@ export function TaskBoard({
         onDragEnd={handleDragEnd}
         onDragCancel={() => setActiveId(null)}
       >
-        <div className="md:grid md:grid-cols-[repeat(5,minmax(13rem,1fr))] md:gap-4 md:overflow-x-auto md:pb-2">
-          {TASK_STATUS.map((status) => (
-            <Column
-              key={status}
-              status={status}
-              tasks={columns[status]}
-              hiddenOnMobile={status !== mobileStatus}
-            >
-              {columns[status].map((task) => (
-                <SortableCard key={task.id} task={task} disabled={!canWrite}>
-                  <CardBody
-                    task={task}
-                    assignee={task.assignee_id ? peopleById.get(task.assignee_id) : undefined}
-                    projectLabel={projectLabels?.[task.project_id]}
-                    todayIso={todayIso}
-                    href={`${taskHref}/${task.id}`}
-                    moveSelect={
-                      canWrite ? (
-                        <Select
-                          aria-label={el.planner.moveTo}
-                          value=""
-                          onChange={(e) => moveViaSelect(task, e.target.value as TaskStatus)}
-                          onKeyDown={(e) => e.stopPropagation()}
-                          onPointerDown={(e) => e.stopPropagation()}
-                          className="mt-2 min-h-11 w-full text-small text-text md:hidden"
-                        >
-                          <option value="" disabled>
-                            {el.planner.moveTo}
-                          </option>
-                          {TASK_STATUS.filter((s) => s !== task.status).map((s) => (
-                            <option key={s} value={s}>
-                              {el.planner.status[s]}
+        <div className="md:grid md:grid-cols-[repeat(5,minmax(13rem,1fr))] md:gap-4 md:overflow-x-auto md:pb-2 xl:grid-cols-5 xl:gap-3 xl:overflow-visible xl:pb-0">
+          {TASK_STATUS.map((status) => {
+            const all = columns[status];
+            const shown = status === "done" && !showAllDone ? all.slice(0, DONE_SHOWN) : all;
+            return (
+              <Column
+                key={status}
+                status={status}
+                tasks={shown}
+                total={all.length}
+                hiddenOnMobile={status !== mobileStatus}
+                footer={
+                  status === "done" && all.length > DONE_SHOWN ? (
+                    <button
+                      type="button"
+                      aria-expanded={showAllDone}
+                      onClick={() => setShowAllDone((v) => !v)}
+                      className="flex min-h-11 items-center gap-2 text-left text-small text-muted hover:text-ink"
+                    >
+                      <span aria-hidden="true" className={cn("inline-block w-3 transition-transform", showAllDone && "rotate-90")}>
+                        ▸
+                      </span>
+                      {el.planner.allDone} (<span className="num">{all.length}</span>)
+                    </button>
+                  ) : null
+                }
+              >
+                {shown.map((task) => (
+                  <SortableCard key={task.id} task={task} disabled={!canWrite}>
+                    <CardBody
+                      task={task}
+                      assignee={task.assignee_id ? peopleById.get(task.assignee_id) : undefined}
+                      projectLabel={projectLabels?.[task.project_id]}
+                      todayIso={todayIso}
+                      href={`${taskHref}/${task.id}`}
+                      moveSelect={
+                        canWrite ? (
+                          <Select
+                            aria-label={el.planner.moveTo}
+                            value=""
+                            onChange={(e) => moveViaSelect(task, e.target.value as TaskStatus)}
+                            onKeyDown={(e) => e.stopPropagation()}
+                            onPointerDown={(e) => e.stopPropagation()}
+                            className="mt-2 min-h-11 w-full text-small text-text md:hidden"
+                          >
+                            <option value="" disabled>
+                              {el.planner.moveTo}
                             </option>
-                          ))}
-                        </Select>
-                      ) : null
-                    }
-                  />
-                </SortableCard>
-              ))}
-            </Column>
-          ))}
+                            {TASK_STATUS.filter((s) => s !== task.status).map((s) => (
+                              <option key={s} value={s}>
+                                {el.planner.status[s]}
+                              </option>
+                            ))}
+                          </Select>
+                        ) : null
+                      }
+                    />
+                  </SortableCard>
+                ))}
+              </Column>
+            );
+          })}
         </div>
         <DragOverlay>
           {activeTask ? (
@@ -261,12 +305,17 @@ export function TaskBoard({
 function Column({
   status,
   tasks,
+  total,
   hiddenOnMobile,
+  footer,
   children,
 }: {
   status: TaskStatus;
+  // The cards shown; `total` counts the whole column (some may be folded).
   tasks: BoardTask[];
+  total: number;
   hiddenOnMobile: boolean;
+  footer?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: `${COL_PREFIX}${status}` });
@@ -285,12 +334,13 @@ function Column({
           <span className={`inline-block h-2 w-2 rounded-full ${STATUS_DOT[status]}`} />
           {el.planner.status[status]}
         </span>
-        <span className="num text-small text-muted">{tasks.length}</span>
+        <span className="num text-small text-muted">{total}</span>
       </header>
       <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <ul className="flex flex-col gap-2">{children}</ul>
       </SortableContext>
-      {tasks.length === 0 && <p className="py-4 text-small text-muted">{el.planner.emptyColumn}</p>}
+      {total === 0 && <p className="py-4 text-small text-muted">{el.planner.emptyColumn}</p>}
+      {footer}
     </section>
   );
 }
@@ -343,7 +393,7 @@ function CardBody({
       <Link
         href={href}
         onKeyDown={(e) => e.stopPropagation()}
-        className="text-body leading-snug text-ink hover:underline max-md:py-1"
+        className="text-body leading-snug break-words text-ink hover:underline max-md:py-1"
       >
         {task.title}
       </Link>

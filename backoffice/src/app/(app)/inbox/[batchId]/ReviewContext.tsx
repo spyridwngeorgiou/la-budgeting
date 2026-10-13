@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useTransition, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { Button, Select } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { bulkAssignRows, setRowAssignment } from "../actions";
@@ -68,7 +68,7 @@ export function AssignSelect({
         aria-label={FIELD_LABEL[field]}
         defaultValue={value ?? ""}
         disabled={pending}
-        className={`w-full !py-1 text-small ${!value && field !== "category_id" ? "border-warning" : ""}`}
+        className={`w-full text-small ${!value && field !== "category_id" ? "border-warning" : ""}`}
         onChange={(e) => {
           const next = e.target.value;
           setError(null);
@@ -91,13 +91,46 @@ export function AssignSelect({
 }
 
 export const BULK_FORM_ID = "inbox-bulk-assign";
+const ROW_BOX = 'input[name="row_ids"]';
+const BOX = "h-4 w-4 accent-navy";
 
 // Row checkboxes live in the server-rendered table and join this form
 // through form={BULK_FORM_ID}; no client state is shared with the table.
 export function RowCheckbox({ rowId }: { rowId: string }) {
   const { editable } = useReview();
   if (!editable) return null;
-  return <input type="checkbox" name="row_ids" value={rowId} form={BULK_FORM_ID} aria-label={el.ingest.review.selected} />;
+  return <input type="checkbox" name="row_ids" value={rowId} form={BULK_FORM_ID} aria-label={el.ingest.review.selected} className={BOX} />;
+}
+
+// «Επιλογή όλων» in the head of the selection column: ticks or clears every
+// row box of ITS table (the «Βέβαιες» table has its own), and shows checked
+// / partly checked as the rows change. Plain DOM listeners on the table, so
+// the server-rendered rows need no shared state.
+export function SelectAllRows() {
+  const { editable } = useReview();
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const head = ref.current;
+    const table = head?.closest("table");
+    if (!head || !table) return;
+    const rows = () => [...table.querySelectorAll<HTMLInputElement>(ROW_BOX)];
+    const sync = () => {
+      const all = rows();
+      const ticked = all.filter((r) => r.checked).length;
+      head.checked = all.length > 0 && ticked === all.length;
+      head.indeterminate = ticked > 0 && ticked < all.length;
+      head.disabled = all.length === 0;
+    };
+    const onChange = (e: Event) => {
+      if (e.target === head) rows().forEach((r) => (r.checked = head.checked));
+      sync();
+    };
+    sync();
+    table.addEventListener("change", onChange);
+    return () => table.removeEventListener("change", onChange);
+  }, []);
+  if (!editable) return null;
+  return <input ref={ref} type="checkbox" aria-label={el.ingest.review.selectAll} title={el.ingest.review.selectAll} className={BOX} />;
 }
 
 export function BulkAssignBar() {
@@ -123,7 +156,7 @@ export function BulkAssignBar() {
     >
       <span className="eyebrow text-muted">{el.ingest.review.selected}</span>
       {(Object.keys(FIELD_OPTIONS) as (keyof typeof FIELD_OPTIONS)[]).map((field) => (
-        <Select key={field} name={field} defaultValue="" className="!py-1 text-small">
+        <Select key={field} name={field} defaultValue="" aria-label={FIELD_LABEL[field]} className="text-small">
           <option value="">{FIELD_LABEL[field]} —</option>
           {lookups[FIELD_OPTIONS[field]].map((o) => (
             <option key={o.id} value={o.id}>
@@ -132,7 +165,7 @@ export function BulkAssignBar() {
           ))}
         </Select>
       ))}
-      <Button type="submit" disabled={pending} className="!px-2 !py-1 text-small">
+      <Button type="submit" size="sm" disabled={pending}>
         {el.ingest.review.apply}
       </Button>
       {error && <span role="alert" className="text-small text-negative">{error}</span>}

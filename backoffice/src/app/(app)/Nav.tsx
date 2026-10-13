@@ -89,9 +89,14 @@ export function Nav({
   const canCapture = ROLE_RANK[role] >= ROLE_RANK.editor;
   const capturing = path === CAPTURE_HREF;
 
+  // On a phone the brand (and the org switch) scroll away while the menu
+  // strip stays at the top: the rail's box dissolves (display: contents) so
+  // the <nav> sticks within the whole page, not within the rail. The strip
+  // scrolls sideways with a fade on the edge that has more items
+  // (scroll-frame). --sticky-top tells sticky table heads to sit under it.
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
-      <nav className="min-w-0 border-b border-hairline bg-canvas md:sticky md:top-0 md:flex md:h-screen md:w-rail md:shrink-0 md:flex-col md:overflow-y-auto md:border-b-0 md:border-r">
+    <div className="flex min-h-screen flex-col max-md:[--sticky-top:calc(2.75rem_+_1px)] md:flex-row">
+      <div className="max-md:contents md:sticky md:top-0 md:flex md:h-screen md:w-rail md:shrink-0 md:flex-col md:overflow-y-auto md:border-r md:border-hairline md:bg-canvas">
         <Link href="/" aria-label="Kansha" className="flex min-h-11 items-center px-4 pt-5 pb-3">
           <Brand />
         </Link>
@@ -103,22 +108,27 @@ export function Nav({
             </Link>
           </div>
         )}
-        <ul className="flex overflow-x-auto px-2 text-body md:flex-1 md:flex-col md:gap-px md:overflow-visible md:px-0 md:py-2">
-          {groups.map((group, g) =>
-            group.map((item, i) => (
-              <li
-                key={item.href}
-                className={`shrink-0 ${g > 0 && i === 0 ? "ml-2 border-l border-hairline pl-2 md:mt-2 md:ml-0 md:border-t md:border-l-0 md:pt-2 md:pl-0" : ""}`}
-              >
-                <NavLink item={item} path={path} inboxCount={inboxCount} />
-              </li>
-            )),
-          )}
-          <li className="ml-2 shrink-0 border-l border-hairline pl-2 md:mt-auto md:ml-0 md:border-t md:border-l-0 md:pt-2 md:pl-0">
-            <NavLink item={SETTINGS} path={path} inboxCount={inboxCount} />
-          </li>
-        </ul>
-      </nav>
+        <nav
+          aria-label={el.nav.mainMenu}
+          className="min-w-0 bg-canvas max-md:sticky max-md:top-0 max-md:z-30 max-md:border-b max-md:border-hairline md:flex md:flex-1 md:flex-col"
+        >
+          <ul className="flex overflow-x-auto px-2 text-body max-md:scroll-frame max-md:[scrollbar-width:none] md:flex-1 md:flex-col md:gap-px md:overflow-visible md:px-0 md:py-2">
+            {groups.map((group, g) =>
+              group.map((item, i) => (
+                <li
+                  key={item.href}
+                  className={`shrink-0 ${g > 0 && i === 0 ? "ml-2 border-l border-hairline pl-2 md:mt-2 md:ml-0 md:border-t md:border-l-0 md:pt-2 md:pl-0" : ""}`}
+                >
+                  <NavLink item={item} path={path} inboxCount={inboxCount} />
+                </li>
+              )),
+            )}
+            <li className="ml-2 shrink-0 border-l border-hairline pl-2 md:mt-auto md:ml-0 md:border-t md:border-l-0 md:pt-2 md:pl-0">
+              <NavLink item={SETTINGS} path={path} inboxCount={inboxCount} />
+            </li>
+          </ul>
+        </nav>
+      </div>
       {/* One page width (max-w-page, centred) for every page; on phones the
           bottom keeps clear of the «＋» button and the home indicator. */}
       <main

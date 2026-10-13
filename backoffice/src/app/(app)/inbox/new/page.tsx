@@ -2,6 +2,7 @@ import Link from "next/link";
 import { MessageSquareText, PenLine, Upload } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
+import { getAccessContext } from "@/lib/supabase/access";
 import { aiEnabled } from "@/lib/ai/client";
 import { el } from "@/lib/i18n/el";
 import { AiSpark, ButtonLink, Notice, PageHeader } from "@/components/ui";
@@ -13,12 +14,15 @@ import { NlEntryForm } from "../../documents/new/NlEntryForm";
 // review; the manual form writes the movement directly, as it always did.
 export default async function NewCapturePage() {
   const supabase = await createClient();
-  const orgId = await getCurrentOrgId(supabase);
+  const [orgId, access] = await Promise.all([getCurrentOrgId(supabase), getAccessContext()]);
   const [{ data: org }, { data: accounts }] = await Promise.all([
     supabase.from("orgs").select("own_afm").eq("id", orgId).maybeSingle(),
     supabase.from("accounts").select("id, name").eq("org_id", orgId).eq("is_active", true).order("sort_order"),
   ]);
   const aiOn = aiEnabled();
+  // Why the AI is off (and where it is set up) is for admins; the others
+  // simply do not get the text/voice capture.
+  const isAdmin = access.kind === "internal" && (access.membership.role === "admin" || access.membership.role === "owner");
   const afmMissing = !org?.own_afm || org.own_afm === "000000000";
 
   return (
@@ -41,25 +45,30 @@ export default async function NewCapturePage() {
         <UploadChooser accounts={(accounts ?? []).map((a) => ({ id: a.id, label: a.name }))} aiOn={aiOn} afmMissing={afmMissing} />
       </section>
 
-      <section className="flex flex-col gap-4" aria-labelledby="capture-text">
-        <h2 id="capture-text" className="flex items-center gap-2 border-b border-hairline pb-3 text-section font-normal text-ink">
-          <MessageSquareText className="h-5 w-5 text-muted" strokeWidth={1.5} aria-hidden />
-          Γράψε ή πες
-        </h2>
-        {aiOn ? (
-          <>
-            <p className="text-body text-muted">
-              Περιγράψτε την κίνηση με δικά σας λόγια ή πατήστε το μικρόφωνο, π.χ. «πλήρωσα 50 € βενζίνη μετρητά για τη
-              Λαζαράκη».
-            </p>
-            <NlEntryForm rows={5} />
-          </>
-        ) : (
-          <Notice tone="warning">
-            Ο βοηθός AI δεν είναι ακόμα ενεργοποιημένος. Χρειάζεται ANTHROPIC_API_KEY και AI_ENABLED=true.
-          </Notice>
-        )}
-      </section>
+      {(aiOn || isAdmin) && (
+        <section className="flex flex-col gap-4" aria-labelledby="capture-text">
+          <h2 id="capture-text" className="flex items-center gap-2 border-b border-hairline pb-3 text-section font-normal text-ink">
+            <MessageSquareText className="h-5 w-5 text-muted" strokeWidth={1.5} aria-hidden />
+            Γράψε ή πες
+          </h2>
+          {aiOn ? (
+            <>
+              <p className="text-body text-muted">
+                Περιγράψτε την κίνηση με δικά σας λόγια ή πατήστε το μικρόφωνο, π.χ. «πλήρωσα 50 € βενζίνη μετρητά για τη
+                Λαζαράκη».
+              </p>
+              <NlEntryForm rows={5} />
+            </>
+          ) : (
+            <Notice tone="warning">
+              {el.ingest.aiOffAdmin}{" "}
+              <Link href="/settings#ai" className="font-medium text-ink underline underline-offset-4">
+                {el.ingest.aiOffLink}
+              </Link>
+            </Notice>
+          )}
+        </section>
+      )}
 
       <section className="flex flex-col gap-4" aria-labelledby="capture-manual">
         <h2 id="capture-manual" className="flex items-center gap-2 border-b border-hairline pb-3 text-section font-normal text-ink">

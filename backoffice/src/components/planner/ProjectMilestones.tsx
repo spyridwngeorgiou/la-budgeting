@@ -1,6 +1,8 @@
 "use client";
 
+import type { MouseEvent } from "react";
 import { SubmitButton } from "@/components/SubmitButton";
+import { useConfirm, useToast } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { errorOf } from "@/lib/actions";
 import { formatDate } from "@/lib/format";
@@ -20,14 +22,11 @@ export interface ProjectMilestone {
 // 44px touch targets on phones for the row buttons.
 const TAP = "max-md:min-h-11 max-md:min-w-11";
 
-async function run(p: Promise<unknown>) {
-  const message = errorOf(await p);
-  if (message) window.alert(message);
-}
-
 // The project's milestones on its page (they used to be editable only in the
 // planner's timeline). The ids travel as plain props and each action is
-// called with them here -- no per-row server-side .bind (AGENTS.md).
+// called with them here -- no per-row server-side .bind (AGENTS.md). The
+// row's buttons say what they do («Ολοκλήρωση», «Επεξεργασία», «Διαγραφή»);
+// the delete asks first in the app's dialog, a refusal is a toast.
 export function ProjectMilestones({
   projectId,
   milestones,
@@ -40,6 +39,21 @@ export function ProjectMilestones({
   canEdit: boolean;
 }) {
   const m = el.planner.milestone;
+  const { confirm, dialog } = useConfirm();
+  const { show } = useToast();
+
+  async function run(p: Promise<unknown>) {
+    const message = errorOf(await p);
+    if (message) show(message, { tone: "negative" });
+  }
+
+  async function confirmDelete(e: MouseEvent<HTMLButtonElement>) {
+    // The form is read before the await: the event is gone after it.
+    const form = e.currentTarget.form;
+    e.preventDefault();
+    if (form && (await confirm({ message: m.deleteConfirm, confirmLabel: el.common.delete }))) form.requestSubmit();
+  }
+
   return (
     <div className="flex flex-col gap-1 border-t border-hairline pt-2">
       <p className="eyebrow text-muted">{el.planner.milestones}</p>
@@ -66,8 +80,8 @@ export function ProjectMilestones({
                 {canEdit && (
                   <span className="flex shrink-0 flex-wrap items-center gap-2">
                     <form action={() => run(setMilestoneDone(projectId, x.id, !x.done_at))}>
-                      <SubmitButton variant="secondary" size="sm" className={TAP} aria-label={x.done_at ? m.reopen : m.done}>
-                        {x.done_at ? m.reopen : "✓"}
+                      <SubmitButton variant="secondary" size="sm" className={TAP}>
+                        {x.done_at ? m.reopen : m.complete}
                       </SubmitButton>
                     </form>
                     <MilestoneFormModal
@@ -75,14 +89,14 @@ export function ProjectMilestones({
                       trigger={el.common.edit}
                       initial={x}
                     />
-                    <form
-                      action={() => run(deleteMilestone(projectId, x.id))}
-                      onSubmit={(e) => {
-                        if (!window.confirm(m.deleteConfirm)) e.preventDefault();
-                      }}
-                    >
-                      <SubmitButton variant="ghost" size="sm" className={TAP} aria-label={el.common.delete}>
-                        ×
+                    <form action={() => run(deleteMilestone(projectId, x.id))}>
+                      <SubmitButton
+                        variant="ghost"
+                        size="sm"
+                        className={`${TAP} text-negative hover:text-negative`}
+                        onClick={confirmDelete}
+                      >
+                        {el.common.delete}
                       </SubmitButton>
                     </form>
                   </span>
@@ -97,6 +111,7 @@ export function ProjectMilestones({
           <MilestoneFormModal action={(formData) => saveMilestone(projectId, null, formData)} />
         </div>
       )}
+      {dialog}
     </div>
   );
 }

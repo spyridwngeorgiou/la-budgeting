@@ -34,6 +34,8 @@ export interface BoardTask {
   due_date: string | null;
   sort_key: number;
   archived_at: string | null;
+  // Set by the tasks_track_completion trigger (0040); orders «Ολοκληρώθηκε».
+  completed_at: string | null;
 }
 
 export interface BoardFilters {
@@ -76,7 +78,7 @@ export async function loadBoardTasks(
   let query = supabase
     .from("tasks")
     .select(
-      "id, project_id, title, status, priority, assignee_id, start_date, due_date, sort_key, archived_at",
+      "id, project_id, title, status, priority, assignee_id, start_date, due_date, sort_key, archived_at, completed_at",
     )
     .in("project_id", filters.projectId ? [filters.projectId] : projectIds)
     .order("sort_key")
@@ -99,6 +101,7 @@ export async function loadBoardTasks(
     due_date: t.due_date,
     sort_key: Number(t.sort_key),
     archived_at: t.archived_at,
+    completed_at: t.completed_at,
   }));
 }
 

@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Notice, PageHeader } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
+import { el } from "@/lib/i18n/el";
 import { readBankGrid, UnsupportedFileError } from "@/lib/ingest/adapters/bankFile";
 import { cellText, guessColumnMap, guessHeaderRow } from "@/lib/ingest/profiles/detect";
 import { MappingForm } from "./MappingForm";
@@ -19,16 +21,26 @@ export default async function MappingPage({ params }: { params: Promise<{ batchI
   if (!batch?.storage_path) notFound();
   if (batch.row_count > 0 || batch.status !== "staged") redirect(`/inbox/${batchId}`);
 
+  const back = (
+    <Link href="/inbox" className="inline-flex min-h-8 items-center text-muted hover:text-ink">
+      ← {el.nav.inbox}
+    </Link>
+  );
+
   const { data: blob } = await supabase.storage.from("bank-statements").download(batch.storage_path);
   if (!blob) notFound();
   let grid;
   try {
     ({ grid } = await readBankGrid({ name: batch.filename ?? "", mimeType: "", bytes: new Uint8Array(await blob.arrayBuffer()) }));
   } catch (e) {
-    if (e instanceof UnsupportedFileError) return (
-        <Notice tone="negative" role="alert">
-          {e.message}
-        </Notice>
+    if (e instanceof UnsupportedFileError)
+      return (
+        <div className="flex flex-col gap-6">
+          <PageHeader eyebrow={back} title="Αντιστοίχιση στηλών" />
+          <Notice tone="negative" role="alert">
+            {e.message}
+          </Notice>
+        </div>
       );
     throw e;
   }
@@ -40,6 +52,7 @@ export default async function MappingPage({ params }: { params: Promise<{ batchI
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
+        eyebrow={back}
         title="Αντιστοίχιση στηλών"
         meta={
           <>

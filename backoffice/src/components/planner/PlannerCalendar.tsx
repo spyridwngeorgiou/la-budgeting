@@ -3,8 +3,16 @@ import { ButtonLink, EmptyState, cn } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { formatMoney } from "@/lib/format";
 import { dayMonthLabel, firstOfMonth, lastOfMonth, monthLabel } from "@/lib/dates";
-import { agendaDays, groupByDay, monthCells, monthGridRange, type CalendarItem } from "@/lib/planner/calendar";
-import { SOURCE_PILL, calendarItemLabel } from "./labels";
+import {
+  CALENDAR_SOURCES,
+  agendaDays,
+  groupByDay,
+  monthCells,
+  monthGridRange,
+  type CalendarItem,
+  type CalendarSource,
+} from "@/lib/planner/calendar";
+import { SOURCE_PILL, calendarItemLabel, sourceFamilies } from "./labels";
 
 const WEEKDAY_LABELS = ["Δε", "Τρ", "Τε", "Πε", "Πα", "Σα", "Κυ"];
 const MAX_PER_CELL = 3;
@@ -12,19 +20,24 @@ const MAX_PER_CELL = 3;
 // The unified calendar: a month grid on desktop, an agenda list on phones,
 // both from the same items. Server-rendered; navigation and filters are
 // plain links the page builds, and `hrefFor` decides where an item leads
-// (the partner space links only to tasks).
+// (the partner space links only to tasks). A day with more than three
+// items folds the rest behind «+N ακόμα», which opens them in the cell (a
+// native <details>, no script). The key under the month names each colour
+// of `sources` (the ones the filters show).
 export function PlannerCalendar({
   items,
   monthKey,
   today,
   nav,
   hrefFor,
+  sources = CALENDAR_SOURCES,
 }: {
   items: CalendarItem[];
   monthKey: string;
   today: string;
   nav: { prev: string; next: string; today: string };
   hrefFor: (item: CalendarItem) => string | null;
+  sources?: readonly CalendarSource[];
 }) {
   const range = monthGridRange(monthKey);
   const byDay = groupByDay(items, range);
@@ -48,6 +61,19 @@ export function PlannerCalendar({
           </ButtonLink>
         </div>
       </div>
+
+      <ul aria-label={el.planner.calendar.legend} className="flex flex-wrap gap-x-5 gap-y-1 text-small text-text">
+        {sourceFamilies(sources).map((f) => (
+          <li key={f.bar} className="inline-flex items-center gap-1.5">
+            <span aria-hidden="true" className={cn("inline-block h-3.5 border-l-2", f.bar)} />
+            {f.label}
+          </li>
+        ))}
+        <li className="inline-flex items-center gap-1.5 text-negative">
+          <span aria-hidden="true" className="inline-block h-3.5 border-l-2 border-negative" />
+          {el.planner.calendar.overdue}
+        </li>
+      </ul>
 
       <div className="hidden md:block">
         <div className="grid grid-cols-7 border-t border-l border-hairline text-small">
@@ -81,9 +107,19 @@ export function PlannerCalendar({
                   <Pill key={item.item_key} item={item} href={hrefFor(item)} overdue={!item.is_done && item.ends_on < today} />
                 ))}
                 {dayItems.length > MAX_PER_CELL && (
-                  <span className="px-1 text-small text-muted">
-                    +{dayItems.length - MAX_PER_CELL} {el.planner.calendar.more}
-                  </span>
+                  <details className="group/more">
+                    <summary className="flex min-h-6 cursor-pointer list-none items-center px-1 text-small text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
+                      <span className="group-open/more:hidden">
+                        +{dayItems.length - MAX_PER_CELL} {el.planner.calendar.more}
+                      </span>
+                      <span className="hidden group-open/more:inline">− {el.planner.calendar.less}</span>
+                    </summary>
+                    <div className="flex flex-col gap-0.5">
+                      {dayItems.slice(MAX_PER_CELL).map((item) => (
+                        <Pill key={item.item_key} item={item} href={hrefFor(item)} overdue={!item.is_done && item.ends_on < today} />
+                      ))}
+                    </div>
+                  </details>
                 )}
               </div>
             );
