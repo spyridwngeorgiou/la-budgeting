@@ -6,7 +6,7 @@
 //   node scripts/staging.cjs load <workbook.xlsx> [--write]
 //   node scripts/staging.cjs files <project code> <drive inventory.json> [--write]
 //
-// Reads keys from .env.local and refuses to run unless they point at the
+// Reads keys from .env.staging.local and refuses to run unless they point at the
 // staging project, so it can never touch the live database.
 
 const fs = require("fs");
@@ -16,7 +16,7 @@ const { createClient } = require("@supabase/supabase-js");
 const STAGING_REF = "jpxxixhiudwjbzagidmn";
 
 function loadEnv() {
-  const file = path.join(__dirname, "..", ".env.local");
+  const file = path.join(__dirname, "..", ".env.staging.local");
   const env = {};
   for (const line of fs.readFileSync(file, "utf8").split(/\r?\n/)) {
     const i = line.indexOf("=");
@@ -25,7 +25,32 @@ function loadEnv() {
   return env;
 }
 
+// With --own anywhere on the command line, every command runs against OUR OWN
+// project (.env.own.local) instead of staging.
+const OWN = process.argv.includes("--own");
+if (OWN) process.argv = process.argv.filter((a) => a !== "--own");
+let TARGET = `staging ${STAGING_REF}`;
+
+function ownClient() {
+  const file = path.join(__dirname, "..", ".env.own.local");
+  const env = {};
+  for (const line of fs.readFileSync(file, "utf8").split(/\r?\n/)) {
+    const i = line.indexOf("=");
+    if (i > 0 && !line.trimStart().startsWith("#")) env[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+  }
+  const url = env.OWN_SUPABASE_URL || "";
+  if (new URL(url).hostname !== `${env.OWN_PROJECT_REF}.supabase.co` || ["hjypszddhwohgvubirkc", STAGING_REF].includes(env.OWN_PROJECT_REF)) {
+    throw new Error(`Άρνηση: το .env.own.local δεν δείχνει στη δική μας βάση (${url}).`);
+  }
+  TARGET = `δική μας βάση ${env.OWN_PROJECT_REF}`;
+  return createClient(url, env.OWN_SECRET_KEY, {
+    auth: { persistSession: false },
+    global: { headers: { "x-actor-email": env.ACTOR_EMAIL || "create@chriskansha.com" } },
+  });
+}
+
 function stagingClient() {
+  if (OWN) return ownClient();
   const env = loadEnv();
   const url = env.NEXT_PUBLIC_SUPABASE_URL || "";
   if (new URL(url).hostname !== `${STAGING_REF}.supabase.co`) {
@@ -48,7 +73,7 @@ const TABLES = [
 ];
 
 async function inspect(sb) {
-  console.log(`Staging: ${STAGING_REF}\n`);
+  console.log(`${TARGET}\n`);
   for (const t of TABLES) {
     const { count, error } = await sb.from(t).select("*", { count: "exact", head: true });
     console.log(`  ${t.padEnd(18)} ${error ? "— " + error.message : count}`);
@@ -138,7 +163,7 @@ async function parseWorkbook(file) {
   for (let r = 36; r <= 40; r++) {
     const lender = cell(ls, r, 1);
     const principal = cell(ls, r, 2);
-    if (lender && typeof principal === "number") {
+    if (lender && !/^ΣΥΝΟΛΟ/.test(lender) && typeof principal === "number") {
       const rate = cell(ls, r, 4);
       m.liabilities.push({ lender, kind: "private", principal, interest_rate: typeof rate === "number" ? rate : 0, maturity_date: cell(ls, r, 3), state: "disbursed", owner_scope: "personal", terms: cell(ls, r, 6) });
     }
@@ -185,13 +210,13 @@ async function parseWorkbook(file) {
   for (let r = 4; r <= ds.rowCount; r++) {
     const month = cell(ds, r, 2);
     const amount = cell(ds, r, 4);
-    if (!month || month < openingDate.slice(0, 7) || cell(ds, r, 6) !== "Μετρητά" || typeof amount !== "number") continue;
+    if (!month || month < openingDate.slice(0, 7) || !["Μετρητά", "Πειραιώς Προσωπικός"].includes(cell(ds, r, 6)) || typeof amount !== "number") continue;
     const note = cell(ds, r, 8) ? String(cell(ds, r, 8)) : "";
     const d = [...note.matchAll(/(\d{2})\/(\d{2})\/(\d{4})/g)].pop();
     let date = d ? `${d[3]}-${d[2]}-${d[1]}` : `${month}-01`;
     if (date <= openingDate) date = dayAfterOpening;
     m.daily.push({
-      legacy_excel_id: "kathimerina-row-" + r, tx_date: date, paid_on: date, account_name: "Μετρητά", category_code: "ΠΡΟΣΩΠΙΚΆ_ΈΞΟΔΑ",
+      legacy_excel_id: "kathimerina-row-" + r, tx_date: date, paid_on: date, account_name: cell(ds, r, 6), category_code: "ΠΡΟΣΩΠΙΚΆ_ΈΞΟΔΑ",
       direction: "expense", scope: "personal", status: "paid", origin: "manual", gross_amount: round2(amount), net_amount: round2(amount),
       description: cell(ds, r, 3), notes: note || null,
     });
@@ -220,10 +245,10 @@ async function load(sb, file, write) {
   const m = await parseWorkbook(file);
   const log = [];
   const say = (s) => { log.push(s); console.log(s); };
-  say(`${write ? "ΦΟΡΤΩΣΗ" : "ΔΟΚΙΜΑΣΤΙΚΗ ΕΚΤΕΛΕΣΗ (δεν γράφεται τίποτα)"} — ${path.basename(file)} → staging ${STAGING_REF}\n`);
+  say(`${write ? "ΦΟΡΤΩΣΗ" : "ΔΟΚΙΜΑΣΤΙΚΗ ΕΚΤΕΛΕΣΗ (δεν γράφεται τίποτα)"} — ${path.basename(file)} → ${TARGET}\n`);
 
   const orgs = must(await sb.from("orgs").select("id").order("created_at"), "orgs");
-  if (orgs.length !== 1) throw new Error(`Περίμενα 1 επιχείρηση στο staging, βρήκα ${orgs.length}.`);
+  if (orgs.length !== 1) throw new Error(`Περίμενα 1 επιχείρηση στη βάση, βρήκα ${orgs.length}.`);
   const org_id = orgs[0].id;
 
   // Categories (by code)
@@ -492,8 +517,23 @@ async function forecastData(sb) {
   console.log("Ρυθμίσεις org:", JSON.stringify(must(await sb.from("orgs").select("settings"), "orgs")));
 }
 
+// Ledger rows with no project in a date range, with where they came from.
+async function noProject(sb, from, to) {
+  const rows = must(await sb.from("transactions")
+    .select("tx_date, direction, status, scope, gross_amount, description, notes, legacy_excel_id, plan_id, origin, accounts(name)")
+    .is("project_id", null).gte("tx_date", from).lte("tx_date", to).order("tx_date"), "no-project");
+  const by = {};
+  for (const r of rows) {
+    const src = r.legacy_excel_id?.split("-row-")[0] ?? (r.plan_id ? "πλάνο" : r.origin);
+    by[src] = (by[src] ?? 0) + 1;
+    console.log(`${r.tx_date} ${r.scope.padEnd(8)} ${String(r.gross_amount).padStart(9)} ${(r.accounts?.name ?? "—").padEnd(20)} ${src.padEnd(11)} ${String(r.description).slice(0, 45)} | ${String(r.notes ?? "").slice(0, 60)}`);
+  }
+  console.log(`\nΣύνολο ${rows.length}:`, JSON.stringify(by));
+}
+
 async function main() {
   const [cmd, file, flag, flag2] = process.argv.slice(2);
+  if (cmd === "no-project") return noProject(stagingClient(), file, flag);
   if (cmd === "forecast-data") return forecastData(stagingClient());
   if (cmd === "files") return files(stagingClient(), file, flag, flag2 === "--write");
   const sb = stagingClient();

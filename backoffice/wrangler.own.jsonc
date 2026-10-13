@@ -1,0 +1,21 @@
+// Our own deployment (Cloudflare account of create@chriskansha.com), pointing
+// at our own Supabase project. Spyros' deployment uses wrangler.jsonc.
+// Public Supabase URL/key are inlined at build time from .env.local; the
+// secret key is a Worker secret (wrangler secret put ... --config wrangler.own.jsonc).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": ".open-next/worker.js",
+  "name": "kansha-backoffice",
+  "compatibility_date": "2026-09-14",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "AI_ENABLED": "false"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
