@@ -45,7 +45,7 @@ export default async function RevenuePlansPage() {
   });
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Εκτιμήσεις Εσόδων"
         meta={
@@ -64,7 +64,7 @@ export default async function RevenuePlansPage() {
           <AiCreateForm />
         ) : (
           <Notice tone="warning" className="max-w-prose">
-            Ο βοηθός AI δεν είναι ενεργοποιημένος -- μπορείτε ακόμα να φτιάξετε μια ανάλυση χειροκίνητα
+            Ο βοηθός AI δεν είναι ενεργοποιημένος· μπορείτε ακόμα να φτιάξετε μια ανάλυση χειροκίνητα
             παρακάτω.
           </Notice>
         )}

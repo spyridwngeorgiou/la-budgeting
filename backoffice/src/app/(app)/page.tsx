@@ -36,7 +36,7 @@ export default async function HomeTiles() {
   // Same rule as the menu: viewers have no Εισερχόμενα.
   const tiles = TILES.filter((t) => !t.minRole || access.membership.role !== "viewer");
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader eyebrow={longDateLabel(todayAthens())} title="Kansha" />
       <ul className="grid grid-cols-1 border-t border-l border-hairline sm:grid-cols-2 lg:grid-cols-3">
         {tiles.map((t) => (

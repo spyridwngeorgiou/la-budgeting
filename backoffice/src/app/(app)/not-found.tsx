@@ -2,7 +2,7 @@ import { ButtonLink, PageHeader } from "@/components/ui";
 
 export default function NotFound() {
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader title="Δεν βρέθηκε" />
       <div className="flex max-w-prose flex-col gap-4">
         <p className="text-body text-text">
@@ -10,7 +10,7 @@ export default function NotFound() {
         </p>
         <div>
           <ButtonLink href="/dashboard" variant="primary">
-            Επιστροφή στον Πίνακα Ελέγχου
+            Επιστροφή στην Επισκόπηση
           </ButtonLink>
         </div>
       </div>

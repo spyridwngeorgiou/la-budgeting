@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { shell } from "@/lib/i18n/v2/shell";
+import { formatMoney } from "@/lib/format";
 import { cn } from "./cn";
 import { Menu } from "./Menu";
 
@@ -188,13 +189,14 @@ export function DataTable<T>({
 // `tone` only for exceptions (an overdue, a negative balance).
 export function Amount({
   value,
-  format,
+  format = formatMoney,
   signed = true,
   tone,
   className = "",
 }: {
   value: number;
-  format: (n: number) => string;
+  // Defaults to euros (formatMoney); a server page passes nothing.
+  format?: (n: number) => string;
   signed?: boolean;
   tone?: "negative" | "positive";
   className?: string;

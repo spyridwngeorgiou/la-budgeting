@@ -70,7 +70,7 @@ export default async function InboxPage() {
   const historyRows = history ?? [];
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title={el.nav.inbox}
         meta="Ό,τι περιμένει εσάς: κινήσεις προς έλεγχο, προτάσεις του AI για έγκριση και οι πρόσφατες καταχωρίσεις, με δυνατότητα αναίρεσης."

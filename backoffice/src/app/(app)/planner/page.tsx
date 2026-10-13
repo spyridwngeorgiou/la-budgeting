@@ -16,7 +16,7 @@ export default async function PlannerPage({
   const ctx = await plannerContext(params);
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader title={el.planner.title} />
       <BoardView ctx={ctx} />
     </div>

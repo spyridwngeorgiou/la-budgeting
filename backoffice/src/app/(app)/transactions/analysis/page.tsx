@@ -195,7 +195,7 @@ export default async function AnalysisPage({
   }${scope !== "all" ? `, πεδίο ${scope === "business" ? "επιχειρηματικό" : "προσωπικό"}` : ""}. Ποιες γραμμές ξεχωρίζουν και γιατί;`;
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Ανάλυση Κινήσεων"
         meta="Επιλέξτε πώς θέλετε να ομαδοποιήσετε τα δεδομένα. Κάθε ποσό στον πίνακα είναι κλικάρισμα — σας πάει κατευθείαν στις κινήσεις που το απαρτίζουν."

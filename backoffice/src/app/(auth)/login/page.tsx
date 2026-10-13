@@ -20,7 +20,7 @@ export default async function LoginPage({
       <span className="sr-only" role="heading" aria-level={1}>
         {el.auth.signIn}
       </span>
-      <div className="flex w-full max-w-xs flex-col items-center gap-10">
+      <div className="flex w-full max-w-xs flex-col items-center gap-6">
         <span className="flex flex-col items-center gap-4 text-navy">
           <LogoMark size={56} />
           <Wordmark className="text-ink" />

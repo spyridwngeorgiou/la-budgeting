@@ -1,1 +1,6 @@
-{}
+{
+  "app/(app)/projects/[id]/ScenarioListControls.tsx:browser-dialog": 1,
+  "app/(app)/transactions/TransactionsTable.tsx:browser-dialog": 4,
+  "components/planner/ConfirmSubmit.tsx:browser-dialog": 2,
+  "components/planner/ProjectMilestones.tsx:browser-dialog": 2
+}

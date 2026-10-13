@@ -16,7 +16,8 @@
 // time with a pause between: it fails on a browser error (pageerror), on the
 // error page «Κάτι πήγε στραβά», on sideways scrolling at 390 px, and on a
 // page taller than its budget at 1440 (pageBudget: reports 1400 px with the
-// history closed; the overview, accounts and a project 2250 px). Every page's
+// history closed; a project 1800 px with its «▸» closed; the overview and
+// accounts 2250 px). Every page's
 // height at 1440 is printed so growth shows up release to release.
 import { spawnSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
@@ -32,7 +33,12 @@ const REPO = "spyridwngeorgiou/la-budgeting";
 const CHROME = process.env.CHROME ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const DEFAULT_PATHS = ["/dashboard", "/transactions", "/projects", "/planner", "/reports/cash", "/reports/pnl", "/reports/vat", "/reports/net-worth", "/reports/portfolio", "/accounts", "/contacts", "/inbox", "/collab"];
 // Height budget at 1440x900 (px), or null for paged lists that grow with data.
-const pageBudget = (p) => (p.startsWith("/reports/") ? 1400 : /^\/(dashboard|accounts)$|^\/projects\/[0-9a-f-]{36}$/.test(p.split("?")[0]) ? 2250 : null);
+const pageBudget = (p) => {
+  const path = p.split("?")[0];
+  if (path.startsWith("/reports/")) return 1400;
+  if (/^\/projects\/[0-9a-f-]{36}$/.test(path)) return 1800;
+  return /^\/(dashboard|accounts)$/.test(path) ? 2250 : null;
+};
 
 const sh = (cmd, opts = {}) => {
   const r = spawnSync(cmd, { cwd: root, shell: true, encoding: "utf8", maxBuffer: 64 << 20, env: { ...process.env, MSYS_NO_PATHCONV: "1" }, ...opts });

@@ -2,100 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { el } from "@/lib/i18n/el";
-import { buttonClass, cn } from "@/components/ui";
+import { cn } from "@/components/ui";
 
 // Light-weight confirmations and toasts for the collaboration space. Every
 // destructive action either asks first (useConfirm) or offers an undo
 // (useToasts with an action) -- never a silent loss.
 
-interface ConfirmRequest {
-  message: string;
-  confirmLabel?: string;
-  tone?: "danger" | "neutral";
-}
-
-export function useConfirm() {
-  const [request, setRequest] = useState<(ConfirmRequest & { resolve: (ok: boolean) => void }) | null>(null);
-
-  const confirm = useCallback(
-    (req: ConfirmRequest) => new Promise<boolean>((resolve) => setRequest({ ...req, resolve })),
-    [],
-  );
-
-  const close = (ok: boolean) => {
-    request?.resolve(ok);
-    setRequest(null);
-  };
-
-  const dialog = request ? (
-    <ConfirmDialog
-      message={request.message}
-      confirmLabel={request.confirmLabel ?? el.collab.confirm.yes}
-      tone={request.tone ?? "danger"}
-      onClose={close}
-    />
-  ) : null;
-
-  return { confirm, dialog };
-}
-
-function ConfirmDialog({
-  message,
-  confirmLabel,
-  tone,
-  onClose,
-}: {
-  message: string;
-  confirmLabel: string;
-  tone: "danger" | "neutral";
-  onClose: (ok: boolean) => void;
-}) {
-  const cancelRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    cancelRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-ink/30 p-3 sm:items-center"
-      role="presentation"
-      onClick={() => onClose(false)}
-    >
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-label={el.collab.confirm.title}
-        className="w-full max-w-sm border border-hairline bg-raised p-5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-section text-ink">{el.collab.confirm.title}</h2>
-        <p className="mt-2 text-body text-text">{message}</p>
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            ref={cancelRef}
-            type="button"
-            className={buttonClass("secondary", "md", "min-h-11")}
-            onClick={() => onClose(false)}
-          >
-            {el.collab.confirm.no}
-          </button>
-          <button
-            type="button"
-            className={buttonClass(tone === "danger" ? "danger" : "primary", "md", "min-h-11")}
-            onClick={() => onClose(true)}
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+// The confirmation dialog is the app-wide one (components/ui/Confirm).
+export { useConfirm } from "@/components/ui/Confirm";
 
 export interface Toast {
   id: number;

@@ -127,7 +127,7 @@ export default async function InboxBatchPage({ params }: { params: Promise<{ bat
 
   return (
     <ReviewProvider batchId={batch.id} editable={editable} lookups={reviewLookups}>
-      <div className="flex flex-col gap-10">
+      <div className="flex flex-col gap-6">
         <PageHeader
           eyebrow={
             <Link href="/inbox" className="inline-flex min-h-8 items-center text-muted hover:text-ink">

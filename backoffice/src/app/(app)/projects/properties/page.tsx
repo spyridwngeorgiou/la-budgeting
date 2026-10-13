@@ -48,7 +48,7 @@ export default async function PropertiesPage({ searchParams }: { searchParams: P
   const grandTotal = (costs ?? []).reduce((s, c) => s + Number(c.paid_amount ?? 0), 0);
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title={el.nav.properties}
         meta={

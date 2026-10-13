@@ -82,7 +82,7 @@ export function NlEntryForm({ rows = 3 }: { rows?: number }) {
           name="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="π.χ. Πλήρευσα 80 ευρώ στον υδραυλικό για το Q003, μετρητά, χωρίς απόδειξη. Μπορείτε να περιγράψετε περισσότερες από μία κινήσεις μαζί -- θα καταχωρηθούν ξεχωριστά."
+          placeholder="π.χ. Πλήρευσα 80 ευρώ στον υδραυλικό για το Q003, μετρητά, χωρίς απόδειξη. Μπορείτε να περιγράψετε περισσότερες από μία κινήσεις μαζί· θα καταχωρηθούν ξεχωριστά."
           rows={rows}
           required
           className="min-w-0 flex-1 border border-field-border bg-field px-3 py-2 text-body text-ink placeholder:text-muted focus:border-navy focus:outline-none"

@@ -51,7 +51,7 @@ export async function PendingChanges() {
         }
       />
       <p className="text-body text-muted">
-        Προτάσεις αλλαγών από το Kansha Operator. Καμία δεν έχει εφαρμοστεί ακόμα -- ελέγξτε το πριν/μετά και
+        Προτάσεις αλλαγών από το Kansha Operator. Καμία δεν έχει εφαρμοστεί ακόμα· ελέγξτε το πριν/μετά και
         εγκρίνετε ή απορρίψτε.
       </p>
 

@@ -38,7 +38,7 @@ export default async function MappingPage({ params }: { params: Promise<{ batchI
   const width = Math.max(1, ...preview.map((r) => r.length));
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Αντιστοίχιση στηλών"
         meta={

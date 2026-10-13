@@ -21,6 +21,8 @@ export { Modal, FormModal, DialogForm } from "./Modal";
 export { Menu, MenuItem, MenuLink, MenuSeparator } from "./Menu";
 export { EmptyState } from "./EmptyState";
 export { ToastProvider, useToast, type ToastOptions } from "./Toast";
+export { useConfirm, type ConfirmRequest } from "./Confirm";
+export { Pager, ShownCount } from "./Pager";
 export { Worklist, WorklistItem, type Severity } from "./Worklist";
 export { Sparkline } from "./Sparkline";
 export { chartTheme, compactNumber, ReferenceKey, STACK_PALETTE, type ReferenceKeyKind } from "./chart";

@@ -12,7 +12,7 @@ export default async function ContactsPage() {
   const { data: rollup } = await supabase.from("v_contact_rollup").select("*").eq("org_id", orgId).order("name");
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title={el.nav.contacts}
         meta="Προμηθευτές, πελάτες και συνεργάτες, με σύνολο εσόδων/εξόδων και υπόλοιπο ανά επαφή."

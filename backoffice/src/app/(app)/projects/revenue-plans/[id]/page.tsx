@@ -91,7 +91,7 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
   }
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         eyebrow={el.nav.revenuePlans}
         title={plan.name}
@@ -194,7 +194,7 @@ export default async function RevenuePlanDetailPage({ params }: { params: Promis
         </SpecTable>
       )}
 
-      <div className="flex flex-col gap-10">
+      <div className="flex flex-col gap-6">
         {(roomTypesData ?? []).map((rt) => (
           <section key={rt.id} className="flex flex-col gap-4">
             <SectionHeader

@@ -40,7 +40,7 @@ export async function LegacyComparePage({ id }: { id: string }) {
   ];
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         eyebrow={el.nav.projects}
         title={`Σύγκριση σεναρίων — ${project.display_name}`}

@@ -100,7 +100,7 @@ export function ProjectsGrid({
       ) : (
         // No cards: each project is a block under a hairline that turns
         // navy on hover, its figures light and tabular.
-        <ul className="grid grid-cols-1 gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((p) => (
             <li key={p.project_id} className="min-w-0">
               <Link

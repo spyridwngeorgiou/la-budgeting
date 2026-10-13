@@ -101,18 +101,22 @@ export function ReportHistory({
   count,
   meta,
   open = false,
+  level = 2,
   children,
   className = "",
 }: {
   title?: ReactNode;
   // Rows behind the summary: «(12)».
   count?: number;
+  // 3 inside a section that already has its own <h2> (the project page).
+  level?: 2 | 3;
   // After the title, right-aligned (a short note).
   meta?: ReactNode;
   open?: boolean;
   children: ReactNode;
   className?: string;
 }) {
+  const Heading = level === 3 ? "h3" : "h2";
   return (
     <details open={open || undefined} className={cn("group flex min-w-0 flex-col", className)}>
       <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-hairline pb-1 [&::-webkit-details-marker]:hidden">
@@ -120,10 +124,10 @@ export function ReportHistory({
           <span aria-hidden="true" className="inline-block w-3 text-muted transition-transform group-open:rotate-90">
             ▸
           </span>
-          <h2 className="text-body font-medium text-ink">
+          <Heading className="text-body font-medium text-ink">
             {title}
             {count != null && <span className="num font-normal text-muted"> ({count})</span>}
-          </h2>
+          </Heading>
         </span>
         {meta && <span className="text-small text-muted">{meta}</span>}
       </summary>

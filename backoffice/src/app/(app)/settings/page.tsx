@@ -41,7 +41,7 @@ export default async function SettingsPage() {
   const profileFor = (userId: string) => memberProfiles?.find((p) => p.user_id === userId);
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title={el.nav.settings}
         meta="Προσωπικά (αρχική σελίδα, κωδικός), στοιχεία της επιχείρησης, όριο δαπάνης AI και εξαγωγή δεδομένων."
@@ -196,7 +196,7 @@ export default async function SettingsPage() {
       <section className="flex w-full max-w-md flex-col gap-4">
         <SectionHeader title="Εξαγωγή Δεδομένων" />
         <p className="text-small text-muted">
-          Οι κινήσεις σας δεν είναι κλειδωμένες σε αυτή την εφαρμογή -- κατεβάστε τις οποτεδήποτε σε
+          Οι κινήσεις σας δεν είναι κλειδωμένες σε αυτή την εφαρμογή· κατεβάστε τις οποτεδήποτε σε
           CSV, ανοίγει σε Excel/Google Sheets.
         </p>
         <div>

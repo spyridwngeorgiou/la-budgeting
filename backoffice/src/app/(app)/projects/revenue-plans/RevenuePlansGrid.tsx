@@ -53,7 +53,7 @@ export function RevenuePlansGrid({ plans }: { plans: RevenuePlanRow[] }) {
         <p className="border-b border-hairline py-3 text-body text-muted">Καμία ανάλυση δεν ταιριάζει με την αναζήτηση.</p>
       ) : (
         // No cards: a block under a hairline that turns navy on hover.
-        <ul className="grid grid-cols-1 gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
           {visible.map((p) => (
             <li key={p.id} className="min-w-0">
               <Link

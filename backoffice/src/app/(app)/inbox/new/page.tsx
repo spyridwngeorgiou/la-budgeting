@@ -22,7 +22,7 @@ export default async function NewCapturePage() {
   const afmMissing = !org?.own_afm || org.own_afm === "000000000";
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         eyebrow={
           <Link href="/inbox" className="inline-flex min-h-8 items-center hover:text-ink">

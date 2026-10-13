@@ -90,8 +90,8 @@ export default async function CollabProjectPage({ params }: { params: Promise<{ 
         boardTitles={boardTitles}
       />
 
-      <div className="grid grid-cols-1 gap-x-10 gap-y-10 lg:grid-cols-3">
-        <div className="flex min-w-0 flex-col gap-10 lg:col-span-2">
+      <div className="grid grid-cols-1 gap-x-6 gap-y-6 lg:grid-cols-3">
+        <div className="flex min-w-0 flex-col gap-6 lg:col-span-2">
           <ProjectBoards
             projectId={projectId}
             boards={cards}
@@ -110,7 +110,7 @@ export default async function CollabProjectPage({ params }: { params: Promise<{ 
           />
         </div>
 
-        <div className="flex min-w-0 flex-col gap-10">
+        <div className="flex min-w-0 flex-col gap-6">
           <section className="flex flex-col">
             <SectionHeader title={el.collab.people} />
             <ul className="flex flex-col">

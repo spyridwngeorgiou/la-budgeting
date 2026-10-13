@@ -11,7 +11,10 @@ import baseline from "./design-guard.baseline.json";
 //     text-field for phone inputs): no Tailwind text-xs/sm/base/lg/xl/2xl…,
 //     no arbitrary text-[…] sizes, no font-mono (Inter only);
 //   - one page title: <h1> only inside ui/PageHeader;
-//   - one table: <table> only inside components/ui (SpecTable, DataTable).
+//   - one table: <table> only inside components/ui (SpecTable, DataTable);
+//   - one rhythm: no gap-10 (40px) -- page blocks are gap-6, sections gap-3;
+//   - no browser alert/confirm boxes: errors go to useToast, questions to
+//     useConfirm (components/ui/Confirm).
 //
 // An unavoidable exception goes in design-guard.baseline.json as
 // "path:rule": allowed count, so it is reviewed rather than silent.
@@ -28,6 +31,8 @@ const RULES: { name: string; re: RegExp; except?: (rel: string) => boolean }[] =
   { name: "font-mono", re: /font-mono/g },
   { name: "h1", re: /<h1[\s>]/g, except: (rel) => rel === "components/ui/PageHeader.tsx" },
   { name: "table", re: /<table[\s>]/g, except: (rel) => rel.startsWith("components/ui/") },
+  { name: "gap-10", re: /(?<![\w-])(?:[\w@[\]-]+:)*gap(?:-[xy])?-10(?![\w-])/g },
+  { name: "browser-dialog", re: /window\.(?:alert|confirm)\(/g },
 ];
 
 function walk(dir: string, out: string[] = []): string[] {

@@ -36,7 +36,7 @@ export default async function TaskDetailPage({ params }: { params: Promise<{ id:
     : [{ id: task.project_id, label: "—" }];
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         eyebrow={
           <Link href={`/planner?project=${task.project_id}`} className="inline-flex min-h-8 items-center hover:text-ink hover:underline">

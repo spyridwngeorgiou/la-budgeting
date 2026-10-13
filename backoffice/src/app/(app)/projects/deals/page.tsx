@@ -46,7 +46,7 @@ export default async function DealsPage() {
   const pipeline = [...weightedByDeal.values()].reduce((s, v) => s + v, 0);
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title={t.title}
         meta={<span className="block max-w-prose">{t.intro}</span>}

@@ -25,7 +25,7 @@ export default async function ContactDetailPage({
   if (!rollup) notFound();
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader title={rollup.name} meta={rollup.afm ? <span className="num">ΑΦΜ: {rollup.afm}</span> : undefined} />
 
       <StatRow>

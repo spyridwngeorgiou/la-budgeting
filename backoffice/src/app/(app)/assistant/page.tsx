@@ -32,12 +32,12 @@ export default async function AssistantPage({
   const showChanges = canReview && panel === "changes";
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title={el.nav.assistant}
         meta={
           <span className="block max-w-3xl">
-            Ρωτήστε ελεύθερα για τα οικονομικά της επιχείρησης -- κάθε απάντηση βασίζεται σε πραγματικά δεδομένα,
+            Ρωτήστε ελεύθερα για τα οικονομικά της επιχείρησης· κάθε απάντηση βασίζεται σε πραγματικά δεδομένα,
             ποτέ σε εικασία, με «Πηγές» για κάθε αριθμό. Οι αλλαγές που προτείνει ο βοηθός εφαρμόζονται μόνο αφού
             τις εγκρίνετε.
           </span>

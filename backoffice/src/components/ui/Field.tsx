@@ -79,13 +79,16 @@ export function Label({
 }
 
 // A labelled control. The old form (<Field><Label/><Input/></Field>) still
-// works; the new one takes label / hint / error as props.
+// works; the new one takes label / hint / error as props. `required` puts a
+// «*» after the label (the control keeps its own `required` attribute);
+// pass `htmlFor` = the control's id so a click on the label focuses it.
 export function Field({
   children,
   label,
   hint,
   error,
   htmlFor,
+  required = false,
   className = "",
 }: {
   children: ReactNode;
@@ -93,11 +96,21 @@ export function Field({
   hint?: ReactNode;
   error?: ReactNode;
   htmlFor?: string;
+  required?: boolean;
   className?: string;
 }) {
   return (
     <div className={cn("flex flex-col", className)}>
-      {label && <Label htmlFor={htmlFor}>{label}</Label>}
+      {label && (
+        <Label htmlFor={htmlFor}>
+          {label}
+          {required && (
+            <span aria-hidden="true" className="ml-0.5 text-negative">
+              *
+            </span>
+          )}
+        </Label>
+      )}
       {children}
       {hint && !error && <p className="mt-1 text-small text-muted">{hint}</p>}
       {error && (

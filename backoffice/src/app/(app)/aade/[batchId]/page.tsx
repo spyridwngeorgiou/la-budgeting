@@ -41,7 +41,7 @@ export default async function AadeBatchReviewPage({
   const dupCount = (rows?.length ?? 0) - newCount;
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title={batch.filename}
         meta={
