@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { PageHeader, buttonClass } from "@/components/ui";
+import { PageHeader, buttonClass, cn } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { getAccessContext } from "@/lib/supabase/access";
 import { createClient } from "@/lib/supabase/server";
@@ -8,6 +8,13 @@ import { countPendingChanges } from "@/lib/data/pendingChanges";
 import { ChatPanel } from "./ChatPanel";
 import { PendingChanges } from "./PendingChanges";
 
+// Kansha AI: one screen with one scroll. From md the page is exactly the
+// window's height (main's 2rem + 2rem padding off) and only the
+// conversation scrolls; on a phone the page itself is the scroll and the
+// question box sticks to the bottom. «Εκκρεμότητες» is open whenever
+// something waits (?panel=closed shuts it, ?panel=changes opens it anyway
+// for the history of decisions): beside the chat from 1280px, a compact
+// list above it below that.
 export default async function AssistantPage({
   searchParams,
 }: {
@@ -29,23 +36,17 @@ export default async function AssistantPage({
       .order("updated_at", { ascending: false })
       .limit(50),
   ]);
-  const showChanges = canReview && panel === "changes";
+  const showChanges = canReview && (panel === "changes" || (pending > 0 && panel !== "closed"));
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 md:h-[calc(100dvh-4rem)]">
       <PageHeader
         title={el.nav.assistant}
-        meta={
-          <span className="block max-w-3xl">
-            Ρωτήστε ελεύθερα για τα οικονομικά της επιχείρησης· κάθε απάντηση βασίζεται σε πραγματικά δεδομένα,
-            ποτέ σε εικασία, με «Πηγές» για κάθε αριθμό. Οι αλλαγές που προτείνει ο βοηθός εφαρμόζονται μόνο αφού
-            τις εγκρίνετε.
-          </span>
-        }
+        meta={el.assistant.meta}
         actions={
           canReview && (
             <Link
-              href={showChanges ? "/assistant" : "/assistant?panel=changes"}
+              href={showChanges ? "/assistant?panel=closed" : "/assistant?panel=changes"}
               aria-expanded={showChanges}
               className={buttonClass(showChanges ? "ai" : "secondary", "md", showChanges ? "bg-ai-tint" : "")}
             >
@@ -54,13 +55,23 @@ export default async function AssistantPage({
           )
         }
       />
-      <div className={showChanges ? "grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]" : ""}>
+      <div
+        className={cn(
+          "flex min-w-0 flex-col gap-6 md:min-h-0 md:flex-1",
+          showChanges && "xl:grid xl:grid-cols-[minmax(0,1fr)_24rem] xl:grid-rows-[minmax(0,1fr)]",
+        )}
+      >
+        {/* First in the DOM, so it sits above the chat below 1280px, where
+            it never takes more than half the height (the history opened). */}
+        {showChanges && (
+          <PendingChanges className="md:max-h-[45%] md:shrink-0 md:overflow-y-auto xl:order-2 xl:max-h-none xl:min-h-0" />
+        )}
         <ChatPanel
+          className="md:min-h-0 md:flex-1 xl:order-1"
           initialPrompt={q}
           canReview={canReview}
           initialConversations={(conversations ?? []).map((c) => ({ id: c.id, title: c.title, updatedAt: c.updated_at }))}
         />
-        {showChanges && <PendingChanges />}
       </div>
     </div>
   );

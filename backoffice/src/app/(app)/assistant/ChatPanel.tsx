@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { Button, Input, Notice } from "@/components/ui";
+import { Button, Input, Notice, cn, useConfirm, useToast } from "@/components/ui";
 import { errorOf } from "@/lib/actions";
+import { el } from "@/lib/i18n/el";
 import { createNdjsonParser, TOOL_LABEL, type ChatEvent } from "@/lib/ai/chatProtocol";
 import type { ChangeCard } from "@/lib/ai/changeCards";
 import type { Source } from "@/lib/ai/links";
@@ -31,26 +32,31 @@ interface UiMessage {
   error?: string;
 }
 
-const SUGGESTIONS = [
-  "Τι χρωστάω αυτόν τον μήνα;",
-  "Ποια είναι η θέση ΦΠΑ;",
-  "Πόσα ξοδέψαμε φέτος ανά κατηγορία;",
-  "Ποιος μας χρωστάει;",
-];
+const a = el.assistant;
 
 let keySeq = 0;
 const nextKey = () => `m${++keySeq}`;
 
+// The conversation list and the chat. From md it fills the height the page
+// gives it (`className`) and only the messages scroll; on a phone the page
+// scrolls, the list folds into «▸ Συζητήσεις (N)» and the question box
+// sticks to the bottom, clear of the «＋» button.
 export function ChatPanel({
   initialPrompt,
   initialConversations,
   canReview,
+  className = "",
 }: {
   initialPrompt?: string;
   initialConversations: ConversationSummary[];
   canReview: boolean;
+  className?: string;
 }) {
   const [conversations, setConversations] = useState(initialConversations);
+  const [listOpen, setListOpen] = useState(false);
+  const listId = useId();
+  const { confirm, dialog } = useConfirm();
+  const { show } = useToast();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [input, setInput] = useState("");
@@ -61,8 +67,10 @@ export function ChatPanel({
   const abortRef = useRef<AbortController | null>(null);
   const firedInitialPrompt = useRef(false);
 
+  // Follow the conversation; nothing to follow before the first message (on
+  // a phone that would scroll the page past the header on arrival).
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    if (messages.length > 0) bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
@@ -199,15 +207,18 @@ export function ChatPanel({
     setInput("");
   }
 
-  async function removeConversation(id: string) {
+  async function removeConversation(id: string, title: string | null) {
+    const message = `${a.deleteConversation} «${title || a.untitled}»; Δεν αναιρείται.`;
+    if (!(await confirm({ message, confirmLabel: el.common.delete }))) return;
     const r = await deleteConversation(id);
-    const message = errorOf(r);
-    if (message) {
-      setListError(message);
+    const error = errorOf(r);
+    if (error) {
+      show(error, { tone: "negative" });
       return;
     }
     setConversations((list) => list.filter((c) => c.id !== id));
     if (id === activeId) newConversation();
+    show(a.deleted);
   }
 
   return (

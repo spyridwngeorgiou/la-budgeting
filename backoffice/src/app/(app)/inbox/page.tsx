@@ -6,22 +6,34 @@ import { formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { toChangeCard } from "@/lib/ai/changeCards";
 import { loadInboxCounts } from "@/lib/data/inboxCount";
-import { AiSpark, ButtonLink, LINK_CLASS, PageHeader, SpecTable, StatusDot, SUB_CLASS, Td, Th, Tr } from "@/components/ui";
+import {
+  AiSpark,
+  ButtonLink,
+  EmptyState,
+  LINK_CLASS,
+  PageHeader,
+  SectionHeader,
+  ShownCount,
+  SpecTable,
+  StatusDot,
+  SUB_CLASS,
+  Td,
+  Th,
+  Tr,
+} from "@/components/ui";
 import { ChangeCardView } from "../assistant/ChangeCardView";
 import { CHANGE_COLUMNS } from "../assistant/PendingChanges";
 import { CommitBar } from "./[batchId]/CommitBar";
 
 const STATUS_TONE = { staged: "amber", committed: "green", undone: "neutral", discarded: "neutral" } as const;
 
-function SectionTitle({ id, title, count, children }: { id: string; title: string; count: number; children?: React.ReactNode }) {
+// The section title the app uses everywhere, with the count beside it; the
+// id names the <section> (aria-labelledby).
+function sectionTitle(id: string, title: string, count: number) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-2 border-b border-hairline pb-3">
-      <h2 id={id} className="flex items-center gap-2 text-section font-normal text-ink">
-        {title}
-        <span className="num text-body text-muted">{count}</span>
-      </h2>
-      {children}
-    </div>
+    <>
+      <span id={id}>{title}</span> <span className="num text-body text-muted">{count}</span>
+    </>
   );
 }
 
@@ -32,10 +44,10 @@ export default async function InboxPage() {
   const [orgId, access] = await Promise.all([getCurrentOrgId(supabase), getAccessContext()]);
   const canReview = access.kind === "internal" && access.membership.role !== "viewer";
 
-  const [{ data: staged }, { data: changes }, { data: proposals }, { data: history }, counts] = await Promise.all([
+  const [{ data: staged, count: stagedTotal }, { data: changes }, { data: proposals }, { data: history, count: historyTotal }, counts] = await Promise.all([
     supabase
       .from("ingest_batches")
-      .select("id, source, filename, row_count, created_at, meta->needs_review, accounts(name)")
+      .select("id, source, filename, row_count, created_at, meta->needs_review, accounts(name)", { count: "exact" })
       .eq("org_id", orgId)
       .eq("status", "staged")
       .order("created_at", { ascending: false })
@@ -56,7 +68,7 @@ export default async function InboxPage() {
       .limit(20),
     supabase
       .from("ingest_batches")
-      .select("id, source, filename, status, row_count, version, meta, committed_at, undone_at, created_at")
+      .select("id, source, filename, status, row_count, version, meta, committed_at, undone_at, created_at", { count: "exact" })
       .eq("org_id", orgId)
       .in("status", ["committed", "undone"])
       .order("updated_at", { ascending: false })
@@ -81,63 +93,79 @@ export default async function InboxPage() {
         }
       />
 
-      <section className="flex flex-col gap-4" aria-labelledby="inbox-review">
-        <SectionTitle id="inbox-review" title="Προς έλεγχο" count={counts.rows} />
+      <section className="flex flex-col gap-3" aria-labelledby="inbox-review">
+        <SectionHeader title={sectionTitle("inbox-review", "Προς έλεγχο", counts.rows)} />
         {stagedBatches.length === 0 ? (
-          <p className="text-body text-muted">
-            Τίποτα προς έλεγχο.{" "}
-            <Link href="/inbox/new" className="underline underline-offset-4 hover:text-ink">
-              Νέα καταχώριση
-            </Link>
-          </p>
+          <EmptyState
+            title="Τίποτα προς έλεγχο."
+            body="Ό,τι ανεβάζετε ή γράφετε περνά από εδώ, για έλεγχο πριν καταχωριστεί."
+            action={
+              <ButtonLink href="/inbox/new" size="sm">
+                Νέα καταχώριση
+              </ButtonLink>
+            }
+          />
         ) : (
-          <SpecTable label="Προς έλεγχο">
-            <thead>
-              <tr>
-                <Th>Αρχείο</Th>
-                <Th className="hidden sm:table-cell">Λογαριασμός</Th>
-                <Th numeric>Γραμμές</Th>
-                <Th numeric className="hidden md:table-cell">Ημ/νία</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {stagedBatches.map((b) => {
-                const account = Array.isArray(b.accounts) ? b.accounts[0] : b.accounts;
-                return (
-                  <Tr key={b.id}>
-                    <Td strong>
-                      <Link href={`/inbox/${b.id}`} className={LINK_CLASS}>
-                        {b.filename ?? el.ingest.source[b.source]}
-                      </Link>
-                      <span className={SUB_CLASS}>
-                        {el.ingest.source[b.source]}
-                        {Array.isArray(b.needs_review) && b.needs_review.length > 0 && ` · ${el.ingest.review.needsReview}`}
-                      </span>
-                    </Td>
-                    <Td className="hidden sm:table-cell">{account?.name ?? "—"}</Td>
-                    <Td numeric>{b.row_count}</Td>
-                    <Td numeric className="hidden md:table-cell">{formatDate(b.created_at)}</Td>
-                  </Tr>
-                );
-              })}
-            </tbody>
-          </SpecTable>
+          <>
+            <SpecTable label="Προς έλεγχο">
+              <thead>
+                <tr>
+                  <Th>Αρχείο</Th>
+                  <Th className="hidden sm:table-cell">Λογαριασμός</Th>
+                  <Th numeric>Γραμμές</Th>
+                  <Th numeric className="hidden md:table-cell">Ημ/νία</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {stagedBatches.map((b) => {
+                  const account = Array.isArray(b.accounts) ? b.accounts[0] : b.accounts;
+                  return (
+                    <Tr key={b.id}>
+                      <Td strong>
+                        <Link href={`/inbox/${b.id}`} className={LINK_CLASS}>
+                          {b.filename ?? el.ingest.source[b.source]}
+                        </Link>
+                        <span className={SUB_CLASS}>
+                          {el.ingest.source[b.source]}
+                          {Array.isArray(b.needs_review) && b.needs_review.length > 0 && ` · ${el.ingest.review.needsReview}`}
+                        </span>
+                      </Td>
+                      <Td className="hidden sm:table-cell">{account?.name ?? "—"}</Td>
+                      <Td numeric>{b.row_count}</Td>
+                      <Td numeric className="hidden md:table-cell">
+                        {formatDate(b.created_at)}
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </tbody>
+            </SpecTable>
+            <ShownCount shown={stagedBatches.length} total={stagedTotal ?? stagedBatches.length} />
+          </>
         )}
       </section>
 
-      <section className="flex flex-col gap-4" aria-labelledby="inbox-ai">
-        <SectionTitle id="inbox-ai" title="Προτάσεις AI" count={counts.changes + counts.proposals}>
-          <Link href="/assistant?panel=changes" className="inline-flex min-h-8 items-center text-body text-muted hover:text-ink">
-            Ιστορικό αποφάσεων →
-          </Link>
-        </SectionTitle>
+      <section className="flex flex-col gap-3" aria-labelledby="inbox-ai">
+        <SectionHeader
+          title={sectionTitle("inbox-ai", "Προτάσεις AI", counts.changes + counts.proposals)}
+          actions={
+            <Link href="/assistant?panel=changes" className="inline-flex min-h-8 items-center text-body text-muted hover:text-ink">
+              Ιστορικό αποφάσεων →
+            </Link>
+          }
+        />
         {changeRows.length === 0 && proposalRows.length === 0 ? (
-          <p className="text-body text-muted">Καμία εκκρεμής πρόταση αυτή τη στιγμή.</p>
+          <EmptyState
+            title="Καμία εκκρεμής πρόταση."
+            body="Ό,τι προτείνει το Kansha AI να αλλάξει περιμένει εδώ την έγκρισή σας."
+          />
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {changeRows.map((c) => (
               <ChangeCardView key={c.id} initial={toChangeCard(c)} canReview={canReview} />
             ))}
+            {/* The full list of pending changes is the assistant's panel. */}
+            <ShownCount shown={changeRows.length} total={counts.changes} href="/assistant?panel=changes" />
             {proposalRows.length > 0 && (
               <ul className="flex flex-col">
                 {proposalRows.map((p) => {
@@ -165,38 +193,42 @@ export default async function InboxPage() {
                 })}
               </ul>
             )}
+            <ShownCount shown={proposalRows.length} total={counts.proposals} />
           </div>
         )}
       </section>
 
-      <section className="flex flex-col gap-4" aria-labelledby="inbox-history">
-        <SectionTitle id="inbox-history" title="Ιστορικό" count={historyRows.length} />
+      <section className="flex flex-col gap-3" aria-labelledby="inbox-history">
+        <SectionHeader title={sectionTitle("inbox-history", "Ιστορικό", historyTotal ?? historyRows.length)} />
         {historyRows.length === 0 ? (
-          <p className="text-body text-muted">Δεν έχει καταχωριστεί ακόμα τίποτα από τα Εισερχόμενα.</p>
+          <EmptyState title="Τίποτα καταχωρισμένο ακόμα." body="Ό,τι οριστικοποιείτε από τα Εισερχόμενα εμφανίζεται εδώ, με δυνατότητα αναίρεσης." />
         ) : (
-          <ul className="flex flex-col">
-            {historyRows.map((b) => {
-              const legacy = !!(b.meta as { legacy?: boolean } | null)?.legacy;
-              const when = b.status === "undone" ? b.undone_at : b.committed_at;
-              return (
-                <li key={b.id} className="flex flex-col gap-2 border-b border-hairline py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 flex-col gap-0.5">
-                    <Link href={`/inbox/${b.id}`} className="truncate text-body text-ink underline-offset-4 hover:underline">
-                      {b.filename ?? el.ingest.source[b.source]}
-                    </Link>
-                    <span className="flex flex-wrap items-center gap-1.5 text-small text-muted">
-                      {el.ingest.source[b.source]} · <span className="num">{b.row_count}</span> γραμμές
-                      {when ? ` · ${formatDate(when)}` : ""}
-                      <StatusDot tone={STATUS_TONE[b.status]} label={el.ingest.batchStatus[b.status]} />
-                    </span>
-                  </div>
-                  {canReview && b.status === "committed" && !legacy && (
-                    <CommitBar batchId={b.id} status={b.status} version={b.version} pendingCount={0} />
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          <>
+            <ul className="flex flex-col">
+              {historyRows.map((b) => {
+                const legacy = !!(b.meta as { legacy?: boolean } | null)?.legacy;
+                const when = b.status === "undone" ? b.undone_at : b.committed_at;
+                return (
+                  <li key={b.id} className="flex flex-col gap-2 border-b border-hairline py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <Link href={`/inbox/${b.id}`} className="truncate text-body text-ink underline-offset-4 hover:underline">
+                        {b.filename ?? el.ingest.source[b.source]}
+                      </Link>
+                      <span className="flex flex-wrap items-center gap-1.5 text-small text-muted">
+                        {el.ingest.source[b.source]} · <span className="num">{b.row_count}</span> γραμμές
+                        {when ? ` · ${formatDate(when)}` : ""}
+                        <StatusDot tone={STATUS_TONE[b.status]} label={el.ingest.batchStatus[b.status]} />
+                      </span>
+                    </div>
+                    {canReview && b.status === "committed" && !legacy && (
+                      <CommitBar batchId={b.id} status={b.status} version={b.version} />
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+            <ShownCount shown={historyRows.length} total={historyTotal ?? historyRows.length} />
+          </>
         )}
       </section>
     </div>

@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Badge, Button, Field, Input, Label, Notice, Select } from "@/components/ui";
-import { Modal } from "@/components/ui";
+import { Badge, Button, Drawer, Field, Input, Label, Notice, Select } from "@/components/ui";
 import { DuplicateWarning } from "@/components/DuplicateWarning";
 import { formatMoney, formatPercent } from "@/lib/format";
 import { cashOnly, deriveFromNet } from "@/lib/finance/money";
@@ -18,6 +17,11 @@ import { useReview } from "./ReviewContext";
 // (with its evidence) beside each value, the same validation server-side
 // (saveCaptureRow). Saving makes the row «Νέα κίνηση»; the batch commit
 // writes it, exactly once, through commit_ingest_batch.
+//
+// It opens in the wide side drawer, like every edit form. The Drawer under
+// FormDrawer, not FormDrawer itself: its <form action> resets the fields
+// when the action returns, which would wipe the reviewer's edits while the
+// duplicate warning is open (see the form below). Same sticky footer.
 
 export interface CaptureRowValues {
   direction: "income" | "expense" | null;
@@ -74,14 +78,15 @@ export function CaptureReview({
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button type="button" variant="secondary" className="!px-2 !py-1 text-small" onClick={() => setOpen(true)}>
+      <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(true)}>
         {t.open}
       </Button>
       {open && (
-        <Modal
+        <Drawer
           onClose={() => setOpen(false)}
-          title={`${t.editTitle} · ${el.ingest.row} ${rowNo}`}
-          className="w-[calc(100%-2rem)] max-w-5xl border border-hairline bg-raised p-4 sm:p-6"
+          eyebrow={`${el.ingest.row} ${rowNo}`}
+          title={t.editTitle}
+          width="lg"
           closeOnBackdrop={false}
         >
           <CaptureForm
@@ -93,7 +98,7 @@ export function CaptureReview({
             documentMime={documentMime}
             onDone={() => setOpen(false)}
           />
-        </Modal>
+        </Drawer>
       )}
     </>
   );
@@ -153,268 +158,272 @@ function CaptureForm({
   const isPdf = documentMime === "application/pdf";
 
   return (
-    <div className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto md:flex-row">
-      {documentUrl && (
-        <div className="flex flex-col gap-1 md:w-1/2">
-          {isPdf ? (
-            <iframe src={documentUrl} title={t.document} className="h-[70vh] w-full border border-hairline" />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={documentUrl} alt={t.document} className="max-h-[45vh] w-full border border-hairline object-contain md:max-h-[70vh]" />
-          )}
-          <a href={documentUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-8 items-center text-small text-muted underline underline-offset-4 hover:text-ink">
-            {t.openDocument}
-          </a>
-        </div>
-      )}
-
-      {/* onSubmit, not action={...}: React resets an action form's
-          uncontrolled fields when the action returns, which would wipe the
-          reviewer's edits while the duplicate warning is open. */}
-      <form
-        onSubmit={(ev) => {
-          ev.preventDefault();
-          submit(new FormData(ev.currentTarget));
-        }}
-        className="flex flex-1 flex-col gap-3"
-      >
-        {needsReview.length > 0 && (
-          <Notice as="ul" tone="warning">
-            {needsReview.map((r) => (
-              <li key={r}>{r}</li>
-            ))}
-          </Notice>
-        )}
-        {e?.notes_for_human && (
-          <p className="text-small text-muted">
-            {t.aiNote}: {e.notes_for_human}
-          </p>
+    // onSubmit, not action={...}: React resets an action form's
+    // uncontrolled fields when the action returns, which would wipe the
+    // reviewer's edits while the duplicate warning is open.
+    <form
+      onSubmit={(ev) => {
+        ev.preventDefault();
+        submit(new FormData(ev.currentTarget));
+      }}
+      className="flex flex-col gap-4"
+    >
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        {documentUrl && (
+          // The document stays in view beside the fields while they scroll.
+          <div className="flex flex-col gap-1 lg:sticky lg:top-0 lg:w-1/2">
+            {isPdf ? (
+              <iframe src={documentUrl} title={t.document} className="h-[70vh] w-full border border-hairline" />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={documentUrl} alt={t.document} className="max-h-[45vh] w-full border border-hairline object-contain lg:max-h-[70vh]" />
+            )}
+            <a href={documentUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-8 items-center text-small text-muted underline underline-offset-4 hover:text-ink">
+              {t.openDocument}
+            </a>
+          </div>
         )}
 
-        <div className="flex">
-          {(["expense", "income"] as const).map((d) => (
-            <label
-              key={d}
-              className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center border px-3 py-2 text-center text-body not-first:-ml-px ${
-                direction === d ? "relative border-navy bg-navy text-panel-ink" : "border-chip-border text-ink hover:bg-hover"
-              }`}
-            >
-              <input type="radio" name="direction" value={d} checked={direction === d} onChange={() => setDirection(d)} className="hidden" />
-              {d === "expense" ? t.expense : t.income}
-            </label>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field>
-            <Label className="flex flex-wrap items-center gap-2">
-              {t.date} <Evidence value={e?.issue_date} />
-            </Label>
-            <Input type="date" name="tx_date" value={txDate} onChange={(ev) => setTxDate(ev.target.value)} required />
-          </Field>
-          <Field>
-            <Label>{el.transaction.dueDate}</Label>
-            <Input type="date" name="due_date" defaultValue={values.due_date ?? ""} />
-          </Field>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field>
-            <Label>{el.ingest.counterpartyName}</Label>
-            <Input name="counterparty_name" defaultValue={values.counterparty_name ?? ""} />
-          </Field>
-          <Field>
-            <Label className="flex flex-wrap items-center gap-2">
-              {el.ingest.counterpartyAfm} <Evidence value={e?.issuer_afm} />
-            </Label>
-            <Input name="counterparty_afm" inputMode="numeric" defaultValue={values.counterparty_afm ?? ""} />
-          </Field>
-        </div>
-
-        <Field>
-          <Label className="flex flex-wrap items-center gap-2">
-            {t.contact} <Evidence value={e?.issuer_name} />
-          </Label>
-          <Select name="contact_id" defaultValue={values.contact_id ?? ""} className={values.contact_id ? "" : "border-warning"}>
-            <option value="">—</option>
-            {lookups.contacts.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
-              </option>
-            ))}
-          </Select>
-          {!values.contact_id && <Badge tone="amber">{t.needsCheck}</Badge>}
-        </Field>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field>
-            <Label className="flex flex-wrap items-center gap-2">
-              {t.project} <Evidence value={e?.project_mention} />
-            </Label>
-            <Select name="project_id" defaultValue={values.project_id ?? ""} className={values.project_id ? "" : "border-warning"}>
-              <option value="">—</option>
-              {lookups.projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          {needsReview.length > 0 && (
+            <Notice as="ul" tone="warning">
+              {needsReview.map((r) => (
+                <li key={r}>{r}</li>
               ))}
-            </Select>
-            {!values.project_id && <Badge tone="amber">{t.needsCheck}</Badge>}
-          </Field>
+            </Notice>
+          )}
+          {e?.notes_for_human && (
+            <p className="text-small text-muted">
+              {t.aiNote}: {e.notes_for_human}
+            </p>
+          )}
+
+          <div className="flex">
+            {(["expense", "income"] as const).map((d) => (
+              <label
+                key={d}
+                className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center border px-3 py-2 text-center text-body not-first:-ml-px ${
+                  direction === d ? "relative border-navy bg-navy text-panel-ink" : "border-chip-border text-ink hover:bg-hover"
+                }`}
+              >
+                <input type="radio" name="direction" value={d} checked={direction === d} onChange={() => setDirection(d)} className="hidden" />
+                {d === "expense" ? t.expense : t.income}
+              </label>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field>
+              <Label className="flex flex-wrap items-center gap-2">
+                {t.date} <Evidence value={e?.issue_date} />
+              </Label>
+              <Input type="date" name="tx_date" value={txDate} onChange={(ev) => setTxDate(ev.target.value)} required />
+            </Field>
+            <Field>
+              <Label>{el.transaction.dueDate}</Label>
+              <Input type="date" name="due_date" defaultValue={values.due_date ?? ""} />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field>
+              <Label>{el.ingest.counterpartyName}</Label>
+              <Input name="counterparty_name" defaultValue={values.counterparty_name ?? ""} />
+            </Field>
+            <Field>
+              <Label className="flex flex-wrap items-center gap-2">
+                {el.ingest.counterpartyAfm} <Evidence value={e?.issuer_afm} />
+              </Label>
+              <Input name="counterparty_afm" inputMode="numeric" defaultValue={values.counterparty_afm ?? ""} />
+            </Field>
+          </div>
+
           <Field>
             <Label className="flex flex-wrap items-center gap-2">
-              {t.category} <Evidence value={e?.suggested_category} />
+              {t.contact} <Evidence value={e?.issuer_name} />
             </Label>
-            <Select name="category_id" defaultValue={values.category_id ?? ""}>
+            <Select name="contact_id" defaultValue={values.contact_id ?? ""} className={values.contact_id ? "" : "border-warning"}>
               <option value="">—</option>
-              {lookups.categories.map((c) => (
+              {lookups.contacts.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.label}
                 </option>
               ))}
             </Select>
+            {!values.contact_id && <Badge tone="amber">{t.needsCheck}</Badge>}
           </Field>
-        </div>
 
-        <Field>
-          <Label>{t.account}</Label>
-          <Select name="account_id" defaultValue={values.account_id ?? ""} required>
-            <option value="">—</option>
-            {lookups.accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-
-        <label className="flex items-center gap-2 text-body">
-          <input type="checkbox" name="has_invoice" checked={hasInvoice} onChange={(ev) => setHasInvoice(ev.target.checked)} />
-          {t.hasInvoice}
-        </label>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Field>
-            <Label className="flex flex-wrap items-center gap-2">
-              {t.net} <Evidence value={e?.net.value} evidence={e?.net.evidence} />
-            </Label>
-            <Input type="number" step="0.01" name="net_amount" value={netAmount} onChange={(ev) => setNetAmount(ev.target.value)} required />
-          </Field>
-          {hasInvoice && (
-            <>
-              <Field>
-                <Label className="flex flex-wrap items-center gap-2">
-                  {t.vatRate} <Evidence value={e?.vat.value} evidence={e?.vat.evidence} />
-                </Label>
-                <Select name="vat_rate" value={vatRate} onChange={(ev) => setVatRate(ev.target.value)}>
-                  {VAT_RATES.map((r) => (
-                    <option key={r} value={r}>
-                      {formatPercent(r, { digits: 0 })}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field>
-                <Label className="flex flex-wrap items-center gap-2">
-                  {t.withholding} <Evidence value={e?.withholding.value} evidence={e?.withholding.evidence} />
-                </Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  name="withholding_amount"
-                  value={withholding}
-                  onChange={(ev) => setWithholding(ev.target.value)}
-                />
-              </Field>
-            </>
-          )}
-        </div>
-
-        <div className="border-y border-ink py-3 text-body">
-          <div className="flex flex-wrap justify-between gap-2">
-            <span className="flex flex-wrap items-center gap-2">
-              {t.total} <Evidence value={e?.gross.value} evidence={e?.gross.evidence} />
-            </span>
-            <span className="num font-medium text-ink">{formatMoney(preview.gross)}</span>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field>
+              <Label className="flex flex-wrap items-center gap-2">
+                {t.project} <Evidence value={e?.project_mention} />
+              </Label>
+              <Select name="project_id" defaultValue={values.project_id ?? ""} className={values.project_id ? "" : "border-warning"}>
+                <option value="">—</option>
+                {lookups.projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </Select>
+              {!values.project_id && <Badge tone="amber">{t.needsCheck}</Badge>}
+            </Field>
+            <Field>
+              <Label className="flex flex-wrap items-center gap-2">
+                {t.category} <Evidence value={e?.suggested_category} />
+              </Label>
+              <Select name="category_id" defaultValue={values.category_id ?? ""}>
+                <option value="">—</option>
+                {lookups.categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field>
-            <Label>{t.status}</Label>
-            <Select name="status" value={txStatus} onChange={(ev) => setTxStatus(ev.target.value as typeof txStatus)}>
-              {(["paid", "pending", "scheduled"] as const).map((s) => (
-                <option key={s} value={s}>
-                  {t.statusValues[s]}
+            <Label>{t.account}</Label>
+            <Select name="account_id" defaultValue={values.account_id ?? ""} required>
+              <option value="">—</option>
+              {lookups.accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.label}
                 </option>
               ))}
             </Select>
           </Field>
+
+          <label className="flex items-center gap-2 text-body">
+            <input type="checkbox" name="has_invoice" checked={hasInvoice} onChange={(ev) => setHasInvoice(ev.target.checked)} />
+            {t.hasInvoice}
+          </label>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Field>
+              <Label className="flex flex-wrap items-center gap-2">
+                {t.net} <Evidence value={e?.net.value} evidence={e?.net.evidence} />
+              </Label>
+              <Input type="number" step="0.01" name="net_amount" value={netAmount} onChange={(ev) => setNetAmount(ev.target.value)} required />
+            </Field>
+            {hasInvoice && (
+              <>
+                <Field>
+                  <Label className="flex flex-wrap items-center gap-2">
+                    {t.vatRate} <Evidence value={e?.vat.value} evidence={e?.vat.evidence} />
+                  </Label>
+                  <Select name="vat_rate" value={vatRate} onChange={(ev) => setVatRate(ev.target.value)}>
+                    {VAT_RATES.map((r) => (
+                      <option key={r} value={r}>
+                        {formatPercent(r, { digits: 0 })}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field>
+                  <Label className="flex flex-wrap items-center gap-2">
+                    {t.withholding} <Evidence value={e?.withholding.value} evidence={e?.withholding.evidence} />
+                  </Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    name="withholding_amount"
+                    value={withholding}
+                    onChange={(ev) => setWithholding(ev.target.value)}
+                  />
+                </Field>
+              </>
+            )}
+          </div>
+
+          <div className="border-y border-ink py-3 text-body">
+            <div className="flex flex-wrap justify-between gap-2">
+              <span className="flex flex-wrap items-center gap-2">
+                {t.total} <Evidence value={e?.gross.value} evidence={e?.gross.evidence} />
+              </span>
+              <span className="num font-medium text-ink">{formatMoney(preview.gross)}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field>
+              <Label>{t.status}</Label>
+              <Select name="status" value={txStatus} onChange={(ev) => setTxStatus(ev.target.value as typeof txStatus)}>
+                {(["paid", "pending", "scheduled"] as const).map((s) => (
+                  <option key={s} value={s}>
+                    {t.statusValues[s]}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field>
+              <Label>{el.ingest.scope}</Label>
+              <Select name="scope" defaultValue={values.scope}>
+                <option value="business">{el.ingest.scopeValues.business}</option>
+                <option value="personal">{el.ingest.scopeValues.personal}</option>
+              </Select>
+            </Field>
+          </div>
+
+          {/* A paid row must carry its payment date (tx_paid_needs_date). */}
+          {txStatus === "paid" && (
+            <Field>
+              <Label>{el.ingest.paidOn}</Label>
+              <Input type="date" name="paid_on" value={paidOn ?? txDate} onChange={(ev) => setPaidOn(ev.target.value)} required />
+            </Field>
+          )}
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field>
+              <Label className="flex flex-wrap items-center gap-2">
+                {t.invoiceNumber} <Evidence value={e?.invoice_number} />
+              </Label>
+              <Input name="invoice_number" defaultValue={values.invoice_number ?? ""} />
+            </Field>
+            <Field>
+              <Label className="flex flex-wrap items-center gap-2">
+                {el.ingest.mydataMark} <Evidence value={e?.mydata_mark} />
+              </Label>
+              <Input name="mydata_mark" inputMode="numeric" defaultValue={values.mydata_mark ?? ""} />
+            </Field>
+          </div>
+
           <Field>
-            <Label>{el.ingest.scope}</Label>
-            <Select name="scope" defaultValue={values.scope}>
-              <option value="business">{el.ingest.scopeValues.business}</option>
-              <option value="personal">{el.ingest.scopeValues.personal}</option>
-            </Select>
+            <Label>{t.description}</Label>
+            <Input name="description" defaultValue={values.description ?? ""} />
           </Field>
         </div>
+      </div>
 
-        {/* A paid row must carry its payment date (tx_paid_needs_date). */}
-        {txStatus === "paid" && (
-          <Field>
-            <Label>{el.ingest.paidOn}</Label>
-            <Input type="date" name="paid_on" value={paidOn ?? txDate} onChange={(ev) => setPaidOn(ev.target.value)} required />
-          </Field>
-        )}
+      {error && (
+        <Notice tone="negative" role="alert">
+          {error}
+        </Notice>
+      )}
+      {duplicates.length > 0 && (
+        <DuplicateWarning
+          duplicates={duplicates}
+          onCancel={() => setDuplicates([])}
+          onConfirm={() => {
+            const confirmed = pendingRef.current;
+            if (!confirmed) return;
+            confirmed.set("confirm_duplicate", "1");
+            submit(confirmed);
+          }}
+        />
+      )}
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field>
-            <Label className="flex flex-wrap items-center gap-2">
-              {t.invoiceNumber} <Evidence value={e?.invoice_number} />
-            </Label>
-            <Input name="invoice_number" defaultValue={values.invoice_number ?? ""} />
-          </Field>
-          <Field>
-            <Label className="flex flex-wrap items-center gap-2">
-              {el.ingest.mydataMark} <Evidence value={e?.mydata_mark} />
-            </Label>
-            <Input name="mydata_mark" inputMode="numeric" defaultValue={values.mydata_mark ?? ""} />
-          </Field>
-        </div>
-
-        <Field>
-          <Label>{t.description}</Label>
-          <Input name="description" defaultValue={values.description ?? ""} />
-        </Field>
-
-        {error && (
-          <Notice tone="negative" role="alert">
-            {error}
-          </Notice>
-        )}
-        {duplicates.length > 0 && (
-          <DuplicateWarning
-            duplicates={duplicates}
-            onCancel={() => setDuplicates([])}
-            onConfirm={() => {
-              const confirmed = pendingRef.current;
-              if (!confirmed) return;
-              confirmed.set("confirm_duplicate", "1");
-              submit(confirmed);
-            }}
-          />
-        )}
-
-        <div className="mt-2 flex flex-wrap justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onDone}>
-            {el.common.cancel}
-          </Button>
-          <Button type="submit" disabled={pending}>
-            {pending ? "…" : t.saveAndAccept}
-          </Button>
-        </div>
-      </form>
-    </div>
+      {/* FormDrawer's footer: stuck to the bottom of the drawer. */}
+      <div className="sticky bottom-0 -mx-5 mt-4 flex flex-wrap justify-end gap-2 border-t border-hairline bg-raised px-5 py-4 md:-mx-8 md:px-8">
+        <Button type="button" variant="secondary" onClick={onDone}>
+          {el.common.cancel}
+        </Button>
+        <Button type="submit" disabled={pending}>
+          {pending ? "…" : t.saveAndAccept}
+        </Button>
+      </div>
+    </form>
   );
 }
