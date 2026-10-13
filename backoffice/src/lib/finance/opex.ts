@@ -89,16 +89,26 @@ export function pctPartOf(line: OpexLineInput, operatingYear: number): number {
 
 // Per operating year 1..years: the euro amount of fixed + payroll lines and
 // the summed % of revenue. This is what computeProjectCashflow consumes.
+//
+// Past the last year any line covers (every line closed, e.g. «έτους 1»,
+// «έτους 2», «έτους 3»), the cost does NOT drop to zero: as in the late-
+// September model, the last covered year carries on -- the euro part is cut
+// here so computeProjectCashflow extends it with opex growth, and the % of
+// revenue repeats. (Zero opex from year 4 doubled the NPV of Q003.)
 export function opexSchedule(
   lines: OpexLineInput[],
   years: number,
   g: OpexGrowth,
 ): { fixedAnnual: number[]; pctOfRevenue: number[] } {
+  const lastCovered =
+    lines.length === 0 || lines.some((l) => l.to_operating_year == null)
+      ? years
+      : Math.min(years, Math.max(...lines.map((l) => Number(l.to_operating_year))));
   const fixedAnnual: number[] = [];
   const pctOfRevenue: number[] = [];
   for (let y = 1; y <= years; y++) {
-    fixedAnnual.push(round2(lines.reduce((s, l) => s + fixedPartOf(l, y, g), 0)));
-    pctOfRevenue.push(lines.reduce((s, l) => s + pctPartOf(l, y), 0));
+    if (y <= lastCovered) fixedAnnual.push(round2(lines.reduce((s, l) => s + fixedPartOf(l, y, g), 0)));
+    pctOfRevenue.push(lines.reduce((s, l) => s + pctPartOf(l, Math.min(y, lastCovered)), 0));
   }
   return { fixedAnnual, pctOfRevenue };
 }

@@ -68,6 +68,20 @@ describe("opexSchedule", () => {
     );
     expect(s.fixedAnnual).toEqual([1000, 1000, 1000, 1000, 1000]);
   });
+
+  it("past the last year any line covers, the cost carries on (cut here, the cash flow extends it with growth)", () => {
+    // Q003: «Λειτουργικά έτους 1 / 2 / 3», each closed -- year 4 is not zero.
+    const yearly: OpexLineInput[] = [1, 2, 3].map((y) => ({
+      kind: "fixed_annual",
+      label: `Λειτουργικά έτους ${y}`,
+      from_operating_year: y,
+      to_operating_year: y,
+      annual_amount: y * 100,
+    }));
+    const s = opexSchedule([...yearly, { kind: "pct_of_revenue", label: "Booking", from_operating_year: 2, to_operating_year: 3, pct_of_revenue: 0.1 }], 6, NO_GROWTH);
+    expect(s.fixedAnnual).toEqual([100, 200, 300]);
+    expect(s.pctOfRevenue).toEqual([0, 0.1, 0.1, 0.1, 0.1, 0.1]);
+  });
 });
 
 describe("opexForYear", () => {

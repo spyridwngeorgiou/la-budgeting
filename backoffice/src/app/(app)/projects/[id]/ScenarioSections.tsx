@@ -164,9 +164,12 @@ export function OperationSection({
   const refYear = result?.referenceYear ?? 1;
   const revenue = result?.revenue ?? 0;
   // A line's cost in the reference year (the same formula as opexForYear);
-  // null when the line does not run that year.
+  // a line that does not run that year shows its cost in its own first year
+  // (muted), as in late September -- never a bare «—».
   const amountOf = (l: (typeof lines)[number]) =>
-    isActiveIn(l, refYear) ? fixedPartOf(l, refYear, growth) + pctPartOf(l, refYear) * revenue : null;
+    isActiveIn(l, refYear)
+      ? fixedPartOf(l, refYear, growth) + pctPartOf(l, refYear) * revenue
+      : fixedPartOf(l, l.from_operating_year, growth) + pctPartOf(l, l.from_operating_year) * revenue;
   const annualRent = result?.annualRent ?? 0;
 
   return (
@@ -244,7 +247,7 @@ export function OperationSection({
                     {l.note && <span className="block text-small text-muted">{l.note}</span>}
                   </span>
                   <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                    <span className="num text-ink">{amount ? formatMoney(-amount) : "—"}</span>
+                    <span className={`num ${isActiveIn(l, refYear) ? "text-ink" : "text-muted"}`}>{amount ? formatMoney(-amount) : "—"}</span>
                     <OpexLineFormModal
                       action={saveOpexLine}
                       args={[id, scenario.id, l.id]}
