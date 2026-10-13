@@ -16,9 +16,9 @@ export default async function LoginPage({
   const year = new Date().getFullYear();
 
   return (
-    <main className="grid min-h-screen bg-canvas md:grid-cols-2">
+    <main className="grid min-h-screen grid-rows-[auto_1fr] bg-canvas md:grid-cols-2 md:grid-rows-1">
       {/* Navy cover */}
-      <section className="flex flex-col justify-between gap-10 bg-panel px-6 py-8 text-panel-ink md:px-12 md:py-12">
+      <section className="flex flex-col justify-between gap-10 bg-panel px-6 py-6 text-panel-ink md:px-12 md:py-12">
         <span className="inline-flex items-center gap-3">
           <LogoMark size={32} />
           <Wordmark className="text-panel-ink" />
@@ -38,7 +38,7 @@ export default async function LoginPage({
       </section>
 
       {/* The form */}
-      <section className="flex items-center justify-center px-6 py-10 md:px-12">
+      <section className="flex items-start justify-center px-6 py-10 md:items-center md:px-12">
         <div className="flex w-full max-w-sm flex-col gap-8">
           <PageHeader eyebrow="Καλώς ήρθατε" title={el.auth.signIn} />
 
