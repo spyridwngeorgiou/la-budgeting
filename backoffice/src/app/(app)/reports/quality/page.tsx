@@ -1,22 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentOrgId } from "@/lib/supabase/org";
-import { formatDate, formatMoney, formatPercent } from "@/lib/format";
-import {
-  Badge,
-  Button,
-  Input,
-  KpiBand,
-  Notice,
-  PageHeader,
-  ReportFooter,
-  ReportHeadline,
-  ReportMethod,
-  ReportSection,
-  Stat,
-  cn,
-} from "@/components/ui";
-import { qualityNarrative, trustIndex } from "@/lib/finance/narratives";
+import { formatDate, formatMoney } from "@/lib/format";
+import { Badge, Button, Input, Notice, PageHeader, ReportFooter, ReportSection } from "@/components/ui";
 import { markInvoiceReceived } from "./actions";
 import { currentYear, monthKeyOf, monthLabel } from "@/lib/dates";
 import { el } from "@/lib/i18n/el";
@@ -412,11 +398,14 @@ const CHECKS = [
   },
 ];
 
+// As on 7/10: the list of checks, each with why it matters and its rows
+// with their actions in place («Ήρθε», «Συγχρονισμός»); a check that
+// passes is one line. The estimated tax loss is one line above them.
 export default async function QualityPage() {
   const supabase = await createClient();
   const orgId = await getCurrentOrgId(supabase);
 
-  const [results, { data: exposureRows }, { data: worklist }] = await Promise.all([
+  const [results, { data: exposureRows }] = await Promise.all([
     Promise.all(
       CHECKS.map(async (check) => {
         const { data, count } = await supabase
@@ -431,15 +420,10 @@ export default async function QualityPage() {
       .from("v_uninvoiced_exposure")
       .select("gross_amount, lost_deduction_est, lost_input_vat_est, month")
       .eq("org_id", orgId),
-    // The open items by severity (money · compliance · housekeeping).
-    supabase.from("v_worklist").select("tier, count").eq("org_id", orgId),
   ]);
 
   const totalIssues = results.reduce((sum, r) => sum + r.count, 0);
   const passing = results.filter((r) => r.count === 0).length;
-  const tiers = [1, 2, 3].map((tier) =>
-    (worklist ?? []).filter((w) => w.tier === tier).reduce((s, w) => s + Number(w.count ?? 0), 0),
-  );
 
   const thisYear = String(currentYear());
   const exposure = (exposureRows ?? []).reduce(
@@ -454,7 +438,7 @@ export default async function QualityPage() {
   );
 
   return (
-    <div className="flex min-w-0 flex-col gap-10">
+    <div className="flex min-w-0 flex-col gap-6">
       <PageHeader
         title={
           <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -464,90 +448,49 @@ export default async function QualityPage() {
             </Badge>
           </span>
         }
+        meta={`Αυτόματοι έλεγχοι πάνω στα δεδομένα σας, ώστε να εντοπίζονται λάθη πριν γίνουν πρόβλημα στο ΦΠΑ ή στα οικονομικά των έργων · ${passing} από ${results.length} περνούν.`}
       />
 
       <ReportSection label="Ποιότητα δεδομένων">
-      <ReportHeadline>{qualityNarrative({ passing, total: results.length, urgent: tiers[0] })}</ReportHeadline>
-      <KpiBand
-        items={[
-          {
-            label: "Δείκτης εμπιστοσύνης",
-            value: formatPercent(trustIndex(passing, results.length), { digits: 0 }),
-            sub: `${passing} από ${results.length} έλεγχοι περνούν`,
-          },
-          {
-            label: "Θέματα ανά επίπεδο",
-            value: (
-              <span className="num">
-                {tiers.join(" · ")}
-              </span>
+        {exposure.gross > 0 && (
+          <Notice tone="warning" size="small">
+            Εκτιμώμενη φορολογική απώλεια από δαπάνες χωρίς παραστατικό:{" "}
+            <span className="num font-medium text-ink">{formatMoney(exposure.lost)}</span> χαμένος φόρος + ΦΠΑ (φέτος{" "}
+            <span className="num">{formatMoney(exposure.lostThisYear)}</span>) σε <span className="num">{formatMoney(exposure.gross)}</span>{" "}
+            δαπάνες · εκτίμηση με το όριο και τον συντελεστή των Ρυθμίσεων, επιβεβαιώστε με τον λογιστή.
+          </Notice>
+        )}
+
+        <div className="flex flex-col border-t border-hairline">
+          {results.map((check) =>
+            check.count === 0 ? (
+              <section key={check.view} className="flex min-w-0 items-baseline gap-3 border-b border-l-2 border-hairline border-l-transparent py-2 pl-4">
+                <h2 className="text-body text-muted">{check.title}</h2>
+                <Badge tone="neutral" className="num">
+                  0
+                </Badge>
+              </section>
+            ) : (
+              <section key={check.view} className="flex min-w-0 flex-col gap-2 border-b border-l-2 border-hairline border-l-warning py-4 pr-1 pl-4">
+                <div className="flex items-baseline gap-3">
+                  <h2 className="text-body text-ink">{check.title}</h2>
+                  <Badge tone="amber" className="num">
+                    {check.count}
+                  </Badge>
+                </div>
+                <p className="max-w-3xl text-small text-muted">{check.why}</p>
+                <div className="mt-1 flex flex-col border-t border-hairline text-body">
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {(check.rows as any[]).map((r) => check.render(r as never))}
+                  {check.count > check.rows.length && (
+                    <p className="pt-2 text-small text-muted">… και {check.count - check.rows.length} ακόμα</p>
+                  )}
+                </div>
+              </section>
             ),
-            sub: "χρήματα · συμμόρφωση · τακτοποίηση",
-          },
-          {
-            label: "Φορολογικός κίνδυνος",
-            value: formatMoney(exposure.lost),
-            sub: exposure.gross > 0 ? `από ${formatMoney(exposure.gross)} δαπάνες χωρίς παραστατικό` : "καμία δαπάνη χωρίς παραστατικό",
-          },
-        ]}
-      />
-
-      {exposure.gross > 0 && (
-        <Notice tone="warning" as="section" className="flex flex-col gap-4">
-          <h2 className="text-body text-ink">Εκτιμώμενη φορολογική απώλεια από δαπάνες χωρίς παραστατικό</h2>
-          <div className="flex flex-wrap gap-x-10 gap-y-4">
-            <Stat label="Δαπάνες" value={formatMoney(exposure.gross)} />
-            <Stat label="Χαμένος φόρος + ΦΠΑ" value={<span className="font-normal">{formatMoney(exposure.lost)}</span>} />
-            <Stat label="Φέτος" value={formatMoney(exposure.lostThisYear)} />
-          </div>
-          <p className="text-small text-muted">
-            Εκτίμηση με το όριο και τον συντελεστή των Ρυθμίσεων — επιβεβαιώστε με τον λογιστή.
-          </p>
-        </Notice>
-      )}
-
-      <div className="flex flex-col border-t border-hairline">
-        {results.map((check) => (
-          <section
-            key={check.view}
-            className={cn(
-              "flex min-w-0 flex-col gap-2 border-b border-hairline py-5 pr-1",
-              check.count > 0 ? "border-l-2 border-l-warning pl-4" : "border-l-2 border-l-transparent pl-4",
-            )}
-          >
-            <div className="flex items-baseline gap-3">
-              <h2 className="text-body text-ink">{check.title}</h2>
-              <Badge tone={check.count === 0 ? "neutral" : "amber"} className="num">
-                {check.count}
-              </Badge>
-            </div>
-            <p className="max-w-3xl text-small text-muted">{check.why}</p>
-            {check.count > 0 && (
-              <div className="mt-1 flex flex-col border-t border-hairline text-body">
-                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                {(check.rows as any[]).map((r) => check.render(r as never))}
-                {check.count > check.rows.length && (
-                  <p className="pt-2 text-small text-muted">
-                    … και {check.count - check.rows.length} ακόμα
-                  </p>
-                )}
-              </div>
-            )}
-          </section>
-        ))}
-      </div>
-      <ReportMethod>
-        <p>
-          Αυτόματοι έλεγχοι πάνω στα δεδομένα σας, ώστε να εντοπίζονται λάθη πριν γίνουν πρόβλημα στο ΦΠΑ ή στα
-          οικονομικά των έργων.
-        </p>
-        <p>
-          Δείκτης εμπιστοσύνης: οι έλεγχοι χωρίς κανένα εύρημα, ως ποσοστό όλων των ελέγχων. Τα θέματα ανά επίπεδο
-          είναι τα ανοιχτά ευρήματα της λίστας εργασιών: χρήματα (επείγοντα), συμμόρφωση, τακτοποίηση. Φορολογικός
-          κίνδυνος: ο εκτιμώμενος χαμένος φόρος και ΦΠΑ από δαπάνες χωρίς παραστατικό.
-        </p>
-      </ReportMethod>
-      <ReportFooter />
+          )}
+        </div>
+        <ReportFooter />
       </ReportSection>
     </div>
   );

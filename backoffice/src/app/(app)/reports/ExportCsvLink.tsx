@@ -3,13 +3,15 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { buttonClass } from "@/components/ui";
 
-// «Εξαγωγή CSV» on the report tabs that have an export
-// (/api/reports/<tab>/export), carrying the tab's own filters (year, by,
-// scheduled / scenario, scope, months) so the file is what the page shows. Nothing on the other tabs.
+// «Εξαγωγή CSV» in the header of the report tabs that have an export
+// (/api/reports/<tab>/export, /api/vat/export), carrying the tab's own
+// filters (year, by, scheduled / scenario, scope, months) so the file is
+// what the page shows. Nothing on the other tabs.
 const EXPORTS: Record<string, string> = {
   "/reports/pnl": "/api/reports/pnl/export",
   "/reports/cash": "/api/reports/cash/export",
   "/reports/net-worth": "/api/reports/net-worth/export",
+  "/reports/vat": "/api/vat/export",
 };
 // Page-only state (the selected month, a drill-down cell).
 const DROP = ["month", "cell", "line"];

@@ -16,7 +16,9 @@ export const LEGACY_REDIRECTS: {
   { source: "/properties", destination: "/projects/properties" },
   { source: "/cashflow", destination: "/reports/cash" },
   { source: "/vat", destination: "/reports/vat" },
-  { source: "/withholding", destination: "/reports/withholding" },
+  { source: "/withholding", destination: "/reports/vat" },
+  // Παρακράτηση is a table on the ΦΠΑ tab now (its own tab was removed).
+  { source: "/reports/withholding", destination: "/reports/vat" },
   { source: "/quality", destination: "/reports/quality" },
   { source: "/changes", destination: "/assistant?panel=changes" },
   { source: "/revenue-plans", destination: "/projects/revenue-plans" },
