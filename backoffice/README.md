@@ -135,6 +135,31 @@ The one-off workbook migration scripts and the generated seed SQL hold real
 business data, so they live only in the local, git-ignored `archive/` and
 `backoffice/seed/` folders.
 
+### Syncing a newer operational workbook (one-off, e.g. 184)
+
+```bash
+node scripts/sync-workbook.mjs <project-ref> "<path>/Επιχειρησιακό_Αρχείο_184.xlsx" --report ../Αντιπαραβολή_184_Kansha.xlsx
+node scripts/backup-json.mjs <project-ref>                      # required before --apply (< 24h)
+node scripts/sync-workbook.mjs <project-ref> "<path>/…184.xlsx" --apply
+```
+
+- The default run is a dry run: SELECTs only. It writes a Greek report workbook
+  (one sheet per change kind, plus «Σύνοψη» and a balance check against the
+  workbook's «Λογαριασμοί») and prints only counts. The report holds real data;
+  `*.xlsx` is git-ignored.
+- It uses the original migration's mapping (`archive/legacy-workbook-migration`):
+  `kiniseis-row-N` / `kathimerina-row-N` keys, uuid5 ids, the credit-note flip.
+  The owner decisions for this sync (rows to edit, rows back to «Εκκρεμεί»,
+  which opening balances move) are constants at the top of the script.
+- New rows that already exist in the app (same account, direction, amount and
+  date, no legacy id) only get the legacy id; ambiguous ones are reported, not inserted.
+- `--apply` copies every row it updates into `archive.<table>_sync<NNN>`, then
+  runs everything in one transaction. Each update is guarded by the values the
+  plan saw (transactions: tx_date + net_amount + account); any mismatch aborts
+  the whole run. Re-running is idempotent.
+- Required schema the script cannot write to yet is listed in «Σύνοψη»
+  (e.g. utility amounts from «Πάγια»); it never alters the schema itself.
+
 ## AI layer
 
 Disabled by default (`AI_ENABLED=false`). See the plan document for the full
