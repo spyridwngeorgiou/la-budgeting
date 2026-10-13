@@ -303,7 +303,7 @@ export default async function PnlPage({ searchParams }: { searchParams: SearchPa
           <ReportHistory
             title={group === "month" ? "Ιστορικό ανά μήνα" : "Ιστορικό ανά κλάδο"}
             count={buckets.length}
-            open={group === "business_line" || !!drillable}
+            open
           >
             <ViewSwitch
               label={t.pnlView}

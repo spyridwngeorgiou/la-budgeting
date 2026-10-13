@@ -178,7 +178,7 @@ export default async function PortfolioPage() {
               />
             </ReportChart>
           )}
-          <ReportHistory title="Ανά έργο" count={rows.length}>
+          <ReportHistory title="Ανά έργο" count={rows.length} open>
             <SpecTable label={TITLE} stickyFirst>
               <thead>
                 <tr>

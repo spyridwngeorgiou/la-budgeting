@@ -205,7 +205,7 @@ export default async function NetWorthPage() {
         )}
 
         {liquid.length > 0 && (
-          <ReportHistory title={T.liquidHistory} count={liquid.length} meta={T.liquidHistoryMeta}>
+          <ReportHistory title={T.liquidHistory} count={liquid.length} meta={T.liquidHistoryMeta} open>
             <SpecTable label={T.liquidHistory} className="max-w-2xl">
               <thead>
                 <tr>
@@ -238,7 +238,7 @@ export default async function NetWorthPage() {
           </ReportHistory>
         )}
 
-        <ReportHistory title={T.components} count={owned.length + owed.length}>
+        <ReportHistory title={T.components} count={owned.length + owed.length} open>
           <div className="grid min-w-0 grid-cols-1 gap-8 md:grid-cols-2">
             <ComponentTable title={t.owned} components={owned} amountOf={amountOf} itemsOf={itemsOf} />
             <ComponentTable title={t.owed} components={owed} amountOf={amountOf} itemsOf={itemsOf} />
@@ -246,7 +246,7 @@ export default async function NetWorthPage() {
         </ReportHistory>
 
         {/* Read-only: both lists are managed on Λογαριασμοί → Περιουσία & υποχρεώσεις. */}
-        <ReportHistory title={t.assetsTitle} count={(assets ?? []).length}>
+        <ReportHistory title={t.assetsTitle} count={(assets ?? []).length} open>
           <ManageLink href="/accounts/assets" />
           {(assets ?? []).length === 0 ? (
             <p className="text-body text-muted">{t.empty}</p>
@@ -278,7 +278,7 @@ export default async function NetWorthPage() {
           )}
         </ReportHistory>
 
-        <ReportHistory title={t.liabilitiesTitle} count={(liabilities ?? []).length}>
+        <ReportHistory title={t.liabilitiesTitle} count={(liabilities ?? []).length} open>
           <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
             <p className="min-w-0 flex-1 text-small text-muted">{t.liabilitiesHint}</p>
             <span className="shrink-0">

@@ -499,7 +499,7 @@ function StatusSection({ projectId: id, notes }: { projectId: string; notes: Pro
     <OnePagerSection title={t.title} actions={<ProjectNoteFormModal action={saveProjectNote} args={[id, null]} />}>
       {pressing.length > 0 && <StatusNotes notes={pressing} renderActions={noteActions} />}
       {rest.length > 0 && (
-        <ReportHistory level={3} title={t.rest} count={rest.length}>
+        <ReportHistory level={3} title={t.rest} count={rest.length} open>
           <StatusNotes notes={rest} renderActions={noteActions} />
         </ReportHistory>
       )}

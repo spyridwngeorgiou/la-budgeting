@@ -23,9 +23,8 @@
 // CHROME, or BROWSER=1; BROWSER=0 skips it) at 1440 and 390 px, one page at a
 // time with a pause between: it fails on a browser error (pageerror), on the
 // error page «Κάτι πήγε στραβά», on sideways scrolling at 390 px, and on a
-// page taller than its budget at 1440 (pageBudget: reports 1400 px with the
-// history closed; a project 1800 px with its «▸» closed; the overview and
-// accounts 2250 px). Every page's
+// page taller than its budget at 1440 (pageBudget: the overview and
+// accounts 2250 px; reports and projects have their tables open, no budget). Every page's
 // height at 1440 is printed so growth shows up release to release.
 import { spawnSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
@@ -41,10 +40,10 @@ const REPO = "spyridwngeorgiou/la-budgeting";
 const CHROME = process.env.CHROME ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const DEFAULT_PATHS = ["/dashboard", "/transactions", "/projects", "/planner", "/reports/cash", "/reports/pnl", "/reports/vat", "/reports/net-worth", "/reports/portfolio", "/accounts", "/contacts", "/inbox", "/collab"];
 // Height budget at 1440x900 (px), or null for paged lists that grow with data.
+// Reports and the project page have every table open since 13/10/2026 (as
+// in late September), so they grow with the data: heights printed, no budget.
 const pageBudget = (p) => {
   const path = p.split("?")[0];
-  if (path.startsWith("/reports/")) return 1400;
-  if (/^\/projects\/[0-9a-f-]{36}$/.test(path)) return 1800;
   return /^\/(dashboard|accounts)$/.test(path) ? 2250 : null;
 };
 

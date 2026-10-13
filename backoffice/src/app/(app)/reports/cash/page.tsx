@@ -260,7 +260,7 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
           </ReportChart>
         )}
 
-        <ReportHistory count={rows.length} open={!!selected}>
+        <ReportHistory count={rows.length} open>
           <SpecTable label={t.cashTitle} stickyFirst>
             <thead>
               <tr>

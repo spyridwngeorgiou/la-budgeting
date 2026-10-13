@@ -86,11 +86,7 @@ export default async function VatPage() {
   const periodEnd = (p: Period) => lastOfMonth(addMonths(monthKeyOf(p.period_start!), monthsOf(p) - 1));
   const periodHref = (p: Period) => `/transactions?scope=business&from=${p.period_start}&to=${periodEnd(p)}`;
 
-  // The open table keeps the page short: the latest periods (where the
-  // «υποβλήθηκε» work is); older ones one click away, same columns.
-  const RECENT_PERIODS = 4;
-  const recent = rows.slice(0, RECENT_PERIODS);
-  const older = rows.slice(RECENT_PERIODS);
+  // Every period in one open table, as in late September.
   const periodsTable = (list: Period[], label: string) => (
     <SpecTable label={label}>
       <thead>
@@ -266,18 +262,14 @@ export default async function VatPage() {
 
           {/* The page's work: open, with the «υποβλήθηκε» toggle on each period. */}
           <ReportHistory title="Περίοδοι" count={rows.length} open>
-            {periodsTable(recent, el.nav.vat)}
-            {older.length > 0 && (
-              <ReportHistory title="Παλαιότερες περίοδοι" count={older.length} level={3}>
-                {periodsTable(older, `${el.nav.vat} · παλαιότερες`)}
-              </ReportHistory>
-            )}
+            {periodsTable(rows, el.nav.vat)}
             <p className="max-w-3xl text-small text-muted">
               {t.vatLockHint} {t.vatIssuedHint}
             </p>
           </ReportHistory>
 
           <ReportHistory
+            open
             title="Παρακράτηση ανά μήνα"
             count={withheld.length}
             meta={`τρέχων μήνας ${formatMoney(withheldNow)} · 12 μήνες ${formatMoney(withheld12)} · μέσος όρος ${formatMoney(withheld12 / 12)}`}

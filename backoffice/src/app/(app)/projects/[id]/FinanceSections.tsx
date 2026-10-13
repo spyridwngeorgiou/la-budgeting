@@ -89,7 +89,7 @@ export function BudgetSection({
         />
       )}
       {(byLine.length > 0 || outside || notes) && (
-        <ReportHistory level={3} title={byLine.length > 0 ? t.byLine : t.outside} count={byLine.length > 0 ? byLine.length : undefined}>
+        <ReportHistory level={3} title={byLine.length > 0 ? t.byLine : t.outside} count={byLine.length > 0 ? byLine.length : undefined} open>
           {notes && <p className="text-small text-muted">{notes}</p>}
           {byLine.length > 0 && <BudgetLineTable rows={byLine} />}
           {byLine.some((r) => r.line_code === "contingency") && <p className="text-small text-muted">{el.budgetLines.contingencyNote}</p>}
@@ -182,7 +182,7 @@ export function DevelopmentSection({ result, truncated }: { result: DevelopmentR
         amount={result.peakFunding}
         note={result.peakFundingDate ? formatDate(result.peakFundingDate) : null}
       />
-      <ReportHistory level={3} title={el.projectPage.development.revenueAndCost}>
+      <ReportHistory level={3} title={el.projectPage.development.revenueAndCost} open>
         <div>
           <OnePagerRow label={t.revenue} amount={result.revenue} />
           <OnePagerRow label={t.cost} amount={result.cost} negative />
@@ -234,7 +234,7 @@ export function PropertySection({
       {months.length > 0 && <OnePagerRow label={<Term title={t.lastYearHint}>{t.lastYear}</Term>} amount={lastYear} />}
 
       {utilities.length > 0 && (
-        <ReportHistory level={3} title={t.utilities} count={utilities.length} meta={providers.join(" · ")}>
+        <ReportHistory level={3} title={t.utilities} count={utilities.length} meta={providers.join(" · ")} open>
           <div className="flex flex-col">
             <p className="pb-2 text-small text-muted">{t.utilitiesHint}</p>
             {utilities.map((u) => (
@@ -271,7 +271,7 @@ export function PropertySection({
       )}
 
       {months.length > 0 && (
-        <ReportHistory level={3} title={t.byMonth} count={months.length}>
+        <ReportHistory level={3} title={t.byMonth} count={months.length} open>
           {/* Newest first, each a link to that month's property costs. */}
           <ul className="grid grid-cols-2 gap-x-6 sm:grid-cols-3">
             {months.map(([month, amount]) => (
@@ -290,7 +290,7 @@ export function PropertySection({
       )}
 
       {settlements.length > 0 && (
-        <ReportHistory level={3} title={t.breakdown}>
+        <ReportHistory level={3} title={t.breakdown} open>
           <div>
             {monthlyRent > 0 && <OnePagerRow label={t.rent} amount={monthlyRent} />}
             {settlements.map((p) => (
