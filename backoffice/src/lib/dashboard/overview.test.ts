@@ -6,7 +6,7 @@ import {
   overviewGlance,
   pnlResult,
   upcomingObligations,
-  vatLine,
+  vatNext,
   type DashboardRollupRow,
   type OpenTxRow,
   type OverviewInputs,
@@ -22,7 +22,7 @@ const base: OverviewInputs = {
     { line: "opex", amount: -300 },
     { line: "tax", amount: "-50.25" },
   ],
-  vatPayable: 120,
+  vat: { payable: 120, sub: "Σεπτέμβριος 2026 · έως 31/10/2026" },
 };
 
 const glance = (i: OverviewInputs) => Object.fromEntries(overviewGlance(i).map((f) => [f.key, f]));
@@ -94,6 +94,7 @@ describe("dashboardPortfolio", () => {
     expect(r.shown[0].overBudget).toBe(true);
     expect([r.shown[1].pending, r.shown[1].vat]).toEqual([5, 9.6]);
     expect(r.shown[2].budget).toBeNull();
+    expect([r.shown[0].remaining, r.shown[2].remaining]).toEqual([-100, null]);
   });
 
   it("caps and counts the rest", () => {
@@ -103,24 +104,26 @@ describe("dashboardPortfolio", () => {
   });
 });
 
-describe("vatLine", () => {
+describe("vatNext", () => {
   const today = "2026-10-13";
   const rows = [
     { period_start: "2026-08-01", payable_after_credit: 10, credit_balance: 0, filing_deadline: "2026-09-30" },
     { period_start: "2026-09-01", payable_after_credit: "240", credit_balance: 0, filing_deadline: "2026-10-31" },
     { period_start: "2026-10-01", payable_after_credit: 0, credit_balance: -40, filing_deadline: "2026-11-30" },
   ];
-  it("names the next unfiled deadline and its payable", () => {
-    const line = vatLine(rows, new Set(), today);
-    expect(line).toContain(formatMoney(240));
-    expect(line).toContain("31");
+  it("the next unfiled deadline and its payable", () => {
+    const v = vatNext(rows, new Set(), today);
+    expect(v.payable).toBe(240);
+    expect(v.sub).toContain("31/10/2026");
   });
   it("skips filed periods; a period with nothing to pay still has a deadline", () => {
-    expect(vatLine(rows, new Set(["2026-09-01"]), today)).toMatch(/^Υποβολή .* χωρίς πληρωμή$/);
+    const v = vatNext(rows, new Set(["2026-09-01"]), today);
+    expect(v.payable).toBe(0);
+    expect(v.sub).toMatch(/χωρίς πληρωμή$/);
   });
   it("without a deadline ahead, the credit", () => {
-    expect(vatLine(rows, new Set(["2026-09-01", "2026-10-01"]), today)).toBe(`Καμία προθεσμία σε εκκρεμότητα · πιστωτικό ${formatMoney(40)}`);
-    expect(vatLine([], new Set(), today)).toBe("Καμία προθεσμία σε εκκρεμότητα");
+    expect(vatNext(rows, new Set(["2026-09-01", "2026-10-01"]), today)).toEqual({ payable: 0, sub: `Καμία προθεσμία · πιστωτικό ${formatMoney(40)}` });
+    expect(vatNext([], new Set(), today).sub).toBe("Καμία προθεσμία σε εκκρεμότητα");
   });
 });
 

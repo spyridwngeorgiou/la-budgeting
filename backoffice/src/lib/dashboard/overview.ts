@@ -29,7 +29,9 @@ export interface OverviewInputs {
   lowestDriver?: { label: string | null; amount: number | string | null } | null;
   year: number;
   pnlRows: { line: string; amount: number | string | null }[];
-  vatPayable: number;
+  // The next ΦΠΑ deadline (vatNext): one figure, so the page never shows a
+  // «0,00 €» here and a different period elsewhere.
+  vat: VatNext;
 }
 
 const num = (v: number | string | null | undefined) => {
@@ -88,9 +90,9 @@ export function overviewGlance(i: OverviewInputs): GlanceFigure[] {
     },
     {
       key: "vat",
-      label: "ΦΠΑ οφειλόμενο",
-      value: formatMoney(i.vatPayable),
-      sub: "Τρέχουσα περίοδος, μετά το πιστωτικό",
+      label: "ΦΠΑ · επόμενη υποβολή",
+      value: formatMoney(i.vat.payable),
+      sub: i.vat.sub,
       href: "/reports/vat",
       negative: false,
     },
@@ -118,7 +120,7 @@ export interface UpcomingItem {
 }
 
 export const UPCOMING_DAYS = 30;
-export const UPCOMING_MAX = 8;
+export const UPCOMING_MAX = 6;
 
 // Today through today + 29, soonest first (overdue rows belong to
 // «Χρειάζεται προσοχή», not this list). The rest is counted, never dropped.
@@ -159,6 +161,8 @@ export interface DashboardPortfolioRow {
   spent: number;
   pending: number;
   vat: number;
+  // Budget left after capex paid + committed (v_project_rollup); null with no budget.
+  remaining: number | null;
   overBudget: boolean;
 }
 
@@ -182,6 +186,7 @@ export function dashboardPortfolio(
         spent: p.spent,
         pending: round2(num(r?.pending)),
         vat: round2(num(r?.vat_on_expenses)),
+        remaining: p.budget > 0 ? p.remaining : null,
         overBudget: p.overBudget,
       };
     })
@@ -197,24 +202,26 @@ export interface VatPositionRow {
   filing_deadline?: string | null;
 }
 
-// The earliest period not yet filed whose deadline is still ahead; without
-// one, the current credit (or nothing pending).
-export function vatLine(rows: VatPositionRow[], filed: Set<string>, today: string): string {
+export interface VatNext {
+  payable: number;
+  sub: string;
+}
+
+// The earliest period not yet filed whose deadline is still ahead: its
+// payable and «period · έως deadline». Without one, zero and the current
+// credit (or nothing pending).
+export function vatNext(rows: VatPositionRow[], filed: Set<string>, today: string): VatNext {
   const next = rows
     .filter((r) => r.period_start && !filed.has(r.period_start) && r.filing_deadline && r.filing_deadline >= today)
     .sort((a, b) => a.filing_deadline!.localeCompare(b.filing_deadline!))[0];
   if (next) {
-    const payable = num(next.payable_after_credit);
+    const payable = Math.max(0, num(next.payable_after_credit));
     const period = monthLabel(monthKeyOf(next.period_start!));
-    return payable > 0
-      ? `Επόμενο πληρωτέο ${formatMoney(payable)} έως ${formatDate(next.filing_deadline)} (${period})`
-      : `Υποβολή ${period} έως ${formatDate(next.filing_deadline)}, χωρίς πληρωμή`;
+    return { payable, sub: `${period} · έως ${formatDate(next.filing_deadline)}${payable > 0 ? "" : ", χωρίς πληρωμή"}` };
   }
   const latest = rows
     .filter((r) => r.period_start)
     .sort((a, b) => b.period_start!.localeCompare(a.period_start!))[0];
   const credit = Math.abs(num(latest?.credit_balance));
-  return credit > 0
-    ? `Καμία προθεσμία σε εκκρεμότητα · πιστωτικό ${formatMoney(credit)}`
-    : "Καμία προθεσμία σε εκκρεμότητα";
+  return { payable: 0, sub: credit > 0 ? `Καμία προθεσμία · πιστωτικό ${formatMoney(credit)}` : "Καμία προθεσμία σε εκκρεμότητα" };
 }
