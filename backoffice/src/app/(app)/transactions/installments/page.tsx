@@ -172,7 +172,7 @@ export default async function InstallmentsPage() {
                 </Tr>
                 <tr className="[&>td]:border-b-0 [&>td]:pt-0">
                   <Td colSpan={5} className="pb-4">
-                    <ReportHistory title={p.schedule} count={rows.length} level={3} open={!!plan.overdue_count}>
+                    <ReportHistory title={p.schedule} count={rows.length} level={3}>
                       <ScheduleTable rows={rows} />
                     </ReportHistory>
                   </Td>

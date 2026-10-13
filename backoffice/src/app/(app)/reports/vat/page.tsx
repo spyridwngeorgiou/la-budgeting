@@ -86,6 +86,87 @@ export default async function VatPage() {
   const periodEnd = (p: Period) => lastOfMonth(addMonths(monthKeyOf(p.period_start!), monthsOf(p) - 1));
   const periodHref = (p: Period) => `/transactions?scope=business&from=${p.period_start}&to=${periodEnd(p)}`;
 
+  // The open table keeps the page short: the latest periods (where the
+  // «υποβλήθηκε» work is); older ones one click away, same columns.
+  const RECENT_PERIODS = 6;
+  const recent = rows.slice(0, RECENT_PERIODS);
+  const older = rows.slice(RECENT_PERIODS);
+  const periodsTable = (list: Period[], label: string) => (
+    <SpecTable label={label}>
+      <thead>
+        <tr>
+          {/* Same inset as the body's first cells, which carry the 2px marker. */}
+          <Th className="border-l-2 border-l-transparent !pl-3">{el.vat.period}</Th>
+          <Th numeric className="hidden sm:table-cell">
+            {el.vat.vatIncome}
+          </Th>
+          <Th numeric className="hidden sm:table-cell">
+            {el.vat.vatExpense}
+          </Th>
+          <Th numeric className="hidden lg:table-cell">
+            {t.vatIssued}
+          </Th>
+          <Th numeric className="hidden lg:table-cell">
+            {t.vatScheduled}
+          </Th>
+          <Th numeric className="hidden md:table-cell">
+            {el.vat.credit}
+          </Th>
+          <Th numeric>{el.vat.payable}</Th>
+          <Th className="hidden md:table-cell">{el.vat.deadline}</Th>
+          <Th>{el.vat.filed}</Th>
+          <Th />
+        </tr>
+      </thead>
+      <tbody>
+        {list.map((p) => {
+          const filed = isFiled(p);
+          const isCurrent = isCurrentPeriod(p);
+          return (
+            <Tr key={p.period_start} aria-current={isCurrent ? "true" : undefined} className={isCurrent ? "bg-hover" : undefined}>
+              <Td strong className={cn("border-l-2 !pl-3", isCurrent ? "border-l-navy" : "border-l-transparent")}>
+                <Link href={periodHref(p)} className={cn(LINK_CLASS, "whitespace-nowrap")}>
+                  {monthsOf(p) === 3 ? `${t.quarter} ${quarterOf(p.period_start!)}/${p.period_start!.slice(0, 4)}` : formatDate(p.period_start)}
+                </Link>
+                {p.is_locked && <span className="ml-1.5 text-small text-muted">{t.vatLocked}</span>}
+                {isCurrent && <span className="ml-1.5 text-small font-medium text-navy">τρέχουσα περίοδος</span>}
+              </Td>
+              <Td numeric className="hidden sm:table-cell">
+                {formatMoney(p.vat_income)}
+              </Td>
+              <Td numeric className="hidden sm:table-cell">
+                {formatMoney(p.vat_expense)}
+              </Td>
+              <Td numeric className="hidden lg:table-cell">
+                {formatMoney(p.net_issued)}
+              </Td>
+              <Td numeric className="hidden text-muted lg:table-cell">
+                {formatMoney(p.net_scheduled)}
+              </Td>
+              <Td numeric className="hidden md:table-cell">
+                {formatMoney(Math.abs(p.credit_balance ?? 0))}
+              </Td>
+              <Td numeric strong className="font-medium">
+                {formatMoney(p.payable_after_credit)}
+              </Td>
+              <Td className="num hidden whitespace-nowrap text-muted md:table-cell">{formatDate(p.filing_deadline)}</Td>
+              <Td>
+                <Badge tone={filed ? "neutral" : "amber"}>{filed ? el.vat.filed : el.vat.notFiled}</Badge>
+              </Td>
+              <Td className="py-1.5 text-right">
+                <ArgsActionForm action={toggleVatFiled} args={[p.period_start!, filed]}>
+                  <Button type="submit" variant="ghost" size="sm">
+                    {filed ? "Αναίρεση" : "Σήμανση ως υποβλήθηκε"}
+                  </Button>
+                </ArgsActionForm>
+              </Td>
+            </Tr>
+          );
+        })}
+      </tbody>
+    </SpecTable>
+  );
+
   // The figures: the current period (against the one before it), the next
   // deadline still ahead, the periods already started and not filed.
   const ascending = rows.slice().reverse();
@@ -185,79 +266,12 @@ export default async function VatPage() {
 
           {/* The page's work: open, with the «υποβλήθηκε» toggle on each period. */}
           <ReportHistory title="Περίοδοι" count={rows.length} open>
-            <SpecTable label={el.nav.vat}>
-              <thead>
-                <tr>
-                  {/* Same inset as the body's first cells, which carry the 2px marker. */}
-                  <Th className="border-l-2 border-l-transparent !pl-3">{el.vat.period}</Th>
-                  <Th numeric className="hidden sm:table-cell">
-                    {el.vat.vatIncome}
-                  </Th>
-                  <Th numeric className="hidden sm:table-cell">
-                    {el.vat.vatExpense}
-                  </Th>
-                  <Th numeric className="hidden lg:table-cell">
-                    {t.vatIssued}
-                  </Th>
-                  <Th numeric className="hidden lg:table-cell">
-                    {t.vatScheduled}
-                  </Th>
-                  <Th numeric className="hidden md:table-cell">
-                    {el.vat.credit}
-                  </Th>
-                  <Th numeric>{el.vat.payable}</Th>
-                  <Th className="hidden md:table-cell">{el.vat.deadline}</Th>
-                  <Th>{el.vat.filed}</Th>
-                  <Th />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((p) => {
-                  const filed = isFiled(p);
-                  const isCurrent = isCurrentPeriod(p);
-                  return (
-                    <Tr key={p.period_start} aria-current={isCurrent ? "true" : undefined} className={isCurrent ? "bg-hover" : undefined}>
-                      <Td strong className={cn("border-l-2 !pl-3", isCurrent ? "border-l-navy" : "border-l-transparent")}>
-                        <Link href={periodHref(p)} className={cn(LINK_CLASS, "whitespace-nowrap")}>
-                          {monthsOf(p) === 3 ? `${t.quarter} ${quarterOf(p.period_start!)}/${p.period_start!.slice(0, 4)}` : formatDate(p.period_start)}
-                        </Link>
-                        {p.is_locked && <span className="ml-1.5 text-small text-muted">{t.vatLocked}</span>}
-                        {isCurrent && <span className="ml-1.5 text-small font-medium text-navy">τρέχουσα περίοδος</span>}
-                      </Td>
-                      <Td numeric className="hidden sm:table-cell">
-                        {formatMoney(p.vat_income)}
-                      </Td>
-                      <Td numeric className="hidden sm:table-cell">
-                        {formatMoney(p.vat_expense)}
-                      </Td>
-                      <Td numeric className="hidden lg:table-cell">
-                        {formatMoney(p.net_issued)}
-                      </Td>
-                      <Td numeric className="hidden text-muted lg:table-cell">
-                        {formatMoney(p.net_scheduled)}
-                      </Td>
-                      <Td numeric className="hidden md:table-cell">
-                        {formatMoney(Math.abs(p.credit_balance ?? 0))}
-                      </Td>
-                      <Td numeric strong className="font-medium">
-                        {formatMoney(p.payable_after_credit)}
-                      </Td>
-                      <Td className="num hidden whitespace-nowrap text-muted md:table-cell">{formatDate(p.filing_deadline)}</Td>
-                      <Td>
-                        <Badge tone={filed ? "neutral" : "amber"}>{filed ? el.vat.filed : el.vat.notFiled}</Badge>
-                      </Td>
-                      <Td className="py-1.5 text-right">
-                        <ArgsActionForm action={toggleVatFiled} args={[p.period_start!, filed]}>
-                          <Button type="submit" variant="ghost" size="sm">
-                            {filed ? "Αναίρεση" : "Σήμανση ως υποβλήθηκε"}
-                          </Button>
-                        </ArgsActionForm>
-                      </Td>
-                    </Tr>
-                  );
-                })}
-              </tbody>
-            </SpecTable>
+            {periodsTable(recent, el.nav.vat)}
+            {older.length > 0 && (
+              <ReportHistory title="Παλαιότερες περίοδοι" count={older.length} level={3}>
+                {periodsTable(older, `${el.nav.vat} · παλαιότερες`)}
+              </ReportHistory>
+            )}
             <p className="max-w-3xl text-small text-muted">
               {t.vatLockHint} {t.vatIssuedHint}
             </p>
