@@ -2081,6 +2081,111 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      mm_imports: {
+        Row: {
+          id: string
+          org_id: string
+          filename: string | null
+          storage_path: string | null
+          file_sha256: string
+          period_from: string | null
+          period_to: string | null
+          row_count: number
+          new_count: number
+          status: string
+          received_at: string
+          applied_at: string | null
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          filename?: string | null
+          storage_path?: string | null
+          file_sha256: string
+          period_from?: string | null
+          period_to?: string | null
+          row_count?: number
+          new_count?: number
+          status?: string
+          received_at?: string
+          applied_at?: string | null
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          filename?: string | null
+          storage_path?: string | null
+          file_sha256?: string
+          period_from?: string | null
+          period_to?: string | null
+          row_count?: number
+          new_count?: number
+          status?: string
+          received_at?: string
+          applied_at?: string | null
+        }
+        Relationships: []
+      }
+      mm_rows: {
+        Row: {
+          id: string
+          org_id: string
+          import_id: string
+          row_no: number
+          tx_date: string
+          account_label: string | null
+          category: string | null
+          subcategory: string | null
+          note: string | null
+          amount: number
+          kind: string
+          match_status: string
+          matched_transaction_id: string | null
+          decision: string | null
+          project_id: string | null
+          committed_transaction_id: string | null
+          raw: Json
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          import_id: string
+          row_no: number
+          tx_date: string
+          account_label?: string | null
+          category?: string | null
+          subcategory?: string | null
+          note?: string | null
+          amount: number
+          kind: string
+          match_status: string
+          matched_transaction_id?: string | null
+          decision?: string | null
+          project_id?: string | null
+          committed_transaction_id?: string | null
+          raw?: Json
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          import_id?: string
+          row_no?: number
+          tx_date?: string
+          account_label?: string | null
+          category?: string | null
+          subcategory?: string | null
+          note?: string | null
+          amount?: number
+          kind?: string
+          match_status?: string
+          matched_transaction_id?: string | null
+          decision?: string | null
+          project_id?: string | null
+          committed_transaction_id?: string | null
+          raw?: Json
+        }
+        Relationships: []
+      }
       project_phases: {
         Row: {
           id: string
