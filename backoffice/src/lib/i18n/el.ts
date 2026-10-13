@@ -21,6 +21,7 @@ export const el = {
     revenuePlans: "Εκτιμήσεις Εσόδων",
     activity: "Ιστορικό",
     scenarios: "Σενάρια",
+    planned: "Προγραμματισμένα",
   },
   common: {
     save: "Αποθήκευση",
