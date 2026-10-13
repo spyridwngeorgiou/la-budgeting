@@ -39,7 +39,7 @@ export function Modal({
       onClick={onClick}
     >
       {title && (
-        <h2 id={titleId} className="mb-4 border-b border-rule pb-3 text-section font-normal text-ink">
+        <h2 id={titleId} className="mb-4 border-b border-rule pb-3 heading text-section text-ink">
           {title}
         </h2>
       )}

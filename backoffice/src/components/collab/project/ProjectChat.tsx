@@ -83,7 +83,7 @@ export function ProjectChat({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-4 border-b border-rule px-4 py-3 md:px-6">
-              <h2 className="text-section font-normal text-ink">{el.collab.chat.title}</h2>
+              <h2 className="heading text-section text-ink">{el.collab.chat.title}</h2>
               <button
                 type="button"
                 className="-mr-2 inline-flex min-h-11 min-w-11 items-center justify-center text-section text-muted hover:bg-hover hover:text-ink"

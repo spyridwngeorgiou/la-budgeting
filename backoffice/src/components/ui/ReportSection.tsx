@@ -124,7 +124,7 @@ export function ReportHistory({
           <span aria-hidden="true" className="inline-block w-3 text-muted transition-transform group-open:rotate-90">
             ▸
           </span>
-          <Heading className="text-body font-medium text-ink">
+          <Heading className="heading text-body text-ink">
             {title}
             {count != null && <span className="num font-normal text-muted"> ({count})</span>}
           </Heading>

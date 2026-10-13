@@ -76,7 +76,7 @@ function ConfirmDialog({
         className="w-full max-w-sm border border-hairline bg-raised p-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-section text-ink">{el.collab.confirm.title}</h2>
+        <h2 className="heading text-section text-ink">{el.collab.confirm.title}</h2>
         <p className="mt-2 text-body text-text">{message}</p>
         <div className="mt-4 flex justify-end gap-2">
           <button

@@ -103,7 +103,7 @@ export function ProjectsGrid({ projects }: { projects: ProjectCard[] }) {
                 className="group flex h-full flex-col gap-4 border-t border-hairline pt-4 transition-colors hover:border-navy"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <span className="min-w-0 text-section font-normal break-words text-ink group-hover:underline group-hover:underline-offset-4">
+                  <span className="heading min-w-0 text-section break-words text-ink group-hover:underline group-hover:underline-offset-4">
                     {p.name}
                   </span>
                   {p.status && (

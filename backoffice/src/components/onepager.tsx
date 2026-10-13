@@ -26,10 +26,11 @@ export function OnePagerSection({
     <section className="flex min-w-0 break-inside-avoid flex-col gap-2">
       <div className="flex flex-col gap-1 border-b border-hairline pb-2.5">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <h2 className="text-section font-normal text-ink">{title}</h2>
+          <h2 className="heading text-section text-ink" title={typeof subtitle === "string" ? subtitle : undefined}>
+            {title}
+          </h2>
           {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </div>
-        {subtitle && <p className="text-small text-muted">{subtitle}</p>}
       </div>
       <div>{children}</div>
     </section>

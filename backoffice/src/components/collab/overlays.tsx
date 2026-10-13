@@ -93,7 +93,7 @@ export function BoardTips() {
             <span key={i} className={`h-0.5 flex-1 ${i <= step ? "bg-navy" : "bg-hairline"}`} />
           ))}
         </div>
-        <h2 className="text-section text-ink">{t.title}</h2>
+        <h2 className="heading text-section text-ink">{t.title}</h2>
         <p className="mt-2 text-body text-text">{t.body}</p>
         <div className="mt-5 flex items-center justify-between gap-2">
           <Button type="button" variant="ghost" className="min-h-11" onClick={finish}>
@@ -123,7 +123,7 @@ export function ShortcutsHelp({ onClose }: { onClose: () => void }) {
         className="w-full max-w-sm border border-hairline bg-raised p-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-section text-ink">{el.collab.shortcuts.title}</h2>
+        <h2 className="heading text-section text-ink">{el.collab.shortcuts.title}</h2>
         <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-body">
           {el.collab.shortcuts.list.map(([k, v]) => (
             <div key={k} className="contents">

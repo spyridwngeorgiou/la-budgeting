@@ -229,7 +229,7 @@ export function OperationSection({
       )}
 
       {scenario && (
-        <ReportHistory level={3} title={p.costLines} count={lines.length} open>
+        <ReportHistory level={3} title={p.costLines} count={lines.length}>
           <div className="flex flex-col">
             {lines.map((l) => {
               const amount = amountOf(l);
@@ -285,7 +285,7 @@ export function OperationSection({
         </ReportHistory>
       )}
 
-      <ReportHistory level={3} title={p.plans} count={plans.length} open>
+      <ReportHistory level={3} title={p.plans} count={plans.length}>
         {plans.length > 0 && (
           <ul className="flex flex-col border-t border-hairline">
             {plans.map((plan) => (
@@ -400,7 +400,7 @@ export function CashflowSection({
         </div>
         <SendToCashButton projectId={id} scenarioId={scenarioId} sent={sentToCash} />
       </div>
-      <ReportHistory level={3} title={p.details} open>
+      <ReportHistory level={3} title={p.details}>
         <div>
           {k.firstAmortisationYearDscr && (
             <OnePagerRow

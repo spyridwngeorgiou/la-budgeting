@@ -203,6 +203,13 @@
   letter-spacing: 0.01em;
 }
 
+/* Every title -- page, section, block, dialog -- bold italic, so a title
+   never reads as UI (owner, 13/10/2026). Size stays the token's. */
+@utility heading {
+  font-weight: 700;
+  font-style: italic;
+}
+
 /* Tabular figures for every amount, so columns of numbers line up. */
 @utility num {
   font-variant-numeric: tabular-nums;

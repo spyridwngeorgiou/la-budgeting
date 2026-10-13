@@ -38,7 +38,7 @@ export default async function NewCapturePage() {
       />
 
       <section className="flex flex-col gap-4" aria-labelledby="capture-file">
-        <h2 id="capture-file" className="flex items-center gap-2 border-b border-hairline pb-3 text-section font-normal text-ink">
+        <h2 id="capture-file" className="flex items-center gap-2 border-b border-hairline pb-3 heading text-section text-ink">
           <Upload className="h-5 w-5 text-muted" strokeWidth={1.5} aria-hidden />
           Φωτογραφία ή αρχείο
         </h2>
@@ -47,7 +47,7 @@ export default async function NewCapturePage() {
 
       {(aiOn || isAdmin) && (
         <section className="flex flex-col gap-4" aria-labelledby="capture-text">
-          <h2 id="capture-text" className="flex items-center gap-2 border-b border-hairline pb-3 text-section font-normal text-ink">
+          <h2 id="capture-text" className="flex items-center gap-2 border-b border-hairline pb-3 heading text-section text-ink">
             <MessageSquareText className="h-5 w-5 text-muted" strokeWidth={1.5} aria-hidden />
             Γράψε ή πες
           </h2>
@@ -71,7 +71,7 @@ export default async function NewCapturePage() {
       )}
 
       <section className="flex flex-col gap-4" aria-labelledby="capture-manual">
-        <h2 id="capture-manual" className="flex items-center gap-2 border-b border-hairline pb-3 text-section font-normal text-ink">
+        <h2 id="capture-manual" className="flex items-center gap-2 border-b border-hairline pb-3 heading text-section text-ink">
           <PenLine className="h-5 w-5 text-muted" strokeWidth={1.5} aria-hidden />
           Χειροκίνητα
         </h2>

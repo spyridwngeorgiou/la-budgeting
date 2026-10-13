@@ -32,7 +32,7 @@ export function PageHeader({
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-rule pb-4 md:flex-nowrap">
         <div className="flex min-w-0 flex-col gap-1.5 md:flex-1">
           {eyebrow && <p className="eyebrow text-muted">{eyebrow}</p>}
-          <h1 className="text-title font-normal break-words text-ink">{title}</h1>
+          <h1 className="heading text-title break-words text-ink">{title}</h1>
           {meta && <div className="text-small text-muted">{meta}</div>}
         </div>
         {(actions || overflow) && (
@@ -65,7 +65,7 @@ export function SectionHeader({
   const n = typeof numeral === "number" ? String(numeral).padStart(2, "0") : numeral;
   return (
     <div className={cn("flex flex-wrap items-baseline justify-between gap-3 border-b border-hairline pb-3", className)}>
-      <Tag className="flex items-baseline gap-4 text-section font-normal text-ink">
+      <Tag className="heading flex items-baseline gap-4 text-section text-ink">
         {n && <span className="num text-numeral font-light text-accent">{n}</span>}
         <span>{title}</span>
       </Tag>

@@ -79,7 +79,7 @@ export function LoanSection({
           {t.noDrawdowns}
         </Notice>
       )}
-      <ReportHistory level={3} title={t.tranches} count={loans.length} open>
+      <ReportHistory level={3} title={t.tranches} count={loans.length}>
         <div className="flex flex-col">
           {loans.map((l) => (
             <div key={l.id} className={ROW}>

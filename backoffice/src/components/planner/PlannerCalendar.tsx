@@ -48,7 +48,7 @@ export function PlannerCalendar({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-section font-normal text-ink capitalize">{monthLabel(monthKey)}</h2>
+        <h2 className="heading text-section text-ink capitalize">{monthLabel(monthKey)}</h2>
         <div className="flex">
           <ButtonLink href={nav.prev} size="sm" className="max-md:min-h-11">
             {el.planner.calendar.prev}

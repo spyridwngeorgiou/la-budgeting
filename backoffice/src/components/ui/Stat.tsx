@@ -98,7 +98,7 @@ export function GlancePanel({
 }) {
   return (
     <aside className={cn("flex flex-col gap-5 bg-panel p-6 text-panel-ink lg:p-8", className)}>
-      <h2 className="eyebrow text-panel-muted">{title}</h2>
+      <h2 className="heading text-section text-panel-ink">{title}</h2>
       {items && (
         <dl className="flex flex-col gap-4">
           {items.map((it, i) => (

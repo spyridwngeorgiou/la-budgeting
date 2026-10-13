@@ -46,7 +46,7 @@ export function Drawer({
         <header className="flex items-start justify-between gap-4 border-b border-rule px-5 pt-5 pb-4 md:px-8 md:pt-7">
           <div className="flex min-w-0 flex-col gap-1">
             {eyebrow && <p className="eyebrow text-muted">{eyebrow}</p>}
-            <h2 id={titleId} className="text-section font-normal text-ink">
+            <h2 id={titleId} className="heading text-section text-ink">
               {title}
             </h2>
           </div>

@@ -298,13 +298,11 @@ export async function LegacyProjectPage({
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        eyebrow={el.nav.projects}
         title={rollup.display_name}
         meta={
           <div className="flex flex-col gap-1">
             <MetaList
               items={[
-                rollup.code,
                 project?.units ? `${project.units} μονάδες` : null,
                 lease ? `μίσθωση ${lease.term_years} ετών` : null,
                 project?.opening_date ? `άνοιγμα ${formatDate(project.opening_date)}` : null,
@@ -547,7 +545,7 @@ function StatusSection({ projectId: id, notes }: { projectId: string; notes: Pro
     <OnePagerSection title={t.title} actions={<ProjectNoteFormModal action={saveProjectNote} args={[id, null]} />}>
       {pressing.length > 0 && <StatusNotes notes={pressing} renderActions={noteActions} />}
       {rest.length > 0 && (
-        <ReportHistory level={3} title={t.rest} count={rest.length} open>
+        <ReportHistory level={3} title={t.rest} count={rest.length}>
           <StatusNotes notes={rest} renderActions={noteActions} />
         </ReportHistory>
       )}
