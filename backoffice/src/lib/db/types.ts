@@ -2081,6 +2081,57 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      project_phases: {
+        Row: {
+          id: string
+          org_id: string
+          project_id: string
+          sort_order: number
+          name: string
+          kind: string
+          planned_start: string
+          planned_end: string
+          status: string
+          done_on: string | null
+          is_estimate: boolean
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          project_id: string
+          sort_order?: number
+          name: string
+          kind?: string
+          planned_start: string
+          planned_end: string
+          status?: string
+          done_on?: string | null
+          is_estimate?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          project_id?: string
+          sort_order?: number
+          name?: string
+          kind?: string
+          planned_start?: string
+          planned_end?: string
+          status?: string
+          done_on?: string | null
+          is_estimate?: boolean
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       project_files: {
         Row: {
           created_at: string

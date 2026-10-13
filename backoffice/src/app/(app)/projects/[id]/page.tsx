@@ -11,6 +11,7 @@ import { computeRevenuePlan } from "@/lib/finance/revenuePlan";
 import { computeProjectCashflow } from "@/lib/finance/projectCashflow";
 import { aiEnabled } from "@/lib/ai/client";
 import { ProjectHealthCheck } from "./ProjectHealthCheck";
+import { ProjectTimeline } from "./ProjectTimeline";
 import { BudgetFormModal } from "../BudgetFormModal";
 import { saveProjectBudget } from "../budget-actions";
 
@@ -36,6 +37,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     { data: settlementPlans },
     { data: noBudgetRow },
     { data: loans },
+    { data: phases },
+    { data: dues },
   ] = await Promise.all([
     supabase.from("v_project_rollup").select("*").eq("project_id", id).maybeSingle(),
     supabase.from("projects").select("opening_date, phase, legal_relation, units").eq("id", id).maybeSingle(),
@@ -77,6 +80,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       .from("loans")
       .select("id, label, principal, interest_rate, term_years, grace_years, first_amortisation_month, loan_drawdowns(scheduled_month, amount)")
       .eq("project_id", id),
+    supabase.from("project_phases").select("id, sort_order, name, kind, planned_start, planned_end, status, done_on, is_estimate, notes").eq("project_id", id),
+    supabase
+      .from("transactions")
+      .select("tx_date, due_date, gross_amount, description, accounts(kind)")
+      .eq("project_id", id)
+      .eq("direction", "expense")
+      .in("status", ["pending", "scheduled"])
+      .not("description", "like", "Προσφορά VK%") // an alternative to the renovation plan, not extra
+      .limit(2000),
   ]);
 
   if (!rollup) notFound();
@@ -274,6 +286,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </Link>
         </div>
       </div>
+
+      <ProjectTimeline
+        phases={phases ?? []}
+        today={new Date().toISOString().slice(0, 10)}
+        dues={(dues ?? []).map((d) => {
+          const account = Array.isArray(d.accounts) ? d.accounts[0] : d.accounts;
+          return { date: String(d.due_date ?? d.tx_date), amount: Number(d.gross_amount), pool: account?.kind === "cash" ? ("cash" as const) : ("bank" as const) };
+        })}
+      />
 
       {aiEnabled() && <ProjectHealthCheck projectId={id} />}
 
