@@ -3,7 +3,7 @@
 Living document: updated with every change. **No secrets here** — this repo is
 public. Secret values live only in the places listed in §4.
 
-Last update: 14/10/2026.
+Last update: 14/10/2026 (Money Manager import).
 
 ## 1. What runs where
 
@@ -28,6 +28,7 @@ Spyros' original live/staging projects are untouched.
 |---|---|---|
 | `mydata-daily-sync` | 04:30 UTC daily | `call_mydata_sync()` → POST `/api/sync/mydata` → fetches received + issued invoices of the last 45 days from ΑΑΔΕ myDATA (read-only), stages only new ΜΑΡΚ in `aade_import_batches/aade_staging_rows` for review on `/aade`. Never commits to the ledger by itself. |
 | `roll-forward-installment-plans` | 03:00 UTC daily | rolls indefinite plans forward |
+| Money Manager (phone) | when Christos sends it | iPhone shortcut «Στείλε στην Kansha» → POST `/api/import/money-manager` (header `x-import-key`) → staged in `mm_imports/mm_rows` (new vs already in ledger) → decisions on `/money-manager`. |
 
 Manual: «Λήψη τώρα» on `/aade`. Responses of the scheduled call: `net._http_response`.
 
@@ -37,6 +38,7 @@ Manual: «Λήψη τώρα» on `/aade`. Responses of the scheduled call: `net.
 |---|---|---|
 | `SUPABASE_SERVICE_ROLE_KEY` | Cloudflare Worker secret | only for `/api/sync/*` (no user signed in) |
 | `MYDATA_USER_ID`, `MYDATA_SUBSCRIPTION_KEY` | Cloudflare Worker secrets | myDATA REST API (user `kanshabackoffice`) |
+| `IMPORT_KEY` | Cloudflare Worker secret (and in Christos' iPhone shortcut) | phone → Money Manager import |
 | `SYNC_SECRET` | Cloudflare Worker secret **and** Supabase Vault (`sync_secret`) | authenticates the daily call |
 | `app_url` | Supabase Vault | where the daily call goes |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `.env.production.local` (build time) | public by design (RLS protects data) |
@@ -71,6 +73,7 @@ npx opennextjs-cloudflare deploy --config wrangler.own.jsonc
 | 0026 | activity log skips rows of a deleted org |
 | 0027 | project phases (timeline on the project page) |
 | 0028 | daily myDATA sync (pg_net + pg_cron + Vault) |
+| 0029 | Money Manager import staging (mm_imports, mm_rows) |
 
 ## 7. Conventions in the data
 
@@ -83,6 +86,6 @@ npx opennextjs-cloudflare deploy --config wrangler.own.jsonc
 | Source | Status |
 |---|---|
 | myDATA (ΑΑΔΕ) | ✅ live, daily |
-| Money Manager (cash) | next: daily Drive backup → automatic import |
+| Money Manager (cash) | ✅ iPhone shortcut, one tap (iOS has no automatic export) |
 | Gmail invoices / Drive inbox | planned |
 | Banks (PSD2, up to 4×/day) | planned via Enable Banking; Optima coverage to confirm |
