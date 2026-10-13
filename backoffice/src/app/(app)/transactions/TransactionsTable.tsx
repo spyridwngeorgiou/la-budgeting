@@ -1,21 +1,29 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { formatMoney, formatDate } from "@/lib/format";
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Paperclip } from "lucide-react";
+import { formatDate } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
+import { shell } from "@/lib/i18n/v2/shell";
 import {
   AiSpark,
+  Amount,
   Badge,
   Button,
-  Input,
+  EmptyState,
   PageHeader,
+  SUB_CLASS,
   SpecTable,
   StatusDot,
   Td,
   Th,
   Tr,
   buttonClass,
+  cn,
+  useConfirm,
+  useToast,
 } from "@/components/ui";
 import { TransactionFormModal, type TransactionInitial } from "./TransactionFormModal";
 import { PartialPaymentModal } from "./PartialPaymentModal";
@@ -36,23 +44,22 @@ const STATUS_LABEL = {
   cancelled: el.transaction.cancelled,
 } as const;
 
-// Spec-sheet cells (SpecTable's Th/Td). Below md each row is a CSS grid
-// (a card) and the cells are blocks placed in it, without the table's
-// rules and padding; from md up they are ordinary spec-table cells.
-const TH = "sticky top-0 z-10 bg-canvas";
-const CARD = "block max-md:border-b-0 max-md:p-0 md:table-cell";
-
-// An amount with its sign instead of a colour: −3.200,00 € / +12.400,00 €.
-function signed(n: number) {
-  return `${n > 0 ? "+" : n < 0 ? "−" : ""}${formatMoney(Math.abs(n))}`;
-}
+// One list, laid out by CSS (never rendered twice): a spec table from lg
+// up, a stack of hairline cards below. With the 240px menu rail the content
+// column is only 464–719px at md, too narrow for these columns, so the
+// table starts at lg and the account column at xl. No inner scroll box: the
+// table always fits (long words wrap anywhere) and its head sticks to the
+// top of the page (separate borders, so the rule moves with the head).
+const TH = "sticky top-[var(--sticky-top,0px)] z-10 bg-canvas";
+const CELL = "block max-lg:border-b-0 max-lg:p-0 lg:table-cell";
+const WRAP = "[overflow-wrap:anywhere]";
 
 interface Option {
   id: string;
   label: string;
 }
 
-interface TxRow {
+export interface TxRow {
   id: string;
   tx_date: string;
   due_date: string | null;
@@ -76,9 +83,12 @@ interface TxRow {
   contact_name: string | null;
   project_name: string | null;
   category_name: string | null;
+  account_name: string | null;
   origin: string | null;
   has_source_document: boolean;
 }
+
+const rowLabel = (tx: TxRow) => tx.description || tx.contact_name || formatDate(tx.tx_date);
 
 export function TransactionsTable({
   transactions,
@@ -89,69 +99,54 @@ export function TransactionsTable({
   filters,
   pager,
   pageTotalsOnly = false,
+  filtered = false,
   exportHref,
+  askHref,
   startCreating = false,
+  newCloseHref,
 }: {
   transactions: TxRow[];
   contacts: Option[];
   projects: Option[];
   categories: Option[];
   accounts: Option[];
+  // The filter row (and an ?ids= notice), server-built.
   filters?: React.ReactNode;
   // «Σελίδα 2 από 14» with previous / next links (server-built).
   pager?: React.ReactNode;
   // More than one page: the sums are this page's, and say so.
   pageTotalsOnly?: boolean;
+  // A filter or search is on: an empty list means «no match», not «no data».
+  filtered?: boolean;
   exportHref?: string;
+  // «Ρώτα το Kansha AI γι' αυτόν τον πίνακα»: the question about these filters.
+  askHref?: string;
   startCreating?: boolean;
+  // Opened by ?new=1: where closing the form goes (the URL without it).
+  newCloseHref?: string;
 }) {
-  // Exactly one modal instance for the whole table, whichever row (or
-  // "create") is active -- not one per row. `key` forces a clean remount
-  // when switching targets, so stale form state never leaks between rows.
+  // Exactly one drawer for the whole table, whichever row (or "create") is
+  // active -- not one per row. `key` forces a clean remount when switching
+  // targets, so stale form state never leaks between rows.
   const [target, setTarget] = useState<"create" | TxRow | null>(startCreating ? "create" : null);
   const [paying, setPaying] = useState<TxRow | null>(null);
-  // The search lives in the URL (?q=) and runs on the server over every
-  // matching row (lib/data/txSearch), so it works across pages. Typing
-  // updates the URL after a short pause and goes back to page 1.
+  // The row action in flight («<id>:paid», «<id>:delete», «<id>:source»).
+  const [busy, setBusy] = useState<string | null>(null);
+  const { show } = useToast();
+  const { confirm, dialog } = useConfirm();
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const urlQuery = searchParams.get("q") ?? "";
-  const [search, setSearch] = useState(urlQuery);
-  const lastSent = useRef(urlQuery);
-  const [deleting, setDeleting] = useState<string | null>(null);
-  const [loadingSource, setLoadingSource] = useState<string | null>(null);
 
-  useEffect(() => {
-    const q = search.trim();
-    if (q === lastSent.current) return;
-    const timer = setTimeout(() => {
-      lastSent.current = q;
-      const next = new URLSearchParams(searchParams.toString());
-      if (q) next.set("q", q);
-      else next.delete("q");
-      next.delete("page");
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [search, searchParams, pathname, router]);
-
-  const visibleTransactions = transactions;
-
-  // The total is a claim about exactly the rows on screen -- recomputed from
-  // visibleTransactions (post-search), same "number IS the rows behind it"
-  // principle the rest of the app already follows (analysis, cashflow).
+  // The sums are a claim about exactly the rows on screen.
   const summary = useMemo(() => {
     let income = 0;
     let expense = 0;
-    for (const tx of visibleTransactions) {
+    for (const tx of transactions) {
       const amount = Number(tx.gross_amount ?? 0);
       if (tx.direction === "income") income += amount;
       else expense += amount;
     }
-    return { income, expense, net: income - expense, count: visibleTransactions.length };
-  }, [visibleTransactions]);
+    return { income, expense, net: income - expense, count: transactions.length };
+  }, [transactions]);
 
   const todayIso = todayAthens();
   const isOverdue = (tx: TxRow) => tx.status !== "paid" && !!tx.due_date && tx.due_date < todayIso;
@@ -176,27 +171,44 @@ export function TransactionsTable({
     account_id: tx.account_id,
   });
 
+  // A row action: errors (and the outcome) as a toast, never a browser box.
+  async function run(key: string, act: () => Promise<unknown>, done: string) {
+    setBusy(key);
+    try {
+      const message = errorOf(await act());
+      if (message) show(message, { tone: "negative" });
+      else show(done);
+    } catch {
+      show(el.common.error, { tone: "negative" });
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function handleViewSource(tx: TxRow) {
-    setLoadingSource(tx.id);
+    setBusy(`${tx.id}:source`);
     try {
       const url = await getSourceDocumentUrl(tx.id);
       if (url) window.open(url, "_blank", "noopener,noreferrer");
-      else window.alert("Το πρωτότυπο αρχείο δεν είναι πλέον διαθέσιμο.");
+      else show(el.transaction.sourceMissing, { tone: "negative" });
+    } catch {
+      show(el.common.error, { tone: "negative" });
     } finally {
-      setLoadingSource(null);
+      setBusy(null);
     }
   }
 
   async function handleDelete(tx: TxRow) {
-    const label = tx.description || tx.contact_name || formatDate(tx.tx_date);
-    if (!window.confirm(`Διαγραφή της κίνησης «${label}»; Η ενέργεια δεν αναιρείται.`)) return;
-    setDeleting(tx.id);
-    try {
-      const message = errorOf(await deleteTransaction(tx.id));
-      if (message) window.alert(message);
-    } finally {
-      setDeleting(null);
-    }
+    const ok = await confirm({
+      message: el.transaction.deleteConfirm.replace("{label}", rowLabel(tx)),
+      confirmLabel: el.common.delete,
+    });
+    if (ok) await run(`${tx.id}:delete`, () => deleteTransaction(tx.id), el.common.deleted);
+  }
+
+  function closeForm() {
+    if (target === "create" && newCloseHref) router.replace(newCloseHref, { scroll: false });
+    setTarget(null);
   }
 
   return (
@@ -211,177 +223,180 @@ export function TransactionsTable({
                 Εξαγωγή CSV
               </a>
             )}
-            <Button onClick={() => setTarget("create")}>
-              + Νέα Κίνηση
-            </Button>
+            <Button onClick={() => setTarget("create")}>{el.transaction.newButton}</Button>
           </>
         }
       />
 
       {filters}
 
-      <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:justify-between md:gap-6">
-        <Input
-          type="search"
-          placeholder="Αναζήτηση σε όλες τις κινήσεις: επαφή, έργο, κατηγορία, περιγραφή, αρ. παραστατικού…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-md:min-h-11 md:max-w-md md:flex-1"
-        />
-        <p className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-small text-muted">
-          {pageTotalsOnly && <span className="eyebrow">Σύνολα της σελίδας</span>}
-          <span>
-            <span className="num">{summary.count}</span> κίνησ{summary.count === 1 ? "η" : "εις"}
-          </span>
-          <span>
-            Έσοδα <span className="num text-text">{signed(summary.income)}</span>
-          </span>
-          <span>
-            Έξοδα <span className="num text-text">{signed(-summary.expense)}</span>
-          </span>
-          <span>
-            Καθαρό <span className="num font-medium text-ink">{signed(summary.net)}</span>
-          </span>
-        </p>
-      </div>
+      {transactions.length === 0 ? (
+        filtered ? (
+          <EmptyState title={el.transaction.noMatch} body={el.transaction.noMatchHint} />
+        ) : (
+          <EmptyState
+            title={el.transaction.empty}
+            body={el.transaction.emptyHint}
+            action={<Button onClick={() => setTarget("create")}>{el.transaction.newButton}</Button>}
+          />
+        )
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+            <p className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-small text-muted">
+              {pageTotalsOnly && <span className="eyebrow">Σύνολα της σελίδας</span>}
+              <span>
+                <span className="num">{summary.count}</span> κίνησ{summary.count === 1 ? "η" : "εις"}
+              </span>
+              <span>
+                Έσοδα <Amount value={summary.income} className="text-text" />
+              </span>
+              <span>
+                Έξοδα <Amount value={-summary.expense} className="text-text" />
+              </span>
+              <span>
+                Καθαρό <Amount value={summary.net} className="font-medium text-ink" />
+              </span>
+            </p>
+            {askHref && (
+              <Link href={askHref} className={buttonClass("ai", "md", "max-md:w-full max-md:whitespace-normal")}>
+                <AiSpark />
+                Ρώτα το Kansha AI γι&apos; αυτόν τον πίνακα →
+              </Link>
+            )}
+          </div>
 
-      {/* One list, laid out by CSS: a spec-sheet table from md up (scrolling
-          inside its own frame under a sticky head), a stack of hairline
-          cards on a phone. Never rendered twice. */}
-      <div className="md:max-h-[70vh] md:overflow-auto">
-        <SpecTable frame="none" tableClassName="block md:table">
-          <thead className="hidden md:table-header-group">
-            <tr>
-              <Th className={TH}>{el.transaction.date}</Th>
-              <Th className={TH}>{el.transaction.contact}</Th>
-              <Th className={TH}>{el.transaction.project}</Th>
-              <Th className={TH}>{el.transaction.category}</Th>
-              <Th numeric className={TH}>
-                {el.transaction.grossAmount}
-              </Th>
-              <Th className={TH}>{el.transaction.status}</Th>
-              <Th className={TH}></Th>
-            </tr>
-          </thead>
-          <tbody className="block border-t border-rule md:table-row-group md:border-t-0">
-            {visibleTransactions.map((tx) => {
-              const overdue = isOverdue(tx);
-              return (
-                <Tr
-                  key={tx.id}
-                  className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 border-b border-hairline py-3 md:table-row md:border-b-0 md:py-0 ${
-                    overdue ? "border-l-2 border-l-negative pl-3 md:border-l-0 md:pl-0" : ""
-                  }`}
-                >
-                  <Td
-                    className={`${CARD} col-start-1 row-start-1 max-md:text-small max-md:text-muted ${
-                      overdue ? "md:border-l-2 md:border-l-negative" : ""
-                    }`}
+          <SpecTable frame="none" tableClassName="block border-separate border-spacing-0 lg:table">
+            <thead className="hidden lg:table-header-group">
+              <tr>
+                <Th className={TH}>{el.transaction.date}</Th>
+                <Th className={TH}>{el.transaction.description}</Th>
+                <Th className={TH}>{el.transaction.project}</Th>
+                <Th className={TH}>{el.transaction.category}</Th>
+                <Th className={cn(TH, "hidden xl:table-cell")}>{el.transaction.accountColumn}</Th>
+                <Th numeric className={TH}>
+                  {el.transaction.amount}
+                </Th>
+                <Th className={TH}>{el.transaction.status}</Th>
+                <Th className={TH}>
+                  <span className="sr-only">{shell.ui.actions}</span>
+                </Th>
+              </tr>
+            </thead>
+            <tbody className="block border-t border-rule lg:table-row-group lg:border-t-0">
+              {transactions.map((tx) => {
+                const overdue = isOverdue(tx);
+                const awaiting = tx.status === "pending" || tx.status === "scheduled";
+                const gross = Number(tx.gross_amount ?? 0);
+                const meta = [tx.project_name, tx.category_name, tx.account_name].filter(Boolean).join(" · ");
+                return (
+                  <Tr
+                    key={tx.id}
+                    className={cn(
+                      "grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 border-b border-hairline py-3 lg:table-row lg:border-b-0 lg:py-0",
+                      overdue && "border-l-2 border-l-negative pl-3 lg:border-l-0 lg:pl-0",
+                    )}
                   >
-                    <span className="num">{formatDate(tx.tx_date)}</span>
-                  </Td>
-                  <Td className={`${CARD} col-start-1 row-start-2 min-w-0 max-md:text-ink md:text-ink`}>
-                    <span className="inline-flex items-center gap-1.5 md:whitespace-nowrap">
-                      {tx.contact_name ?? "—"}
+                    <Td
+                      className={cn(
+                        CELL,
+                        "col-start-1 row-start-1 max-lg:text-small max-lg:text-muted lg:whitespace-nowrap",
+                        overdue && "lg:border-l-2 lg:border-l-negative lg:first:pl-2",
+                      )}
+                    >
+                      <span className="num">{formatDate(tx.tx_date)}</span>
+                    </Td>
+                    <Td className={cn(CELL, "col-start-1 row-start-2 min-w-0 lg:min-w-40", WRAP)}>
+                      <span className="text-ink">{tx.description || tx.contact_name || "—"}</span>
                       {AI_ORIGINS.has(tx.origin ?? "") && (
-                        <span title="Καταχωρήθηκε μέσω AI, επιβεβαιωμένη από άνθρωπο πριν καταγραφεί">
+                        <span title="Καταχωρήθηκε μέσω AI, επιβεβαιωμένη από άνθρωπο πριν καταγραφεί" className="ml-1.5 inline-block">
                           <AiSpark className="text-ai" />
                         </span>
                       )}
-                    </span>
-                  </Td>
-                  <Td className={`${CARD} col-span-2 col-start-1 row-start-3 max-md:text-small max-md:text-muted md:whitespace-nowrap`}>
-                    <span className="md:hidden">{el.transaction.project} · </span>
-                    {tx.project_name ?? "—"}
-                  </Td>
-                  <Td className={`${CARD} col-span-2 col-start-1 row-start-4 max-md:text-small max-md:text-muted md:whitespace-nowrap`}>
-                    <span className="md:hidden">{el.transaction.category} · </span>
-                    {tx.category_name ?? "—"}
-                  </Td>
-                  <Td numeric className={`${CARD} col-start-2 row-start-1 max-md:text-ink md:text-ink`}>
-                    {tx.direction === "income" ? "+" : "−"}
-                    {formatMoney(tx.gross_amount)}
-                  </Td>
-                  <Td className={`${CARD} col-start-2 row-start-2 justify-self-end md:justify-self-auto`}>
-                    <div className="flex flex-wrap items-center justify-end gap-1.5 md:justify-start">
-                      <StatusDot
-                        tone={STATUS_TONE[tx.status as keyof typeof STATUS_TONE]}
-                        label={STATUS_LABEL[tx.status as keyof typeof STATUS_LABEL]}
-                      />
-                      {overdue && <Badge tone="negative">εκπρόθεσμη</Badge>}
-                    </div>
-                  </Td>
-                  <Td className={`${CARD} col-span-2 col-start-1 row-start-5 max-md:pt-2 md:py-1.5`}>
-                    <div className="flex flex-wrap items-center gap-2 md:flex-nowrap md:justify-end">
                       {tx.has_source_document && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          disabled={loadingSource === tx.id}
+                        <button
+                          type="button"
                           onClick={() => handleViewSource(tx)}
+                          disabled={busy === `${tx.id}:source`}
+                          aria-label={el.transaction.source}
+                          title={el.transaction.source}
+                          className="-my-1.5 ml-1 inline-flex h-8 w-8 items-center justify-center align-middle text-muted hover:bg-hover hover:text-ink disabled:opacity-50 pointer-coarse:-my-3 pointer-coarse:h-11 pointer-coarse:w-11"
                         >
-                          {loadingSource === tx.id ? "…" : "Πρωτότυπο"}
-                        </Button>
+                          <Paperclip className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                        </button>
                       )}
-                      {(tx.status === "pending" || tx.status === "scheduled") && !tx.plan_id && (
-                        <Button variant="secondary" size="sm" onClick={() => setPaying(tx)}>
-                          Μερική πληρωμή
-                        </Button>
-                      )}
-                      {tx.status !== "paid" && (
-                        <form
-                          action={async () => {
-                            const message = errorOf(await markPaid(tx.id));
-                            if (message) window.alert(message);
-                          }}
-                        >
-                          <Button type="submit" variant="secondary" size="sm">
-                            {el.common.markPaid}
+                      {tx.description && tx.contact_name && <span className={SUB_CLASS}>{tx.contact_name}</span>}
+                      {meta && <span className={cn(SUB_CLASS, "lg:hidden")}>{meta}</span>}
+                    </Td>
+                    <Td className={cn("hidden lg:table-cell", WRAP)}>{tx.project_name ?? "—"}</Td>
+                    <Td className={cn("hidden lg:table-cell", WRAP)}>{tx.category_name ?? "—"}</Td>
+                    <Td className={cn("hidden xl:table-cell", WRAP)}>{tx.account_name ?? "—"}</Td>
+                    <Td numeric strong className={cn(CELL, "col-start-2 row-start-2")}>
+                      <Amount value={tx.direction === "income" ? gross : -gross} />
+                    </Td>
+                    <Td className={cn(CELL, "col-start-2 row-start-1 justify-self-end lg:justify-self-auto")}>
+                      <span className="flex flex-wrap items-center justify-end gap-1.5 lg:justify-start">
+                        <StatusDot
+                          tone={STATUS_TONE[tx.status as keyof typeof STATUS_TONE]}
+                          label={STATUS_LABEL[tx.status as keyof typeof STATUS_LABEL]}
+                          className="whitespace-nowrap"
+                        />
+                        {overdue && <Badge tone="negative">εκπρόθεσμη</Badge>}
+                      </span>
+                    </Td>
+                    <Td className={cn(CELL, "col-span-2 col-start-1 row-start-3 max-lg:pt-2 lg:py-2")}>
+                      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                        {/* Paid / partly paid: only while the row still awaits payment. */}
+                        {awaiting && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={busy === `${tx.id}:paid`}
+                            onClick={() => run(`${tx.id}:paid`, () => markPaid(tx.id), el.common.saved)}
+                          >
+                            {busy === `${tx.id}:paid` ? "…" : el.common.markPaid}
                           </Button>
-                        </form>
-                      )}
-                      <Button variant="secondary" size="sm" onClick={() => setTarget(tx)}>
-                        {el.common.edit}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={deleting === tx.id}
-                        onClick={() => handleDelete(tx)}
-                        className="text-negative hover:text-negative"
-                      >
-                        {deleting === tx.id ? "…" : el.common.delete}
-                      </Button>
-                    </div>
-                  </Td>
-                </Tr>
-              );
-            })}
-            {visibleTransactions.length === 0 && (
-              <tr className="block md:table-row">
-                <Td colSpan={7} className="block py-8 max-md:px-0 max-md:text-muted md:table-cell md:text-muted">
-                  {transactions.length === 0
-                    ? "Δεν υπάρχουν ακόμα κινήσεις. Πατήστε «+ Νέα Κίνηση» για να ξεκινήσετε."
-                    : "Καμία κίνηση δεν ταιριάζει με την αναζήτηση."}
-                </Td>
-              </tr>
-            )}
-          </tbody>
-        </SpecTable>
-      </div>
+                        )}
+                        {awaiting && !tx.plan_id && (
+                          <Button variant="ghost" size="sm" onClick={() => setPaying(tx)}>
+                            {el.transaction.partial}
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={() => setTarget(tx)}>
+                          {el.common.edit}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={busy === `${tx.id}:delete`}
+                          onClick={() => handleDelete(tx)}
+                          className="text-negative hover:text-negative"
+                        >
+                          {busy === `${tx.id}:delete` ? "…" : el.common.delete}
+                        </Button>
+                      </div>
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </tbody>
+          </SpecTable>
+        </>
+      )}
 
       {pager}
 
       {target && (
         <TransactionFormModal
           key={target === "create" ? "create" : target.id}
-          action={target === "create" ? createTransaction : updateTransaction.bind(null, target.id)}
+          action={target === "create" ? createTransaction : (formData) => updateTransaction(target.id, formData)}
           contacts={contacts}
           projects={projects}
           categories={categories}
           accounts={accounts}
           initial={target === "create" ? undefined : initialFor(target)}
-          onClose={() => setTarget(null)}
+          eyebrow={target === "create" ? undefined : rowLabel(target)}
+          onClose={closeForm}
         />
       )}
 
@@ -389,13 +404,15 @@ export function TransactionsTable({
         <PartialPaymentModal
           key={paying.id}
           transactionId={paying.id}
-          label={paying.description ?? paying.contact_name ?? formatDate(paying.tx_date)}
+          label={rowLabel(paying)}
           remaining={Number(paying.gross_amount ?? 0)}
           accountId={paying.account_id}
           accounts={accounts}
           onClose={() => setPaying(null)}
         />
       )}
+
+      {dialog}
     </div>
   );
 }
