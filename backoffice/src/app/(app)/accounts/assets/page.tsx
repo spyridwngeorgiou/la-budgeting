@@ -29,7 +29,7 @@ export default async function AssetsPage() {
   const t = el.netWorth;
 
   return (
-    <div className="flex min-w-0 flex-col gap-10">
+    <div className="flex min-w-0 flex-col gap-6">
       <PageHeader
         title={el.tabs.assetsLiabilities}
         meta={

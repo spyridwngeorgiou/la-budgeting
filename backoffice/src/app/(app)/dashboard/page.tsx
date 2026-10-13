@@ -2,25 +2,31 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/supabase/access";
-import { formatMoney } from "@/lib/format";
+import { formatDate, formatMoney, formatSignedMoney, moneyOrDash } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { AiSpark, figureFit, GlancePanel, PageHeader, SectionHeader } from "@/components/ui";
+import { figureFit, GlancePanel, LINK_CLASS, PageHeader, SectionHeader, SpecTable, Td, Th, Tr } from "@/components/ui";
 import { aiEnabled } from "@/lib/ai/client";
 import { rankAttention } from "@/lib/dashboard/attention";
 import { DashboardSummary } from "./DashboardSummary";
 import { AskAssistantCard } from "./AskAssistantCard";
 import { addDays, longDateLabel, monthKeyOf, monthLabel, todayAthens } from "@/lib/dates";
-import { overviewCards, overviewGlance, type DestinationCard, type GlanceFigure } from "@/lib/dashboard/overview";
-import { loadInboxCounts } from "@/lib/data/inboxCount";
-import { inboxTotal } from "@/lib/ingest/inboxCount";
+import {
+  dashboardPortfolio,
+  overviewGlance,
+  upcomingObligations,
+  UPCOMING_DAYS,
+  vatLine,
+  type GlanceFigure,
+} from "@/lib/dashboard/overview";
+import { portfolioRows } from "@/lib/finance/portfolio";
 import { loadPendingCaptures } from "@/lib/ingest/pendingCaptures";
 
-// Επισκόπηση: the page you navigate FROM. Four figures «Με μια ματιά», one
-// card per menu section (lib/dashboard/overview.ts) with one live line
-// each, the few things that need attention, then the AI. Every figure reads
-// from the SQL views (0011_views.sql and later), never from a hand-maintained
-// rollup, so it can never drift from the ledger. Server-rendered only: no
-// client JS beyond the opt-in AI summary.
+// Επισκόπηση, in the 7/10 order (the workbook's «Κέντρο Ελέγχου» and
+// «Πληρωμές»): what needs attention, Ρευστότητα, what falls due in the next
+// 30 days, the project portfolio, the ΦΠΑ line, then the AI. Every figure
+// reads from the SQL views (0011_views.sql and later), never from a
+// hand-maintained rollup, so it can never drift from the ledger.
+// Server-rendered only: no client JS beyond the opt-in AI summary.
 //
 // View columns are all nullable (Postgres views carry no NOT NULL
 // guarantees even when the underlying table does), so every read here goes
@@ -40,11 +46,11 @@ export default async function DashboardPage() {
   // real period and show as "current month" with misleading zeros. Pin to
   // the latest period that isn't in the future.
   const todayIso = todayAthens();
+  const upcomingEnd = addDays(todayIso, UPCOMING_DAYS - 1);
 
   const [
     { data: projects },
     { data: vat },
-    { data: withoutBudget },
     { data: openTx },
     { data: vatPeriods },
     { count: missingProjectOrAccount },
@@ -52,31 +58,31 @@ export default async function DashboardPage() {
     { count: pendingChanges },
     { data: liquidity },
     { data: forecast },
-    { count: calendarNext7 },
     { data: pnlRows },
-    inboxPending,
-    { count: accountsCount },
-    { count: openTasks },
-    { count: contactsCount },
   ] = await Promise.all([
-    supabase.from("v_project_rollup").select("project_id, status, remaining_budget").eq("org_id", orgId).order("code"),
+    // One read for both the portfolio table and «εκτός προϋπολογισμού».
+    supabase
+      .from("v_project_rollup")
+      .select("project_id, display_name, code, business_line, status, total_budget, spent, remaining_budget, net_result, pending, vat_on_expenses")
+      .eq("org_id", orgId)
+      .order("code"),
     supabase
       .from("v_vat_position")
-      .select("period_start, payable_after_credit")
+      .select("period_start, payable_after_credit, credit_balance, filing_deadline")
       .eq("org_id", orgId)
       .lte("period_start", todayIso)
       .order("period_start", { ascending: false }),
-    supabase.from("v_qc_projects_without_budget").select("project_id").eq("org_id", orgId),
-    // Open rows: every pending one (receivables/payables, as in
-    // v_net_worth_items) plus scheduled ones already past their due date
-    // («ληξιπρόθεσμες»). An upcoming loan or installment payment must never
-    // be missed with zero warning anywhere in the app.
+    // Open rows, one read for two blocks: every pending one (receivables/
+    // payables, as in v_net_worth_items) plus scheduled ones due up to 30
+    // days ahead. Past their due date they are «ληξιπρόθεσμες» (attention),
+    // ahead of it «Προσεχείς υποχρεώσεις». An upcoming loan or installment
+    // payment must never be missed with zero warning anywhere in the app.
     supabase
       .from("transactions")
-      .select("id, due_date, status")
+      .select("id, due_date, status, direction, gross_amount, description, counterparty_name")
       .eq("org_id", orgId)
       .in("status", ["pending", "scheduled"])
-      .or(`status.eq.pending,due_date.lt.${todayIso}`),
+      .or(`status.eq.pending,due_date.lte.${upcomingEnd}`),
     // Filing status per period, same source /reports/vat uses -- lets the worklist
     // flag a past period nobody has marked as filed yet.
     supabase.from("vat_periods").select("period_start, status").eq("org_id", orgId),
@@ -87,31 +93,9 @@ export default async function DashboardPage() {
     // cash_forecast() /reports/cash shows -- never re-derived here.
     supabase.from("v_liquidity").select("owner_scope, balance").eq("org_id", orgId),
     supabase.rpc("cash_forecast", { p_org: orgId, p_months: 12 }),
-    // Calendar card: items overlapping the next 7 days (today included),
-    // same overlap rule as the calendar itself; head-only, no rows travel.
-    supabase
-      .from("v_calendar_items")
-      .select("item_key", { count: "exact", head: true })
-      .eq("org_id", orgId)
-      .lte("starts_on", addDays(todayIso, 6))
-      .gte("ends_on", todayIso)
-      .not("is_done", "is", true),
     // Result figure: the year so far, same function and defaults as /reports/pnl.
     supabase.rpc("pnl_summary", { p_org: orgId, p_from: `${todayIso.slice(0, 4)}-01-01`, p_to: todayIso }),
-    // The nav badge's number (cached per request: the layout reads it too).
-    canReview ? loadInboxCounts(orgId).then(inboxTotal) : 0,
-    // Head-only counts for the destination cards: no rows travel.
-    supabase.from("accounts").select("id", { count: "exact", head: true }).eq("org_id", orgId).eq("is_active", true),
-    supabase
-      .from("tasks")
-      .select("id", { count: "exact", head: true })
-      .eq("org_id", orgId)
-      .is("archived_at", null)
-      .neq("status", "done"),
-    supabase.from("contacts").select("id", { count: "exact", head: true }).eq("org_id", orgId),
   ]);
-
-  const noBudget = new Set((withoutBudget ?? []).map((r) => r.project_id));
 
   const cashOf = (scope: "corporate" | "personal") =>
     (liquidity ?? []).filter((l) => l.owner_scope === scope).reduce((sum, l) => sum + Number(l.balance ?? 0), 0);
@@ -125,15 +109,13 @@ export default async function DashboardPage() {
   const currentVat = vat?.[0];
 
   const overdue = (openTx ?? []).filter((tx) => tx.due_date && tx.due_date < todayIso);
-  const pendingCount = (openTx ?? []).filter((tx) => tx.status === "pending").length;
+  const upcoming = upcomingObligations(openTx ?? [], todayIso);
 
-  // Projects with an actual budget (noBudget excludes the ones with none)
-  // whose capex has run past it -- v_project_rollup.remaining_budget already
-  // accounts for capex-only consumption (0020_cost_treatment.sql), so a
-  // negative value here is real.
-  const overBudgetProjects = (projects ?? []).filter(
-    (p) => !noBudget.has(p.project_id) && Number(p.remaining_budget ?? 0) < 0,
-  );
+  // Projects with an actual budget whose capex has run past it --
+  // v_project_rollup.remaining_budget already accounts for capex-only
+  // consumption (0020_cost_treatment.sql), so a negative value here is real.
+  const overBudgetProjects = portfolioRows(projects ?? []).filter((p) => p.overBudget);
+  const portfolio = dashboardPortfolio(projects ?? []);
 
   // A past period with no vat_periods row at all, or one whose status is
   // neither 'filed' nor 'paid', hasn't been dealt with -- same definition
@@ -180,7 +162,7 @@ export default async function DashboardPage() {
   const contactlessRows = (contactless ?? []).reduce((s, r) => s + Number(r.n ?? 0), 0);
   const inboxCount = pendingCaptures.count + (pendingChanges ?? 0);
 
-  const inputs = {
+  const glance = overviewGlance({
     cashCorporate: cashOf("corporate"),
     cashPersonal: cashOf("personal"),
     lowest,
@@ -188,20 +170,7 @@ export default async function DashboardPage() {
     year: Number(todayIso.slice(0, 4)),
     pnlRows: pnlRows ?? [],
     vatPayable: Number(currentVat?.payable_after_credit ?? 0),
-    canReview,
-    inboxPending,
-    overdue: overdue.length,
-    pending: pendingCount,
-    accounts: accountsCount ?? 0,
-    accountDrift: driftAccounts.length,
-    activeProjects: (projects ?? []).filter((p) => p.status === "active").length,
-    overBudgetProjects: overBudgetProjects.length,
-    openTasks: openTasks ?? 0,
-    calendarNext7: calendarNext7 ?? 0,
-    contacts: contactsCount ?? 0,
-  };
-  const glance = overviewGlance(inputs);
-  const cards = overviewCards(inputs);
+  });
 
   // The single worklist, ranked by severity and capped
   // (lib/dashboard/attention.ts), so a zero-item list is a real, trustworthy
@@ -237,7 +206,7 @@ export default async function DashboardPage() {
     overBudgetProjects.length > 0 && {
       kind: "overBudget",
       label: `${overBudgetProjects.length} έργ${overBudgetProjects.length === 1 ? "ο εκτός" : "α εκτός"} προϋπολογισμού`,
-      href: `/projects/${overBudgetProjects[0].project_id}`,
+      href: `/projects/${overBudgetProjects[0].id}`,
     },
     (uninvoiced ?? []).length > 0 && {
       kind: "uninvoiced",
@@ -261,42 +230,11 @@ export default async function DashboardPage() {
     },
   ]);
 
-  // An odd last card spans the empty cells, so the hairline grid closes.
-  const lastSpan = [
-    cards.length % 2 === 1 ? "max-lg:col-span-2" : "",
-    cards.length % 3 === 1 ? "lg:col-span-3" : cards.length % 3 === 2 ? "lg:col-span-2" : "",
-  ].join(" ");
-
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-6">
       <PageHeader eyebrow={longDateLabel(todayIso)} title={el.nav.dashboard} />
 
-      <GlancePanel
-        title="Με μια ματιά"
-        footer={
-          <span className="text-panel-muted">
-            Το ταμείο μετρά μόνο ρευστούς λογαριασμούς· χρυσός και crypto εμφανίζονται στην Καθαρή θέση.
-          </span>
-        }
-      >
-        <div className="grid grid-cols-2 gap-x-4 gap-y-6 xl:grid-cols-4 xl:gap-x-0">
-          {glance.map((f) => (
-            <Figure key={f.key} figure={f} />
-          ))}
-        </div>
-      </GlancePanel>
-
-      <section aria-labelledby="destinations" className="flex flex-col gap-4">
-        <SectionHeader title={<span id="destinations">Πού θέλετε να πάτε</span>} />
-        <ul className="grid grid-cols-2 border-t border-l border-hairline lg:grid-cols-3">
-          {cards.map((card, i) => (
-            <li key={card.key} className={`min-w-0 border-r border-b border-hairline ${i === cards.length - 1 ? lastSpan : ""}`}>
-              <Card card={card} />
-            </li>
-          ))}
-        </ul>
-      </section>
-
+      {/* 1 · Χρειάζεται προσοχή */}
       <section className="flex flex-col">
         <SectionHeader title="Χρειάζεται Προσοχή" />
         {attention.shown.length === 0 ? (
@@ -319,22 +257,161 @@ export default async function DashboardPage() {
             {attention.more > 0 && (
               <li className="flex min-h-11 flex-wrap items-center gap-x-4 border-b border-hairline py-2 pr-2 pl-4 text-body text-muted">
                 <span>+{attention.more} ακόμα</span>
+                <Link href="/reports/quality" className="inline-flex min-h-11 items-center text-ink underline-offset-4 hover:underline">
+                  όλα →
+                </Link>
                 {canReview && (
                   <Link href="/inbox" className="inline-flex min-h-11 items-center text-ink underline-offset-4 hover:underline">
                     Εισερχόμενα →
                   </Link>
                 )}
-                <Link href="/reports/quality" className="inline-flex min-h-11 items-center text-ink underline-offset-4 hover:underline">
-                  Ποιότητα δεδομένων →
-                </Link>
               </li>
             )}
           </ul>
         )}
       </section>
 
+      {/* 2 · Ρευστότητα */}
+      <GlancePanel
+        title="Ρευστότητα"
+        footer={
+          <span className="text-panel-muted">
+            Το ταμείο μετρά μόνο ρευστούς λογαριασμούς· χρυσός και crypto εμφανίζονται στην Καθαρή θέση.
+          </span>
+        }
+      >
+        <div className="grid grid-cols-2 gap-x-4 gap-y-6 xl:grid-cols-4 xl:gap-x-0">
+          {glance.map((f) => (
+            <Figure key={f.key} figure={f} />
+          ))}
+        </div>
+      </GlancePanel>
+
+      {/* 3 · Προσεχείς υποχρεώσεις */}
+      <section aria-labelledby="upcoming" className="flex flex-col gap-2">
+        <SectionHeader
+          title={<span id="upcoming">Προσεχείς Υποχρεώσεις · {UPCOMING_DAYS} ημέρες</span>}
+          actions={
+            <Link href="/calendar" className={`inline-flex min-h-11 items-center text-body ${LINK_CLASS}`}>
+              {upcoming.more > 0 ? `όλες (${upcoming.shown.length + upcoming.more}) →` : "Ημερολόγιο →"}
+            </Link>
+          }
+        />
+        {upcoming.shown.length === 0 ? (
+          <p className="py-2 text-body text-muted">Τίποτα δεν λήγει τις επόμενες {UPCOMING_DAYS} ημέρες.</p>
+        ) : (
+          <SpecTable label="Προσεχείς υποχρεώσεις">
+            <thead>
+              <tr>
+                <Th>Λήξη</Th>
+                <Th>Περιγραφή</Th>
+                <Th numeric>Ποσό</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {upcoming.shown.map((u) => (
+                <Tr key={u.id}>
+                  <Td className="num whitespace-nowrap text-muted">{formatDate(u.date)}</Td>
+                  <Td strong>
+                    <Link href={`/transactions?ids=${u.id}`} className={LINK_CLASS}>
+                      {u.label}
+                    </Link>
+                  </Td>
+                  <Td numeric>{formatSignedMoney(u.amount)}</Td>
+                </Tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <Tr total>
+                <Td>{upcoming.more > 0 ? `Σύνολο (και ${upcoming.more} ακόμα)` : "Σύνολο"}</Td>
+                <Td className="text-small font-normal text-muted">
+                  Εισπράξεις {formatSignedMoney(upcoming.income)} · Πληρωμές {formatSignedMoney(upcoming.outflow)}
+                </Td>
+                <Td numeric>{formatSignedMoney(upcoming.income + upcoming.outflow)}</Td>
+              </Tr>
+            </tfoot>
+          </SpecTable>
+        )}
+      </section>
+
+      {/* 4 · Χαρτοφυλάκιο έργων */}
+      <section aria-labelledby="portfolio" className="flex flex-col gap-2">
+        <SectionHeader
+          title={<span id="portfolio">Χαρτοφυλάκιο Έργων</span>}
+          actions={
+            <Link href="/reports/portfolio" className={`inline-flex min-h-11 items-center text-body ${LINK_CLASS}`}>
+              {portfolio.more > 0 ? `όλα (${portfolio.shown.length + portfolio.more}) →` : "Αναφορά →"}
+            </Link>
+          }
+        />
+        {portfolio.shown.length === 0 ? (
+          <p className="py-2 text-body text-muted">Δεν υπάρχουν ακόμα έργα με προϋπολογισμό ή δαπάνες.</p>
+        ) : (
+          <SpecTable label="Χαρτοφυλάκιο έργων" stickyFirst>
+            <thead>
+              <tr>
+                <Th>Έργο</Th>
+                <Th numeric className="hidden sm:table-cell">
+                  {el.project.budget}
+                </Th>
+                <Th numeric>Δαπανηθέντα</Th>
+                <Th numeric>Εκκρεμούν</Th>
+                <Th numeric className="hidden sm:table-cell">
+                  + ΦΠΑ
+                </Th>
+              </tr>
+            </thead>
+            <tbody>
+              {portfolio.shown.map((p) => (
+                <Tr key={p.id}>
+                  <Td strong>
+                    <Link href={`/projects/${p.id}`} className={LINK_CLASS}>
+                      {p.name}
+                    </Link>
+                    {p.overBudget && <span className="block text-small text-negative">εκτός προϋπολογισμού</span>}
+                  </Td>
+                  <Td numeric className="hidden sm:table-cell">
+                    {p.budget === null ? <span className="text-muted">—</span> : formatMoney(p.budget)}
+                  </Td>
+                  <Td numeric>
+                    <Link href={`/transactions?project_id=${p.id}&direction=expense&status=paid`} className={LINK_CLASS}>
+                      {moneyOrDash(p.spent)}
+                    </Link>
+                  </Td>
+                  <Td numeric>
+                    <Link href={`/transactions?project_id=${p.id}&direction=expense&status=pending`} className={LINK_CLASS}>
+                      {moneyOrDash(p.pending)}
+                    </Link>
+                  </Td>
+                  <Td numeric className="hidden sm:table-cell">
+                    <Link href={`/transactions?project_id=${p.id}&direction=expense`} className={LINK_CLASS}>
+                      {moneyOrDash(p.vat)}
+                    </Link>
+                  </Td>
+                </Tr>
+              ))}
+            </tbody>
+          </SpecTable>
+        )}
+      </section>
+
+      {/* 5 · ΦΠΑ: one line */}
+      <Link
+        href="/reports/vat"
+        className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-y border-hairline py-2 text-body text-ink transition-colors hover:bg-hover"
+      >
+        <span>
+          <span className="eyebrow mr-3 text-muted">ΦΠΑ</span>
+          {vatLine(vat ?? [], filedPeriods, todayIso)}
+        </span>
+        <span aria-hidden="true" className="shrink-0 text-muted">
+          →
+        </span>
+      </Link>
+
+      {/* 6 · Kansha AI */}
       {aiEnabled() && (
-        <section aria-label={el.nav.assistant} className="flex flex-col gap-4">
+        <section aria-label={el.nav.assistant} className="flex flex-col gap-3">
           <AskAssistantCard />
           <DashboardSummary />
         </section>
@@ -343,8 +420,8 @@ export default async function DashboardPage() {
   );
 }
 
-// One «Με μια ματιά» figure: eyebrow (wraps), big light tabular value, a
-// muted line; the whole figure is the link to where the number comes from.
+// One Ρευστότητα figure: eyebrow (wraps), big light tabular value, a muted
+// line; the whole figure is the link to where the number comes from.
 function Figure({ figure }: { figure: GlanceFigure }) {
   return (
     <Link
@@ -361,47 +438,6 @@ function Figure({ figure }: { figure: GlanceFigure }) {
           →
         </span>
       </span>
-    </Link>
-  );
-}
-
-const SEVERITY_BAR: Record<NonNullable<DestinationCard["severity"]>, string> = {
-  urgent: "border-negative",
-  attention: "border-warning",
-};
-const SEVERITY_TEXT: Record<NonNullable<DestinationCard["severity"]>, string> = {
-  urgent: "text-negative",
-  attention: "text-warning",
-};
-
-// One destination: section name, what you do there, one live line. The
-// whole cell is the link; hover draws the navy rule on top and tints it, an
-// exception draws a 2px severity bar on the left.
-function Card({ card }: { card: DestinationCard }) {
-  const ai = card.key === "assistant";
-  return (
-    <Link
-      href={card.href}
-      className="group relative flex h-full min-h-36 min-w-0 flex-col gap-1.5 p-4 transition-colors hover:bg-hover sm:p-5"
-    >
-      <span
-        aria-hidden="true"
-        className="absolute inset-x-0 -top-px border-t-2 border-navy opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-      />
-      {card.severity && (
-        <span aria-hidden="true" className={`absolute inset-y-0 -left-px border-l-2 ${SEVERITY_BAR[card.severity]}`} />
-      )}
-      <span className="flex items-baseline justify-between gap-2">
-        <span className={`inline-flex min-w-0 items-center gap-1.5 text-section break-words ${ai ? "text-ai" : "text-ink"}`}>
-          {ai && <AiSpark className="shrink-0" />}
-          {card.title}
-        </span>
-        <span aria-hidden="true" className="shrink-0 text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-ink">
-          →
-        </span>
-      </span>
-      <span className="text-small text-muted">{card.description}</span>
-      <span className={`mt-auto min-w-0 pt-3 text-body tabular-nums break-words ${card.severity ? SEVERITY_TEXT[card.severity] : "text-ink"}`}>{card.metric}</span>
     </Link>
   );
 }

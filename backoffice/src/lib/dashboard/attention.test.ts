@@ -29,15 +29,17 @@ describe("rankAttention", () => {
     expect(more).toBe(0);
   });
 
-  it("caps at 3 and counts the rest", () => {
+  it("caps at 5 and counts the rest", () => {
     const { shown, more } = rankAttention([
       item("contactless"),
       item("uninvoiced"),
       item("vatUnfiled"),
       item("overdue"),
       item("accountDrift"),
+      item("missingProjectOrAccount"),
+      item("inbox"),
     ]);
-    expect(shown.map((x) => x.kind)).toEqual(["overdue", "vatUnfiled", "accountDrift"]);
+    expect(shown.map((x) => x.kind)).toEqual(["overdue", "inbox", "vatUnfiled", "accountDrift", "uninvoiced"]);
     expect(more).toBe(2);
   });
 

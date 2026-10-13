@@ -8,30 +8,51 @@ import { action, UserError, type ActionResult } from "@/lib/actions";
 import { isValidIban } from "@/lib/ingest/text";
 import { el } from "@/lib/i18n/el";
 
+// The account's fields from the form, validated the same way for create
+// and edit (createAccount / updateAccount).
+function accountFields(formData: FormData) {
+  const iban = formString(formData, "iban")?.replace(/\s+/g, "").toUpperCase() ?? null;
+  if (iban && !isValidIban(iban)) throw new UserError(el.account.invalidIban);
+  const accountNumber = formString(formData, "account_number")?.replace(/[\s-]/g, "") ?? null;
+  if (accountNumber && !/^[0-9]{6,34}$/.test(accountNumber)) throw new UserError(el.account.invalidAccountNumber);
+  return {
+    iban,
+    account_number: accountNumber,
+    name: String(formData.get("name")),
+    kind: (formString(formData, "kind") as AccountKind) ?? "bank",
+    owner_scope: String(formData.get("owner_scope")) as OwnerScope,
+    is_liquid: formData.get("is_liquid") === "on",
+    opening_balance: Number(formData.get("opening_balance") ?? 0),
+    opening_balance_date: String(formData.get("opening_balance_date")),
+  };
+}
+
 export async function createAccount(formData: FormData): Promise<ActionResult> {
   return action(async () => {
     const supabase = await createClient();
     const orgId = await getCurrentOrgId(supabase);
-
-    const iban = formString(formData, "iban")?.replace(/\s+/g, "").toUpperCase() ?? null;
-    if (iban && !isValidIban(iban)) throw new UserError(el.account.invalidIban);
-    const accountNumber = formString(formData, "account_number")?.replace(/[\s-]/g, "") ?? null;
-    if (accountNumber && !/^[0-9]{6,34}$/.test(accountNumber)) throw new UserError(el.account.invalidAccountNumber);
-
-    const { error } = await supabase.from("accounts").insert({
-      iban,
-      account_number: accountNumber,
-      org_id: orgId,
-      name: String(formData.get("name")),
-      kind: (formString(formData, "kind") as AccountKind) ?? "bank",
-      owner_scope: String(formData.get("owner_scope")) as OwnerScope,
-      is_liquid: formData.get("is_liquid") === "on",
-      opening_balance: Number(formData.get("opening_balance") ?? 0),
-      opening_balance_date: String(formData.get("opening_balance_date")),
-    });
-
+    const { error } = await supabase.from("accounts").insert({ ...accountFields(formData), org_id: orgId });
     if (error) throw error;
     revalidatePath("/accounts");
+  });
+}
+
+// Same fields and checks as createAccount. The id is a plain argument (the
+// form calls updateAccount(id, formData)), never a bound one.
+export async function updateAccount(accountId: string, formData: FormData): Promise<ActionResult> {
+  return action(async () => {
+    const supabase = await createClient();
+    const orgId = await getCurrentOrgId(supabase);
+    const { data, error } = await supabase
+      .from("accounts")
+      .update(accountFields(formData))
+      .eq("org_id", orgId)
+      .eq("id", accountId)
+      .select("id");
+    if (error) throw error;
+    if (!data || data.length === 0) throw new UserError("Ο λογαριασμός δεν βρέθηκε.");
+    // The list and the account's own page.
+    revalidatePath("/accounts", "layout");
   });
 }
 

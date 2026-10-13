@@ -1,11 +1,12 @@
-// The Επισκόπηση (/dashboard) model: the four «Με μια ματιά» figures and
-// the «Πού θέλετε να πάτε» destination cards, one per menu section in menu
-// order. The page passes raw numbers from its existing queries; labels,
-// formatting, hrefs and exceptions live here. Pure, so vitest covers it.
-import { figureLength, formatMoney } from "@/lib/format";
-import { el } from "@/lib/i18n/el";
-import { monthKeyOf, monthLabel } from "@/lib/dates";
+// The Επισκόπηση (/dashboard) model, in the 7/10 order of the workbook's
+// «Κέντρο Ελέγχου» / «Πληρωμές»: the four Ρευστότητα figures, the
+// obligations due in the next 30 days, the project portfolio and the one
+// ΦΠΑ line. The page passes raw rows from its queries; labels, formatting
+// and hrefs live here. Pure, so vitest covers it.
+import { figureLength, formatDate, formatMoney } from "@/lib/format";
+import { addDays, monthKeyOf, monthLabel } from "@/lib/dates";
 import { PNL_LINES } from "@/lib/finance/pnl";
+import { portfolioRows, type PortfolioRollupRow } from "@/lib/finance/portfolio";
 
 export interface GlanceFigure {
   key: "cash" | "lowest" | "pnl" | "vat";
@@ -19,27 +20,6 @@ export interface GlanceFigure {
   length: 1 | 2 | 3;
 }
 
-export type CardKey =
-  | "inbox"
-  | "assistant"
-  | "transactions"
-  | "accounts"
-  | "reports"
-  | "projects"
-  | "planner"
-  | "calendar"
-  | "contacts";
-
-export interface DestinationCard {
-  key: CardKey;
-  href: string;
-  title: string;
-  description: string;
-  metric: string;
-  // An exception the card should flag with its 2px bar, or null.
-  severity: "urgent" | "attention" | null;
-}
-
 export interface OverviewInputs {
   cashCorporate: number;
   cashPersonal: number;
@@ -50,39 +30,24 @@ export interface OverviewInputs {
   year: number;
   pnlRows: { line: string; amount: number | string | null }[];
   vatPayable: number;
-  // Viewers can't review, so the menu hides Εισερχόμενα; so does this.
-  canReview: boolean;
-  inboxPending: number;
-  overdue: number;
-  pending: number;
-  accounts: number;
-  accountDrift: number;
-  activeProjects: number;
-  overBudgetProjects: number;
-  openTasks: number;
-  calendarNext7: number;
-  contacts: number;
 }
 
 const num = (v: number | string | null | undefined) => {
   const n = Number(v ?? 0);
   return Number.isFinite(n) ? n : 0;
 };
-const count = (v: number) => (Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 // Same total as the «Αποτέλεσμα» row of /reports/pnl (pnlTable): every
 // pnl_line() line summed, signed. Unknown lines are ignored there too.
 export function pnlResult(rows: OverviewInputs["pnlRows"]): number {
   const lines = new Set<string>(PNL_LINES);
   const sum = rows.filter((r) => lines.has(r.line)).reduce((s, r) => s + num(r.amount), 0);
-  return Math.round(sum * 100) / 100;
+  return round2(sum);
 }
 
 // «1.250,00 €» is 10 characters, «12.345,67 €» 11, «-1.234.567,89 €» 15.
 export { figureLength };
-
-const signed = (n: number) => `${n > 0 ? "+" : ""}${formatMoney(n)}`;
 
 export function overviewGlance(i: OverviewInputs): GlanceFigure[] {
   const cash = i.cashCorporate + i.cashPersonal;
@@ -133,102 +98,123 @@ export function overviewGlance(i: OverviewInputs): GlanceFigure[] {
   return figures.map((f) => ({ ...f, length: figureLength(f.value) }));
 }
 
-export function overviewCards(i: OverviewInputs): DestinationCard[] {
-  const inbox = count(i.inboxPending);
-  const overdue = count(i.overdue);
-  const pending = count(i.pending);
-  const accounts = count(i.accounts);
-  const drift = count(i.accountDrift);
-  const active = count(i.activeProjects);
-  const over = count(i.overBudgetProjects);
-  const tasks = count(i.openTasks);
-  const calendar = count(i.calendarNext7);
-  const contacts = count(i.contacts);
+// ── Προσεχείς υποχρεώσεις: pending/scheduled rows due in the next 30 days ──
+export interface OpenTxRow {
+  id: string;
+  due_date: string | null;
+  status: string | null;
+  direction: string | null;
+  gross_amount: number | string | null;
+  description: string | null;
+  counterparty_name: string | null;
+}
 
-  const cards: (DestinationCard | null)[] = [
-    i.canReview
-      ? {
-          key: "inbox",
-          href: "/inbox",
-          title: el.nav.inbox,
-          description: "Παραστατικά και προτάσεις AI προς έλεγχο",
-          metric: inbox > 0 ? `${inbox} προς έλεγχο` : "Τίποτα προς έλεγχο",
-          severity: inbox > 0 ? "attention" : null,
-        }
-      : null,
-    {
-      key: "assistant",
-      href: "/assistant",
-      title: el.nav.assistant,
-      description: "Ερωτήσεις για τα οικονομικά σας, σε απλά ελληνικά",
-      metric: "Ρωτήστε οτιδήποτε",
-      severity: null,
-    },
-    {
-      key: "transactions",
-      href: "/transactions",
-      title: el.nav.transactions,
-      description: "Έσοδα, έξοδα, απαιτήσεις και υποχρεώσεις",
-      metric:
-        overdue > 0
-          ? plural(overdue, "ληξιπρόθεσμη", "ληξιπρόθεσμες")
-          : pending > 0
-            ? plural(pending, "εκκρεμής", "εκκρεμείς")
-            : "Καμία εκκρεμότητα",
-      severity: overdue > 0 ? "urgent" : null,
-    },
-    {
-      key: "accounts",
-      href: "/accounts",
-      title: el.nav.accounts,
-      description: "Υπόλοιπα τραπεζών, ταμείων και καρτών",
-      metric: [plural(accounts, "λογαριασμός", "λογαριασμοί"), drift > 0 ? plural(drift, "απόκλιση", "αποκλίσεις") : null]
-        .filter(Boolean)
-        .join(" · "),
-      severity: drift > 0 ? "urgent" : null,
-    },
-    {
-      key: "reports",
-      href: "/reports",
-      title: el.nav.reports,
-      description: "Αποτελέσματα, ταμείο, ΦΠΑ και ανάλυση",
-      metric: `Αποτέλεσμα ${signed(pnlResult(i.pnlRows))}`,
-      severity: null,
-    },
-    {
-      key: "projects",
-      href: "/projects",
-      title: el.nav.projects,
-      description: "Προϋπολογισμός, δαπάνες και ορόσημα ανά έργο",
-      metric: [plural(active, "ενεργό", "ενεργά"), over > 0 ? `${over} εκτός προϋπολογισμού` : null]
-        .filter(Boolean)
-        .join(" · "),
-      severity: over > 0 ? "urgent" : null,
-    },
-    {
-      key: "planner",
-      href: "/planner",
-      title: el.nav.planner,
-      description: "Οι εργασίες όλων των έργων σε πίνακα",
-      metric: tasks > 0 ? plural(tasks, "ανοιχτή εργασία", "ανοιχτές εργασίες") : "Καμία ανοιχτή εργασία",
-      severity: null,
-    },
-    {
-      key: "calendar",
-      href: "/calendar",
-      title: el.nav.calendar,
-      description: "Πληρωμές, λήξεις και προθεσμίες ανά ημέρα",
-      metric: calendar > 0 ? `${calendar} τις επόμενες 7 ημέρες` : "Τίποτα τις επόμενες 7 ημέρες",
-      severity: null,
-    },
-    {
-      key: "contacts",
-      href: "/contacts",
-      title: el.nav.contacts,
-      description: "Πελάτες, προμηθευτές και συνεργάτες",
-      metric: plural(contacts, "επαφή", "επαφές"),
-      severity: null,
-    },
-  ];
-  return cards.filter((c): c is DestinationCard => c !== null);
+export interface UpcomingItem {
+  id: string;
+  date: string;
+  label: string;
+  // Signed: income +, everything else −.
+  amount: number;
+}
+
+export const UPCOMING_DAYS = 30;
+export const UPCOMING_MAX = 8;
+
+// Today through today + 29, soonest first (overdue rows belong to
+// «Χρειάζεται προσοχή», not this list). The rest is counted, never dropped.
+export function upcomingObligations(
+  rows: OpenTxRow[],
+  today: string,
+  max = UPCOMING_MAX,
+): { shown: UpcomingItem[]; more: number; income: number; outflow: number } {
+  const end = addDays(today, UPCOMING_DAYS - 1);
+  const all = rows
+    .filter((r) => r.due_date && r.due_date >= today && r.due_date <= end)
+    .map((r) => ({
+      id: r.id,
+      date: r.due_date!,
+      label: r.description?.trim() || r.counterparty_name?.trim() || "—",
+      amount: (r.direction === "income" ? 1 : -1) * Math.abs(num(r.gross_amount)),
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.label.localeCompare(b.label, "el"));
+  return {
+    shown: all.slice(0, max),
+    more: Math.max(0, all.length - max),
+    income: round2(all.filter((r) => r.amount > 0).reduce((s, r) => s + r.amount, 0)),
+    outflow: round2(all.filter((r) => r.amount < 0).reduce((s, r) => s + r.amount, 0)),
+  };
+}
+
+// ── Χαρτοφυλάκιο έργων: the 7/10 table, from lib/finance/portfolio ──
+export interface DashboardRollupRow extends PortfolioRollupRow {
+  pending: number | string | null;
+  vat_on_expenses: number | string | null;
+}
+
+export interface DashboardPortfolioRow {
+  id: string;
+  name: string;
+  // null: no budget on file («—»).
+  budget: number | null;
+  spent: number;
+  pending: number;
+  vat: number;
+  overBudget: boolean;
+}
+
+export const PORTFOLIO_MAX = 8;
+
+// Projects with something on them (a budget, a spend or a pending bill),
+// largest budget first (portfolioRows' order, cancelled ones left out); the
+// rest counted for «όλα (N) →».
+export function dashboardPortfolio(
+  rollup: DashboardRollupRow[],
+  max = PORTFOLIO_MAX,
+): { shown: DashboardPortfolioRow[]; more: number } {
+  const extra = new Map(rollup.map((r) => [r.project_id, r]));
+  const all = portfolioRows(rollup)
+    .map((p) => {
+      const r = extra.get(p.id);
+      return {
+        id: p.id,
+        name: p.name,
+        budget: p.budget > 0 ? p.budget : null,
+        spent: p.spent,
+        pending: round2(num(r?.pending)),
+        vat: round2(num(r?.vat_on_expenses)),
+        overBudget: p.overBudget,
+      };
+    })
+    .filter((p) => p.budget !== null || p.spent !== 0 || p.pending !== 0);
+  return { shown: all.slice(0, max), more: Math.max(0, all.length - max) };
+}
+
+// ── ΦΠΑ: one line, the next payable and its deadline ──
+export interface VatPositionRow {
+  period_start: string | null;
+  payable_after_credit: number | string | null;
+  credit_balance?: number | string | null;
+  filing_deadline?: string | null;
+}
+
+// The earliest period not yet filed whose deadline is still ahead; without
+// one, the current credit (or nothing pending).
+export function vatLine(rows: VatPositionRow[], filed: Set<string>, today: string): string {
+  const next = rows
+    .filter((r) => r.period_start && !filed.has(r.period_start) && r.filing_deadline && r.filing_deadline >= today)
+    .sort((a, b) => a.filing_deadline!.localeCompare(b.filing_deadline!))[0];
+  if (next) {
+    const payable = num(next.payable_after_credit);
+    const period = monthLabel(monthKeyOf(next.period_start!));
+    return payable > 0
+      ? `Επόμενο πληρωτέο ${formatMoney(payable)} έως ${formatDate(next.filing_deadline)} (${period})`
+      : `Υποβολή ${period} έως ${formatDate(next.filing_deadline)}, χωρίς πληρωμή`;
+  }
+  const latest = rows
+    .filter((r) => r.period_start)
+    .sort((a, b) => b.period_start!.localeCompare(a.period_start!))[0];
+  const credit = Math.abs(num(latest?.credit_balance));
+  return credit > 0
+    ? `Καμία προθεσμία σε εκκρεμότητα · πιστωτικό ${formatMoney(credit)}`
+    : "Καμία προθεσμία σε εκκρεμότητα";
 }

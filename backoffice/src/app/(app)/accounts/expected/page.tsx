@@ -32,7 +32,7 @@ export default async function ExpectedIncomePage() {
   const t = el.reports;
 
   return (
-    <div className="flex min-w-0 flex-col gap-10">
+    <div className="flex min-w-0 flex-col gap-6">
       <PageHeader
         title={t.expectedTitle}
         meta={
