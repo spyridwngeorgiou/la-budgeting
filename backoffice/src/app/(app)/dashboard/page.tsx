@@ -2,34 +2,31 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/supabase/access";
-import { formatDate, formatMoney, formatSignedMoney, moneyOrDash } from "@/lib/format";
+import { formatMoney, moneyOrDash } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
 import { figureFit, LINK_CLASS, PageHeader, SectionHeader, SpecTable, Stat, StatRow, Td, Th, Tr } from "@/components/ui";
 import { aiEnabled } from "@/lib/ai/client";
 import { rankAttention } from "@/lib/dashboard/attention";
 import { DashboardSummary } from "./DashboardSummary";
 import { AskAssistantCard } from "./AskAssistantCard";
-import { addDays, longDateLabel, todayAthens } from "@/lib/dates";
+import { longDateLabel, todayAthens } from "@/lib/dates";
 import {
   dashboardPortfolio,
   overdueObligations,
   overviewGlance,
   planVerdict,
-  upcomingObligations,
-  UPCOMING_DAYS,
   vatNext,
   vatPosition,
   type GlanceFigure,
   type PlanVerdict,
-  type UpcomingItem,
 } from "@/lib/dashboard/overview";
 import { portfolioRows } from "@/lib/finance/portfolio";
 import { loadPendingCaptures } from "@/lib/ingest/pendingCaptures";
 
-// Επισκόπηση (the workbook's «Κέντρο Ελέγχου» and «Πληρωμές»), the answer first:
+// Επισκόπηση (the workbook's «Κέντρο Ελέγχου»), the answer first:
 // «Βγαίνει το πλάνο;» from the 12-month forecast, then Ρευστότητα (a card
-// per account, the total dark), what needs attention beside what falls due in
-// the next 30 days, the project portfolio, the Θέση ΦΠΑ, the AI. Every figure
+// per account, the total dark), what needs attention, the project portfolio,
+// the Θέση ΦΠΑ, the AI. Payments themselves live in the Ημερολόγιο. Every figure
 // reads from the SQL views (0011_views.sql and later), never from a
 // hand-maintained rollup, so it can never drift from the ledger.
 // Server-rendered only: no client JS beyond the opt-in AI summary.
@@ -52,7 +49,6 @@ export default async function DashboardPage() {
   // real period and show as "current month" with misleading zeros. Pin to
   // the latest period that isn't in the future.
   const todayIso = todayAthens();
-  const upcomingEnd = addDays(todayIso, UPCOMING_DAYS - 1);
 
   const [
     { data: projects },
@@ -81,17 +77,15 @@ export default async function DashboardPage() {
       .eq("org_id", orgId)
       .lte("period_start", todayIso)
       .order("period_start", { ascending: false }),
-    // Open rows, one read for two blocks: every pending one (receivables/
-    // payables, as in v_net_worth_items) plus scheduled ones due up to 30
-    // days ahead. Past their due date they are «ληξιπρόθεσμες» (attention),
-    // ahead of it «Προσεχείς υποχρεώσεις». An upcoming loan or installment
-    // payment must never be missed with zero warning anywhere in the app.
+    // Open rows past their due date: «ληξιπρόθεσμες», one line in the
+    // worklist. A loan or installment payment must never be missed with zero
+    // warning anywhere in the app.
     supabase
       .from("transactions")
-      .select("id, due_date, status, direction, gross_amount, description, counterparty_name, project_id, account_id")
+      .select("id, due_date, status, direction, gross_amount, description, counterparty_name")
       .eq("org_id", orgId)
       .in("status", ["pending", "scheduled"])
-      .or(`status.eq.pending,due_date.lte.${upcomingEnd}`),
+      .lt("due_date", todayIso),
     // Filing status per period, same source /reports/vat uses -- lets the worklist
     // flag a past period nobody has marked as filed yet.
     supabase.from("vat_periods").select("period_start, status").eq("org_id", orgId),
@@ -120,13 +114,7 @@ export default async function DashboardPage() {
     null,
   );
 
-  // Names for the small «έργο · λογαριασμός» line under each payment.
-  const names = {
-    projects: new Map((projects ?? []).map((p) => [p.project_id ?? "", p.display_name ?? ""])),
-    accounts: new Map((accountRows ?? []).map((a) => [a.id, a.name])),
-  };
-  const overdue = overdueObligations(openTx ?? [], todayIso, names);
-  const upcoming = upcomingObligations(openTx ?? [], todayIso, undefined, names);
+  const overdue = overdueObligations(openTx ?? [], todayIso);
 
   // Projects with an actual budget whose capex has run past it --
   // v_project_rollup.remaining_budget already accounts for capex-only
@@ -193,9 +181,13 @@ export default async function DashboardPage() {
   // The single worklist, ranked by severity and capped
   // (lib/dashboard/attention.ts), so a zero-item list is a real, trustworthy
   // "nothing needs you today".
-  // The forecast's verdict is the banner above and the overdue payments are
-  // listed in «Πληρωμές», so neither is repeated here.
+  // The forecast's verdict is the banner above, so it is not repeated here.
   const attention = rankAttention([
+    overdue.ids.length > 0 && {
+      kind: "overdue",
+      label: `${overdue.ids.length} ληξιπρόθεσμ${overdue.ids.length === 1 ? "η υποχρέωση" : "ες υποχρεώσεις"} · ${formatMoney(Math.abs(overdue.total))}`,
+      href: `/transactions?ids=${overdue.ids.join(",")}`,
+    },
     (expectedOverdue ?? 0) > 0 && {
       kind: "expectedOverdue",
       label: `${expectedOverdue} αναμενόμεν${expectedOverdue === 1 ? "ο έσοδο έχει" : "α έσοδα έχουν"} περάσει την ημερομηνία ${expectedOverdue === 1 ? "του" : "τους"}`,
@@ -264,102 +256,44 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {/* What to act on, side by side on a wide screen: the worklist and what falls due. */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        {/* 3 · Χρειάζεται προσοχή */}
-        <section className="flex min-w-0 flex-col">
-          <SectionHeader title="Χρειάζεται Προσοχή" />
-          {attention.shown.length === 0 ? (
-            <p className="border-b border-hairline py-3 text-body text-muted">Τίποτα δεν χρειάζεται προσοχή αυτή τη στιγμή.</p>
-          ) : (
-            <ul className="flex flex-col">
-              {attention.shown.map((item) => (
-                <li key={item.href + item.label} className="border-b border-hairline">
-                  <Link
-                    href={item.href}
-                    className="flex min-h-11 items-center justify-between gap-3 border-l-2 border-negative py-2 pr-2 pl-4 text-body text-ink transition-colors hover:bg-hover"
-                  >
-                    <span>{item.label}</span>
-                    <span aria-hidden="true" className="shrink-0 text-muted">
-                      →
-                    </span>
-                  </Link>
-                </li>
-              ))}
-              {attention.more > 0 && (
-                <li className="flex min-h-11 flex-wrap items-center gap-x-4 border-b border-hairline py-2 pr-2 pl-4 text-body text-muted">
-                  <span>+{attention.more} ακόμα</span>
-                  <Link href="/reports/quality" className="inline-flex min-h-11 items-center text-ink underline-offset-4 hover:underline">
-                    όλα →
-                  </Link>
-                  {canReview && (
-                    <Link href="/inbox" className="inline-flex min-h-11 items-center text-ink underline-offset-4 hover:underline">
-                      Εισερχόμενα →
-                    </Link>
-                  )}
-                </li>
-              )}
-            </ul>
-          )}
-        </section>
-
-        {/* 4 · Πληρωμές: what is overdue (oldest first), then what falls due */}
-        <section aria-labelledby="payments" className="flex min-w-0 flex-col gap-4">
-          <SectionHeader
-            title={<span id="payments">Πληρωμές</span>}
-            actions={
-              <Link href="/calendar" className={`inline-flex min-h-11 items-center text-body ${LINK_CLASS}`}>
-                Ημερολόγιο →
-              </Link>
-            }
-          />
-
-          {overdue.shown.length > 0 && (
-            <div className="flex flex-col">
-              <h3 className="flex items-baseline justify-between gap-3 border-b border-negative pb-2 text-body font-medium text-negative">
-                <span>Ληξιπρόθεσμα · {overdue.shown.length + overdue.more}</span>
-                <span className="num">{formatSignedMoney(overdue.total)}</span>
-              </h3>
-              <ObligationRows label="Ληξιπρόθεσμες πληρωμές" items={overdue.shown} overdue />
-              {overdue.more > 0 && (
+      {/* 3 · Χρειάζεται προσοχή */}
+      <section className="flex min-w-0 flex-col">
+        <SectionHeader title="Χρειάζεται Προσοχή" />
+        {attention.shown.length === 0 ? (
+          <p className="border-b border-hairline py-3 text-body text-muted">Τίποτα δεν χρειάζεται προσοχή αυτή τη στιγμή.</p>
+        ) : (
+          <ul className="flex flex-col">
+            {attention.shown.map((item) => (
+              <li key={item.href + item.label} className="border-b border-hairline">
                 <Link
-                  href={`/transactions?ids=${overdue.ids.join(",")}`}
-                  className={`inline-flex min-h-11 items-center text-body ${LINK_CLASS}`}
+                  href={item.href}
+                  className="flex min-h-11 items-center justify-between gap-3 border-l-2 border-negative py-2 pr-2 pl-4 text-body text-ink transition-colors hover:bg-hover"
                 >
-                  +{overdue.more} ακόμα · όλες →
-                </Link>
-              )}
-            </div>
-          )}
-
-          <div className="flex flex-col">
-            <h3 className="flex items-baseline justify-between gap-3 border-b border-rule pb-2 text-body font-medium text-ink">
-              <span>Επόμενες {UPCOMING_DAYS} ημέρες</span>
-              {upcoming.shown.length > 0 && <span className="num">{formatSignedMoney(upcoming.income + upcoming.outflow)}</span>}
-            </h3>
-            {upcoming.shown.length === 0 ? (
-              <p className="py-2 text-body text-muted">Τίποτα δεν λήγει τις επόμενες {UPCOMING_DAYS} ημέρες.</p>
-            ) : (
-              <>
-                <ObligationRows label="Προσεχείς πληρωμές" items={upcoming.shown} />
-                <p className="flex min-h-11 flex-wrap items-center gap-x-4 text-small text-muted">
-                  <span>
-                    Εισπράξεις {formatSignedMoney(upcoming.income)} · Πληρωμές {formatSignedMoney(upcoming.outflow)}
+                  <span>{item.label}</span>
+                  <span aria-hidden="true" className="shrink-0 text-muted">
+                    →
                   </span>
-                  {upcoming.more > 0 && (
-                    <Link href="/calendar" className={`inline-flex min-h-11 items-center text-body ${LINK_CLASS}`}>
-                      +{upcoming.more} ακόμα →
-                    </Link>
-                  )}
-                </p>
-              </>
+                </Link>
+              </li>
+            ))}
+            {attention.more > 0 && (
+              <li className="flex min-h-11 flex-wrap items-center gap-x-4 border-b border-hairline py-2 pr-2 pl-4 text-body text-muted">
+                <span>+{attention.more} ακόμα</span>
+                <Link href="/reports/quality" className="inline-flex min-h-11 items-center text-ink underline-offset-4 hover:underline">
+                  όλα →
+                </Link>
+                {canReview && (
+                  <Link href="/inbox" className="inline-flex min-h-11 items-center text-ink underline-offset-4 hover:underline">
+                    Εισερχόμενα →
+                  </Link>
+                )}
+              </li>
             )}
-          </div>
-        </section>
+          </ul>
+        )}
+      </section>
 
-      </div>
-
-      {/* 5 · Χαρτοφυλάκιο έργων */}
+      {/* 4 · Χαρτοφυλάκιο έργων */}
       <section aria-labelledby="portfolio" className="flex flex-col gap-2">
         <SectionHeader
           title={<span id="portfolio">Χαρτοφυλάκιο Έργων</span>}
@@ -426,7 +360,7 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      {/* 6 · Θέση ΦΠΑ: four figures on one row */}
+      {/* 5 · Θέση ΦΠΑ: four figures on one row */}
       <section aria-labelledby="vat" className="flex flex-col">
         <SectionHeader
           title={<span id="vat">Θέση ΦΠΑ</span>}
@@ -457,7 +391,7 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      {/* 7 · Kansha AI */}
+      {/* 6 · Kansha AI */}
       {aiEnabled() && (
         <section aria-label={el.nav.assistant} className="flex flex-col gap-3">
           <AskAssistantCard />
@@ -517,26 +451,5 @@ function AccountCard({ figure }: { figure: GlanceFigure }) {
         {figure.value}
       </span>
     </Link>
-  );
-}
-
-// One payment per row: due date | what it is, with «έργο · λογαριασμός»
-// under it | signed amount. The description is the link to the row.
-function ObligationRows({ label, items, overdue = false }: { label: string; items: UpcomingItem[]; overdue?: boolean }) {
-  return (
-    <ul aria-label={label} className="flex flex-col">
-      {items.map((u) => (
-        <li key={u.id} className="flex min-h-11 items-baseline gap-3 border-b border-hairline py-2">
-          <span className={`num w-24 shrink-0 text-small ${overdue ? "text-negative" : "text-muted"}`}>{formatDate(u.date)}</span>
-          <span className="flex min-w-0 flex-1 flex-col">
-            <Link href={`/transactions?ids=${u.id}`} title={u.label} className={`truncate text-body text-ink ${LINK_CLASS}`}>
-              {u.label}
-            </Link>
-            {u.meta && <span className="truncate text-small text-muted">{u.meta}</span>}
-          </span>
-          <span className="num shrink-0 text-body text-ink">{formatSignedMoney(u.amount)}</span>
-        </li>
-      ))}
-    </ul>
   );
 }
