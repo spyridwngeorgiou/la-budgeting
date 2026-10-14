@@ -111,6 +111,57 @@ export function overviewGlance(i: OverviewInputs): { figures: GlanceFigure[]; lo
   };
 }
 
+// ── «Βγαίνει το πλάνο;»: the answer first, from the 12-month cash_forecast() ──
+export interface ForecastMonth {
+  month: string;
+  closing_balance: number | string | null;
+  min_buffer?: number | string | null;
+  below_buffer: boolean | null;
+}
+
+export interface PlanVerdict {
+  // ok: never under the safety buffer · tight: under it, never below zero ·
+  // short: below zero at some point.
+  tone: "ok" | "tight" | "short";
+  title: string;
+  detail: string;
+  // That month's largest outflow, for the hover.
+  why: string | null;
+  href: string;
+}
+
+export function planVerdict(forecast: ForecastMonth[], driver?: OverviewInputs["lowestDriver"]): PlanVerdict | null {
+  if (forecast.length === 0) return null;
+  const lowest = forecast.reduce((min, m) => (num(m.closing_balance) < num(min.closing_balance) ? m : min));
+  const low = num(lowest.closing_balance);
+  const lowMonth = monthLabel(monthKeyOf(lowest.month));
+  const firstNegative = forecast.find((m) => num(m.closing_balance) < 0);
+  const firstBelow = forecast.find((m) => m.below_buffer);
+  const why =
+    driver?.label && num(driver.amount) > 0 ? `κυρίως: ${driver.label} −${formatMoney(num(driver.amount))}` : null;
+  const href = `/reports/cash?month=${monthKeyOf(lowest.month)}`;
+  if (firstNegative) {
+    return {
+      tone: "short",
+      title: `Δεν βγαίνει — τα χρήματα τελειώνουν ${monthLabel(monthKeyOf(firstNegative.month))}`,
+      detail: `Χαμηλότερο σημείο ${formatMoney(low)} · ${lowMonth}`,
+      why,
+      href,
+    };
+  }
+  if (firstBelow) {
+    const buffer = num(firstBelow.min_buffer);
+    return {
+      tone: "tight",
+      title: "Βγαίνει — αλλά στενεύει",
+      detail: `Κάτω από το απόθεμα ασφαλείας${buffer > 0 ? ` (${formatMoney(buffer)})` : ""} από ${monthLabel(monthKeyOf(firstBelow.month))} · χαμηλότερο ${formatMoney(low)} · ${lowMonth}`,
+      why,
+      href,
+    };
+  }
+  return { tone: "ok", title: "Βγαίνει το πλάνο", detail: `Χαμηλότερο σημείο 12 μηνών ${formatMoney(low)} · ${lowMonth}`, why, href };
+}
+
 // ── Προσεχείς υποχρεώσεις: pending/scheduled rows due in the next 30 days ──
 export interface OpenTxRow {
   id: string;

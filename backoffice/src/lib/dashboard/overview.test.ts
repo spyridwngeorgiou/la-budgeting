@@ -4,6 +4,7 @@ import {
   dashboardPortfolio,
   figureLength,
   overviewGlance,
+  planVerdict,
   pnlResult,
   upcomingObligations,
   vatNext,
@@ -208,5 +209,43 @@ describe("pnlResult", () => {
   it("sums the P&L lines like the report's result row, ignoring unknown lines", () => {
     expect(pnlResult([{ line: "revenue", amount: "10.10" }, { line: "rent", amount: "-0.05" }, { line: "bogus", amount: 999 }])).toBe(10.05);
     expect(pnlResult([{ line: "revenue", amount: null }])).toBe(0);
+  });
+});
+
+describe("planVerdict", () => {
+  const m = (month: string, closing: number, below = false, buffer = 15000) => ({
+    month,
+    closing_balance: closing,
+    min_buffer: buffer,
+    below_buffer: below,
+  });
+
+  it("is null without a forecast", () => {
+    expect(planVerdict([])).toBeNull();
+  });
+
+  it("holds when no month goes under the buffer", () => {
+    const v = planVerdict([m("2026-11-01", 50000), m("2026-12-01", 30000)])!;
+    expect(v.tone).toBe("ok");
+    expect(v.detail).toContain(formatMoney(30000));
+    expect(v.href).toBe("/reports/cash?month=2026-12");
+  });
+
+  it("is tight under the buffer but never below zero, naming the first month under it", () => {
+    const v = planVerdict([m("2026-11-01", 20000), m("2027-01-01", 9000, true), m("2027-02-01", 12000, true)])!;
+    expect(v.tone).toBe("tight");
+    expect(v.detail).toContain(formatMoney(15000));
+    expect(v.detail).toContain(formatMoney(9000));
+  });
+
+  it("does not hold below zero, with the month the money runs out and why on hover", () => {
+    const v = planVerdict([m("2026-11-01", 5000, true), m("2027-03-01", -1000, true), m("2027-09-01", -18315, true)], {
+      label: "Κατασκευή",
+      amount: 50000,
+    })!;
+    expect(v.tone).toBe("short");
+    expect(v.title).toContain("Μάρτιος 2027");
+    expect(v.detail).toContain(formatMoney(-18315));
+    expect(v.why).toContain("Κατασκευή");
   });
 });

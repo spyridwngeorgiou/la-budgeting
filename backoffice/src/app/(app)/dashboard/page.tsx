@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAccessContext } from "@/lib/supabase/access";
 import { formatDate, formatMoney, formatSignedMoney, moneyOrDash } from "@/lib/format";
 import { el } from "@/lib/i18n/el";
-import { figureFit, GlancePanel, LINK_CLASS, PageHeader, SectionHeader, SpecTable, Stat, StatRow, Td, Th, Tr } from "@/components/ui";
+import { figureFit, LINK_CLASS, PageHeader, SectionHeader, SpecTable, Stat, StatRow, Td, Th, Tr } from "@/components/ui";
 import { aiEnabled } from "@/lib/ai/client";
 import { rankAttention } from "@/lib/dashboard/attention";
 import { DashboardSummary } from "./DashboardSummary";
@@ -13,19 +13,21 @@ import { addDays, longDateLabel, monthKeyOf, monthLabel, todayAthens } from "@/l
 import {
   dashboardPortfolio,
   overviewGlance,
+  planVerdict,
   upcomingObligations,
   UPCOMING_DAYS,
   vatNext,
   vatPosition,
   type GlanceFigure,
-  type GlanceLine,
+  type PlanVerdict,
 } from "@/lib/dashboard/overview";
 import { portfolioRows } from "@/lib/finance/portfolio";
 import { loadPendingCaptures } from "@/lib/ingest/pendingCaptures";
 
-// Επισκόπηση (the workbook's «Κέντρο Ελέγχου» and «Πληρωμές»): Ρευστότητα
-// per account and the Θέση ΦΠΑ as in late September, then what needs attention
-// beside what falls due in the next 30 days, the project portfolio, the AI. Every figure
+// Επισκόπηση (the workbook's «Κέντρο Ελέγχου» and «Πληρωμές»), the answer first:
+// «Βγαίνει το πλάνο;» from the 12-month forecast, then Ρευστότητα (a card
+// per account, the total dark), what needs attention beside what falls due in
+// the next 30 days, the project portfolio, the Θέση ΦΠΑ, the AI. Every figure
 // reads from the SQL views (0011_views.sql and later), never from a
 // hand-maintained rollup, so it can never drift from the ledger.
 // Server-rendered only: no client JS beyond the opt-in AI summary.
@@ -178,6 +180,7 @@ export default async function DashboardPage() {
     year: Number(todayIso.slice(0, 4)),
     pnlRows: pnlRows ?? [],
   });
+  const verdict = planVerdict(forecast ?? [], lowestItems?.[0] ?? null);
   const vatPos = vatPosition(vat ?? []);
   const vatDue = vatNext(vat ?? [], filedPeriods, todayIso);
 
@@ -243,52 +246,24 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-6">
       <PageHeader eyebrow={longDateLabel(todayIso)} title={el.nav.dashboard} />
 
-      {/* 1 · Ρευστότητα: one figure per liquid account and the total, as in late September */}
-      <GlancePanel
-        title="Ρευστότητα"
-        footer={
-          <span className="flex flex-wrap gap-x-6 gap-y-1 text-panel-muted">
-            <GlanceLink line={glance.lowest} />
-            <GlanceLink line={glance.pnl} />
-          </span>
-        }
-      >
-        <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 xl:grid-cols-4">
-          {glance.figures.map((f) => (
-            <Figure key={f.key} figure={f} />
-          ))}
-        </div>
-      </GlancePanel>
+      {/* 1 · The answer first: does the 12-month plan hold? */}
+      {verdict && <VerdictBanner verdict={verdict} />}
 
-      {/* 2 · Θέση ΦΠΑ: the four September figures on one row */}
-      <section aria-labelledby="vat" className="flex flex-col">
+      {/* 2 · Ρευστότητα: one card per liquid account, the total in the dark card */}
+      <section aria-labelledby="liquidity" className="flex flex-col gap-3">
         <SectionHeader
-          title={<span id="vat">Θέση ΦΠΑ</span>}
+          title={<span id="liquidity">Ρευστότητα</span>}
           actions={
-            <Link href="/reports/vat" className={`inline-flex min-h-11 items-center text-body ${LINK_CLASS}`}>
-              Ανά περίοδο →
+            <Link href={glance.pnl.href} className={`inline-flex min-h-11 items-center gap-1.5 text-body ${LINK_CLASS}`}>
+              {glance.pnl.label}: <span className={`num ${glance.pnl.negative ? "text-negative" : ""}`}>{glance.pnl.value}</span> →
             </Link>
           }
         />
-        {vatPos ? (
-          <>
-            <StatRow className="border-t-0 py-3">
-              <Link href={`/transactions?direction=income&from=${vatPos.from}`} className="group min-h-11 hover:bg-hover">
-                <Stat label="ΦΠΑ εκροών (σύνολο)" value={formatMoney(vatPos.output)} />
-              </Link>
-              <Link href={`/transactions?direction=expense&from=${vatPos.from}`} className="group min-h-11 hover:bg-hover">
-                <Stat label="ΦΠΑ εισροών (σύνολο)" value={formatMoney(vatPos.input)} />
-              </Link>
-              <Stat label="Τρέχον πιστωτικό" value={formatMoney(vatPos.credit)} />
-              <Stat label="Οφειλόμενο τώρα" value={formatMoney(vatPos.owed)} />
-            </StatRow>
-            <p className="pt-2 text-small text-muted">
-              Επόμενη υποβολή: {formatMoney(vatDue.payable)} · {vatDue.sub}. Εκροές/εισροές: όλες οι περίοδοι· πιστωτικό και οφειλόμενο: η τρέχουσα θέση.
-            </p>
-          </>
-        ) : (
-          <p className="py-2 text-body text-muted">Δεν υπάρχουν ακόμα κινήσεις με ΦΠΑ.</p>
-        )}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+          {glance.figures.map((f) => (
+            <AccountCard key={f.key} figure={f} />
+          ))}
+        </div>
       </section>
 
       {/* What to act on, side by side on a wide screen: the worklist and what falls due. */}
@@ -447,7 +422,38 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      {/* 6 · Kansha AI */}
+      {/* 6 · Θέση ΦΠΑ: four figures on one row */}
+      <section aria-labelledby="vat" className="flex flex-col">
+        <SectionHeader
+          title={<span id="vat">Θέση ΦΠΑ</span>}
+          actions={
+            <Link href="/reports/vat" className={`inline-flex min-h-11 items-center text-body ${LINK_CLASS}`}>
+              Ανά περίοδο →
+            </Link>
+          }
+        />
+        {vatPos ? (
+          <>
+            <StatRow className="border-t-0 py-3">
+              <Link href={`/transactions?direction=income&from=${vatPos.from}`} className="group min-h-11 hover:bg-hover">
+                <Stat label="ΦΠΑ εκροών (σύνολο)" value={formatMoney(vatPos.output)} />
+              </Link>
+              <Link href={`/transactions?direction=expense&from=${vatPos.from}`} className="group min-h-11 hover:bg-hover">
+                <Stat label="ΦΠΑ εισροών (σύνολο)" value={formatMoney(vatPos.input)} />
+              </Link>
+              <Stat label="Τρέχον πιστωτικό" value={formatMoney(vatPos.credit)} />
+              <Stat label="Οφειλόμενο τώρα" value={formatMoney(vatPos.owed)} />
+            </StatRow>
+            <p className="pt-2 text-small text-muted" title="Εκροές/εισροές: όλες οι περίοδοι· πιστωτικό και οφειλόμενο: η τρέχουσα θέση.">
+              Επόμενη υποβολή: {formatMoney(vatDue.payable)} · {vatDue.sub}
+            </p>
+          </>
+        ) : (
+          <p className="py-2 text-body text-muted">Δεν υπάρχουν ακόμα κινήσεις με ΦΠΑ.</p>
+        )}
+      </section>
+
+      {/* 7 · Kansha AI */}
       {aiEnabled() && (
         <section aria-label={el.nav.assistant} className="flex flex-col gap-3">
           <AskAssistantCard />
@@ -458,35 +464,53 @@ export default async function DashboardPage() {
   );
 }
 
-// One Ρευστότητα figure: the account name (wraps), a light tabular value;
-// the whole figure is the link to its transactions. The total reads heavier.
-function Figure({ figure }: { figure: GlanceFigure }) {
+// «Βγαίνει το πλάνο;»: one sentence and the low point, the whole banner the
+// link to that month in Ταμείο & Πρόβλεψη; why it is low on hover.
+const VERDICT_TONE = {
+  ok: "border-positive bg-positive-tint text-positive",
+  tight: "border-warning bg-warning-tint text-warning",
+  short: "border-negative bg-negative-tint text-negative",
+} as const;
+
+function VerdictBanner({ verdict }: { verdict: PlanVerdict }) {
   return (
-    <Link href={figure.href} className="group @container flex min-h-11 min-w-0 flex-col gap-1 focus-visible:outline-panel-ink">
-      <span className={`eyebrow break-words transition-colors group-hover:text-panel-ink ${figure.total ? "text-panel-ink" : "text-panel-muted"}`}>
-        {figure.label}
+    <Link
+      href={verdict.href}
+      title={verdict.why ?? undefined}
+      className={`group flex min-h-11 flex-col gap-1 border-l-4 px-5 py-4 transition-colors hover:brightness-[0.98] ${VERDICT_TONE[verdict.tone]}`}
+    >
+      <span className="eyebrow">Βγαίνει το πλάνο; · επόμενοι 12 μήνες</span>
+      <span className="heading text-section">
+        {verdict.tone === "ok" ? "✓ " : "⚠ "}
+        {verdict.title}
       </span>
-      <span className={`num text-panel-ink [overflow-wrap:anywhere] ${figure.total ? "font-normal" : "font-light"} ${figureFit(figure.length, "md")}`}>
-        {figure.value}
+      <span className="text-body text-text">
+        {verdict.detail}{" "}
+        <span aria-hidden="true" className="inline-block transition-transform group-hover:translate-x-0.5">
+          →
+        </span>
       </span>
     </Link>
   );
 }
 
-// «Χαμηλότερο σημείο 12μ: … · Μάρτιος 2027» -- one link in the small line;
-// the low month's driver («κυρίως: …») on hover, so the line stays one row.
-function GlanceLink({ line }: { line: GlanceLine }) {
+// One Ρευστότητα card: the account name, a tabular value; the whole card is
+// the link to its transactions. The total is the dark card.
+function AccountCard({ figure }: { figure: GlanceFigure }) {
   return (
     <Link
-      href={line.href}
-      title={line.sub ?? undefined}
-      className="group inline-flex min-h-11 flex-wrap items-center gap-x-1.5 hover:text-panel-ink md:min-h-0"
+      href={figure.href}
+      className={`group @container flex min-h-11 min-w-0 flex-col gap-1 border px-4 py-3 transition-colors ${
+        figure.total ? "border-panel bg-panel text-panel-ink" : "border-hairline bg-raised hover:bg-hover"
+      }`}
     >
-      <span>{line.label}:</span>
-      <span className="num text-panel-ink">{line.value}</span>
-      {line.sub && <span>· {line.sub.split(" · ")[0]}</span>}
-      <span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">
-        →
+      <span className={`text-small break-words ${figure.total ? "text-panel-muted" : "text-muted"}`}>{figure.label}</span>
+      <span
+        className={`num [overflow-wrap:anywhere] ${figureFit(figure.length, "md")} ${
+          figure.total ? "text-panel-ink" : figure.negative ? "text-negative" : "text-ink"
+        }`}
+      >
+        {figure.value}
       </span>
     </Link>
   );
