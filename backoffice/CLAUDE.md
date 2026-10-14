@@ -12,7 +12,7 @@ Greek UI (el), Next.js 16 App Router + Supabase (RLS) on Cloudflare Workers via 
 
 ## Release loop (one command each; prints only failures)
 - `npm run check` — typecheck + lint + vitest (clears stale `.next/dev`, `.next/types`).
-- `npm run ship:staging` — check → push main → wait CI → migrate staging → deploy → logged-in smoke.
+- `npm run ship:staging` — push main → (wait CI only if migrations are pending) → migrate staging → deploy → logged-in smoke. No local check; `STRICT=1` restores check + CI first. `SHOTS=<dir>` saves screenshots.
 - `npm run ship:prod` — CI green → JSON backup → migrate → deploy → light smoke. Only after owner «οκ».
 - `npm run smoke -- staging /path /other` — logged-in GETs as a throwaway owner (deleted after). `{project}` = first project id. Then the same pages in headless Chrome (puppeteer-core; auto when Chrome is installed, `BROWSER=0` skips) at 1440 and 390: fails on a browser error, the «Κάτι πήγε στραβά» page, or sideways scroll at 390.
 - Destructive migrations (drop/delete/truncate) need `node scripts/backup-json.mjs <ref>` then `node scripts/migrate-remote.mjs <ref> --confirm-destructive`.
@@ -31,6 +31,13 @@ Greek UI (el), Next.js 16 App Router + Supabase (RLS) on Cloudflare Workers via 
 - Migrations: next free number in `supabase/migrations/`, each with a pgTAP test in `supabase/tests/`. Fixture rows: `has_invoice=true` when VAT/withholding ≠ 0, `paid_on` when status is paid.
 - `src/lib/db/types.ts`: add new views/functions by hand (no local Supabase on this machine).
 - Budget (`budgets.json`, `src/lib/budgets.test.ts`) caps the (app) page count; never raise it without a reason in `$comment`.
+
+## New session when this one gets expensive (owner rule, 14/10/2026)
+Stop and ask the owner to open a new session — one short line, before starting the next task — when any of these holds:
+- the conversation has been compacted/summarized at least once, or it has run many rounds (roughly 10+ ship rounds, or a full working day);
+- signs of drift: contradicting something already established, redoing a fix already made, misremembering a file, commit or the staging/prod state, or a tool result surprising you twice in a row;
+- the next task is large and unrelated to the current one.
+Before asking, write the handoff to memory: main/staging/prod commits, what is on staging and not prod, open owner questions, next step. The new session starts from that, not from scratch.
 
 ## Token-saving habits
 - Run the npm scripts above instead of raw build/test commands; don't paste logs — the scripts already filter them.
