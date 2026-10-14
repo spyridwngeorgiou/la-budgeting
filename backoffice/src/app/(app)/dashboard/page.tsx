@@ -9,7 +9,8 @@ import { aiEnabled } from "@/lib/ai/client";
 import { rankAttention } from "@/lib/dashboard/attention";
 import { DashboardSummary } from "./DashboardSummary";
 import { AskAssistantCard } from "./AskAssistantCard";
-import { longDateLabel, todayAthens } from "@/lib/dates";
+import { longDateLabel, monthLabel, todayAthens } from "@/lib/dates";
+import { cashRunsOut } from "@/lib/finance/cashSplit";
 import {
   dashboardPortfolio,
   overdueObligations,
@@ -61,6 +62,7 @@ export default async function DashboardPage() {
     { data: liquidAccounts },
     { data: accountRows },
     { data: forecast },
+    { data: byKind },
     { data: pnlRows },
   ] = await Promise.all([
     // One read for both the portfolio table and «εκτός προϋπολογισμού».
@@ -104,6 +106,8 @@ export default async function DashboardPage() {
       .order("name"),
     supabase.from("accounts").select("id, name, is_active").eq("org_id", orgId),
     supabase.rpc("cash_forecast", { p_org: orgId, p_months: 12 }),
+    // The same forecast as banks vs cash (0097): when the notes run out.
+    supabase.rpc("cash_forecast_by_kind", { p_org: orgId, p_months: 12 }),
     // Result figure: the year so far, same function and defaults as /reports/pnl.
     supabase.rpc("pnl_summary", { p_org: orgId, p_from: `${todayIso.slice(0, 4)}-01-01`, p_to: todayIso }),
   ]);
@@ -115,6 +119,7 @@ export default async function DashboardPage() {
   );
 
   const overdue = overdueObligations(openTx ?? [], todayIso);
+  const cashOut = cashRunsOut(byKind ?? []);
 
   // Projects with an actual budget whose capex has run past it --
   // v_project_rollup.remaining_budget already accounts for capex-only
@@ -183,6 +188,11 @@ export default async function DashboardPage() {
   // "nothing needs you today".
   // The forecast's verdict is the banner above, so it is not repeated here.
   const attention = rankAttention([
+    cashOut && {
+      kind: "cashRunsOut",
+      label: `Τα μετρητά τελειώνουν: ${monthLabel(cashOut.month)}, ${formatMoney(cashOut.closing)} — χρειάζεται ανάληψη από τράπεζα`,
+      href: `/reports/cash?month=${cashOut.month}`,
+    },
     overdue.ids.length > 0 && {
       kind: "overdue",
       label: `${overdue.ids.length} ληξιπρόθεσμ${overdue.ids.length === 1 ? "η υποχρέωση" : "ες υποχρεώσεις"} · ${formatMoney(Math.abs(overdue.total))}`,

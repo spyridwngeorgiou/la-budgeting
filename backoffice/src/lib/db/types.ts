@@ -6597,6 +6597,21 @@ export type Database = {
           uncertain_inflow: number
         }[]
       }
+      cash_forecast_by_kind: {
+        Args: {
+          p_months?: number
+          p_org: string
+          p_scenario?: string
+          p_scope?: Database["public"]["Enums"]["owner_scope"]
+        }
+        Returns: {
+          bank_closing: number
+          bank_opening: number
+          cash_closing: number
+          cash_opening: number
+          month: string
+        }[]
+      }
       cash_forecast_items: {
         Args: {
           p_month?: string

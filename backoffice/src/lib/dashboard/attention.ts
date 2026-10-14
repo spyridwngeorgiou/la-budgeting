@@ -6,6 +6,8 @@
 // accounts, contactless counterparties, missing project/account) come last.
 export const ATTENTION_ORDER = [
   "cashBelowBuffer",
+  // The total holds but the «Μετρητά» account goes below zero (0097).
+  "cashRunsOut",
   "overdue",
   // Expected income whose month has passed: the forecast still counts it, so
   // every number built on the forecast is optimistic until it is updated.

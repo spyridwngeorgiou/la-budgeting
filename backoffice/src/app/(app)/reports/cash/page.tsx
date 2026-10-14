@@ -6,6 +6,7 @@ import { el } from "@/lib/i18n/el";
 import {
   Badge,
   KpiBand,
+  Notice,
   LINK_CLASS,
   NUM_CLASS,
   PageHeader,
@@ -33,6 +34,7 @@ import {
   type ForecastScenario,
 } from "@/lib/finance/forecastParams";
 import { accountBalancesAt, change, latestUpTo, sumParts, txIdsHref, vsPrevText, vsTarget } from "@/lib/finance/insights";
+import { cashRunsOut, hasCash } from "@/lib/finance/cashSplit";
 import { scenarioBalanceRows } from "./cashCharts";
 import { KpiLink, reportIssues } from "../Insights";
 import { ExportCsvLink } from "../ExportCsvLink";
@@ -45,6 +47,9 @@ import { ExportCsvLink } from "../ExportCsvLink";
 // balance chart, the month history (closed; ?month= opens it on that
 // month's inflows and outflows). Read-only: expected income is managed on
 // /accounts/expected.
+//
+// Banks vs cash in hand (0097): the same forecast kept as two balances, a
+// column each in the history and a warning line when cash runs out.
 //
 // Cloudflare CPU: one forecast by default; the other two scenarios are read
 // only with «Σύγκριση σεναρίων» on (?compare=1), a month's items only when
@@ -66,6 +71,11 @@ const T = {
   expected: "Αναμενόμενα έσοδα",
   expectedSub: (n: number, uncertain: string) => `${n} ${n === 1 ? "εγγραφή" : "εγγραφές"} · αβέβαια στην πρόβλεψη ${uncertain}`,
   openInTransactions: "Άνοιγμα στις κινήσεις →",
+  banks: "Τράπεζες",
+  cash: "Μετρητά",
+  splitSub: (banks: string, cash: string) => `τράπεζες ${banks} · μετρητά ${cash}`,
+  cashRunsOut: (month: string, amount: string) =>
+    `Τα μετρητά τελειώνουν: ${month}, ${amount} — χρειάζεται ανάληψη από τράπεζα.`,
 };
 
 export default async function CashPage({ searchParams }: { searchParams: SearchParams }) {
@@ -89,9 +99,10 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
   const lastMonth = addMonths(todayMonth, -1);
   const today = todayAthens();
 
-  const [{ data: forecast, error }, { data: items }, { data: expected }, { data: liquidAccounts }, { data: ledger }, issues, ...otherForecasts] =
+  const [{ data: forecast, error }, { data: byKind }, { data: items }, { data: expected }, { data: liquidAccounts }, { data: ledger }, issues, ...otherForecasts] =
     await Promise.all([
       forecastOf(scenario),
+      supabase.rpc("cash_forecast_by_kind", { p_org: orgId, p_months: months, p_scenario: scenario, p_scope: scope ?? undefined }),
       selected
         ? supabase.rpc("cash_forecast_items", {
             p_org: orgId,
@@ -168,6 +179,11 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
   const lowestGap = lowest ? vsTarget(Number(lowest.closing_balance), buffer).gap : null;
   const expectedIncome = (expected ?? []).filter((e) => e.direction !== "expense");
   const expectedTotal = expectedIncome.reduce((s, e) => s + Number(e.amount ?? 0), 0);
+  // Banks vs cash, by month; shown only when there is cash in hand at all.
+  const kindRows = byKind ?? [];
+  const split = hasCash(kindRows) ? new Map(kindRows.map((k) => [monthKeyOf(k.month), k])) : null;
+  const firstSplit = kindRows[0];
+  const runsOut = split ? cashRunsOut(kindRows) : null;
   const coverage = latestUpTo((ledger ?? []).map((l) => l.month), today);
 
   return (
@@ -202,7 +218,14 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
             {
               label: t.liquidNow,
               value: <KpiLink href="/accounts">{formatMoney(first?.opening_balance ?? 0)}</KpiLink>,
-              sub: (liquidChange && vsPrevText(liquidChange)) ?? T.liquidSub,
+              sub:
+                split && firstSplit ? (
+                  <span title={(liquidChange && vsPrevText(liquidChange)) ?? undefined}>
+                    {T.splitSub(formatMoney(firstSplit.bank_opening), formatMoney(firstSplit.cash_opening))}
+                  </span>
+                ) : (
+                  ((liquidChange && vsPrevText(liquidChange)) ?? T.liquidSub)
+                ),
             },
             {
               label: t.buffer,
@@ -232,6 +255,14 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
             },
           ]}
         />
+
+        {runsOut && (
+          <Notice tone="negative">
+            <Link href={query({ month: runsOut.month })} scroll={false} className={LINK_CLASS}>
+              {T.cashRunsOut(monthLabel(runsOut.month), formatMoney(runsOut.closing))}
+            </Link>
+          </Notice>
+        )}
 
         {balanceData.length > 0 && (
           <ReportChart
@@ -266,7 +297,7 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
               <tr>
                 {/* Same inset as the body's first cells, which carry the 2px marker. */}
                 <Th className="border-l-2 border-l-transparent !pl-3">{t.month}</Th>
-                <Th numeric className="hidden md:table-cell">
+                <Th numeric className={split ? "hidden xl:table-cell" : "hidden md:table-cell"}>
                   {t.opening}
                 </Th>
                 <Th numeric>{t.inflow}</Th>
@@ -274,6 +305,16 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
                 <Th numeric className="hidden sm:table-cell">
                   {t.net}
                 </Th>
+                {split && (
+                  <>
+                    <Th numeric className="hidden md:table-cell">
+                      {T.banks}
+                    </Th>
+                    <Th numeric className="hidden md:table-cell">
+                      {T.cash}
+                    </Th>
+                  </>
+                )}
                 <Th numeric>{t.closing}</Th>
               </tr>
             </thead>
@@ -281,6 +322,7 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
               {rows.map((r) => {
                 const key = monthKeyOf(r.month);
                 const isSelected = key === selected;
+                const kind = split?.get(key);
                 return (
                   <Tr key={key} aria-current={isSelected ? "true" : undefined} className={isSelected ? "bg-hover" : undefined}>
                     <Td strong className={cn("border-l-2 !pl-3", isSelected ? "!bg-hover border-l-navy" : "border-l-transparent")}>
@@ -297,7 +339,7 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
                         </span>
                       )}
                     </Td>
-                    <Td numeric className="hidden md:table-cell">
+                    <Td numeric className={split ? "hidden xl:table-cell" : "hidden md:table-cell"}>
                       {formatMoney(r.opening_balance)}
                     </Td>
                     <Td numeric>
@@ -312,6 +354,16 @@ export default async function CashPage({ searchParams }: { searchParams: SearchP
                     <Td numeric className="hidden sm:table-cell">
                       {formatMoney(r.net)}
                     </Td>
+                    {split && (
+                      <>
+                        <Td numeric className={cn("hidden md:table-cell", Number(kind?.bank_closing ?? 0) < 0 && "text-negative")}>
+                          {formatMoney(kind?.bank_closing ?? 0)}
+                        </Td>
+                        <Td numeric className={cn("hidden md:table-cell", Number(kind?.cash_closing ?? 0) < 0 && "text-negative")}>
+                          {formatMoney(kind?.cash_closing ?? 0)}
+                        </Td>
+                      </>
+                    )}
                     <Td numeric strong className="font-medium">
                       {formatMoney(r.closing_balance)}
                     </Td>
