@@ -206,7 +206,10 @@ export function computeProjectCashflow(inputs: CashflowInputs): {
     const operatingResult = revenue - opex - rent;
     const debtService = interest + principal;
     const netFlow = operatingResult - debtService;
-    const dscr = debtService > 0 ? operatingResult / debtService : null;
+    // DSCR counts from the opening: a year that ends before it has no
+    // operation to cover the debt, so it shows no ratio and no breach.
+    const operating = cy * 12 + 11 >= openingIdx;
+    const dscr = operating && debtService > 0 ? operatingResult / debtService : null;
 
     years.push({
       calendarYear: cy,

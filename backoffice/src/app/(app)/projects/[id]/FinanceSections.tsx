@@ -72,15 +72,18 @@ export function BudgetSection({
   const outside = f.occupancy > 0 || f.otherOpex > 0;
   return (
     <OnePagerSection title={t.title} subtitle={t.subtitle}>
-      <OnePagerRow label={t.budget} amount={f.budget ?? "—"} note={f.budget == null ? t.none : null} />
-      <OnePagerRow label={t.paid} amount={f.paid} href={`/transactions?project_id=${id}&direction=expense&status=paid`} />
-      <OnePagerRow
-        label={<Term title={t.committedHint}>{t.committed}</Term>}
-        amount={f.committed}
-        href={`/transactions?project_id=${id}&direction=expense&status=pending`}
-      />
-      {f.budget != null && (
-        <OnePagerRow label={t.remaining} amount={f.remaining} negative={f.remaining < 0} alert={f.remaining < 0} emphasis />
+      {/* With a budget, budget / paid / committed / remaining are in «Με μια
+          ματιά» above; only without one do they show here. */}
+      {f.budget == null && (
+        <>
+          <OnePagerRow label={t.budget} amount="—" note={t.none} />
+          <OnePagerRow label={t.paid} amount={f.paid} href={`/transactions?project_id=${id}&direction=expense&status=paid`} />
+          <OnePagerRow
+            label={<Term title={t.committedHint}>{t.committed}</Term>}
+            amount={f.committed}
+            href={`/transactions?project_id=${id}&direction=expense&status=pending`}
+          />
+        </>
       )}
       {f.unclassified > 0 && (
         <OnePagerRow
