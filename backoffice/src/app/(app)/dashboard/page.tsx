@@ -9,7 +9,7 @@ import { aiEnabled } from "@/lib/ai/client";
 import { rankAttention } from "@/lib/dashboard/attention";
 import { DashboardSummary } from "./DashboardSummary";
 import { AskAssistantCard } from "./AskAssistantCard";
-import { addDays, longDateLabel, monthKeyOf, monthLabel, todayAthens } from "@/lib/dates";
+import { addDays, longDateLabel, todayAthens } from "@/lib/dates";
 import {
   dashboardPortfolio,
   overviewGlance,
@@ -117,7 +117,6 @@ export default async function DashboardPage() {
     (min, m) => (!min || Number(m.closing_balance) < Number(min.closing_balance) ? m : min),
     null,
   );
-  const forecastBelow = (forecast ?? []).find((m) => m.below_buffer);
 
   const overdue = (openTx ?? []).filter((tx) => tx.due_date && tx.due_date < todayIso);
   const upcoming = upcomingObligations(openTx ?? [], todayIso);
@@ -187,12 +186,8 @@ export default async function DashboardPage() {
   // The single worklist, ranked by severity and capped
   // (lib/dashboard/attention.ts), so a zero-item list is a real, trustworthy
   // "nothing needs you today".
+  // The forecast's verdict is the banner above, so it is not repeated here.
   const attention = rankAttention([
-    forecastBelow && {
-      kind: "cashBelowBuffer",
-      label: `Η πρόβλεψη ταμείου πέφτει κάτω από το απόθεμα ασφαλείας ${monthLabel(monthKeyOf(forecastBelow.month))}`,
-      href: "/reports/cash",
-    },
     overdue.length > 0 && {
       kind: "overdue",
       label: `${overdue.length} ληξιπρόθεσμ${overdue.length === 1 ? "η υποχρέωση" : "ες υποχρεώσεις"} · ${formatMoney(overdue.reduce((sum, tx) => sum + Math.abs(Number(tx.gross_amount ?? 0)), 0))}`,
