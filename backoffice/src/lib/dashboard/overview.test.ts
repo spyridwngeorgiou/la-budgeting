@@ -3,6 +3,7 @@ import { formatMoney } from "@/lib/format";
 import {
   dashboardPortfolio,
   figureLength,
+  overdueObligations,
   overviewGlance,
   planVerdict,
   pnlResult,
@@ -247,5 +248,42 @@ describe("planVerdict", () => {
     expect(v.title).toContain("Μάρτιος 2027");
     expect(v.detail).toContain(formatMoney(-18315));
     expect(v.why).toContain("Κατασκευή");
+  });
+});
+
+describe("overdueObligations", () => {
+  const row = (id: string, due: string, amount: number, extra: Partial<OpenTxRow> = {}): OpenTxRow => ({
+    id,
+    due_date: due,
+    status: "pending",
+    direction: "expense",
+    gross_amount: amount,
+    description: `Πληρωμή ${id}`,
+    counterparty_name: null,
+    ...extra,
+  });
+  const names = {
+    projects: new Map([["p1", "Λαζαράκη 32, Γλυφάδα"]]),
+    accounts: new Map([["a1", "Optima Εταιρικός"]]),
+  };
+
+  it("lists rows past their due date, oldest first, with project · account under each", () => {
+    const r = overdueObligations(
+      [row("b", "2026-09-30", 17000, { project_id: "p1", account_id: "a1" }), row("a", "2026-07-27", 636), row("c", "2026-10-14", 50)],
+      "2026-10-14",
+      names,
+    );
+    expect(r.shown.map((x) => x.id)).toEqual(["a", "b"]);
+    expect(r.shown[1].meta).toBe("Λαζαράκη 32, Γλυφάδα · Optima Εταιρικός");
+    expect(r.shown[0].meta).toBeNull();
+    expect(r.total).toBe(-17636);
+  });
+
+  it("caps the list but keeps every id for the «όλες» link", () => {
+    const rows = Array.from({ length: 9 }, (_, i) => row(`r${i}`, `2026-09-0${i + 1}`, 10));
+    const r = overdueObligations(rows, "2026-10-14", names, 6);
+    expect(r.shown).toHaveLength(6);
+    expect(r.more).toBe(3);
+    expect(r.ids).toHaveLength(9);
   });
 });

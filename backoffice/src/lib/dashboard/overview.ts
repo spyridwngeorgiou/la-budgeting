@@ -171,35 +171,76 @@ export interface OpenTxRow {
   gross_amount: number | string | null;
   description: string | null;
   counterparty_name: string | null;
+  project_id?: string | null;
+  account_id?: string | null;
 }
 
 export interface UpcomingItem {
   id: string;
   date: string;
   label: string;
+  // «Λαζαράκη 32, Γλυφάδα · Optima Εταιρικός»: where it belongs and what pays it.
+  meta: string | null;
   // Signed: income +, everything else −.
   amount: number;
+}
+
+// Project and account names by id, for the small line under each row.
+export interface ObligationNames {
+  projects: Map<string, string>;
+  accounts: Map<string, string>;
+}
+
+function toItem(r: OpenTxRow, names?: ObligationNames): UpcomingItem {
+  const meta = [
+    r.project_id ? names?.projects.get(r.project_id) : null,
+    r.account_id ? names?.accounts.get(r.account_id) : null,
+  ].filter(Boolean);
+  return {
+    id: r.id,
+    date: r.due_date!,
+    label: r.description?.trim() || r.counterparty_name?.trim() || "—",
+    meta: meta.length > 0 ? meta.join(" · ") : null,
+    amount: (r.direction === "income" ? 1 : -1) * Math.abs(num(r.gross_amount)),
+  };
+}
+
+// ── Ληξιπρόθεσμα: open rows past their due date, the oldest first ──
+export const OVERDUE_MAX = 6;
+
+export function overdueObligations(
+  rows: OpenTxRow[],
+  today: string,
+  names?: ObligationNames,
+  max = OVERDUE_MAX,
+): { shown: UpcomingItem[]; more: number; total: number; ids: string[] } {
+  const all = rows
+    .filter((r) => r.due_date && r.due_date < today)
+    .map((r) => toItem(r, names))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.label.localeCompare(b.label, "el"));
+  return {
+    shown: all.slice(0, max),
+    more: Math.max(0, all.length - max),
+    total: round2(all.reduce((s, r) => s + r.amount, 0)),
+    ids: all.map((r) => r.id),
+  };
 }
 
 export const UPCOMING_DAYS = 30;
 export const UPCOMING_MAX = 6;
 
-// Today through today + 29, soonest first (overdue rows belong to
-// «Χρειάζεται προσοχή», not this list). The rest is counted, never dropped.
+// Today through today + 29, soonest first (overdue rows are
+// overdueObligations above). The rest is counted, never dropped.
 export function upcomingObligations(
   rows: OpenTxRow[],
   today: string,
   max = UPCOMING_MAX,
+  names?: ObligationNames,
 ): { shown: UpcomingItem[]; more: number; income: number; outflow: number } {
   const end = addDays(today, UPCOMING_DAYS - 1);
   const all = rows
     .filter((r) => r.due_date && r.due_date >= today && r.due_date <= end)
-    .map((r) => ({
-      id: r.id,
-      date: r.due_date!,
-      label: r.description?.trim() || r.counterparty_name?.trim() || "—",
-      amount: (r.direction === "income" ? 1 : -1) * Math.abs(num(r.gross_amount)),
-    }))
+    .map((r) => toItem(r, names))
     .sort((a, b) => a.date.localeCompare(b.date) || a.label.localeCompare(b.label, "el"));
   return {
     shown: all.slice(0, max),
