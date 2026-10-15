@@ -2,7 +2,7 @@ import { Tabs } from "@/components/ui";
 import { el } from "@/lib/i18n/el";
 import { SECTION_TABS } from "@/lib/navigation";
 
-// The reports section: the six tabs, as the P15 tab strip (navy underline
+// The reports section: the seven tabs, as the P15 tab strip (navy underline
 // on the active tab), then the tab's page. Each page carries its own
 // «Εξαγωγή CSV» (in its header) and its own footer line with the quality
 // checks that touch its figures. The reports only read: what they show is

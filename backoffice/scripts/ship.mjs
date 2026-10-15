@@ -38,7 +38,7 @@ const ENVS = {
 };
 const REPO = "spyridwngeorgiou/la-budgeting";
 const CHROME = process.env.CHROME ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
-const DEFAULT_PATHS = ["/dashboard", "/transactions", "/projects", "/planner", "/reports/cash", "/reports/pnl", "/reports/vat", "/reports/net-worth", "/reports/portfolio", "/accounts", "/contacts", "/inbox", "/collab"];
+const DEFAULT_PATHS = ["/dashboard", "/transactions", "/projects", "/planner", "/reports/cash", "/reports/scenarios", "/reports/pnl", "/reports/vat", "/reports/net-worth", "/reports/portfolio", "/accounts", "/contacts", "/inbox", "/collab"];
 // Height budget at 1440x900 (px), or null for paged lists that grow with data.
 // Reports and the project page have every table open since 13/10/2026 (as
 // in late September), so they grow with the data: heights printed, no budget.

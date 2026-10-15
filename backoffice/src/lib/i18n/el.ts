@@ -36,6 +36,7 @@ export const el = {
     projectsAll: "Έργα",
     properties: "Ακίνητα",
     cash: "Ταμείο & Πρόβλεψη",
+    scenarios: "Σενάρια",
     vat: "ΦΠΑ",
     withholding: "Παρακράτηση",
     quality: "Ποιότητα δεδομένων",
