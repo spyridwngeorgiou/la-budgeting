@@ -2285,6 +2285,36 @@ export type Database = {
           },
         ]
       }
+      forecast_scenarios: {
+        Row: {
+          changes: string[]
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          org_id: string
+          updated_at: string
+        }
+        Insert: {
+          changes?: string[]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          org_id: string
+          updated_at?: string
+        }
+        Update: {
+          changes?: string[]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          org_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expected_income: {
         Row: {
           amount: number
