@@ -7,7 +7,7 @@ export async function signIn(formData: FormData) {
   const supabase = await createClient();
 
   const { error } = await supabase.auth.signInWithPassword({
-    email: String(formData.get("email")),
+    email: String(formData.get("email")).trim().toLowerCase(),
     password: String(formData.get("password")),
   });
 
