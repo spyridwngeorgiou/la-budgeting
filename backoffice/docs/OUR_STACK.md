@@ -89,3 +89,13 @@ npx opennextjs-cloudflare deploy --config wrangler.own.jsonc
 | Money Manager (cash) | ✅ iPhone shortcut, one tap (iOS has no automatic export) |
 | Gmail invoices / Drive inbox | planned |
 | Banks (PSD2, up to 4×/day) | planned via Enable Banking; Optima coverage to confirm |
+
+## 9. Added 28–29/10/2026
+
+| Piece | Where / how |
+|---|---|
+| Duplicate check for every entry path | `possible_duplicates()` (0030) — same direction and amount, ±7 days. Used by `staging.cjs add` (stops unless `allow_duplicate`), the connector, the bank feed. |
+| Claude / ChatGPT connector | Worker `kansha-connector` (`backoffice/connector/`), https://kansha-connector.kansha-chris.workers.dev/mcp. OAuth (workers-oauth-provider, KV `OAUTH_KV`), sign-in with the Kansha app account, only claude.ai / chatgpt.com redirect hosts. Read tools + two-step writes (`kansha_prepare_*` → `kansha_confirm`, signed single-use token, never deletes). Secrets: `SUPABASE_SERVICE_ROLE_KEY`, `CONFIRM_SECRET`. Deploy from `backoffice/connector`: `../node_modules/.bin/wrangler deploy`. |
+| Shared board «Εντολές & σημειώσεις» | table `ai_notes` (0031); connector tools `kansha_notes` / `kansha_note_add` / `kansha_note_done`; VS Code: `node scripts/staging.cjs notes --own`, `note-done <id> <text> --own`; shown on Ειδοποιήσεις. |
+| Bank feed | Enable Banking (PSD2, read-only), app id `8afd326d-645e-4472-bc38-877d85e52894`, restricted mode (accounts must first be linked in the Enable Banking control panel). Tables 0032 (`bank_connections`, `bank_links`, `bank_tx`, `bank_sync_runs`); page `/bank`; `/api/sync/bank` 3×/day (0033, 05/11/17 UTC). Worker secrets `ENABLE_BANKING_APP_ID`, `ENABLE_BANKING_PRIVATE_KEY`. Feed starts 2026-10-13. Bank lines are identified by content (Optima changes `entry_reference` per request). Optima Εταιρικός live; Πειραιώς: app approval step fails (Enable Banking beta) — statements meanwhile. |
+| Spark (mail) in Claude Code | official Readdle MCP, `C:\Users\Admin\.mcp.json` on Christos' PC; three accounts. |
