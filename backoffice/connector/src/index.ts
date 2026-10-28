@@ -404,6 +404,81 @@ function buildServer(env: Env, props: Props) {
     },
   );
 
+  // Same staging as the app's file upload (src/lib/moneyManager.ts): rows go
+  // to mm_imports/mm_rows only; the ledger changes only after the user's
+  // decision on the app's «Μετρητά (Money Manager)» page.
+  server.registerTool(
+    "kansha_money_manager_send",
+    {
+      title: "Στείλε κινήσεις Money Manager",
+      description:
+        "Όταν ο χρήστης δίνει export (Excel) του Money Manager: διάβασε ΟΛΕΣ τις γραμμές και στείλ' τες εδώ αυτούσιες (ημερομηνία, έσοδο/έξοδο/μεταφορά, ποσό, λογαριασμός, κατηγορία, υποκατηγορία, σημείωση). " +
+        "Δεν γράφει στα οικονομικά: οι κινήσεις περιμένουν έγκριση του χρήστη στην εφαρμογή (σελίδα Μετρητά). Όσες υπάρχουν ήδη αναγνωρίζονται μόνες τους. Μην παραλείπεις και μην αλλάζεις γραμμές.",
+      inputSchema: {
+        rows: z.array(z.object({
+          date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("YYYY-MM-DD"),
+          kind: z.enum(["expense", "income", "transfer"]),
+          amount: z.number().positive(),
+          account: z.string().optional().describe("στήλη Λογαριασμός, π.χ. Μετρητά / Cash"),
+          category: z.string().optional(),
+          subcategory: z.string().optional(),
+          note: z.string().optional(),
+        })).min(1).max(1000),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    async ({ rows }) => {
+      const sorted = rows.map((r, i) => ({ ...r, amount: Math.round(r.amount * 100) / 100, rowNo: i + 2 }));
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(sorted.map(({ rowNo, ...r }) => r))));
+      const sha = "rows:" + [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+      const { data: dup } = await sb.from("mm_imports").select("id").eq("org_id", org).eq("file_sha256", sha).maybeSingle();
+      if (dup) return text("Αυτές οι κινήσεις έχουν ήδη σταλεί — τίποτα καινούργιο.");
+
+      const dates = sorted.map((r) => r.date).sort();
+      const from = dates[0], to = dates[dates.length - 1];
+      const shift = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+      // An older upload still waiting for approval, fully inside this period, is replaced by this one.
+      const { data: old } = await sb.from("mm_imports").select("id").eq("org_id", org).eq("status", "draft").gte("period_from", from).lte("period_to", to);
+      if (old?.length) await sb.from("mm_imports").delete().in("id", old.map((o) => o.id));
+
+      const { data: cashAcc } = await sb.from("accounts").select("id").eq("org_id", org).eq("kind", "cash");
+      const cashIds = (cashAcc ?? []).map((a) => a.id);
+      const { data: ledger } = await sb.from("transactions").select("id, tx_date, paid_on, gross_amount, direction")
+        .eq("org_id", org).in("account_id", cashIds.length ? cashIds : ["00000000-0000-0000-0000-000000000000"]).eq("status", "paid")
+        .gte("tx_date", shift(from, -1)).lte("tx_date", shift(to, 1));
+      const used = new Set<string>();
+      const isCash = (a?: string) => !a || /cash|μετρητ/i.test(a);
+      const staged = sorted.map((r) => {
+        if (r.kind === "transfer" || !isCash(r.account)) return { r, status: "not_cash", match: null as string | null };
+        const dir = r.kind === "income" ? "income" : "expense";
+        const hit = (ledger ?? []).find((t) => !used.has(t.id) && t.direction === dir && Math.abs(Number(t.gross_amount) - r.amount) < 0.005 &&
+          [shift(r.date, -1), r.date, shift(r.date, 1)].includes(String(t.paid_on ?? t.tx_date)));
+        if (hit) used.add(hit.id);
+        return { r, status: hit ? "exists" : "new", match: hit?.id ?? null };
+      });
+      const fresh = staged.filter((s) => s.status === "new");
+
+      const { data: imp, error } = await sb.from("mm_imports")
+        .insert({ org_id: org, filename: `Από ${props.client ?? "Claude"}`, storage_path: null, file_sha256: sha, period_from: from, period_to: to, row_count: sorted.length, new_count: fresh.length })
+        .select("id").single();
+      if (error) throw new Error(error.message);
+      const { error: e2 } = await sb.from("mm_rows").insert(staged.map(({ r, status, match }) => ({
+        org_id: org, import_id: imp.id, row_no: r.rowNo, tx_date: r.date, account_label: r.account ?? null, category: r.category ?? null,
+        subcategory: r.subcategory ?? null, note: r.note ?? null, amount: r.amount, kind: r.kind, match_status: status, matched_transaction_id: match,
+        decision: status === "new" ? (r.kind === "expense" && r.amount < 300 ? "personal" : null) : "skip",
+        raw: { via: props.client ?? "Claude", ...r },
+      })));
+      if (e2) { await sb.from("mm_imports").delete().eq("id", imp.id); throw new Error(e2.message); }
+
+      const lines = fresh.slice(0, 40).map(({ r }) => `• ${r.date} ${r.kind === "income" ? "+" : "−"}${money(r.amount)} ${[r.category, r.subcategory, r.note].filter(Boolean).join(" / ")}`);
+      return text(
+        `✓ ${sorted.length} κινήσεις (${from} – ${to}): ${staged.filter((s) => s.status === "exists").length} υπάρχουν ήδη, ` +
+        `${staged.filter((s) => s.status === "not_cash").length} δεν είναι μετρητά, ${fresh.length} νέες περιμένουν έγκριση στην εφαρμογή (Μετρητά).` +
+        (lines.length ? `\n\nΝέες:\n${lines.join("\n")}${fresh.length > 40 ? `\n… και ${fresh.length - 40} ακόμα` : ""}` : ""),
+      );
+    },
+  );
+
   return server;
 }
 
