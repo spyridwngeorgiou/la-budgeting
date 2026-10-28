@@ -1,0 +1,18 @@
+// Kansha connector for the Claude app (remote MCP + OAuth). Separate from the
+// back-office app; same Cloudflare account (create@chriskansha.com).
+// Secrets (wrangler secret put): SUPABASE_SERVICE_ROLE_KEY, CONFIRM_SECRET.
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "kansha-connector",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-14",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "dc2dbc4ec3114102b06c095e328f2492" }],
+  "vars": {
+    "SUPABASE_URL": "https://lbbwawezlymiapoacdhw.supabase.co",
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_opIFhQsCVAn5mmdkEu2j-Q_6PNFx4C7",
+    "PUBLIC_URL": "https://kansha-connector.kansha-chris.workers.dev"
+  },
+  "preview_urls": false,
+  "observability": { "enabled": true }
+}
