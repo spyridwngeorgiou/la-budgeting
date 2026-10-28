@@ -2081,6 +2081,207 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      bank_connections: {
+        Row: {
+          id: string
+          org_id: string
+          aspsp_name: string
+          aspsp_country: string
+          psu_type: string
+          auth_state: string | null
+          session_id: string | null
+          valid_until: string | null
+          status: string
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          aspsp_name: string
+          aspsp_country?: string
+          psu_type?: string
+          auth_state?: string | null
+          session_id?: string | null
+          valid_until?: string | null
+          status?: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          aspsp_name?: string
+          aspsp_country?: string
+          psu_type?: string
+          auth_state?: string | null
+          session_id?: string | null
+          valid_until?: string | null
+          status?: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      bank_links: {
+        Row: {
+          id: string
+          org_id: string
+          connection_id: string
+          account_uid: string
+          iban: string | null
+          bank_account_no: string | null
+          name: string | null
+          currency: string | null
+          account_id: string | null
+          sync_from: string | null
+          last_synced_at: string | null
+          last_bank_balance: number | null
+          last_bank_balance_at: string | null
+          active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          connection_id: string
+          account_uid: string
+          iban?: string | null
+          bank_account_no?: string | null
+          name?: string | null
+          currency?: string | null
+          account_id?: string | null
+          sync_from?: string | null
+          last_synced_at?: string | null
+          last_bank_balance?: number | null
+          last_bank_balance_at?: string | null
+          active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          connection_id?: string
+          account_uid?: string
+          iban?: string | null
+          bank_account_no?: string | null
+          name?: string | null
+          currency?: string | null
+          account_id?: string | null
+          sync_from?: string | null
+          last_synced_at?: string | null
+          last_bank_balance?: number | null
+          last_bank_balance_at?: string | null
+          active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      bank_sync_runs: {
+        Row: {
+          id: string
+          org_id: string
+          started_at: string
+          finished_at: string | null
+          fetched: number
+          matched: number
+          paid: number
+          added: number
+          pending: number
+          balances: Json
+          error: string | null
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          started_at?: string
+          finished_at?: string | null
+          fetched?: number
+          matched?: number
+          paid?: number
+          added?: number
+          pending?: number
+          balances?: Json
+          error?: string | null
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          started_at?: string
+          finished_at?: string | null
+          fetched?: number
+          matched?: number
+          paid?: number
+          added?: number
+          pending?: number
+          balances?: Json
+          error?: string | null
+        }
+        Relationships: []
+      }
+      bank_tx: {
+        Row: {
+          id: string
+          org_id: string
+          link_id: string
+          ref: string
+          booking_date: string | null
+          value_date: string | null
+          amount: number
+          direction: Database["public"]["Enums"]["tx_direction"]
+          currency: string | null
+          bank_status: string | null
+          description: string | null
+          counterparty: string | null
+          raw: Json
+          outcome: string
+          transaction_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          link_id: string
+          ref: string
+          booking_date?: string | null
+          value_date?: string | null
+          amount: number
+          direction: Database["public"]["Enums"]["tx_direction"]
+          currency?: string | null
+          bank_status?: string | null
+          description?: string | null
+          counterparty?: string | null
+          raw?: Json
+          outcome?: string
+          transaction_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          link_id?: string
+          ref?: string
+          booking_date?: string | null
+          value_date?: string | null
+          amount?: number
+          direction?: Database["public"]["Enums"]["tx_direction"]
+          currency?: string | null
+          bank_status?: string | null
+          description?: string | null
+          counterparty?: string | null
+          raw?: Json
+          outcome?: string
+          transaction_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_notes: {
         Row: {
           id: string

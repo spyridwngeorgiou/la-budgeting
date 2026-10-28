@@ -447,6 +447,9 @@ const defaultHandler = {
       return Response.json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "Λάθος διεύθυνση: η σύνδεση πρέπει να τελειώνει σε /mcp — https://kansha-connector.kansha-chris.workers.dev/mcp" } }, { status: 404 });
     }
     if (url.pathname === "/") return page("Kansha connector", "<h1>Kansha connector</h1><p>Σύνδεση για το Claude. Προσθήκη στο claude.ai → Settings → Connectors με το URL <code>/mcp</code>.</p>");
+    // Public policy pages (required by the bank-data provider registration).
+    if (url.pathname === "/privacy") return page("Privacy — Kansha Back Office", "<h1>Privacy</h1><p>Kansha Back Office is a private bookkeeping tool used only by KANSHA Μονοπρόσωπη Α.Ε. (ΑΦΜ 802801650) and its owner. Bank account data (balances and transactions) is read only with the account holder’s explicit consent, used solely for the company’s own bookkeeping and cash planning, stored in the company’s private database in the EU (Supabase, Frankfurt), never sold or shared with third parties, and deleted on request. Contact: create@chriskansha.com</p>");
+    if (url.pathname === "/terms") return page("Terms — Kansha Back Office", "<h1>Terms</h1><p>Kansha Back Office is an internal application of KANSHA Μονοπρόσωπη Α.Ε., not offered to the public. Access is limited to the company’s owner and authorised staff. Bank access is read-only (account information only); the application cannot initiate payments. Contact: create@chriskansha.com</p>");
     if (url.pathname !== "/authorize") return new Response("Not found", { status: 404 });
     const oauth = env.OAUTH_PROVIDER;
 
