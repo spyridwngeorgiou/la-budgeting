@@ -61,7 +61,7 @@ export default async function NotificationsPage() {
   const cols = "id, tx_date, due_date, gross_amount, description, counterparty_name, notes, project_id, plan_id, accounts(name, kind), projects(display_name), categories(code), plan:installment_plans!transactions_plan_id_fkey(notes)";
   const open = () => supabase.from("transactions").select(cols).in("status", ["pending", "scheduled"]).eq("direction", "expense");
 
-  const [{ data: overdue }, { data: soon }, { data: noProject }, { data: noInvoice }, { data: toConfirm }, { data: phases }, { data: activity }, { data: board }] = await Promise.all([
+  const [{ data: overdue }, { data: soon }, { data: noProject }, { data: noInvoice }, { data: toConfirm }, { data: phases }, { data: activity }, { data: board }, { data: bankLinks }, { data: ledgerBal }, { data: bankConns }] = await Promise.all([
     open().or(dueBefore(today)).order("tx_date"),
     open().or(dueBetween(today, week)).order("tx_date"),
     supabase.from("transactions").select(cols).eq("scope", "business").is("project_id", null).neq("status", "cancelled").gte("tx_date", since).order("tx_date", { ascending: false }),
@@ -70,12 +70,27 @@ export default async function NotificationsPage() {
     supabase.from("project_phases").select("id, name, planned_end, project_id, projects(display_name)").neq("status", "done").lt("planned_end", today).order("planned_end"),
     supabase.from("activity_log").select("at, actor_email, via, action, entity, label").gte("at", weekAgo).order("at", { ascending: false }).limit(30),
     supabase.from("ai_notes").select("id, kind, title, body, due_date, created_via, created_at").eq("status", "open").order("created_at", { ascending: false }),
+    supabase.from("bank_links").select("id, account_id, last_bank_balance, last_bank_balance_at, accounts(name)").eq("active", true).not("last_bank_balance", "is", null),
+    supabase.from("v_account_balances").select("account_id, current_balance"),
+    supabase.from("bank_connections").select("id, aspsp_name, valid_until").eq("status", "active"),
   ]);
 
   const pay = (rows: Row[] | null) => (rows ?? []).filter(isPayment);
   const overdueRows = pay(overdue as Row[] | null);
   const soonRows = pay(soon as Row[] | null);
+  // Bank feed: the bank's own balance must equal the ledger; consents expire after 180 days.
+  const ledgerOf = new Map((ledgerBal ?? []).map((b) => [b.account_id, Number(b.current_balance)]));
+  const bankChecks = [
+    ...(bankLinks ?? []).flatMap((l) => {
+      const ledger = ledgerOf.get(l.account_id ?? "");
+      const diff = ledger == null ? 0 : Math.round((Number(l.last_bank_balance) - ledger) * 100) / 100;
+      return Math.abs(diff) >= 0.01 ? [{ key: `bb${l.id}`, left: formatDate(String(l.last_bank_balance_at).slice(0, 10)), middle: `Διαφορά τράπεζας: ${one(l.accounts)?.name ?? ""}`, sub: `τράπεζα ${formatMoney(Number(l.last_bank_balance))} · εφαρμογή ${formatMoney(ledger ?? 0)} · διαφορά ${formatMoney(diff)}`, href: "/bank" }] : [];
+    }),
+    ...(bankConns ?? []).filter((c) => c.valid_until && Date.parse(c.valid_until) - Date.now() < 14 * 86400000).map((c) => ({ key: `bc${c.id}`, left: formatDate(String(c.valid_until).slice(0, 10)), middle: `Λήγει η έγκριση της τράπεζας: ${c.aspsp_name}`, sub: "Ανανέωσέ την από τη σελίδα Τράπεζες (ένα κλικ).", href: "/bank" })),
+  ];
+
   const questions = [
+    ...bankChecks,
     ...(phases ?? []).map((p) => ({ key: `ph${p.id}`, left: formatDate(p.planned_end), middle: `Καθυστερεί: ${p.name}`, sub: `${one(p.projects)?.display_name ?? ""} · άλλαξε ημερομηνία ή σημείωσέ τη ολοκληρωμένη`, href: `/projects/${p.project_id}` })),
     ...((noProject ?? []) as Row[]).map((r) => ({ key: `np${r.id}`, left: formatDate(r.tx_date), middle: `Σε ποιο έργο; ${r.description ?? r.counterparty_name ?? ""}`, sub: formatMoney(Number(r.gross_amount)), href: "/transactions" })),
     ...((noInvoice ?? []) as Row[]).filter(needsInvoice).map((r) => ({ key: `ni${r.id}`, left: formatDate(r.tx_date), middle: `Λείπει τιμολόγιο: ${r.description ?? r.counterparty_name ?? ""}`, sub: `${formatMoney(Number(r.gross_amount))} · ${one(r.projects)?.display_name ?? ""}`, href: r.project_id ? `/projects/${r.project_id}` : "/transactions" })),
