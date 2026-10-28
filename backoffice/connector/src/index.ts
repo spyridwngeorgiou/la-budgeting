@@ -360,12 +360,17 @@ ${error ? `<p class="err">${html(error)}</p>` : ""}
 <form method="post"><input type="hidden" name="handle" value="${html(handle)}">
 <label>Email</label><input name="email" type="email" autocomplete="username" required>
 <label>Κωδικός εφαρμογής Kansha</label><input name="password" type="password" autocomplete="current-password" required>
-<div class="row"><button class="no" name="decision" value="deny" formnovalidate>Άρνηση</button><button class="ok" name="decision" value="approve">Σύνδεση και έγκριση</button></div></form>`;
+<!-- approve first in the markup, so Enter in the password field approves; shown on the right -->
+<div class="row" style="flex-direction:row-reverse"><button class="ok" name="decision" value="approve">Σύνδεση και έγκριση</button><button class="no" name="decision" value="deny" formnovalidate>Άρνηση</button></div></form>`;
 }
 
 const defaultHandler = {
   async fetch(request: Request, env: Env) {
     const url = new URL(request.url);
+    // A connector added without "/mcp" lands here: say so instead of serving HTML.
+    if (url.pathname === "/" && request.method === "POST") {
+      return Response.json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "Λάθος διεύθυνση: η σύνδεση πρέπει να τελειώνει σε /mcp — https://kansha-connector.kansha-chris.workers.dev/mcp" } }, { status: 404 });
+    }
     if (url.pathname === "/") return page("Kansha connector", "<h1>Kansha connector</h1><p>Σύνδεση για το Claude. Προσθήκη στο claude.ai → Settings → Connectors με το URL <code>/mcp</code>.</p>");
     if (url.pathname !== "/authorize") return new Response("Not found", { status: 404 });
     const oauth = env.OAUTH_PROVIDER;
@@ -392,6 +397,7 @@ const defaultHandler = {
     if (request.method === "POST") {
       const form = await request.formData();
       const handle = String(form.get("handle") ?? "");
+      console.log("authorize: decision", String(form.get("decision") ?? "(none)"));
       if (form.get("decision") !== "approve") {
         const denied = await oauth.denyConsent(request, handle);
         return new Response(null, { status: 302, headers: denied.headers });
@@ -399,10 +405,12 @@ const defaultHandler = {
       // Kansha credentials -> Supabase user -> must belong to an org.
       const auth = createClient(env.SUPABASE_URL, env.SUPABASE_PUBLISHABLE_KEY, { auth: { persistSession: false } });
       const { data: signin, error } = await auth.auth.signInWithPassword({ email: String(form.get("email") ?? ""), password: String(form.get("password") ?? "") });
+      console.log("authorize: sign-in", error ? "failed: " + error.message : "ok");
       if (error || !signin.user) {
         return page("Σύνδεση Kansha", `<h1>Λάθος στοιχεία</h1><p class="err">Το email ή ο κωδικός δεν είναι σωστά. Γύρνα πίσω στο Claude και ξεκίνα ξανά τη σύνδεση.</p>`);
       }
       const { data: member } = await db(env).from("org_members").select("org_id, role").eq("user_id", signin.user.id).in("role", ["owner", "admin", "editor"]).limit(1).maybeSingle();
+      console.log("authorize: member", member ? member.role : "none");
       if (!member) return page("Σύνδεση Kansha", `<h1>Χωρίς δικαίωμα</h1><p class="err">Ο λογαριασμός δεν έχει δικαίωμα καταχώρισης στην Kansha.</p>`);
       const approved = await oauth.approveConsent(request, handle);
       const { redirectTo } = await oauth.completeAuthorization({
@@ -412,6 +420,7 @@ const defaultHandler = {
         scope: approved.request.scope,
         props: { userId: signin.user.id, email: signin.user.email ?? "", orgId: member.org_id } satisfies Props,
       });
+      { const u = new URL(redirectTo); console.log("authorize: redirect", u.host + u.pathname, [...u.searchParams.keys()].join(","), u.searchParams.get("error") ?? ""); }
       approved.headers.set("Location", redirectTo);
       return new Response(null, { status: 302, headers: approved.headers });
     }
@@ -431,6 +440,9 @@ export default new OAuthProvider<Env>({
   resourceMetadata: { resource: `${PUBLIC}/mcp`, authorization_servers: [PUBLIC] },
   clientIdMetadataDocumentEnabled: true,
   refreshTokenIdleTTL: 60 * 60 * 24 * 30,
+  onError: ({ code, description, status, internal, request }) => {
+    console.log("oauth error", status, code, description, JSON.stringify(internal), request ? new URL(request.url).pathname : "");
+  },
   // Only Claude may register: every redirect URI must be on a Claude host.
   clientRegistrationCallback: ({ clientMetadata }) => {
     const uris = Array.isArray(clientMetadata.redirect_uris) ? (clientMetadata.redirect_uris as unknown[]) : [];
