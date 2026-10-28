@@ -61,7 +61,7 @@ export default async function NotificationsPage() {
   const cols = "id, tx_date, due_date, gross_amount, description, counterparty_name, notes, project_id, plan_id, accounts(name, kind), projects(display_name), categories(code), plan:installment_plans!transactions_plan_id_fkey(notes)";
   const open = () => supabase.from("transactions").select(cols).in("status", ["pending", "scheduled"]).eq("direction", "expense");
 
-  const [{ data: overdue }, { data: soon }, { data: noProject }, { data: noInvoice }, { data: toConfirm }, { data: phases }, { data: activity }] = await Promise.all([
+  const [{ data: overdue }, { data: soon }, { data: noProject }, { data: noInvoice }, { data: toConfirm }, { data: phases }, { data: activity }, { data: board }] = await Promise.all([
     open().or(dueBefore(today)).order("tx_date"),
     open().or(dueBetween(today, week)).order("tx_date"),
     supabase.from("transactions").select(cols).eq("scope", "business").is("project_id", null).neq("status", "cancelled").gte("tx_date", since).order("tx_date", { ascending: false }),
@@ -69,6 +69,7 @@ export default async function NotificationsPage() {
     open().ilike("notes", "%προς επιβεβαίωση%").order("tx_date"),
     supabase.from("project_phases").select("id, name, planned_end, project_id, projects(display_name)").neq("status", "done").lt("planned_end", today).order("planned_end"),
     supabase.from("activity_log").select("at, actor_email, via, action, entity, label").gte("at", weekAgo).order("at", { ascending: false }).limit(30),
+    supabase.from("ai_notes").select("id, kind, title, body, due_date, created_via, created_at").eq("status", "open").order("created_at", { ascending: false }),
   ]);
 
   const pay = (rows: Row[] | null) => (rows ?? []).filter(isPayment);
@@ -97,6 +98,14 @@ export default async function NotificationsPage() {
         <h1 className="text-xl font-semibold">Ειδοποιήσεις</h1>
         <p className="text-sm text-ink-muted">Τι θέλει την προσοχή σου σήμερα. Οι προβλέψεις δεν μετράνε εδώ — μόνο ό,τι είναι για πληρωμή.</p>
       </div>
+
+      {/* Ο κοινός πίνακας του Claude, του ChatGPT και του VS Code (0031) */}
+      <Block title="Εντολές & σημειώσεις (Claude · ChatGPT · VS Code)" count={(board ?? []).length} tone="plain">
+        {(board ?? []).map((n) => (
+          <Line key={n.id} left={formatDate(n.due_date ?? n.created_at.slice(0, 10))} middle={`${n.kind === "task" ? "Εντολή" : "Σημείωση"}: ${n.title}`}
+            sub={[n.body, n.created_via ? `από ${n.created_via}` : null].filter(Boolean).join(" · ")} />
+        ))}
+      </Block>
 
       <Block title="Θέλει απάντηση από σένα" count={questions.length} tone="amber">
         {questions.map((q) => <Line key={q.key} left={q.left} middle={q.middle} sub={q.sub} href={q.href} />)}

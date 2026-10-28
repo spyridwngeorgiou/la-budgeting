@@ -33,10 +33,11 @@ interface Env {
   CONFIRM_SECRET: string;
   PUBLIC_URL: string;
 }
-type Props = { userId: string; email: string; orgId: string };
+type Props = { userId: string; email: string; orgId: string; client?: string };
 
-// Tokens go only to Claude's own redirect hosts.
-const ALLOWED_REDIRECT_HOSTS = ["claude.ai", "claude.com", "www.claude.ai", "www.claude.com"];
+// Tokens go only to Claude's and ChatGPT's own redirect hosts.
+const ALLOWED_REDIRECT_HOSTS = ["claude.ai", "claude.com", "www.claude.ai", "www.claude.com", "chatgpt.com", "www.chatgpt.com"];
+const clientLabel = (host: string) => (host.includes("chatgpt") ? "ChatGPT" : "Claude");
 
 // ---------------------------------------------------------------- helpers
 const eur = new Intl.NumberFormat("el-GR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -96,7 +97,7 @@ function buildServer(env: Env, props: Props) {
     {
       jsonSchemaValidator: new CfWorkerJsonSchemaValidator(),
       instructions:
-        "Kansha back office (Χρήστος Λάμπρου). Απαντάς στα ελληνικά. Διαβάζεις ελεύθερα. ΠΟΤΕ δεν γράφεις χωρίς ρητό «ναι» του χρήστη: " +
+        "Kansha back office (Χρήστος Λάμπρου). Απαντάς στα ελληνικά. Στην αρχή διάβασε kansha_notes (κοινός πίνακας με τα άλλα προγράμματα). Διαβάζεις ελεύθερα. ΠΟΤΕ δεν γράφεις χωρίς ρητό «ναι» του χρήστη: " +
         "πρώτα kansha_prepare_entry / kansha_prepare_mark_paid, δείχνεις αυτούσια την προεπισκόπηση, και μόνο μετά το «ναι» καλείς kansha_confirm. " +
         "Αν η προεπισκόπηση δείχνει πιθανή διπλή εγγραφή, ρωτάς «ίδια ή δύο;» και περνάς allow_duplicate μόνο αν πει ότι είναι ξεχωριστή. " +
         "Κανόνας: ό,τι δεν έχει γίνει ακόμα (μελλοντικό) μπαίνει ως pending, όχι ως πληρωμένο. Λείπει έργο/λογαριασμός; Ρωτάς, δεν μαντεύεις.",
@@ -247,7 +248,7 @@ function buildServer(env: Env, props: Props) {
         gross_amount: gross, net_amount: Math.round((gross - vat) * 100) / 100, vat_amount: vat, withholding_amount: 0,
         has_invoice: !!a.invoice_number || vat > 0, invoice_number: a.invoice_number ?? null,
         counterparty_name: a.counterparty ?? null, description: a.description,
-        notes: [a.notes, `Μέσω Claude (${props.email}).`].filter(Boolean).join(" · "),
+        notes: [a.notes, `Μέσω ${props.client ?? "Claude"} (${props.email}).`].filter(Boolean).join(" · "),
       };
       const summary =
         `${a.status === "paid" ? "Πληρωμένο" : "Ανοιχτό (θα πληρωθεί)"} · ${a.direction === "income" ? "ΕΙΣΠΡΑΞΗ" : "ΠΛΗΡΩΜΗ"} ${money(gross)}${vat ? ` (ΦΠΑ ${money(vat)})` : ""}\n` +
@@ -329,6 +330,80 @@ function buildServer(env: Env, props: Props) {
     },
   );
 
+  // «Εντολές & σημειώσεις»: the board shared by Claude, ChatGPT and VS Code.
+  server.registerTool(
+    "kansha_notes",
+    {
+      title: "Εντολές & σημειώσεις",
+      description:
+        "Ο κοινός πίνακας ανάμεσα σε Claude, ChatGPT και VS Code: ανοιχτές εντολές (τι πρέπει να γίνει) και σημειώσεις (αποφάσεις, πληροφορίες). " +
+        "Διάβασέ τον στην αρχή κάθε συζήτησης για τα οικονομικά, για να ξέρεις τι ζήτησε ο χρήστης από άλλο πρόγραμμα.",
+      inputSchema: { status: z.enum(["open", "done", "all"]).default("open") },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ status }) => {
+      let r = sb.from("ai_notes").select("id, kind, title, body, status, due_date, created_by, created_via, created_at, done_via, done_note, projects(display_name)")
+        .eq("org_id", org).order("created_at", { ascending: false }).limit(60);
+      if (status !== "all") r = r.eq("status", status);
+      const { data, error } = await r;
+      if (error) throw new Error(error.message);
+      if (!data?.length) return text(status === "open" ? "Καμία ανοιχτή εντολή ή σημείωση." : "Τίποτα.");
+      return text(data.map((n) =>
+        `• [${n.id}] ${n.kind === "task" ? "ΕΝΤΟΛΗ" : "ΣΗΜΕΙΩΣΗ"}${n.status === "done" ? " (έγινε)" : ""} — ${n.title}` +
+        `${one(n.projects)?.display_name ? ` · ${one(n.projects)!.display_name}` : ""}${n.due_date ? ` · έως ${n.due_date}` : ""}` +
+        `\n    από ${n.created_via ?? "—"}, ${String(n.created_at).slice(0, 10)}${n.body ? `\n    ${n.body}` : ""}${n.done_note ? `\n    ✓ ${n.done_via ?? ""}: ${n.done_note}` : ""}`,
+      ).join("\n"));
+    },
+  );
+
+  server.registerTool(
+    "kansha_note_add",
+    {
+      title: "Νέα εντολή ή σημείωση",
+      description:
+        "Γράφει στον κοινό πίνακα μια εντολή (για να την κάνει άλλο πρόγραμμα, π.χ. «στο VS Code: πέρασε το extrait Πειραιώς») ή μια σημείωση (απόφαση/πληροφορία). " +
+        "Μόνο όταν ο χρήστης το ζητήσει ρητά. Δεν αγγίζει οικονομικά δεδομένα.",
+      inputSchema: {
+        kind: z.enum(["task", "note"]),
+        title: z.string().min(3),
+        body: z.string().optional(),
+        project_code: z.string().optional(),
+        due_date: z.string().optional().describe("YYYY-MM-DD"),
+      },
+      annotations: { readOnlyHint: false, destructiveHint: false },
+    },
+    async (a) => {
+      let project_id: string | null = null;
+      if (a.project_code) {
+        const { data: p } = await sb.from("projects").select("id").eq("org_id", org).eq("code", a.project_code).maybeSingle();
+        if (!p) return text(`Άγνωστο έργο «${a.project_code}».`);
+        project_id = p.id;
+      }
+      const { data, error } = await sb.from("ai_notes")
+        .insert({ org_id: org, kind: a.kind, title: a.title, body: a.body ?? null, project_id, due_date: a.due_date ?? null, created_by: props.email, created_via: props.client ?? "Claude" })
+        .select("id").single();
+      if (error) throw new Error(error.message);
+      return text(`✓ ${a.kind === "task" ? "Εντολή" : "Σημείωση"} καταχωρίστηκε [${data.id}]: ${a.title}`);
+    },
+  );
+
+  server.registerTool(
+    "kansha_note_done",
+    {
+      title: "Εντολή ολοκληρώθηκε",
+      description: "Κλείνει μια εντολή του κοινού πίνακα, με σύντομο σχόλιο για το τι έγινε. Μόνο αφού έγινε πράγματι.",
+      inputSchema: { id: z.string().uuid(), note: z.string().min(2).describe("τι έγινε") },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+    },
+    async ({ id, note }) => {
+      const { data, error } = await sb.from("ai_notes")
+        .update({ status: "done", done_at: new Date().toISOString(), done_by: props.email, done_via: props.client ?? "Claude", done_note: note })
+        .eq("org_id", org).eq("id", id).eq("status", "open").select("title").maybeSingle();
+      if (error) throw new Error(error.message);
+      return text(data ? `✓ Έκλεισε: ${data.title}` : "Δεν βρέθηκε ανοιχτή εντολή με αυτό το id.");
+    },
+  );
+
   return server;
 }
 
@@ -389,7 +464,7 @@ const defaultHandler = {
         return page("Δεν επιτρέπεται", `<h1>Δεν επιτρέπεται</h1><p class="err">Αυτή η σύνδεση δέχεται μόνο το Claude (claude.ai). Αίτημα για: ${html(details.redirectHost)}</p>`);
       }
       const consent = await oauth.beginConsent(req);
-      const res = page("Σύνδεση Kansha", consentBody(details.redirectHost, consent.handle));
+      const res = page("Σύνδεση Kansha", consentBody(details.redirectHost, consent.handle).replace(/Claude/g, clientLabel(details.redirectHost)));
       consent.headers.forEach((v, k) => res.headers.append(k, v));
       return res;
     }
@@ -418,7 +493,7 @@ const defaultHandler = {
         userId: signin.user.id,
         metadata: { email: signin.user.email },
         scope: approved.request.scope,
-        props: { userId: signin.user.id, email: signin.user.email ?? "", orgId: member.org_id } satisfies Props,
+        props: { userId: signin.user.id, email: signin.user.email ?? "", orgId: member.org_id, client: clientLabel(new URL(approved.request.redirectUri).hostname) } satisfies Props,
       });
       { const u = new URL(redirectTo); console.log("authorize: redirect", u.host + u.pathname, [...u.searchParams.keys()].join(","), u.searchParams.get("error") ?? ""); }
       approved.headers.set("Location", redirectTo);
@@ -443,7 +518,7 @@ export default new OAuthProvider<Env>({
   onError: ({ code, description, status, internal, request }) => {
     console.log("oauth error", status, code, description, JSON.stringify(internal), request ? new URL(request.url).pathname : "");
   },
-  // Only Claude may register: every redirect URI must be on a Claude host.
+  // Only Claude or ChatGPT may register: every redirect URI on their hosts.
   clientRegistrationCallback: ({ clientMetadata }) => {
     const uris = Array.isArray(clientMetadata.redirect_uris) ? (clientMetadata.redirect_uris as unknown[]) : [];
     const ok = uris.length > 0 && uris.every((u) => {
@@ -453,6 +528,6 @@ export default new OAuthProvider<Env>({
         return false;
       }
     });
-    return ok ? undefined : { code: "invalid_redirect_uri", description: "Only Claude may use this connector.", status: 400 };
+    return ok ? undefined : { code: "invalid_redirect_uri", description: "Only Claude or ChatGPT may use this connector.", status: 400 };
   },
 });

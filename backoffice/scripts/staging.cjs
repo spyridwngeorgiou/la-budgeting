@@ -546,6 +546,17 @@ async function noProject(sb, from, to) {
   console.log(`\nΣύνολο ${rows.length}:`, JSON.stringify(by));
 }
 
+// The board shared with Claude and ChatGPT (0031): open instructions and notes.
+async function notes(sb) {
+  const rows = must(await sb.from("ai_notes").select("id, kind, title, body, due_date, created_via, created_at").eq("status", "open").order("created_at"), "ai_notes");
+  if (!rows.length) return console.log("Καμία ανοιχτή εντολή ή σημείωση.");
+  for (const n of rows) console.log(`[${n.id}] ${n.kind === "task" ? "ΕΝΤΟΛΗ" : "ΣΗΜΕΙΩΣΗ"} · ${n.title}${n.due_date ? " · έως " + n.due_date : ""} · από ${n.created_via ?? "—"} ${String(n.created_at).slice(0, 10)}${n.body ? "\n    " + n.body : ""}`);
+}
+async function noteDone(sb, id, note) {
+  must(await sb.from("ai_notes").update({ status: "done", done_at: new Date().toISOString(), done_via: "VS Code", done_note: note }).eq("id", id), "note done");
+  console.log("✓ Έκλεισε", id);
+}
+
 async function main() {
   const [cmd, file, flag, flag2] = process.argv.slice(2);
   if (cmd === "no-project") return noProject(stagingClient(), file, flag);
@@ -555,6 +566,8 @@ async function main() {
   if (cmd === "inspect") return inspect(sb);
   if (cmd === "balances") return balances(sb);
   if (cmd === "refs") return refs(sb);
+  if (cmd === "notes") return notes(sb);
+  if (cmd === "note-done" && file) return noteDone(sb, file, [flag, flag2].filter(Boolean).join(" ") || "Έγινε.");
   if (cmd === "add" && file) return add(sb, file);
   if (cmd === "load" && file) return load(sb, file, flag === "--write");
   console.error("usage: node scripts/staging.cjs inspect | balances | refs | add <entry.json> | load <workbook.xlsx> [--write] | files <project code> <inventory.json> [--write]");

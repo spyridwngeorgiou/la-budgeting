@@ -2081,6 +2081,71 @@ export type Database = {
         Update: never
         Relationships: []
       }
+      ai_notes: {
+        Row: {
+          id: string
+          org_id: string
+          kind: string
+          title: string
+          body: string | null
+          project_id: string | null
+          due_date: string | null
+          status: string
+          created_by: string | null
+          created_via: string | null
+          done_by: string | null
+          done_via: string | null
+          done_note: string | null
+          created_at: string
+          done_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          kind?: string
+          title: string
+          body?: string | null
+          project_id?: string | null
+          due_date?: string | null
+          status?: string
+          created_by?: string | null
+          created_via?: string | null
+          done_by?: string | null
+          done_via?: string | null
+          done_note?: string | null
+          created_at?: string
+          done_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          kind?: string
+          title?: string
+          body?: string | null
+          project_id?: string | null
+          due_date?: string | null
+          status?: string
+          created_by?: string | null
+          created_via?: string | null
+          done_by?: string | null
+          done_via?: string | null
+          done_note?: string | null
+          created_at?: string
+          done_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_notes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mm_imports: {
         Row: {
           id: string
