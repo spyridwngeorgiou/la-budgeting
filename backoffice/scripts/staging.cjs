@@ -418,7 +418,8 @@ async function refs(sb) {
 // { tx_date, paid_on?, due_date?, direction: "expense"|"income", status?: "paid",
 //   net, vat?, wh?, description, counterparty_name?, afm?, project_code?,
 //   category_code?, account_name?, scope?: "business"|"personal",
-//   invoice_number?, notes?, photo?: "<path to image or pdf>" }
+//   invoice_number?, notes?, photo?: "<path to image or pdf>",
+//   allow_duplicate?: true  (only after the user said it is a second, separate payment) }
 async function add(sb, file) {
   const e = JSON.parse(fs.readFileSync(file, "utf8").replace(/^﻿/, ""));
   const orgs = must(await sb.from("orgs").select("id").order("created_at"), "orgs");
@@ -430,6 +431,20 @@ async function add(sb, file) {
   if (e.project_code && !project_id) throw new Error(`Άγνωστο έργο ${e.project_code}`);
   if (e.category_code && !category_id) throw new Error(`Άγνωστη κατηγορία ${e.category_code}`);
   if (e.account_name && !account_id) throw new Error(`Άγνωστος λογαριασμός ${e.account_name}`);
+
+  // Same duplicate check as the Claude connector (0030): same direction and
+  // amount, date ±7 days. Refuse unless the entry says it is a second one.
+  {
+    const gross = round2(round2(e.net) + round2(e.vat ?? 0) - round2(e.wh ?? 0));
+    const day = e.paid_on ?? e.due_date ?? e.tx_date;
+    const dups = must(await sb.rpc("possible_duplicates", { p_org: org_id, p_date: day, p_amount: gross, p_direction: e.direction ?? "expense" }), "possible_duplicates");
+    if (dups.length && !e.allow_duplicate) {
+      console.log("ΣΤΟΠ — υπάρχει ήδη ίδιο ποσό ±7 ημέρες. Ίδια ή δύο; (για δεύτερη εγγραφή: \"allow_duplicate\": true)");
+      for (const d of dups) console.log(`  ${d.paid_on ?? d.due_date ?? d.tx_date} ${d.gross_amount} ${d.status} · ${d.account ?? ""} · ${d.project ?? ""} · ${d.description ?? ""}`);
+      process.exitCode = 2;
+      return;
+    }
+  }
 
   const afm = afmOrNull(e.afm);
   let contact_id = afm ? await one("contacts", "afm", afm) : null;
