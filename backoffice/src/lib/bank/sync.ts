@@ -17,10 +17,11 @@ import { accountBalances, accountTransactions, type EbTransaction } from "./enab
 const day = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
 const abs = (s: string) => Math.round(Math.abs(Number(s)) * 100) / 100;
 
-async function refOf(t: EbTransaction, date: string) {
-  if (t.entry_reference) return `e:${t.entry_reference}`;
-  if (t.transaction_id) return `t:${t.transaction_id}`;
-  const basis = [date, t.transaction_amount.amount, t.credit_debit_indicator, (t.remittance_information ?? []).join("|"), t.creditor?.name ?? "", t.debtor?.name ?? ""].join("~");
+// A bank line's identity is its content, not the bank's reference: Optima
+// returns a new entry_reference on every request. Identical lines on the same
+// day (two equal card payments) are told apart by their order (nth).
+export async function refOf(t: EbTransaction, date: string, nth: number) {
+  const basis = [date, Math.abs(Number(t.transaction_amount.amount)).toFixed(2), t.credit_debit_indicator, (t.remittance_information ?? []).join("|"), t.creditor?.name ?? "", t.debtor?.name ?? "", nth].join("~");
   const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(basis));
   return "h:" + [...new Uint8Array(h)].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
@@ -47,11 +48,15 @@ export async function syncBank(supabase: SupabaseClient, orgId: string) {
       const txs = await accountTransactions(link.account_uid, from);
       counts.fetched += txs.length;
       const usedLedger = new Set<string>();
+      const occurrences = new Map<string, number>();
 
       for (const t of txs) {
         const date = t.booking_date ?? t.value_date ?? t.transaction_date;
         if (!date || (link.sync_from && date < link.sync_from)) continue;
-        const ref = await refOf(t, date);
+        const occKey = [date, t.transaction_amount.amount, t.credit_debit_indicator, (t.remittance_information ?? []).join("|"), t.creditor?.name ?? "", t.debtor?.name ?? ""].join("~");
+        const nth = (occurrences.get(occKey) ?? 0) + 1;
+        occurrences.set(occKey, nth);
+        const ref = await refOf(t, date, nth);
         const amount = abs(t.transaction_amount.amount);
         const direction = t.credit_debit_indicator === "CRDT" ? "income" : "expense";
         const booked = !t.status || t.status === "BOOK";
