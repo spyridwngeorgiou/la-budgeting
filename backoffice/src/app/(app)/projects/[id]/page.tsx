@@ -83,7 +83,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     supabase.from("project_phases").select("id, sort_order, name, kind, planned_start, planned_end, status, done_on, is_estimate, notes").eq("project_id", id),
     supabase
       .from("transactions")
-      .select("tx_date, due_date, gross_amount, description, accounts(kind)")
+      .select("id, tx_date, due_date, gross_amount, description, phase_id, plan_id, accounts(kind)")
       .eq("project_id", id)
       .eq("direction", "expense")
       .in("status", ["pending", "scheduled"])
@@ -288,11 +288,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       </div>
 
       <ProjectTimeline
+        projectId={id}
         phases={phases ?? []}
         today={new Date().toISOString().slice(0, 10)}
         dues={(dues ?? []).map((d) => {
           const account = Array.isArray(d.accounts) ? d.accounts[0] : d.accounts;
-          return { date: String(d.due_date ?? d.tx_date), amount: Number(d.gross_amount), pool: account?.kind === "cash" ? ("cash" as const) : ("bank" as const) };
+          return { id: d.id, date: String(d.due_date ?? d.tx_date), amount: Number(d.gross_amount), pool: account?.kind === "cash" ? ("cash" as const) : ("bank" as const), description: d.description ?? "", phaseId: d.phase_id, recurring: d.plan_id != null };
         })}
       />
 

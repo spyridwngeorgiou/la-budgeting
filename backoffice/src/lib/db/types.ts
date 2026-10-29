@@ -2481,6 +2481,7 @@ export type Database = {
           done_on: string | null
           is_estimate: boolean
           notes: string | null
+          depends_on: string | null
           created_at: string
           updated_at: string
         }
@@ -2497,6 +2498,7 @@ export type Database = {
           done_on?: string | null
           is_estimate?: boolean
           notes?: string | null
+          depends_on?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -2513,6 +2515,7 @@ export type Database = {
           done_on?: string | null
           is_estimate?: boolean
           notes?: string | null
+          depends_on?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -3433,6 +3436,7 @@ export type Database = {
           other_taxes: number
           paid_on: string | null
           plan_id: string | null
+          phase_id: string | null
           project_id: string | null
           scope: Database["public"]["Enums"]["tx_scope"]
           signed_amount: number | null
@@ -3477,6 +3481,7 @@ export type Database = {
           other_taxes?: number
           paid_on?: string | null
           plan_id?: string | null
+          phase_id?: string | null
           project_id?: string | null
           scope?: Database["public"]["Enums"]["tx_scope"]
           signed_amount?: number | null
@@ -3521,6 +3526,7 @@ export type Database = {
           other_taxes?: number
           paid_on?: string | null
           plan_id?: string | null
+          phase_id?: string | null
           project_id?: string | null
           scope?: Database["public"]["Enums"]["tx_scope"]
           signed_amount?: number | null
